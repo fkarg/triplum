@@ -1,0 +1,275 @@
+# Design record
+
+Decisions taken on 2026-09-16 while scoping the project, with the alternatives that were considered
+and why they lost. This is a living record: change a decision here when it changes, do not append
+contradictions.
+
+## Goals and non-goals
+
+**Goal.** A composable, high-performance sandbox for everything LLM-plus-KG: construction from text,
+retrieval (GraphRAG in all its variants), serialisation for prompts, storage backend comparison
+(RDF vs property graph vs relational), and evaluation deep enough to say *when* a graph helps and
+when it does not. Industry-first: the output is one system that performs, not a paper.
+
+**First application.** Question answering / RAG, measured on public agentic multi-hop QA benchmarks.
+All other KG applications (search, recommendation, digital twins, ...) come later; the data layer
+must not preclude them.
+
+**Non-goals for now.** Multi-machine deployment. A public Rust-facing API. A UI. Serving
+infrastructure. Reproducing more than four pipelines before the harness reports numbers.
+
+## Decisions
+
+### D1. Python-first, Rust behind a clean boundary
+
+Python is the user surface and the control plane: pipeline composition, LLM providers, prompts,
+dataset loaders, judges, notebooks. Rust holds the data plane where it is measurably worth it: the
+canonical schemas and visibility logic, lexical and vector indexes, traversal and PPR kernels,
+serialisers.
+
+Rule for placing code: if it touches an LLM or a dataset loader it is Python. If it touches the
+graph or an index and a Python version is the measured bottleneck, or a better crate already exists,
+it is Rust. Do not port to Rust speculatively.
+
+*Alternatives.* Rust-everything with thin bindings (PyTorch style) would force reimplementing LLM
+clients, tokenizers and loaders and would put a compile cycle in every notebook iteration. Pure
+Python with "Rust later" tends to design the data layer around Python objects, which is precisely
+what makes the port painful; the Arrow decision below is the mitigation.
+
+### D2. Arrow-native shared data layer
+
+Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
+(integer microseconds); intervals are closed-open; an open end uses a max sentinel rather than NULL
+so range predicates stay simple.
+
+| table | columns (initial) |
+|---|---|
+| documents | id (content-addressed), source, uri, observed_at, metadata (JSON) |
+| document_grants | document_id, principal, granted_at, revoked_at (system-versioned: revocation closes, never deletes) |
+| chunks | id, document_id, parent_id (hierarchy), level, span_start, span_end, text |
+| chunk_embeddings | chunk_id, embedding_spec (model id plus revision plus dims), vector |
+| entities | id (opaque, timeless), canonical_id |
+| facts | id, proposition_id, subject_id, predicate, object_id (nullable), object_literal (nullable), object_datatype, object_lang, valid_from, valid_to, recorded_at, invalidated_at, invalidated_by_fact_id, confidence |
+| fact_support | fact_id, group_no, chunk_id, extractor, recorded_at (a fact is supported by ANY group; a group needs ALL its chunks) |
+| mentions | entity_id, chunk_id, span_start, span_end, confidence |
+
+Three identities, kept apart on purpose (the peer review's central objection to the first draft):
+
+- **Proposition**: the normalised `(subject, predicate, object)` triple, identified by
+  `proposition_id`, a hash over the normalised components. Purely a grouping key.
+- **Assertion**: one `facts` row. One source's claim about a proposition, with its own validity
+  interval, confidence and transaction time. Two documents asserting the same proposition with
+  different validity windows are two rows sharing a `proposition_id`.
+- **Extraction occurrence**: one `fact_support` row, with the extractor identity and its own
+  `recorded_at`. Support has a transaction-time boundary, so evidence added today cannot make a
+  fact visible in a query that asks what was known last year.
+
+Object rules: exactly one of `object_id` and `object_literal` is set (a CHECK, not a convention);
+literals carry a datatype tag and optional language tag, and the literal-normalisation version is
+part of the extractor identity.
+
+Things that are deliberately *not* columns:
+
+- **Entity names, types and aliases.** They are facts with literal objects (`label`, `type`, `alias`
+  predicates) so they carry validity time and provenance like everything else. A privately sourced
+  name must not show on a publicly visible entity, and an entity can be renamed. Display names are
+  chosen from visible label facts at query time.
+- **Entity-resolution merges.** A `same_as` fact with provenance, not a bare `canonical_id` write.
+  In v1 the canonical mapping is still computed globally for speed, but because the merge is a
+  provenance-bound fact it can be made viewer-aware later without a schema change. The temporal+ACL
+  benchmark includes a "merge derived from a private document" family to keep this honest.
+- **ACL on facts or entities.** Visibility is derived (D4) and only ever materialised as an index.
+
+Python sees Polars DataFrames, zero-copy across PyO3 via the Arrow C data interface. Rust kernels
+operate on columns. Persistence to Parquet or Lance and loading into any SQL engine is free.
+Thin row dataclasses exist for notebook display and small manipulations only; they are views, not
+a second model. Arrow batches are the *bulk interchange* format; narrow query results (a ranked
+list of chunk ids, a neighbourhood) may use small typed results rather than a full frame.
+
+Every module accepts and returns these frames, which is what makes "use a module alone" cheap: a
+consumer produces a frame without importing the rest of the library.
+
+*Alternative.* A pydantic object model mirrored by serde structs. Nicer to navigate in a notebook,
+but every Rust call converts object graphs and two definitions must stay in sync. Rejected.
+
+N-ary statements (an event with several participants) are represented as an event entity plus
+binary role facts; this survived the peer review's grouping attack and needs no extra table.
+
+**v1 restriction.** Extraction produces only single-chunk support groups (independently sufficient
+evidence). Multi-chunk groups exist only for explicit derivations, which v1 does not perform. Any
+fact without support is rejected at the store boundary.
+
+### D3. Bi-temporal facts
+
+`valid_from`/`valid_to` are world time; `recorded_at`/`invalidated_at` are transaction time, with
+SQL:2011 semantics: rows are never overwritten or deleted, an update closes the old version and
+inserts a new one. Entity ids are timeless; every attribute and relation is a fact that carries
+time. Ingestion is episodic: a later document may yield a fact that contradicts an earlier one, and
+the contradiction is recorded as `invalidated_at` plus `invalidated_by_fact_id` on the older fact.
+Invalidation therefore has provenance, which Graphiti lacks.
+
+Invalidation is **viewer-relative**: the older fact counts as invalidated only for viewers who can
+see the invalidating fact. Otherwise a private correction would silently delete a public fact (the
+peer review executed exactly this counterexample).
+
+A `Viewer` carries `as_of_valid` and `as_of_recorded`, both defaulting to now. Rewinding
+`as_of_recorded` rewinds facts, **not grants** (see D4).
+
+Extraction decomposes text into atomic claims before producing tuples (ATOM's first module) so
+that a validity interval and a supporting span are unambiguous per fact.
+
+RDF 1.2 reifiers are an export target only; the spec is still a working draft. Literature, benchmarks
+and the failure modes of existing systems are in
+[`temporal-and-permissions.md`](temporal-and-permissions.md).
+
+### D4. Permissions derived from provenance
+
+Documents carry system-versioned grants to principals. A chunk is visible iff its document has a
+grant to one of the viewer's principals that is active *now* (grants are evaluated at wall-clock
+time even when `as_of_recorded` is in the past; an audit mode that rewinds grants is a separate,
+separately authorised tool). A fact is visible iff at least one of its support groups is fully
+visible. An entity is visible iff a visible fact touches it, and every attribute shown for it comes
+from visible facts only.
+
+Enforcement rules:
+
+- **Filter inside the index, then rank.** The vector table is partitioned by a hash of the
+  document's principal set (a sound coarse pre-filter); the FTS5 table carries an ACL token column
+  ANDed into the match; a materialised `fact_principal(principal, fact_id)` closure is the exact
+  check, refreshed on ingest and on grant change. Top-k is cut after the filter, never before.
+- **Graph kernels run on the viewer's projection.** Degrees, PageRank normalisation, neighbourhood
+  shape and any aggregate are computed over visible facts only; a hidden edge must not change a
+  visible transition weight. Practically: materialise the visible adjacency for the viewer, then run
+  the kernel.
+- **Embeddings never leave the store for an excluded row** (vec2text reconstructs text from vectors).
+- **Derived content inherits the ACL of its inputs and may never widen it.** This includes cached LLM
+  outputs and anything written back to the graph.
+- **No community or global summaries in v1.** A summary over the union graph is contaminated and
+  cannot be redacted afterwards. Revisit as per-ACL-bucket summaries once bucket cardinality has been
+  measured on real data.
+- **Absence means "no support in this view"**, and the answer contract is refusal, not a guess.
+
+Details, production precedents and the synthetic benchmark design are in
+[`temporal-and-permissions.md`](temporal-and-permissions.md).
+
+### D5. Composition by plain callables
+
+A stage is a callable with typed frames in and out. A pipeline is a plain function calling stages.
+Configuration is a frozen dataclass per pipeline; its hash is part of every run record. Sweeps are
+the benchmark runner's job. No DAG framework, no YAML, no plugin registry until there is a
+demonstrated need.
+
+*Alternatives.* neo4j-graphrag-python's component DAG and DIGIMON's YAML-composed operators are
+the two best existing designs (see [`landscape.md`](landscape.md)); both add a layer we do not need
+while the number of pipelines is single-digit.
+
+### D6. One LLM protocol, thin adapters, disk cache
+
+`complete(messages, schema=None) -> Completion(text, parsed, usage, cached)`. Adapters:
+OpenAI-compatible (covers vLLM, Ollama, OpenRouter, most providers), Anthropic, and a CLI subprocess
+adapter for local harness subscriptions (`claude -p`, `codex exec`). A content-addressed disk cache
+keyed on the **full effective request** (adapter id, model id and revision, messages, output schema,
+generation parameters) stores the raw response plus parse/retry provenance, so reruns are free and
+replay is exact. Model id plus prompt alone is not a valid key: the peer review collided two requests
+that differed only in output schema. Cached replay is not general determinism; runs record whether
+they were served from cache. CLI adapters must be invoked statelessly (no ambient conversation,
+filesystem or tool context) or they fall outside this contract. Structured output via JSON schema
+where the provider supports it, otherwise parse-and-retry.
+
+*Alternatives.* litellm (a supply-chain incident tracked in Microsoft GraphRAG's issue #2289; heavy),
+pydantic-ai or rig (frameworks, more than we need). Rust crates `genai`/`async-openai` are the
+choice if the Rust side ever needs to call models directly.
+
+### D7. Store protocol with SQLite first
+
+One `Store` protocol whose every read takes a `Viewer`. Backend one is SQLite: FTS5 for BM25,
+sqlite-vec for vectors, recursive CTEs for bounded traversal, `rusqlite` and the stdlib module.
+Chosen for simplicity and single-machine performance at the scales we expect for a long time.
+Cost: SQLite is row-based, so the Arrow boundary needs a conversion. Whether it dominates depends on
+access pattern, not on the engine: narrow, filtered, batched reads feeding a kernel are cheap;
+repeated wide neighbourhood materialisation is not. Rule: push filters and projections into SQL,
+fetch text only after evidence is selected, batch adjacency reads, and profile store time, decoding,
+Arrow construction and kernel time separately before adding any custom batching layer. Recursive
+CTEs are for bounded k-hop only; PPR and other iterative kernels run on an in-memory CSR built from
+the viewer's visible adjacency. Known constraint: FTS5's BM25 constants are fixed (k1 1.2, b 0.75),
+which matters when comparing lexical scoring across backends.
+
+Follow-on arms for the backend comparison, in order: **Neo4j** first (the property-graph incumbent
+with native vector index, `neo4j-graphrag`, and GDS for PageRank; the question to answer is where
+a graph database starts to pay off over SQLite for GraphRAG workloads, and at what scale and query
+shape), then Oxigraph (RDF, SPARQL, `pyoxigraph`), LadybugDB (embedded property graph, Cypher, the
+Kùzu successor), and DuckDB (columnar, Arrow zero-copy; can attach the SQLite file directly, so it
+doubles as the analytics layer over backend one).
+
+Details in [`storage-sqlite.md`](storage-sqlite.md).
+
+### D8. Benchmark-first
+
+The first sub-project is the harness, not a pipeline. It loads datasets into the canonical schema,
+runs `(pipeline factory, dataset, evaluators, viewer)`, and writes one SQLite run store. A run record
+identifies everything that produced an answer: dataset and artifact ids (document revisions, chunking,
+extraction output, resolution decisions, index builds), code version, pipeline config hash, model ids
+and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config,
+and cache state; construction cost and per-query cost are recorded separately with component
+timings. Reports are Polars frames.
+Protocol and metrics in [`benchmarks-multihop-qa.md`](benchmarks-multihop-qa.md).
+
+The "auto-benchmark for your corpus" is the same runner plus BenchmarkQED-style question synthesis
+for corpora without gold answers; that arrives with the temporal+ACL synthetic benchmark.
+
+### D9. Repository and DX
+
+Cargo workspace under `crates/` (Polars layout: `[workspace.package]`, feature-flagged umbrella
+crate, separate bindings crate). Python under `python/triplum/`, maturin mixed layout, uv. marimo
+notebooks (plain `.py`, git-diffable) over the same package; Rust exploration stays in cargo examples
+and tests. pytest and cargo test; one integration test per pipeline on a 20-question fixture.
+
+### D10. Name
+
+`triplum`. Free on PyPI and crates.io as of 2026-09-16. See [`naming.md`](naming.md).
+
+## Sub-projects, in order
+
+1. **Foundation** (this record, README, research docs, SOTA monitor).
+2. **First concrete task**, three threads sharing one harness and one corpus set (HotpotQA, MuSiQue,
+   2WikiMultiHopQA under the 1000-question protocol), each answering one question:
+   - **2a. Retrieval pipelines.** Runner plus naive dense baseline reporting numbers first; then
+     hybrid with rerank; then Liao et al. best-practice GraphRAG and PPR-over-KG, with a matched
+     graph-disabled ablation so a graph benefit is not merely a reranker or evidence-budget benefit.
+     Question: which retrieval design wins on multi-hop QA, and by how much over the baselines.
+   - **2b. KG-construction variants.** Same corpus, same retriever, swap the construction: open
+     information extraction vs schema-based prompts vs ontology-aware prompts; with and without
+     atomic-fact decomposition; entity-resolution variants (exact, fuzzy, embedding, LLM). Measured
+     intrinsically (Text2KGBench-style triple P/R/F1 and ontology conformance where a schema exists)
+     and extrinsically (downstream QA delta). Question: how much does construction quality move
+     retrieval quality, and which construction choices matter. Background survey in
+     [`kg-construction.md`](kg-construction.md).
+   - **2c. Store comparison, SQLite vs Neo4j.** Same graph, same queries, both stores behind the
+     `Store` protocol: k-hop neighbourhood, filtered vector search, BM25, PPR, pattern queries, at
+     increasing corpus scale and viewer selectivity. Question: where do the benefits of a graph
+     database start to show for basic GraphRAG usage. Methodology in
+     [`store-comparison.md`](store-comparison.md).
+   Before any graph ingestion in 2a or 2b: small deterministic temporal/ACL contract fixtures (the
+   seven question families in `temporal-and-permissions.md`, at toy scale) gating on retrieval-level
+   leakage of zero.
+3. **Further backends**: Oxigraph and LadybugDB implementations of `Store`, same benchmark as 2c.
+4. **Temporal + ACL synthetic benchmark** and question synthesis for gold-less corpora.
+5. **KG-construction V&V** in full: Text2KGBench (LettrIA-refined), SHACL (pyshacl or `pyrudof`),
+   mapped onto the Schmidt et al. taxonomy.
+6. Private benchmarks; more pipelines (agentic iterative, community summaries once principal-scoped,
+   LightRAG-style local/global); non-QA applications.
+
+Each sub-project gets its own spec and plan before code.
+
+## Review record
+
+- 2026-09-16, `peer-review --mode design`, peer: Codex (GPT family, CLI default model). Verdict
+  "challenges". Ten executable falsification attempts. **Changed the decision**: separate
+  proposition / assertion / extraction identities; `recorded_at` on support rows; entity attributes
+  and resolution merges as facts; support groups with ANY-group-fully-visible semantics;
+  viewer-relative invalidation; cache key on the full effective request; run records identifying
+  constructed artifacts; graph kernels on the viewer's projection; v1 restricted to
+  single-chunk support. **Rejected**: an unconditional "SQLite conversion will dominate" claim (the
+  peer itself rejected it for lack of measurements; D7 now says to profile first). **Survived**:
+  timeless entity ids (rename attack), binary role facts for n-ary events (grouping attack),
+  Python-first composition, SQLite-first, the run store, marimo and maturin layout.
