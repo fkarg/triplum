@@ -21,21 +21,37 @@ benchmarks.
 
 ## Status
 
-Pre-code. The current work is the research foundation and the design record in
-[`docs/research/`](docs/research/README.md). The first concrete task has three threads on one
-benchmark harness and one corpus set (HotpotQA, MuSiQue, 2WikiMultiHopQA):
+The benchmark harness for the non-graph baselines exists and runs end to end (2026-09-16). What
+works: the canonical schemas (Rust core, exposed to Python), a SQLite store with viewer-filtered
+BM25 and vector search, cached LLM / embedder / reranker protocols with OpenAI-compatible, CLI and
+local adapters, the HippoRAG 1000-question protocol data with pinned hashes and 20-question
+fixtures, five baselines (closed-book, BM25, dense, hybrid with rerank, oracle), the metrics, and a
+run store that records identity, cost and timing for every run. Nothing graph-shaped yet.
 
-- **Retrieval pipelines**: naive dense RAG, hybrid (dense + BM25 + cross-encoder rerank), best-practice
-  GraphRAG per Liao et al. (SEMANTiCS 2026), and personalised PageRank over the KG (HippoRAG 2 style),
-  with a graph-disabled ablation.
-- **KG-construction variants**: open IE vs schema-based vs ontology-aware extraction, with and without
-  atomic-fact decomposition, several entity-resolution strategies; measured intrinsically and by
-  downstream QA delta.
-- **Store comparison**: the same graph in SQLite and Neo4j, to find where a graph database starts to
-  pay off for basic GraphRAG usage.
+```
+uv sync --all-extras --group dev            # builds the Rust extension via maturin
+uv run pytest                               # 72 tests, all on fixtures and fakes
+uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
+uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
+    --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
+uv run triplum bench report
+uv run marimo edit notebooks/runs.py        # browse runs
+```
 
-More pipelines (agentic iterative retrieval, community summaries, LightRAG local/global) are added
-only once the harness reports numbers for these.
+Readers and judges are `--reader openai --reader-model <id>` with `OPENAI_API_KEY` (or any
+OpenAI-compatible `--base-url`), or `--reader claude-cli`. The first concrete task has three threads
+on this harness and one corpus set (HotpotQA, MuSiQue, 2WikiMultiHopQA):
+
+- **Retrieval pipelines**: the baselines above, then best-practice GraphRAG per Liao et al.
+  (SEMANTiCS 2026) and personalised PageRank over the KG (HippoRAG 2 style), with a
+  graph-disabled ablation.
+- **KG-construction variants**: open IE vs schema-based vs ontology-aware extraction, with and
+  without atomic-fact decomposition, several entity-resolution strategies; measured intrinsically
+  and by downstream QA delta.
+- **Store comparison**: the same graph in SQLite and Neo4j, to find where a graph database starts
+  to pay off for basic GraphRAG usage.
+- **Embedding sweep**: `triplum bench sweep --embedders specs.json` reruns the dense baseline per
+  embedding spec; the winner is pinned for the graph pipelines.
 
 ## Design in one screen
 
