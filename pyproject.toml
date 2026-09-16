@@ -52,6 +52,9 @@ features = ["pyo3/extension-module"]
 include = [{ path = "LICENSE", format = "sdist" }]
 
 [tool.uv]
+# Both groups sync by default so `uv run mkdocs build --strict` works on a fresh clone; without
+# it `uv run` falls through to a global mkdocs that lacks the material/pymdownx extensions.
+default-groups = ["dev", "docs"]
 cache-keys = [{ file = "pyproject.toml" }, { file = "Cargo.toml" }, { file = "crates/**/Cargo.toml" }, { file = "crates/**/*.rs" }]
 
 [tool.pytest.ini_options]

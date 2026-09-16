@@ -29,7 +29,7 @@ fixtures, five baselines (closed-book, BM25, dense, hybrid with rerank, oracle),
 run store that records identity, cost and timing for every run. Nothing graph-shaped yet.
 
 ```
-uv sync --all-extras --group dev            # builds the Rust extension via maturin
+uv sync --all-extras                        # builds the Rust extension via maturin
 uv run pytest                               # 84 tests, all on fixtures and fakes
 uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
