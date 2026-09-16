@@ -112,8 +112,10 @@ Invalidation is **viewer-relative**: the older fact counts as invalidated only f
 see the invalidating fact. Otherwise a private correction would silently delete a public fact (the
 peer review executed exactly this counterexample).
 
-A `Viewer` carries `as_of_valid` and `as_of_recorded`, both defaulting to now. Rewinding
-`as_of_recorded` rewinds facts, **not grants** (see D4).
+A `Viewer` carries `as_of_valid` and `as_of_recorded`, both defaulting to now, plus a
+`permission_revision` that pins the ACL snapshot the query was authorised against. Rewinding
+`as_of_recorded` rewinds facts, **not grants** (see D4). Retrieval caches are keyed on graph
+revision, permission revision, viewer and both times.
 
 Extraction decomposes text into atomic claims before producing tuples (ATOM's first module) so
 that a validity interval and a supporting span are unambiguous per fact.
@@ -201,7 +203,15 @@ shape), then Oxigraph (RDF, SPARQL, `pyoxigraph`), LadybugDB (embedded property 
 Kùzu successor), and DuckDB (columnar, Arrow zero-copy; can attach the SQLite file directly, so it
 doubles as the analytics layer over backend one).
 
-Details in [`storage-sqlite.md`](storage-sqlite.md).
+The `Store` protocol exposes typed capabilities, not query fragments: `visible_facts(viewer)`,
+`neighbors(seeds, k, direction, predicates, viewer)`, `adjacency_batches(viewer)`,
+`vector_search(vector, k, filter, viewer)`, `bm25(query, k, filter, viewer)`, and a typed
+predicate-path request for patterns. A backend declares which filters it can apply exactly; an
+unsupported filter fails or falls back to a measured exact path, never to silent over-fetch.
+Neo4j Community has no RBAC or property-based access control, so on both stores the visibility
+predicate is part of the query, which is what makes the comparison fair.
+
+Details in [`storage-sqlite.md`](storage-sqlite.md) and [`store-comparison.md`](store-comparison.md).
 
 ### D8. Benchmark-first
 
