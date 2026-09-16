@@ -21,7 +21,6 @@ jobs:
           - { runner: ubuntu-latest, target: x86_64, name: linux-x86_64 }
           - { runner: ubuntu-latest, target: aarch64, name: linux-aarch64 }
           - { runner: macos-latest, target: aarch64, name: macos-aarch64 }
-          - { runner: macos-15-intel, target: x86_64, name: macos-x86_64 }
     steps:
       - uses: actions/checkout@v6
       - name: Tag must match pyproject version
