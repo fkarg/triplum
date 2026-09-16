@@ -152,8 +152,8 @@ then fails on the first miss (for exact replays).
 - Integration: all five pipelines on the 20-question fixture with a deterministic fake LLM and a
   tiny local embedder; asserts the run store rows, metric ranges, and that oracle >= dense >= closed
   book on R@5 where defined.
-- One recorded real run (cached responses committed? No: too large. Instead a `--cache-only`
-  replay test that is skipped when the cache is absent).
+- Replay: a `--cache-only` test that re-runs the fixture from the local LLM cache and asserts
+  identical metrics; skipped when the cache is absent. Cached responses are not committed.
 - `cargo test` for schema construction; a Python test that the `_core` schemas equal the
   documented column lists.
 
