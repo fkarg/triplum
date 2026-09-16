@@ -47,6 +47,9 @@ python-source = "python"
 module-name = "triplum._core"
 manifest-path = "crates/triplum-py/Cargo.toml"
 features = ["pyo3/extension-module"]
+# The sdist is rooted at the workspace; maturin does not pick up the root LICENSE on its own and
+# PyPI rejects an sdist whose License-File entry is missing.
+include = [{ path = "LICENSE", format = "sdist" }]
 
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { file = "Cargo.toml" }, { file = "crates/**/Cargo.toml" }, { file = "crates/**/*.rs" }]

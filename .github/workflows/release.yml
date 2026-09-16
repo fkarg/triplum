@@ -57,6 +57,8 @@ jobs:
         with:
           command: sdist
           args: --out dist
+      - name: sdist must carry the licence file (PyPI rejects it otherwise)
+        run: tar tzf dist/*.tar.gz | grep -q '^triplum-[^/]*/LICENSE$'
       - uses: actions/upload-artifact@v6
         with:
           name: wheels-sdist
@@ -80,3 +82,5 @@ jobs:
           merge-multiple: true
       - run: ls -l dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true   # a re-run after a partial upload only adds the missing files
