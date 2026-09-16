@@ -63,6 +63,7 @@ fails to load.
 
 | command | does |
 |---|---|
+| `triplum data` | lists each supported dataset and whether its two cached protocol files are absent, partial, verified, or invalid; does not download anything |
 | `triplum data fetch` | step 1 only: download and verify the protocol files |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |

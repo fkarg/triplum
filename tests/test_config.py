@@ -69,6 +69,18 @@ def test_cli_embedder_shorthand():
     assert _embedder({"kind": "fake", "dims": 8}).dims == 8
 
 
+def test_cli_data_lists_registered_datasets_without_fetching(tmp_path, monkeypatch, capsys):
+    from triplum.bench.cli import main
+
+    monkeypatch.setenv("TRIPLUM_DATA", str(tmp_path))
+    assert main(["data"]) == 0
+    out = capsys.readouterr().out
+    assert "hotpotqa" in out and "musique" in out and "twowiki" in out
+    assert out.count("not downloaded") == 3
+    assert "Usage: pytest data" in out and "Commands" in out and "fetch" in out
+    assert not (tmp_path / "hipporag").exists()
+
+
 def test_sweep_continues_past_failed_spec(tmp_path, capsys):
     import json
 

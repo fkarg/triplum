@@ -88,8 +88,34 @@ class Dataset:
     questions_hash: str
 
 
+@dataclass(frozen=True)
+class DatasetStatus:
+    name: str
+    state: str
+    questions_path: Path
+    corpus_path: Path
+
+
 def data_root() -> Path:
     return Path(os.environ.get("TRIPLUM_DATA", Path.home() / ".cache" / "triplum" / "data"))
+
+
+def status(name: str, root: Path | None = None) -> DatasetStatus:
+    """Inspect local protocol artifacts without downloading or creating directories."""
+    base = (root or data_root()) / "hipporag"
+    questions_path, corpus_path = (base / filename for filename in FILES[name])
+    present = (questions_path.exists(), corpus_path.exists())
+    if not any(present):
+        state = "not downloaded"
+    elif not all(present):
+        state = "partial"
+    else:
+        state = (
+            "verified"
+            if all(sha256_file(path) == HASHES[path.name] for path in (questions_path, corpus_path))
+            else "invalid"
+        )
+    return DatasetStatus(name, state, questions_path, corpus_path)
 
 
 def sha256_file(p: Path) -> str:

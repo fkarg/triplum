@@ -75,6 +75,26 @@ def test_verify_hash_mismatch_raises(tmp_path):
         hr.verify(p, "0" * 64)
 
 
+def test_status_reports_missing_partial_verified_and_invalid_artifacts(tmp_path, monkeypatch):
+    monkeypatch.setitem(hr.FILES, "status-test", ("questions.json", "corpus.json"))
+    protocol_root = tmp_path / "hipporag"
+    questions, corpus = protocol_root / "questions.json", protocol_root / "corpus.json"
+    monkeypatch.setitem(hr.HASHES, "questions.json", "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945")
+    monkeypatch.setitem(hr.HASHES, "corpus.json", "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945")
+
+    assert hr.status("status-test", tmp_path).state == "not downloaded"
+    protocol_root.mkdir()
+    questions.write_text("[]")
+    assert hr.status("status-test", tmp_path).state == "partial"
+    corpus.write_text("[]")
+    assert hr.status("status-test", tmp_path).state == "verified"
+    corpus.write_text("bad")
+    assert hr.status("status-test", tmp_path).state == "invalid"
+    corpus.write_text("[]")
+    questions.write_text("bad")
+    assert hr.status("status-test", tmp_path).state == "invalid"
+
+
 def test_fixture_files_load():
     for name in ("hotpotqa", "musique", "twowiki"):
         ds = hr.load_fixture(name)

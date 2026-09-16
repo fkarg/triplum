@@ -21,7 +21,9 @@ from triplum.bench.config import (
 )
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False)
-data_app = typer.Typer(no_args_is_help=True, help="Fetch and verify the benchmark datasets.")
+data_app = typer.Typer(
+    no_args_is_help=False, help="List, fetch and verify the benchmark datasets."
+)
 bench_app = typer.Typer(no_args_is_help=True, help="Run, look up and inspect benchmarks.")
 app.add_typer(data_app, name="data")
 app.add_typer(bench_app, name="bench")
@@ -154,6 +156,23 @@ def _runstore(path: Path | None):
     from triplum.cache import default_root
 
     return RunStore(path or default_root() / "runs.db")
+
+
+@data_app.callback(invoke_without_command=True)
+def data(ctx: typer.Context) -> None:
+    """List supported datasets and the state of their local protocol files."""
+    if ctx.invoked_subcommand is not None:
+        return
+    from triplum.eval.datasets import hipporag as hr
+
+    states = [hr.status(name) for name in hr.FILES]
+    print(f"data root: {states[0].questions_path.parent}")
+    for state in states:
+        print(f"{state.name}: {state.state}")
+    if any(state.state != "verified" for state in states):
+        print("Run `triplum data fetch` to download or repair datasets.")
+    print()
+    print(ctx.get_help())
 
 
 @data_app.command()

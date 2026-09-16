@@ -31,6 +31,7 @@ run store that records identity, cost and timing for every run. Nothing graph-sh
 ```
 uv sync --all-extras                        # builds the Rust extension via maturin
 uv run pytest                               # 84 tests, all on fixtures and fakes
+uv run triplum data                         # local state of each supported dataset
 uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
