@@ -22,6 +22,9 @@ class EmbeddingSpec:
     passage_prefix: str = ""
     quantization: str = "none"
     runtime: str = "api"
+    max_seq_length: int | None = None  # None: model default; silent truncation changes vectors
+    instruction: str = ""  # task text recorded separately from the template in query_prefix
+    padding_side: str = ""  # "" = model default; Qwen3 needs "left" or batched pooling is wrong
 
     def hash(self) -> str:
         return content_key("embedding_spec", asdict(self))[:16]

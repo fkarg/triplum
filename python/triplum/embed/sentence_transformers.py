@@ -1,4 +1,6 @@
-"""sentence-transformers adapter: picks cuda, mps or cpu and records it in the spec."""
+"""sentence-transformers adapter: picks cuda, mps or cpu and records it in the spec, along with the
+resolved weights commit, max sequence length, instruction text and padding side, because each of
+those silently changes the vectors."""
 
 from __future__ import annotations
 
@@ -17,6 +19,19 @@ def pick_device() -> str:
     return "cpu"
 
 
+def _hf_commit(name: str) -> str | None:
+    """Resolved commit sha of the cached snapshot, so the spec pins weights, not a tag."""
+    try:
+        from huggingface_hub import scan_cache_dir
+
+        for repo in scan_cache_dir().repos:
+            if repo.repo_id == name and repo.revisions:
+                return sorted(repo.revisions, key=lambda r: r.last_modified)[-1].commit_hash
+    except Exception:  # noqa: BLE001 - cache scan is best effort
+        return None
+    return None
+
+
 class SentenceTransformersEmbedder:
     def __init__(self, spec: EmbeddingSpec, model, batch_size: int = 32) -> None:
         self.spec = spec
@@ -33,23 +48,35 @@ class SentenceTransformersEmbedder:
         device: str | None = None,
         batch_size: int = 32,
         trust_remote_code: bool = False,
+        max_seq_length: int | None = None,
+        instruction: str = "",
+        padding_side: str = "",
+        revision: str | None = None,
     ) -> SentenceTransformersEmbedder:
         from sentence_transformers import SentenceTransformer
 
         device = device or pick_device()
-        model = SentenceTransformer(name, device=device, trust_remote_code=trust_remote_code)
-        card = getattr(model, "model_card_data", None)
-        revision = getattr(card, "base_model_revision", None) or "unknown"
+        model = SentenceTransformer(
+            name, device=device, trust_remote_code=trust_remote_code, revision=revision
+        )
+        if max_seq_length is not None:
+            model.max_seq_length = max_seq_length
+        if padding_side:
+            model.tokenizer.padding_side = padding_side
+        resolved = revision or _hf_commit(name) or "unknown"
         spec = EmbeddingSpec(
             model=name,
-            revision=str(revision),
+            revision=str(resolved),
             dims=int(model.get_embedding_dimension()),
             pooling="model",
             normalize=True,
             query_prefix=query_prefix,
             passage_prefix=passage_prefix,
             quantization="fp32" if device == "cpu" else "fp16",
-            runtime=device,
+            runtime=f"sentence-transformers:{device}",
+            max_seq_length=int(model.max_seq_length) if model.max_seq_length else None,
+            instruction=instruction,
+            padding_side=padding_side,
         )
         return cls(spec, model, batch_size)
 

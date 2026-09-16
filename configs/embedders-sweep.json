@@ -1,0 +1,17 @@
+[
+  {"kind": "openai", "model": "text-embedding-3-large", "dims": 3072, "revision": "api-2026-09"},
+  {"kind": "st", "model": "nvidia/NV-Embed-v2", "trust_remote_code": true, "padding_side": "right",
+   "instruction": "Given a multi-hop question, retrieve documents that can help answer the question",
+   "query_prefix": "Instruct: Given a multi-hop question, retrieve documents that can help answer the question\nQuery: "},
+  {"kind": "st", "model": "Qwen/Qwen3-Embedding-0.6B", "padding_side": "left",
+   "instruction": "Given a multi-hop question, retrieve documents that can help answer the question",
+   "query_prefix": "Instruct: Given a multi-hop question, retrieve documents that can help answer the question\nQuery:"},
+  {"kind": "st", "model": "Qwen/Qwen3-Embedding-4B", "padding_side": "left",
+   "instruction": "Given a multi-hop question, retrieve documents that can help answer the question",
+   "query_prefix": "Instruct: Given a multi-hop question, retrieve documents that can help answer the question\nQuery:"},
+  {"kind": "st", "model": "nvidia/Nemotron-3-Embed-1B", "trust_remote_code": true},
+  {"kind": "st", "model": "google/embeddinggemma-300m",
+   "query_prefix": "task: search result | query: ", "passage_prefix": "title: none | text: "},
+  {"kind": "st", "model": "BAAI/bge-large-en-v1.5",
+   "query_prefix": "Represent this sentence for searching relevant passages: "}
+]

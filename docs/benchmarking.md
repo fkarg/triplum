@@ -17,14 +17,17 @@ A run's identity is the hash of these fields (see `IDENTITY_FIELDS` in
 | reader_model, judge_model, reader_prompt_hash, judge_prompt_hash | which models answered and judged, and the exact prompt text and output schema |
 | seed | passed to the reader and judge requests, so it is part of the call-cache key too |
 | viewer_json | the principals the run was executed as |
-| code_version, dirty | git sha, and whether the working tree had uncommitted changes |
+| code_hash | sha256 of the source files the pipeline executes (`python/triplum/bench/fingerprint.py` lists them per pipeline, plus `migrations.sql` and the Rust schema). Editing the CLI, the report or the docs does not change it; editing a stage does. The git sha and dirty flag are recorded on the run but do not identify it. |
 
 Two runs with the same identity are the same experiment. `run_benchmark` looks the identity up
 first and returns the existing run id unless `force` is set. Changing anything in the table above,
-including editing a prompt string or running with uncommitted code, produces a new identity.
+including editing a prompt string or a stage's source, produces a new identity.
 
 Things deliberately *outside* the identity: host name and wall time (recorded, not identifying),
-cache state (recorded as hits and misses), and prices (snapshotted per run, see below).
+the git sha and dirty flag (recorded; the code hash above is what matters), cache state (recorded
+as hits and misses), and prices (snapshotted per run, see below). A resumed run keeps its identity
+only while the pipeline's code hash is unchanged; fixing a bug in a stage and resuming produces a
+new run, which is the honest outcome.
 
 ## Cache levels
 

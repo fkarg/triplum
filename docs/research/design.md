@@ -233,7 +233,9 @@ identifies everything that produced an answer: dataset and artifact ids (documen
 extraction output, resolution decisions, index builds), code version, pipeline config hash, model ids
 and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config,
 and cache state; construction cost and per-query cost are recorded separately with component
-timings. Reports are Polars frames.
+timings. Reports are Polars frames. Code is identified per pipeline by a hash of the source files
+it executes (not the git sha), so unrelated edits do not orphan runs and a crashed run can be
+resumed by identity; the contract is `docs/benchmarking.md`.
 
 Protocol commitments from [`benchmarks-multihop-qa.md`](benchmarks-multihop-qa.md): the HippoRAG
 1000-question corpora rebuilt from upstream releases and verified by content hash (HotpotQA is

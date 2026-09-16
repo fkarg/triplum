@@ -74,9 +74,13 @@ import pytest
 def test_sentence_transformers_adapter_small_model():
     from triplum.embed.sentence_transformers import SentenceTransformersEmbedder
 
-    e = SentenceTransformersEmbedder.from_model("sentence-transformers/all-MiniLM-L6-v2")
+    e = SentenceTransformersEmbedder.from_model(
+        "sentence-transformers/all-MiniLM-L6-v2", max_seq_length=128, padding_side="left"
+    )
     v = e.embed_passages(["hello world", "hello there"])
-    assert v.shape == (2, e.spec.dims) and e.spec.runtime in {"cuda", "mps", "cpu"}
+    assert v.shape == (2, e.spec.dims) and e.spec.runtime.startswith("sentence-transformers:")
+    assert e.spec.max_seq_length == 128 and e.spec.padding_side == "left"
+    assert e.spec.revision not in ("", "unknown")
     assert np.allclose(np.linalg.norm(v, axis=1), 1.0, atol=1e-4)
 
 

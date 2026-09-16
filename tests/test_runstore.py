@@ -2,7 +2,7 @@ from triplum.bench.runstore import RunStore
 
 META = {
     "dataset": "musique", "pipeline": "dense", "config_hash": "abc", "config_json": "{}",
-    "code_version": "deadbeef", "dirty": 0, "corpus_hash": "c", "questions_hash": "q", "n": 1,
+    "code_version": "deadbeef", "dirty": 0, "code_hash": "c0de", "corpus_hash": "c", "questions_hash": "q", "n": 1,
     "embedding_spec": "e", "reranker_spec": None, "reader_model": "m1", "judge_model": None,
     "seed": 0, "viewer_json": "{}", "host": "h", "reader_prompt_hash": "rp", "judge_prompt_hash": None,
 }

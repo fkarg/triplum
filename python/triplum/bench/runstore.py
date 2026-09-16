@@ -17,7 +17,8 @@ DDL = """
 CREATE TABLE IF NOT EXISTS runs (
   run_id TEXT PRIMARY KEY, identity_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
   dataset TEXT NOT NULL, pipeline TEXT NOT NULL, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
-  code_version TEXT NOT NULL, dirty INTEGER NOT NULL, corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
+  code_version TEXT NOT NULL, dirty INTEGER NOT NULL, code_hash TEXT NOT NULL,
+  corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
   n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT NOT NULL, judge_model TEXT,
   seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
   reader_prompt_hash TEXT NOT NULL, judge_prompt_hash TEXT,
@@ -55,8 +56,10 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
 ) STRICT;
 """
 
+# code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
+# recorded for bookkeeping only, so edits outside the pipeline do not orphan finished runs.
 IDENTITY_FIELDS = (
-    "dataset", "pipeline", "config_hash", "code_version", "dirty", "corpus_hash", "questions_hash",
+    "dataset", "pipeline", "config_hash", "code_hash", "corpus_hash", "questions_hash",
     "n", "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json",
     "reader_prompt_hash", "judge_prompt_hash",
 )

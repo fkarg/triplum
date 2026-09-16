@@ -10,7 +10,7 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.bench import factories
+from triplum.bench import factories, fingerprint
 from triplum.bench.config import RunConfig
 from triplum.bench.index import ensure_documents, ensure_embeddings
 from triplum.bench.runstore import RunStore
@@ -88,6 +88,7 @@ def run_benchmark(cfg: RunConfig) -> str:
         "config_json": cfg.to_json(),
         "code_version": sha,
         "dirty": dirty,
+        "code_hash": fingerprint.code_hash(p.name),
         "corpus_hash": ds.corpus_hash,
         "questions_hash": ds.questions_hash,
         "n": ds.questions.height,

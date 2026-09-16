@@ -87,7 +87,7 @@ def diff_runs(rs: RunStore, run_a: str, run_b: str) -> dict:
         raise KeyError(run_a if a is None else run_b)
     fa, fb = _flatten(json.loads(a["config_json"])), _flatten(json.loads(b["config_json"]))
     config_diff = {k: (fa.get(k), fb.get(k)) for k in sorted(set(fa) | set(fb)) if fa.get(k) != fb.get(k)}
-    id_fields = ["dataset", "pipeline", "config_hash", "code_version", "dirty", "corpus_hash",
+    id_fields = ["dataset", "pipeline", "config_hash", "code_hash", "code_version", "dirty", "corpus_hash",
                  "questions_hash", "n", "embedding_spec", "reranker_spec", "reader_model",
                  "judge_model", "seed", "reader_prompt_hash", "judge_prompt_hash"]
     identity_diff = {k: (a[k], b[k]) for k in id_fields if a[k] != b[k]}

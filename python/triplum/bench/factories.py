@@ -37,7 +37,14 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
 
         return CachedEmbedder(
             SentenceTransformersEmbedder.from_model(
-                cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix
+                cfg.model,
+                query_prefix=cfg.query_prefix,
+                passage_prefix=cfg.passage_prefix,
+                instruction=cfg.instruction,
+                max_seq_length=cfg.max_seq_length,
+                padding_side=cfg.padding_side,
+                trust_remote_code=cfg.trust_remote_code,
+                revision=cfg.revision or None,
             ),
             cache,
         )

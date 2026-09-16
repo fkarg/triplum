@@ -16,6 +16,10 @@ class EmbedderConfig:
     revision: str = ""
     query_prefix: str = ""
     passage_prefix: str = ""
+    instruction: str = ""
+    max_seq_length: int | None = None
+    padding_side: str = ""
+    trust_remote_code: bool = False
     base_url: str | None = None
     api_key_env: str = "OPENAI_API_KEY"
 
