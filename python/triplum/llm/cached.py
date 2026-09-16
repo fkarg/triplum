@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from triplum.cache import Cache
-from triplum.llm.protocol import LLM, Completion, GenParams, Usage, request_hash
+from triplum.llm.protocol import DEFAULT_PARAMS, LLM, Completion, Usage, request_hash
 
 
 class CachedLLM:
@@ -15,7 +15,7 @@ class CachedLLM:
         self.adapter = inner.adapter
         self.model = inner.model
 
-    def complete(self, messages, *, schema=None, params=GenParams()) -> Completion:
+    def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
         key = request_hash(self.adapter, self.model, messages, schema, params)
         hit = self.cache.get_json(key)
         if hit is not None:

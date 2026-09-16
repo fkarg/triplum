@@ -21,6 +21,9 @@ class GenParams:
     seed: int | None = None
 
 
+DEFAULT_PARAMS = GenParams()
+
+
 @dataclass(frozen=True)
 class Usage:
     input_tokens: int = 0
@@ -65,5 +68,5 @@ class LLM(Protocol):
         messages: list[Message],
         *,
         schema: dict | None = None,
-        params: GenParams = GenParams(),
+        params: GenParams = DEFAULT_PARAMS,
     ) -> Completion: ...

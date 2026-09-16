@@ -1,5 +1,4 @@
 import numpy as np
-
 from triplum.cache import Cache
 from triplum.embed.cached import CachedEmbedder
 from triplum.embed.fake import FakeEmbedder

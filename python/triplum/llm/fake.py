@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Callable
+from collections.abc import Callable
 
-from triplum.llm.protocol import Completion, GenParams, Message, Usage, request_hash
+from triplum.llm.protocol import DEFAULT_PARAMS, Completion, Message, Usage, request_hash
 
 Responder = Callable[[list[Message], dict | None], str]
 
@@ -26,7 +26,7 @@ class FakeLLM:
         self.responder = responder
         self.model = model
 
-    def complete(self, messages, *, schema=None, params=GenParams()) -> Completion:
+    def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
         text = self.responder(messages, schema)
         parsed = json.loads(text) if schema is not None else None
         n_in = sum(len(m.content.split()) for m in messages)

@@ -1,5 +1,4 @@
 import pyarrow as pa
-
 from triplum.data import schema
 
 

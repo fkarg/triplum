@@ -27,7 +27,7 @@ class Viewer:
             object.__setattr__(self, "as_of_recorded", self.as_of_valid)
 
     @classmethod
-    def of(cls, *principals: str, **kw) -> "Viewer":
+    def of(cls, *principals: str, **kw) -> Viewer:
         return cls(principals=frozenset(principals), **kw)
 
     def sorted_principals(self) -> list[str]:

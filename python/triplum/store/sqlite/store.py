@@ -221,6 +221,99 @@ class SqliteStore:
             )
         ]
 
+    # ---- BM25 -------------------------------------------------------------------------------
+
+    def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame:
+        acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
+        match = f"({fts_query(query)}) AND acl_tokens:({acl})"
+        vis, params = self._visible_ids_sql(viewer)
+        rows = self.conn.execute(
+            "SELECT c.id, -bm25(chunks_fts, 1.0, 0.0) AS score FROM chunks_fts"
+            " JOIN chunks c ON c.id = chunks_fts.rowid"
+            f" WHERE chunks_fts MATCH ? AND {vis} ORDER BY bm25(chunks_fts, 1.0, 0.0) LIMIT ?",
+            [match, *params, k],
+        ).fetchall()
+        return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
+
+    # ---- embeddings and vector search --------------------------------------------------------
+
+    def _ensure_vec_table(self, spec: EmbeddingSpec) -> str:
+        table = spec.table_name()
+        self.conn.execute(
+            "INSERT OR IGNORE INTO embedding_specs(spec_hash, spec_json, dims) VALUES (?,?,?)",
+            (spec.hash(), json.dumps(spec.__dict__, sort_keys=True), spec.dims),
+        )
+        self.conn.execute(
+            f"CREATE VIRTUAL TABLE IF NOT EXISTS {table} USING vec0("
+            "chunk_id INTEGER PRIMARY KEY, acl_hash TEXT PARTITION KEY, "
+            f"embedding float[{spec.dims}] distance_metric=cosine)"
+        )
+        return table
+
+    def put_embeddings(
+        self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray
+    ) -> None:
+        if vectors.shape != (len(chunk_ids), spec.dims):
+            raise ValueError(f"vectors shape {vectors.shape} != ({len(chunk_ids)}, {spec.dims})")
+        table = self._ensure_vec_table(spec)
+        hashes = dict(
+            self.conn.execute(
+                "SELECT c.id, d.acl_hash FROM chunks c JOIN documents d ON d.id = c.document_id"
+                f" WHERE c.id IN ({_q(len(chunk_ids))})",
+                [int(i) for i in chunk_ids],
+            )
+        )
+        vectors = vectors.astype(np.float32)
+        with self._tx():
+            self.conn.executemany(
+                f"DELETE FROM {table} WHERE chunk_id = ?", [(int(i),) for i in chunk_ids]
+            )
+            self.conn.executemany(
+                f"INSERT INTO {table}(chunk_id, acl_hash, embedding) VALUES (?,?,?)",
+                [
+                    (int(cid), hashes[int(cid)], vectors[j].tobytes())
+                    for j, cid in enumerate(chunk_ids)
+                ],
+            )
+
+    def has_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int]) -> list[bool]:
+        table = spec.table_name()
+        exists = self.conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if not exists:
+            return [False] * len(chunk_ids)
+        present = {
+            r[0]
+            for r in self.conn.execute(
+                f"SELECT chunk_id FROM {table} WHERE chunk_id IN ({_q(len(chunk_ids))})",
+                [int(i) for i in chunk_ids],
+            )
+        }
+        return [int(i) in present for i in chunk_ids]
+
+    def vector_search(
+        self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer
+    ) -> pl.DataFrame:
+        table = spec.table_name()
+        q = np.asarray(query, dtype=np.float32).reshape(-1)
+        if q.shape[0] != spec.dims:
+            raise ValueError(f"query dims {q.shape[0]} != spec dims {spec.dims}")
+        cands: list[tuple[int, float]] = []
+        for h in self.eligible_acl_hashes(viewer):
+            cands.extend(
+                self.conn.execute(
+                    f"SELECT chunk_id, distance FROM {table} WHERE embedding MATCH ?"
+                    " AND k = ? AND acl_hash = ?",
+                    (q.tobytes(), k, h),
+                ).fetchall()
+            )
+        cands.sort(key=lambda r: r[1])
+        ids = [c[0] for c in cands[:k]]
+        visible = set(self.get_chunks(ids, viewer)["id"].to_list())
+        rows = [(cid, 1.0 - dist) for cid, dist in cands[:k] if cid in visible]
+        return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
+
     # ---- helpers ---------------------------------------------------------------------------
 
     def _tx(self):

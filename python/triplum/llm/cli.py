@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import subprocess
 
-from triplum.llm.protocol import Completion, GenParams, Message, Usage, request_hash
+from triplum.llm.protocol import DEFAULT_PARAMS, Completion, Message, Usage, request_hash
 
 CLAUDE_PRESET = {"argv": ["claude", "-p", "--output-format", "json"], "json_field": "result"}
 
@@ -31,7 +31,7 @@ class CliLLM:
         self.json_field = json_field
         self.timeout_s = timeout_s
 
-    def complete(self, messages, *, schema=None, params=GenParams()) -> Completion:
+    def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
         prompt = render_prompt(messages)
         if schema is not None:
             prompt += "\n\nRespond with JSON only, matching this schema:\n" + json.dumps(schema)

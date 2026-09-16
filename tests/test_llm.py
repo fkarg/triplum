@@ -1,4 +1,5 @@
 import json
+from typing import ClassVar
 
 from triplum.cache import Cache
 from triplum.llm.cached import CachedLLM
@@ -62,7 +63,7 @@ def test_openai_compat_builds_request_and_parses():
         prompt_tokens_details = None
 
     class _Resp:
-        choices = [_Choice()]
+        choices: ClassVar = [_Choice()]
         usage = _Usage()
         model = "test-model"
 

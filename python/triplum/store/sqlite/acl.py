@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def principal_token(principal: str) -> str:

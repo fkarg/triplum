@@ -9,7 +9,7 @@ import json
 import os
 from typing import Any
 
-from triplum.llm.protocol import Completion, GenParams, Message, Usage, request_hash
+from triplum.llm.protocol import DEFAULT_PARAMS, Completion, GenParams, Message, Usage, request_hash
 
 
 class OpenAICompatLLM:
@@ -48,7 +48,7 @@ class OpenAICompatLLM:
             }
         return self.client.chat.completions.create(**kw)
 
-    def complete(self, messages, *, schema=None, params=GenParams()) -> Completion:
+    def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
         attempts = 0
         while True:
             resp = self._call(messages, schema, params)

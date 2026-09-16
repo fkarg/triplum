@@ -33,7 +33,7 @@ class SentenceTransformersEmbedder:
         device: str | None = None,
         batch_size: int = 32,
         trust_remote_code: bool = False,
-    ) -> "SentenceTransformersEmbedder":
+    ) -> SentenceTransformersEmbedder:
         from sentence_transformers import SentenceTransformer
 
         device = device or pick_device()
