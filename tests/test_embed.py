@@ -1,0 +1,64 @@
+import numpy as np
+
+from triplum.cache import Cache
+from triplum.embed.cached import CachedEmbedder
+from triplum.embed.fake import FakeEmbedder
+from triplum.embed.openai_compat import OpenAICompatEmbedder
+from triplum.embed.protocol import EmbeddingSpec
+
+
+def test_spec_hash_is_stable_and_sensitive():
+    a = EmbeddingSpec(model="m", revision="r", dims=8)
+    b = EmbeddingSpec(model="m", revision="r", dims=8)
+    c = EmbeddingSpec(model="m", revision="r", dims=8, query_prefix="query: ")
+    assert a.hash() == b.hash() and a.hash() != c.hash() and len(a.hash()) == 16
+
+
+def test_fake_embedder_shapes_and_determinism():
+    e = FakeEmbedder(dims=8)
+    q = e.embed_queries(["a", "b"])
+    p = e.embed_passages(["a"])
+    assert q.shape == (2, 8) and p.shape == (1, 8) and q.dtype == np.float32
+    assert np.allclose(np.linalg.norm(q, axis=1), 1.0)
+    assert np.allclose(e.embed_queries(["a"])[0], q[0])
+
+
+def test_fake_embedder_similar_texts_are_closer():
+    e = FakeEmbedder(dims=64)
+    v = e.embed_passages(
+        ["the cat sat on the mat", "the cat sat on a mat", "quarterly revenue grew"]
+    )
+    assert v[0] @ v[1] > v[0] @ v[2]
+
+
+def test_cached_embedder_hits_per_text(tmp_path):
+    inner = FakeEmbedder(dims=8)
+    calls = []
+    orig = inner.embed_passages
+    inner.embed_passages = lambda texts: (calls.append(list(texts)), orig(texts))[1]
+    e = CachedEmbedder(inner, Cache(tmp_path))
+    e.embed_passages(["x", "y"])
+    e.embed_passages(["y", "z"])
+    assert calls == [["x", "y"], ["z"]]
+
+
+def test_openai_compat_embedder_calls_client():
+    class _Item:
+        def __init__(self, v):
+            self.embedding = v
+
+    class _Resp:
+        def __init__(self, n):
+            self.data = [_Item([1.0, 0.0]) for _ in range(n)]
+
+    class _Emb:
+        def create(self, **kw):
+            return _Resp(len(kw["input"]))
+
+    class _Client:
+        embeddings = _Emb()
+
+    spec = EmbeddingSpec(model="text-embedding-3-large", revision="2026", dims=2, query_prefix="q: ")
+    e = OpenAICompatEmbedder(spec, client=_Client())
+    out = e.embed_queries(["a", "b"])
+    assert out.shape == (2, 2) and np.allclose(out[0], [1.0, 0.0])
