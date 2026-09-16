@@ -116,4 +116,6 @@ See [`docs/research/papers.md`](docs/research/papers.md) for the ledger.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Apache-2.0 for this repository. It is public and research-only, so non-commercial datasets and
+models are used where they are the right tool; [`docs/licences.md`](docs/licences.md) maps every
+third-party component's terms so a piece can be reused elsewhere with eyes open.

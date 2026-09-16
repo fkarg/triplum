@@ -43,8 +43,11 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   `--force` to recompute. Every expensive stage is content-addressed on its inputs and config and
   must still work with an empty cache. Anything that changes an answer goes into the run identity.
   The contract is `docs/benchmarking.md`.
-- **Licences**: check before borrowing. DIGIMON has no licence (read only). `GEM/web_nlg` and
-  REBEL are non-commercial. GraphRAG-Bench arXiv 2506.02404 is academic-only.
+- **Licences**: this repo is public and research-only, so non-commercial components are allowed
+  here, but every third-party dataset, model and code dependency goes into `docs/licences.md` with
+  its terms and whether it survives commercial reuse. Add the row when you add the dependency.
+  Code with no licence file is read-only. Never route private corpora through a provider that
+  trains on traffic.
 - **Secrets**: API keys come from the environment; never read, print or commit them.
 
 ## Workflow
