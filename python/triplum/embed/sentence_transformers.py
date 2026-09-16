@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from triplum.embed.protocol import EmbeddingSpec, l2_normalize
+from triplum.embed.protocol import EmbeddingSpec, l2_normalize, render_query_prefix
 
 
 def pick_device() -> str:
@@ -43,7 +43,7 @@ class SentenceTransformersEmbedder:
         cls,
         name: str,
         *,
-        query_prefix: str = "",
+        query_template: str = "",
         passage_prefix: str = "",
         device: str | None = None,
         batch_size: int = 32,
@@ -70,7 +70,7 @@ class SentenceTransformersEmbedder:
             dims=int(model.get_embedding_dimension()),
             pooling="model",
             normalize=True,
-            query_prefix=query_prefix,
+            query_prefix=render_query_prefix(query_template, instruction),
             passage_prefix=passage_prefix,
             quantization="fp32" if device == "cpu" else "fp16",
             runtime=f"sentence-transformers:{device}",

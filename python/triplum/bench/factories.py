@@ -8,7 +8,7 @@ from triplum.bench.config import EmbedderConfig, LLMConfig, RerankerConfig
 from triplum.cache import Cache
 from triplum.embed.cached import CachedEmbedder
 from triplum.embed.fake import FakeEmbedder
-from triplum.embed.protocol import EmbeddingSpec
+from triplum.embed.protocol import EmbeddingSpec, render_query_prefix
 from triplum.llm.cached import CachedLLM
 from triplum.llm.fake import FakeLLM
 from triplum.llm.protocol import GenParams
@@ -25,9 +25,10 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
             model=cfg.model,
             revision=cfg.revision or "api",
             dims=cfg.dims,
-            query_prefix=cfg.query_prefix,
+            query_prefix=render_query_prefix(cfg.query_template, cfg.instruction),
             passage_prefix=cfg.passage_prefix,
             runtime="api",
+            instruction=cfg.instruction,
         )
         return CachedEmbedder(
             OpenAICompatEmbedder(spec, base_url=cfg.base_url, api_key_env=cfg.api_key_env), cache
@@ -38,7 +39,7 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
         return CachedEmbedder(
             SentenceTransformersEmbedder.from_model(
                 cfg.model,
-                query_prefix=cfg.query_prefix,
+                query_template=cfg.query_template,
                 passage_prefix=cfg.passage_prefix,
                 instruction=cfg.instruction,
                 max_seq_length=cfg.max_seq_length,
@@ -53,7 +54,9 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
 
         return CachedEmbedder(
             FastEmbedEmbedder.from_model(
-                cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix
+                cfg.model,
+                query_prefix=render_query_prefix(cfg.query_template, cfg.instruction),
+                passage_prefix=cfg.passage_prefix,
             ),
             cache,
         )

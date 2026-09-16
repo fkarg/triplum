@@ -18,12 +18,12 @@ class EmbeddingSpec:
     dims: int
     pooling: str = "provider"
     normalize: bool = True
-    query_prefix: str = ""
+    query_prefix: str = ""  # rendered query template, e.g. "Instruct: <task>\nQuery:"
     passage_prefix: str = ""
     quantization: str = "none"
     runtime: str = "api"
     max_seq_length: int | None = None  # None: model default; silent truncation changes vectors
-    instruction: str = ""  # task text recorded separately from the template in query_prefix
+    instruction: str = ""  # the task text that was rendered into query_prefix (ablation variable)
     padding_side: str = ""  # "" = model default; Qwen3 needs "left" or batched pooling is wrong
 
     def hash(self) -> str:
@@ -38,6 +38,12 @@ class Embedder(Protocol):
 
     def embed_queries(self, texts: list[str]) -> np.ndarray: ...
     def embed_passages(self, texts: list[str]) -> np.ndarray: ...
+
+
+def render_query_prefix(template: str, instruction: str) -> str:
+    """Model templates name the task: "Instruct: {instruction}\nQuery:" for Qwen3/NV-Embed/e5.
+    A template without the placeholder is used verbatim (bge, EmbeddingGemma)."""
+    return template.format(instruction=instruction) if "{instruction}" in template else template
 
 
 def l2_normalize(x: np.ndarray) -> np.ndarray:

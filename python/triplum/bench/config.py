@@ -14,7 +14,7 @@ class EmbedderConfig:
     model: str = "fake"
     dims: int = 64
     revision: str = ""
-    query_prefix: str = ""
+    query_template: str = ""  # "Instruct: {instruction}\nQuery:" or a literal prefix
     passage_prefix: str = ""
     instruction: str = ""
     max_seq_length: int | None = None

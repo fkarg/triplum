@@ -1,0 +1,24 @@
+[
+  {
+    "kind": "st",
+    "model": "Qwen/Qwen3-Embedding-0.6B",
+    "padding_side": "left",
+    "instruction": "Given a multi-hop question, retrieve documents that can help answer the question",
+    "query_template": "Instruct: {instruction}\nQuery:"
+  },
+  {
+    "kind": "st",
+    "model": "BAAI/bge-large-en-v1.5",
+    "query_template": "Represent this sentence for searching relevant passages: "
+  },
+  {
+    "kind": "st",
+    "model": "google/embeddinggemma-300m",
+    "query_template": "task: search result | query: ",
+    "passage_prefix": "title: none | text: "
+  },
+  {
+    "kind": "st",
+    "model": "sentence-transformers/all-MiniLM-L6-v2"
+  }
+]
