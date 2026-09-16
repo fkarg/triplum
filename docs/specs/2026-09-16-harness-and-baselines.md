@@ -1,6 +1,6 @@
 # Spec: benchmark harness, baselines and embedding sweep (sub-project 2, part 1)
 
-Date: 2026-09-16. Status: draft for review. Parent: `docs/research/design.md`. Protocol source:
+Date: 2026-09-16. Status: approved 2026-09-16. Parent: `docs/research/design.md`. Protocol source:
 `docs/research/benchmarks-multihop-qa.md`. Storage source: `docs/research/storage-sqlite.md`.
 
 ## Goal
@@ -39,8 +39,8 @@ In:
 9. Evaluation: EM and token-F1 with HotpotQA normalisation and HippoRAG's max-over-aliases
    aggregation, Contain-Acc, Judge-Acc (single-answer correctness judge, model family recorded),
    R@2 and R@5 on supporting passages, tokens, cost, latency, and indexing cost.
-10. Run store: one SQLite file with `runs`, `run_questions`, `run_artifacts`; the run identity from
-    design D8; reports as Polars frames; one marimo notebook that slices runs.
+10. Run store: one SQLite file with `runs`, `run_questions`, `run_artifacts`, `events`, `prices`;
+    the run identity from design D8; reports as Polars frames; one marimo notebook that slices runs.
 11. Embedding sweep: run the dense pipeline once per `EmbeddingSpec` on the same corpus; report
     R@2, R@5, EM, F1 and indexing cost per embedder. Embedder list comes from
     `docs/research/embeddings.md`.
@@ -126,16 +126,34 @@ question the retrieved chunk ids with scores, the answer, every metric, tokens a
   chunking is implemented but only used by 2a.
 - Smoke fixture: 20 questions per dataset with their gold and distractor passages, committed under
   `tests/fixtures/` with attribution. Every integration test runs on it; `--n 20` on the CLI uses it.
-- Generation-2 configuration is the default label: reader `gpt-4o-mini` tier by default (cheap),
-  `llama-3.3-70b-instruct` via an OpenAI-compatible endpoint as the comparison tier; top-5 passages.
+- Retrieval follows the generation-2 protocol (top-5 passages). Readers are current models, not
+  the 2025 ones in the literature, so our absolute QA numbers are labelled as a new reader
+  generation and the retrieval metrics (R@2, R@5) are what stay comparable. Reader set, verified
+  2026-09-16: `gpt-5.6-luna` (OpenAI's cheap tier, GA July 2026; default), `google/gemma-4-31B-it`
+  (Apache-2.0, April 2026; via an OpenAI-compatible endpoint or local), and Meta's Muse Spark 1.3
+  contributor-tier id (cheap in exchange for Meta training on the traffic; benchmark questions are
+  public, so acceptable, but never route private corpora through it). Model ids are pinned per run.
 
 ## Metrics
 
-EM and F1: HotpotQA `normalize_answer`, max over gold aliases, no yes/no zeroing, stated in the
-report header. Contain-Acc: normalised gold substring of normalised answer. Judge-Acc: one LLM call
+Two kinds of metrics, both in the run store.
+
+**Quality**: EM and F1: HotpotQA `normalize_answer`, max over gold aliases, no yes/no zeroing,
+stated in the report header. Contain-Acc: normalised gold substring of normalised answer. Judge-Acc: one LLM call
 per question with the gold answer, binary, judge model recorded and required to be from a different
 family than the reader. R@k: fraction of gold supporting passages in the top-k retrieved, HippoRAG
-definition. Indexing cost: embedding tokens and seconds, reported per run, not amortised.
+definition.
+
+**Cost and runtime**: every call and every stage writes one row to an `events` table
+(run id, stage, question id or null, provider, model, started_at, ended_at, tokens in, tokens out,
+cached, usd). Prices come from a `prices` table snapshotted into the run (model id, provider,
+USD per million in / out / cached, valid_from), so cost is reproducible after price changes. Local
+models record wall time and tokens per second; USD is null. From `events` the report derives:
+indexing cost (tokens, seconds, USD; per run, not amortised), per-question latency by stage,
+effective runtime and effective cost per question, cost per correct answer, and cache hit rate.
+No separate metrics system: the run store is the metrics store, and the notebook is the dashboard.
+If live monitoring of long runs is ever wanted, `events` is the table to tail; a time-series
+system would add an operational view, not an analytical one, and is out of scope.
 
 ## Caching and repeatability
 
@@ -152,21 +170,17 @@ Every expensive step is content-addressed and skipped on rerun. Three levels:
    rerun, unless `--force`.
 
 All three live under one configurable cache root (default `~/.cache/triplum`, overridable by env
-var) and are portable: syncing the directory to another machine gives the same hits. Non-
-deterministic providers are recorded as such per run (temperature, provider seed support), so a
-cache hit is exact replay and a miss is a fresh sample, and the run knows which it got.
+var). The cache is per machine; runs are not compared across machines. Non-deterministic providers
+are recorded as such per run (temperature, provider seed support), so a cache hit is exact replay
+and a miss is a fresh sample, and the run knows which it got. Switching an embedding spec is
+allowed to be a full re-embed; what matters is that a spec already computed is never recomputed.
 
 ## Environments
 
-- **Laptop (Apple Silicon)**: development, tests, the 20-question smoke fixture, notebook work.
-  Local embedders via MPS or ONNX at small scale.
-- **Tower (Ryzen 9950X3D, RTX 3070 with 8 GB VRAM, Linux)**: full 1000-question runs, the
-  embedding sweep, anything that loads a local model. 8 GB VRAM fits 0.6B to 4B embedders in fp16
-  and 8B in int8 or 4-bit; readers of that size run locally via vLLM or llama.cpp, larger readers go
-  through an API. Embedder adapters must select CUDA, MPS or CPU automatically and record the
-  runtime in the embedding spec, since the same model on different runtimes is a different spec.
-- The run store and cache root are synced between the two (rsync or a shared drive); results are
-  compared only by run identity, never by machine.
+Development, tests and the smoke fixture run on the laptop; full runs and local models run on a
+workstation with a GPU. Local-model adapters select CUDA, MPS or CPU automatically and record the
+runtime in the spec, since the same model on a different runtime is a different spec. Nothing in
+the harness assumes a machine; the run record carries the host name for bookkeeping only.
 
 ## Error handling
 
@@ -199,15 +213,16 @@ then fails on the first miss (for exact replays).
 7. First real numbers: dense on MuSiQue at 1000 questions with one embedder, all baselines on the
    table. Then the embedding sweep.
 
-## Decisions to confirm
+## Decisions (confirmed 2026-09-16)
 
-- maturin from day one with schemas in Rust (vs pure Python now, Rust later). Chosen: maturin.
-- One passage per chunk for the baselines (protocol-faithful) rather than re-chunking. Chosen: one.
-- Reader default `gpt-4o-mini` tier; 70B tier optional. Chosen: cheap default, both labelled.
+- maturin from day one with schemas in Rust.
+- One passage per chunk for the baselines.
+- Current-generation readers (see Datasets and protocol), cheap API tier as default.
+- Caching is local to a machine; no cross-machine comparison of runs.
 
 ## Open questions
 
-- Which OpenAI-compatible endpoint serves Llama-3.3-70B for the comparison tier (OpenRouter vs a
-  local server)? Decide when the first full run is scheduled.
+- Which endpoint serves Gemma 4 31B for the comparison tier (a hosted provider vs local)? Decide
+  when the first full run is scheduled; both are recorded as different runtimes.
 - Whether the judge's A/A win-rate diagnostic belongs in this spec or with the pairwise judge. Left
   to the pairwise judge.

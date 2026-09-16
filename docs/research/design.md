@@ -186,8 +186,10 @@ choice if the Rust side ever needs to call models directly.
 
 Not just LLM calls. Any stage whose cost is noticeable (corpus build, embedding a corpus,
 index build, reranking, extraction, a whole run) is content-addressed on (input hash, config hash),
-persists its output, and is skipped on rerun. The cache root is one portable directory so work done
-on one machine is reused on another. Cache hits are recorded in the run identity. This is a
+persists its output, and is skipped on rerun. The cache root is one directory per machine. Cache
+hits are recorded in the run identity. Cost and runtime are metrics: every call and stage writes a
+timed, priced event to the run store, and effective cost and runtime per question are reported next
+to quality. This is a
 second-class concern in the sense that no stage may *require* the cache to function, but every
 stage must participate. Spec: `docs/specs/2026-09-16-harness-and-baselines.md`, "Caching and
 repeatability".
@@ -251,9 +253,9 @@ for corpora without gold answers; that arrives with the temporal+ACL synthetic b
 
 ### D9. Repository and DX
 
-Two machines: an Apple Silicon laptop for development, tests and smoke runs; an x86 tower (Ryzen
-9950X3D, RTX 3070, 8 GB VRAM, Linux) for full benchmark runs and local models. Everything must run
-on both; local-model adapters pick CUDA, MPS or CPU and record it in the spec.
+Development and smoke runs on a laptop, full runs and local models on a GPU workstation. Nothing
+assumes a machine; local-model adapters pick CUDA, MPS or CPU and record it in the spec. Runs are
+not compared across machines and caches are not shared.
 
 
 Cargo workspace under `crates/` (Polars layout: `[workspace.package]`, feature-flagged umbrella
