@@ -50,7 +50,30 @@ triplum bench rerun <run_id> --force   # recompute; call-cache hits still apply,
 triplum bench run ... --force          # same for a fresh command line
 ```
 
-`--force` creates a new run id and a new set of events; it does not clear caches. To recompute
+`--force` creates a new run id and a new set of events; it does not clear caches.
+
+## Crash and resume
+
+Each finished question is one transaction: its events and its `run_questions` row commit together.
+A run that raises is marked `failed`; a hard crash leaves it `running`. Either way, finished
+questions are kept. `--resume` (on `bench run` and `bench rerun`) finds the run with the same
+identity in `running` or `failed` state, reuses its id, and processes only the questions that have
+no row yet. Resume is opt-in so a partial run is never reused by accident; without it, a new run is
+started and finished questions are served from the call cache.
+
+## Inspecting runs
+
+```
+triplum bench inspect <run_id> [--question <id>] [--json]   # answer, metrics, retrieved passages, model calls
+triplum bench diff <run_a> <run_b>                          # identity and config fields that differ, metric means, per-question deltas
+triplum bench tail <run_id> [--once]                        # done/total and the latest stage of a running benchmark
+```
+
+Passage text in `inspect` is resolved from the store artifact recorded with the run (path and
+sha256); if the file is gone, ids are shown. `diff` never averages over missing questions: ids
+present in only one run are listed separately. These are projections over the SQLite run store
+(`python/triplum/bench/inspect.py`), not a second log format; see
+`docs/research/tooling-event-logs.md` for why the run store stays SQLite-only. To recompute
 model calls as well, point `TRIPLUM_CACHE` at an empty directory. To rebuild a store, delete the
 store file (`~/.cache/triplum/stores/<dataset>-<corpus_hash>.sqlite`); it is regenerated from the
 verified protocol files.

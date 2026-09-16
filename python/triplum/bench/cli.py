@@ -69,6 +69,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         b.add_argument("--top-k", type=int, default=5)
         b.add_argument("--candidates", type=int, default=20)
         b.add_argument("--force", action="store_true")
+        b.add_argument("--resume", action="store_true")
         b.add_argument("--cache-root", default=None)
         b.add_argument("--runstore", default=None)
     rep = bench.add_parser("report")
@@ -79,7 +80,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     rerun = bench.add_parser("rerun", help="run a stored configuration again (lookup unless --force)")
     rerun.add_argument("run_id")
     rerun.add_argument("--force", action="store_true")
+    rerun.add_argument("--resume", action="store_true")
     rerun.add_argument("--runstore", default=None)
+    insp = bench.add_parser("inspect", help="per-question drill-down: answer, metrics, passages, calls")
+    insp.add_argument("run_id")
+    insp.add_argument("--question", default=None)
+    insp.add_argument("--json", action="store_true")
+    insp.add_argument("--runstore", default=None)
+    dif = bench.add_parser("diff", help="config, identity and per-question metric deltas of two runs")
+    dif.add_argument("run_a")
+    dif.add_argument("run_b")
+    dif.add_argument("--runstore", default=None)
+    tl = bench.add_parser("tail", help="progress of a running benchmark")
+    tl.add_argument("run_id")
+    tl.add_argument("--once", action="store_true")
+    tl.add_argument("--interval", type=float, default=1.0)
+    tl.add_argument("--runstore", default=None)
     return p.parse_args(argv)
 
 
@@ -109,6 +125,7 @@ def build_run_config(ns: argparse.Namespace, embedder: dict | str | None = None)
         fixture=ns.fixture,
         judge=judge,
         force=ns.force,
+        resume=ns.resume,
         cache_root=ns.cache_root,
         runstore_path=ns.runstore,
     )
@@ -119,6 +136,64 @@ def _print(df) -> None:
 
     with pl.Config(tbl_cols=-1, tbl_width_chars=220, tbl_rows=100):
         print(df)
+
+
+def _tooling(ns: argparse.Namespace) -> int:
+    import time
+
+    from triplum.bench.inspect import diff_runs, inspect_run, tail_run
+    from triplum.bench.runstore import RunStore
+    from triplum.cache import default_root
+
+    rs = RunStore(ns.runstore or default_root() / "runs.db")
+    if ns.bench_cmd == "inspect":
+        view = inspect_run(rs, ns.run_id, ns.question)
+        if ns.json:
+            print(json.dumps(view, indent=2, default=str))
+            return 0
+        i = view["identity"]
+        print(f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
+              f"  reader={i['reader_model']}  judge={i['judge_model']}")
+        if not view["store_available"]:
+            print("(store artifact not available: passages shown as ids only)")
+        for q in view["questions"]:
+            m = q["metrics"]
+            print(f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
+                  f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
+                  f" latency={m['latency_s']:.3f}s usd={m['usd']}")
+            for r in q["retrieved"]:
+                text = (r["text"] or "").replace("\n", " ")[:160]
+                print(f"    #{r['chunk_id']}: {text}")
+            for e in q["events"]:
+                print(f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
+                      f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s")
+        return 0
+    if ns.bench_cmd == "diff":
+        d = diff_runs(rs, ns.run_a, ns.run_b)
+        print("identity:", json.dumps(d["identity_diff"], default=str))
+        print("config:", json.dumps(d["config_diff"], default=str))
+        for m, (va, vb) in d["means"].items():
+            print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
+        if d["only_in_a"] or d["only_in_b"]:
+            print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
+        changed = d["per_question"].filter(pl_any_change())
+        _print(changed)
+        return 0
+    while True:
+        t = tail_run(rs, ns.run_id)
+        print(f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}")
+        if ns.once or t["status"] != "running":
+            return 0
+        time.sleep(ns.interval)
+
+
+def pl_any_change():
+    import polars as pl
+
+    return (
+        (pl.col("d_em") != 0) | (pl.col("d_f1") != 0) | (pl.col("d_r5") != 0)
+        | pl.col("answer_changed") | pl.col("retrieval_changed")
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -138,6 +213,8 @@ def main(argv: list[str] | None = None) -> int:
     if ns.bench_cmd == "report":
         _print(summary(RunStore(ns.runstore or default_root() / "runs.db")))
         return 0
+    if ns.bench_cmd in ("inspect", "diff", "tail"):
+        return _tooling(ns)
     if ns.bench_cmd in ("show", "rerun"):
         rs = RunStore(ns.runstore or default_root() / "runs.db")
         row = rs.run(ns.run_id)
@@ -148,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2))
             return 0
         cfg = RunConfig.from_json(row["config_json"])
-        cfg = RunConfig(**{**cfg.__dict__, "force": ns.force, "runstore_path": str(rs.path)})
+        cfg = RunConfig(**{**cfg.__dict__, "force": ns.force, "resume": ns.resume, "runstore_path": str(rs.path)})
         rid = run_benchmark(cfg)
         print("reused" if rid == ns.run_id else "new", rid)
         _print(summary(rs, [rid]))

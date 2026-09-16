@@ -38,6 +38,10 @@ uv run triplum bench report
 uv run marimo edit notebooks/runs.py        # browse runs
 uv run triplum bench show <run_id>          # exact configuration and identity of a run
 uv run triplum bench rerun <run_id> --force # recompute it
+uv run triplum bench run ... --resume       # finish a crashed run in place
+uv run triplum bench inspect <run_id>       # per-question answers, passages, model calls
+uv run triplum bench diff <run_a> <run_b>   # what changed and by how much
+uv run triplum bench tail <run_id>          # progress of a running benchmark
 ```
 
 Runs are identified by the hash of their exact configuration and looked up before they are

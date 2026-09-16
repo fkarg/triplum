@@ -126,3 +126,29 @@ def test_crash_then_resume_completes_same_run(tmp_path, monkeypatch):
     assert resumed == rid
     assert rs.questions(rid).height == 20 and rs.runs()["status"][0] == "ok"
     assert calls["n"] == 21  # 5 ok + 1 crash + 15 remaining; completed ones were not re-read
+
+
+def test_inspect_diff_tail(tmp_path, capsys):
+    from triplum.bench.cli import main
+    from triplum.bench.inspect import diff_runs, inspect_run, tail_run
+
+    a = run_benchmark(_cfg(tmp_path, "bm25"))
+    b = run_benchmark(_cfg(tmp_path, "dense"))
+    rs = RunStore(tmp_path / "runs.db")
+    view = inspect_run(rs, a)
+    assert len(view["questions"]) == 20 and view["store_available"]
+    first = view["questions"][0]
+    assert first["retrieved"] and first["retrieved"][0]["text"] is not None
+    assert any(e["stage"] == "read" for e in first["events"])
+    d = diff_runs(rs, a, b)
+    assert d["config_diff"]["pipeline.name"] == ("bm25", "dense") and not d["only_in_a"]
+    assert d["per_question"].height == 20 and "d_r5" in d["per_question"].columns
+    t = tail_run(rs, a)
+    assert t["done"] == 20 and t["total"] == 20 and t["status"] == "ok"
+    db = str(tmp_path / "runs.db")
+    assert main(["bench", "inspect", a, "--question", first["question_id"], "--runstore", db]) == 0
+    assert first["question_id"] in capsys.readouterr().out
+    assert main(["bench", "diff", a, b, "--runstore", db]) == 0
+    assert "pipeline.name" in capsys.readouterr().out
+    assert main(["bench", "tail", a, "--once", "--runstore", db]) == 0
+    assert "20/20" in capsys.readouterr().out
