@@ -4,8 +4,10 @@ The command surface is documented in docs/flow.md; `main(argv)` runs it in-proce
 """
 
 import json
+import sqlite3
 import sys
 import time
+from contextlib import closing
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -24,7 +26,7 @@ app = typer.Typer(no_args_is_help=True, add_completion=False, pretty_exceptions_
 data_app = typer.Typer(
     no_args_is_help=False, help="List, fetch and verify the benchmark datasets."
 )
-bench_app = typer.Typer(no_args_is_help=True, help="Run, look up and inspect benchmarks.")
+bench_app = typer.Typer(no_args_is_help=False, help="Run, look up and inspect benchmarks.")
 app.add_typer(data_app, name="data")
 app.add_typer(bench_app, name="bench")
 
@@ -188,6 +190,42 @@ def fetch(
     for name in hr.FILES if dataset == "all" else [dataset]:
         qp, cp = hr.fetch(name)
         print(f"{name}: {qp} {cp} (verified)")
+
+
+@bench_app.callback(invoke_without_command=True)
+def bench(
+    ctx: typer.Context,
+    runstore: Annotated[Path | None, typer.Option(help="Run store for this overview only.")] = None,
+) -> None:
+    """Show recent local runs, explain their states, and list available commands."""
+    if ctx.invoked_subcommand is not None:
+        return
+    from triplum.cache import default_root
+
+    path = runstore or default_root() / "runs.db"
+    print(f"run store: {path}")
+    print("Pipelines: " + ", ".join(Pipeline))
+    rows = []
+    if path.exists():
+        # RunStore initialization creates tables and migrates; an overview only reads.
+        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
+            rows = conn.execute(
+                "SELECT run_id, dataset, pipeline, n, status FROM runs"
+                " ORDER BY created_at DESC, run_id DESC LIMIT 10"
+            ).fetchall()
+    if rows:
+        print("Recent local runs (up to 10, newest first):")
+        for run_id, dataset, pipeline, n, status in rows:
+            print(f"{run_id}: {dataset}/{pipeline}  n={n}  status={status}")
+    else:
+        print("No local benchmark runs recorded.")
+    print("States: ok = completed; failed = ended with an error;")
+    print("        running = no completion recorded, possibly interrupted.")
+    print("run: executes a benchmark or reuses identical completed runs.")
+    print("report: reads saved metrics; rerun: reuses a run's configuration,")
+    print("        --resume continues unfinished work, --force recomputes it.")
+    print()
+    print(ctx.get_help())
 
 
 @bench_app.command()
