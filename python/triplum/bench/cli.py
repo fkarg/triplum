@@ -1,10 +1,16 @@
-"""triplum CLI: data fetch | bench run | bench sweep | bench report."""
+"""triplum CLI: data fetch | bench run, sweep, report, show, rerun, inspect, diff, tail.
 
-from __future__ import annotations
+The command surface is documented in docs/flow.md; `main(argv)` runs it in-process for tests.
+"""
 
-import argparse
 import json
 import sys
+import time
+from enum import StrEnum
+from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from triplum.bench.config import (
     EmbedderConfig,
@@ -14,9 +20,53 @@ from triplum.bench.config import (
     RunConfig,
 )
 
-PIPELINES = ["closed_book", "bm25", "dense", "hybrid", "oracle"]
-DATASETS = ["hotpotqa", "musique", "twowiki"]
+app = typer.Typer(no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False)
+data_app = typer.Typer(no_args_is_help=True, help="Fetch and verify the benchmark datasets.")
+bench_app = typer.Typer(no_args_is_help=True, help="Run, look up and inspect benchmarks.")
+app.add_typer(data_app, name="data")
+app.add_typer(bench_app, name="bench")
+
 CLAUDE_ARGV = ("claude", "-p", "--output-format", "json")
+
+
+class Pipeline(StrEnum):
+    closed_book = "closed_book"
+    bm25 = "bm25"
+    dense = "dense"
+    hybrid = "hybrid"
+    oracle = "oracle"
+
+
+class Dataset(StrEnum):
+    hotpotqa = "hotpotqa"
+    musique = "musique"
+    twowiki = "twowiki"
+
+
+# Options shared by `bench run` and `bench sweep`.
+DatasetOpt = Annotated[Dataset, typer.Option(help="Benchmark dataset.")]
+NOpt = Annotated[int | None, typer.Option(help="Questions to run (default: the whole protocol).")]
+FixtureOpt = Annotated[
+    bool, typer.Option("--fixture", help="Use the committed 20-question fixture.")
+]
+ReaderOpt = Annotated[str, typer.Option(help="Reader LLM: fake | openai | claude-cli.")]
+ReaderModelOpt = Annotated[str | None, typer.Option(help="Reader model id (default per kind).")]
+BaseUrlOpt = Annotated[str | None, typer.Option(help="OpenAI-compatible base URL.")]
+JudgeOpt = Annotated[str | None, typer.Option(help="Judge LLM: fake | openai | claude-cli.")]
+JudgeModelOpt = Annotated[str | None, typer.Option(help="Judge model id (default per kind).")]
+RerankerOpt = Annotated[str, typer.Option(help="fake | cross_encoder:<model> (hybrid only).")]
+TopKOpt = Annotated[int, typer.Option(help="Passages handed to the reader.")]
+CandidatesOpt = Annotated[int, typer.Option(help="Fused candidates to rerank (hybrid only).")]
+ForceOpt = Annotated[
+    bool, typer.Option("--force", help="Recompute even if an identical run exists.")
+]
+ResumeOpt = Annotated[
+    bool, typer.Option("--resume", help="Continue a crashed run with this identity.")
+]
+CacheRootOpt = Annotated[
+    Path | None, typer.Option(help="Cache root (default $TRIPLUM_CACHE or ~/.cache/triplum).")
+]
+RunstoreOpt = Annotated[Path | None, typer.Option(help="Run store (default <cache root>/runs.db).")]
 
 
 def _llm(kind: str, model: str | None, base_url: str | None) -> LLMConfig:
@@ -28,7 +78,7 @@ def _llm(kind: str, model: str | None, base_url: str | None) -> LLMConfig:
         return LLMConfig(
             kind="cli", model=model or "claude-cli", argv=CLAUDE_ARGV, json_field="result"
         )
-    raise SystemExit(f"unknown reader kind {kind}")
+    raise typer.BadParameter(f"unknown LLM kind {kind!r}")
 
 
 def _embedder(spec: dict | str) -> EmbedderConfig:
@@ -39,95 +89,56 @@ def _embedder(spec: dict | str) -> EmbedderConfig:
             return EmbedderConfig(kind="st", model=spec[3:])
         if spec.startswith("openai:"):
             model = spec[7:]
-            return EmbedderConfig(kind="openai", model=model, dims=3072 if "large" in model else 1536)
-        raise SystemExit(f"unknown embedder {spec}")
+            return EmbedderConfig(
+                kind="openai", model=model, dims=3072 if "large" in model else 1536
+            )
+        raise typer.BadParameter(f"unknown embedder {spec!r}")
     return EmbedderConfig(**spec)
 
 
-def parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="triplum")
-    sub = p.add_subparsers(dest="cmd", required=True)
-    data = sub.add_parser("data").add_subparsers(dest="data_cmd", required=True)
-    data.add_parser("fetch").add_argument("--dataset", choices=[*DATASETS, "all"], default="all")
-    bench = sub.add_parser("bench").add_subparsers(dest="bench_cmd", required=True)
-    for name in ("run", "sweep"):
-        b = bench.add_parser(name)
-        if name == "run":
-            b.add_argument("--pipeline", required=True, choices=PIPELINES)
-            b.add_argument("--embedder", default="fake", help="fake | st:<model> | openai:<model>")
-        else:
-            b.add_argument("--embedders", required=True, help="JSON file: list of EmbedderConfig dicts")
-        b.add_argument("--dataset", required=True, choices=DATASETS)
-        b.add_argument("--n", type=int, default=None)
-        b.add_argument("--fixture", action="store_true")
-        b.add_argument("--reader", default="fake", help="fake | openai | claude-cli")
-        b.add_argument("--reader-model", default=None)
-        b.add_argument("--base-url", default=None)
-        b.add_argument("--judge", default=None, help="fake | openai")
-        b.add_argument("--judge-model", default=None)
-        b.add_argument("--reranker", default="fake", help="fake | cross_encoder:<model>")
-        b.add_argument("--top-k", type=int, default=5)
-        b.add_argument("--candidates", type=int, default=20)
-        b.add_argument("--force", action="store_true")
-        b.add_argument("--resume", action="store_true")
-        b.add_argument("--cache-root", default=None)
-        b.add_argument("--runstore", default=None)
-    rep = bench.add_parser("report")
-    rep.add_argument("--runstore", default=None)
-    show = bench.add_parser("show", help="print a run's exact configuration and identity")
-    show.add_argument("run_id")
-    show.add_argument("--runstore", default=None)
-    rerun = bench.add_parser("rerun", help="run a stored configuration again (lookup unless --force)")
-    rerun.add_argument("run_id")
-    rerun.add_argument("--force", action="store_true")
-    rerun.add_argument("--resume", action="store_true")
-    rerun.add_argument("--runstore", default=None)
-    insp = bench.add_parser("inspect", help="per-question drill-down: answer, metrics, passages, calls")
-    insp.add_argument("run_id")
-    insp.add_argument("--question", default=None)
-    insp.add_argument("--json", action="store_true")
-    insp.add_argument("--runstore", default=None)
-    dif = bench.add_parser("diff", help="config, identity and per-question metric deltas of two runs")
-    dif.add_argument("run_a")
-    dif.add_argument("run_b")
-    dif.add_argument("--runstore", default=None)
-    tl = bench.add_parser("tail", help="progress of a running benchmark")
-    tl.add_argument("run_id")
-    tl.add_argument("--once", action="store_true")
-    tl.add_argument("--interval", type=float, default=1.0)
-    tl.add_argument("--runstore", default=None)
-    return p.parse_args(argv)
-
-
-def build_run_config(ns: argparse.Namespace, embedder: dict | str | None = None) -> RunConfig:
-    reader = _llm(ns.reader, ns.reader_model, ns.base_url)
-    judge = _llm(ns.judge, ns.judge_model, ns.base_url) if ns.judge else None
-    rr = ns.reranker
-    reranker = (
+def build_run_config(
+    *,
+    pipeline: str,
+    dataset: str,
+    embedder: dict | str,
+    n: int | None,
+    fixture: bool,
+    reader: str,
+    reader_model: str | None,
+    base_url: str | None,
+    judge: str | None,
+    judge_model: str | None,
+    reranker: str,
+    top_k: int,
+    candidates: int,
+    force: bool,
+    resume: bool,
+    cache_root: Path | None,
+    runstore: Path | None,
+) -> RunConfig:
+    rr = (
         RerankerConfig(kind="fake")
-        if rr == "fake"
-        else RerankerConfig(kind="cross_encoder", model=rr.split(":", 1)[1])
+        if reranker == "fake"
+        else RerankerConfig(kind="cross_encoder", model=reranker.split(":", 1)[1])
     )
-    pipeline_name = getattr(ns, "pipeline", "dense")
-    emb = _embedder(embedder if embedder is not None else getattr(ns, "embedder", "fake"))
-    pipeline = PipelineConfig(
-        name=pipeline_name,
-        reader=reader,
-        top_k=ns.top_k,
-        candidates=ns.candidates,
-        embedder=emb,
-        reranker=reranker if pipeline_name == "hybrid" else None,
+    cfg = PipelineConfig(
+        name=str(pipeline),
+        reader=_llm(reader, reader_model, base_url),
+        top_k=top_k,
+        candidates=candidates,
+        embedder=_embedder(embedder),
+        reranker=rr if pipeline == "hybrid" else None,
     )
     return RunConfig(
-        dataset=ns.dataset,
-        pipeline=pipeline,
-        n=ns.n,
-        fixture=ns.fixture,
-        judge=judge,
-        force=ns.force,
-        resume=ns.resume,
-        cache_root=ns.cache_root,
-        runstore_path=ns.runstore,
+        dataset=str(dataset),
+        pipeline=cfg,
+        n=n,
+        fixture=fixture,
+        judge=_llm(judge, judge_model, base_url) if judge else None,
+        force=force,
+        resume=resume,
+        cache_root=str(cache_root) if cache_root else None,
+        runstore_path=str(runstore) if runstore else None,
     )
 
 
@@ -138,119 +149,261 @@ def _print(df) -> None:
         print(df)
 
 
-def _tooling(ns: argparse.Namespace) -> int:
-    import time
-
-    from triplum.bench.inspect import diff_runs, inspect_run, tail_run
+def _runstore(path: Path | None):
     from triplum.bench.runstore import RunStore
     from triplum.cache import default_root
 
-    rs = RunStore(ns.runstore or default_root() / "runs.db")
-    if ns.bench_cmd == "inspect":
-        view = inspect_run(rs, ns.run_id, ns.question)
-        if ns.json:
-            print(json.dumps(view, indent=2, default=str))
-            return 0
-        i = view["identity"]
-        print(f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
-              f"  reader={i['reader_model']}  judge={i['judge_model']}")
-        if not view["store_available"]:
-            print("(store artifact not available: passages shown as ids only)")
-        for q in view["questions"]:
-            m = q["metrics"]
-            print(f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
-                  f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
-                  f" latency={m['latency_s']:.3f}s usd={m['usd']}")
-            for r in q["retrieved"]:
-                text = (r["text"] or "").replace("\n", " ")[:160]
-                print(f"    #{r['chunk_id']}: {text}")
-            for e in q["events"]:
-                print(f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
-                      f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s")
-        return 0
-    if ns.bench_cmd == "diff":
-        d = diff_runs(rs, ns.run_a, ns.run_b)
-        print("identity:", json.dumps(d["identity_diff"], default=str))
-        print("config:", json.dumps(d["config_diff"], default=str))
-        for m, (va, vb) in d["means"].items():
-            print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
-        if d["only_in_a"] or d["only_in_b"]:
-            print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
-        changed = d["per_question"].filter(pl_any_change())
-        _print(changed)
-        return 0
-    while True:
-        t = tail_run(rs, ns.run_id)
-        print(f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}")
-        if ns.once or t["status"] != "running":
-            return 0
-        time.sleep(ns.interval)
+    return RunStore(path or default_root() / "runs.db")
 
 
-def pl_any_change():
-    import polars as pl
+@data_app.command()
+def fetch(
+    dataset: Annotated[str, typer.Option(help="hotpotqa | musique | twowiki | all")] = "all",
+) -> None:
+    """Download the HippoRAG protocol files and verify their sha256."""
+    from triplum.eval.datasets import hipporag as hr
 
-    return (
-        (pl.col("d_em") != 0) | (pl.col("d_f1") != 0) | (pl.col("d_r5") != 0)
-        | pl.col("answer_changed") | pl.col("retrieval_changed")
-    )
+    for name in hr.FILES if dataset == "all" else [dataset]:
+        qp, cp = hr.fetch(name)
+        print(f"{name}: {qp} {cp} (verified)")
 
 
-def main(argv: list[str] | None = None) -> int:
-    ns = parse_args(sys.argv[1:] if argv is None else argv)
-    if ns.cmd == "data":
-        from triplum.eval.datasets import hipporag as hr
-
-        for name in hr.FILES if ns.dataset == "all" else [ns.dataset]:
-            qp, cp = hr.fetch(name)
-            print(f"{name}: {qp} {cp} (verified)")
-        return 0
+@bench_app.command()
+def run(
+    pipeline: Annotated[Pipeline, typer.Option(help="Retrieval pipeline.")],
+    dataset: DatasetOpt,
+    embedder: Annotated[str, typer.Option(help="fake | st:<model> | openai:<model>")] = "fake",
+    n: NOpt = None,
+    fixture: FixtureOpt = False,
+    reader: ReaderOpt = "fake",
+    reader_model: ReaderModelOpt = None,
+    base_url: BaseUrlOpt = None,
+    judge: JudgeOpt = None,
+    judge_model: JudgeModelOpt = None,
+    reranker: RerankerOpt = "fake",
+    top_k: TopKOpt = 5,
+    candidates: CandidatesOpt = 20,
+    force: ForceOpt = False,
+    resume: ResumeOpt = False,
+    cache_root: CacheRootOpt = None,
+    runstore: RunstoreOpt = None,
+) -> None:
+    """Run one pipeline; an identical configuration returns the stored run."""
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
-    from triplum.bench.runstore import RunStore
-    from triplum.cache import default_root
 
-    if ns.bench_cmd == "report":
-        _print(summary(RunStore(ns.runstore or default_root() / "runs.db")))
-        return 0
-    if ns.bench_cmd in ("inspect", "diff", "tail"):
-        return _tooling(ns)
-    if ns.bench_cmd in ("show", "rerun"):
-        rs = RunStore(ns.runstore or default_root() / "runs.db")
-        row = rs.run(ns.run_id)
-        if row is None:
-            raise SystemExit(f"no run {ns.run_id}")
-        if ns.bench_cmd == "show":
-            identity = {k: row[k] for k in row if k not in ("config_json",)}
-            print(json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2))
-            return 0
-        cfg = RunConfig.from_json(row["config_json"])
-        cfg = RunConfig(**{**cfg.__dict__, "force": ns.force, "resume": ns.resume, "runstore_path": str(rs.path)})
-        rid = run_benchmark(cfg)
-        print("reused" if rid == ns.run_id else "new", rid)
-        _print(summary(rs, [rid]))
-        return 0
-    if ns.bench_cmd == "run":
-        cfgs = [build_run_config(ns)]
-    else:
-        with open(ns.embedders) as f:
-            cfgs = [build_run_config(ns, embedder=e) for e in json.load(f)]
+    cfg = build_run_config(
+        pipeline=pipeline,
+        dataset=dataset,
+        embedder=embedder,
+        n=n,
+        fixture=fixture,
+        reader=reader,
+        reader_model=reader_model,
+        base_url=base_url,
+        judge=judge,
+        judge_model=judge_model,
+        reranker=reranker,
+        top_k=top_k,
+        candidates=candidates,
+        force=force,
+        resume=resume,
+        cache_root=cache_root,
+        runstore=runstore,
+    )
+    rid = run_benchmark(cfg)
+    _print(summary(_runstore(runstore_path(cfg)), [rid]))
+
+
+@bench_app.command()
+def sweep(
+    embedders: Annotated[Path, typer.Option(help="JSON file: list of EmbedderConfig dicts.")],
+    dataset: DatasetOpt,
+    n: NOpt = None,
+    fixture: FixtureOpt = False,
+    reader: ReaderOpt = "fake",
+    reader_model: ReaderModelOpt = None,
+    base_url: BaseUrlOpt = None,
+    judge: JudgeOpt = None,
+    judge_model: JudgeModelOpt = None,
+    reranker: RerankerOpt = "fake",
+    top_k: TopKOpt = 5,
+    candidates: CandidatesOpt = 20,
+    force: ForceOpt = False,
+    resume: ResumeOpt = False,
+    cache_root: CacheRootOpt = None,
+    runstore: RunstoreOpt = None,
+) -> None:
+    """Run the dense pipeline once per embedding spec; failed specs are reported, not fatal."""
+    from triplum.bench.report import summary
+    from triplum.bench.runner import run_benchmark, runstore_path
+
+    cfgs = [
+        build_run_config(
+            pipeline=Pipeline.dense,
+            dataset=dataset,
+            embedder=spec,
+            n=n,
+            fixture=fixture,
+            reader=reader,
+            reader_model=reader_model,
+            base_url=base_url,
+            judge=judge,
+            judge_model=judge_model,
+            reranker=reranker,
+            top_k=top_k,
+            candidates=candidates,
+            force=force,
+            resume=resume,
+            cache_root=cache_root,
+            runstore=runstore,
+        )
+        for spec in json.loads(embedders.read_text())
+    ]
     ids, failed = [], []
     for c in cfgs:
         try:
             ids.append(run_benchmark(c))
-        except Exception as e:
-            if ns.bench_cmd == "run":
-                raise
-            failed.append((c.pipeline.embedder.model if c.pipeline.embedder else "?", f"{type(e).__name__}: {e}"))
+        except Exception as e:  # noqa: BLE001  one bad spec must not stop the sweep
+            failed.append((c.pipeline.embedder.model, f"{type(e).__name__}: {e}"))
             print(f"FAILED {failed[-1][0]}: {failed[-1][1]}", file=sys.stderr)
-    rs = RunStore(runstore_path(cfgs[0]))
     if ids:
-        _print(summary(rs, ids))
+        _print(summary(_runstore(runstore_path(cfgs[0])), ids))
     if failed:
         print(f"{len(failed)} spec(s) failed: " + ", ".join(m for m, _ in failed), file=sys.stderr)
-    return 0 if ids and not failed else 1
+    if failed or not ids:
+        raise typer.Exit(1)
+
+
+@bench_app.command()
+def report(runstore: RunstoreOpt = None) -> None:
+    """Summary table of every run in the store."""
+    from triplum.bench.report import summary
+
+    _print(summary(_runstore(runstore)))
+
+
+def _row(rs, run_id: str) -> dict:
+    row = rs.run(run_id)
+    if row is None:
+        raise typer.BadParameter(f"no run {run_id}")
+    return row
+
+
+@bench_app.command()
+def show(run_id: str, runstore: RunstoreOpt = None) -> None:
+    """Print a run's identity fields and its full configuration."""
+    row = _row(_runstore(runstore), run_id)
+    identity = {k: row[k] for k in row if k != "config_json"}
+    print(json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2))
+
+
+@bench_app.command()
+def rerun(
+    run_id: str, force: ForceOpt = False, resume: ResumeOpt = False, runstore: RunstoreOpt = None
+) -> None:
+    """Run a stored configuration again (lookup unless --force)."""
+    from triplum.bench.report import summary
+    from triplum.bench.runner import run_benchmark
+
+    rs = _runstore(runstore)
+    cfg = RunConfig.from_json(_row(rs, run_id)["config_json"])
+    cfg = RunConfig(
+        **{**cfg.__dict__, "force": force, "resume": resume, "runstore_path": str(rs.path)}
+    )
+    rid = run_benchmark(cfg)
+    print("reused" if rid == run_id else "new", rid)
+    _print(summary(rs, [rid]))
+
+
+@bench_app.command()
+def inspect(
+    run_id: str,
+    question: Annotated[str | None, typer.Option(help="Only this question id.")] = None,
+    json_: Annotated[bool, typer.Option("--json", help="Print the raw view as JSON.")] = False,
+    runstore: RunstoreOpt = None,
+) -> None:
+    """Per-question drill-down: answer, metrics, retrieved passages, model calls."""
+    from triplum.bench.inspect import inspect_run
+
+    view = inspect_run(_runstore(runstore), run_id, question)
+    if json_:
+        print(json.dumps(view, indent=2, default=str))
+        return
+    i = view["identity"]
+    print(
+        f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
+        f"  reader={i['reader_model']}  judge={i['judge_model']}"
+    )
+    if not view["store_available"]:
+        print("(store artifact not available: passages shown as ids only)")
+    for q in view["questions"]:
+        m = q["metrics"]
+        print(
+            f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
+            f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
+            f" latency={m['latency_s']:.3f}s usd={m['usd']}"
+        )
+        for r in q["retrieved"]:
+            text = (r["text"] or "").replace("\n", " ")[:160]
+            print(f"    #{r['chunk_id']}: {text}")
+        for e in q["events"]:
+            print(
+                f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
+                f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s"
+            )
+
+
+@bench_app.command()
+def diff(run_a: str, run_b: str, runstore: RunstoreOpt = None) -> None:
+    """Identity and config fields that differ, metric means, per-question deltas."""
+    import polars as pl
+
+    from triplum.bench.inspect import diff_runs
+
+    d = diff_runs(_runstore(runstore), run_a, run_b)
+    print("identity:", json.dumps(d["identity_diff"], default=str))
+    print("config:", json.dumps(d["config_diff"], default=str))
+    for m, (va, vb) in d["means"].items():
+        print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
+    if d["only_in_a"] or d["only_in_b"]:
+        print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
+    changed = (
+        (pl.col("d_em") != 0)
+        | (pl.col("d_f1") != 0)
+        | (pl.col("d_r5") != 0)
+        | pl.col("answer_changed")
+        | pl.col("retrieval_changed")
+    )
+    _print(d["per_question"].filter(changed))
+
+
+@bench_app.command()
+def tail(
+    run_id: str,
+    once: Annotated[bool, typer.Option("--once", help="Print once instead of following.")] = False,
+    interval: Annotated[float, typer.Option(help="Seconds between updates.")] = 1.0,
+    runstore: RunstoreOpt = None,
+) -> None:
+    """Progress of a running benchmark: done/total and the latest stage."""
+    from triplum.bench.inspect import tail_run
+
+    rs = _runstore(runstore)
+    while True:
+        t = tail_run(rs, run_id)
+        print(
+            f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}"
+        )
+        if once or t["status"] != "running":
+            return
+        time.sleep(interval)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the CLI in-process (tests): returns the exit code instead of calling sys.exit."""
+    rv = app(args=argv, standalone_mode=False)
+    return rv if isinstance(rv, int) else 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    app()

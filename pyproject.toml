@@ -11,16 +11,20 @@ dependencies = [
   "numpy>=2.3",
   "sqlite-vec>=0.1.9,<0.2",
   "openai>=3,<4",
+  "typer>=0.27",
 ]
 
 [project.scripts]
-triplum = "triplum.bench.cli:main"
+triplum = "triplum.bench.cli:app"
 
 [project.optional-dependencies]
 local = ["sentence-transformers>=6", "fastembed>=0.8"]
 
 [dependency-groups]
 dev = ["pytest>=9", "ruff>=0.14", "maturin>=1.15,<2", "marimo>=0.24"]
+docs = [
+    "mkdocs-material>=9.7",
+]
 
 [build-system]
 requires = ["maturin>=1.15,<2"]
