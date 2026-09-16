@@ -212,6 +212,18 @@ extraction output, resolution decisions, index builds), code version, pipeline c
 and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config,
 and cache state; construction cost and per-query cost are recorded separately with component
 timings. Reports are Polars frames.
+
+Protocol commitments from [`benchmarks-multihop-qa.md`](benchmarks-multihop-qa.md): the HippoRAG
+1000-question corpora rebuilt from upstream releases and verified by content hash (HotpotQA is
+9,811 passages in the released files, not the 9,221 in the paper); "generation 2" configuration
+(Llama-3.3-70B-Instruct or GPT-4o-mini reader, NV-Embed-v2 retriever, top-5) labelled in every run;
+the embedder held fixed across all pipelines, because the embedder swing is an order of magnitude
+larger than any architecture effect; every run reports EM, token-F1, Contain-Acc, Judge-Acc, R@2,
+R@5 and indexing cost; mandatory baselines on every table: closed-book (contamination floor),
+BM25-only, oracle gold passages (reader ceiling); the judge from a different model family than any
+reader under test, with an A/A win rate recorded; BenchmarkQED AutoE adopted verbatim for the
+no-gold path; MuSiQue is the dataset to run at full scale if only one can be, because it is where
+graph methods actually separate from dense retrieval.
 Protocol and metrics in [`benchmarks-multihop-qa.md`](benchmarks-multihop-qa.md).
 
 The "auto-benchmark for your corpus" is the same runner plus BenchmarkQED-style question synthesis
