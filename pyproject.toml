@@ -1,0 +1,40 @@
+[project]
+name = "triplum"
+version = "0.0.1"
+description = "Composable, benchmark-first sandbox for LLM knowledge-graph construction, GraphRAG and evaluation"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+  "polars>=1.44",
+  "pyarrow>=25",
+  "numpy>=2.3",
+  "sqlite-vec>=0.1.9,<0.2",
+  "openai>=3,<4",
+]
+
+[project.optional-dependencies]
+local = ["sentence-transformers>=6", "fastembed>=0.8"]
+
+[dependency-groups]
+dev = ["pytest>=9", "ruff>=0.14", "maturin>=1.15,<2", "marimo>=0.24"]
+
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "python"
+module-name = "triplum._core"
+manifest-path = "crates/triplum-py/Cargo.toml"
+features = ["pyo3/extension-module"]
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "Cargo.toml" }, { file = "crates/**/Cargo.toml" }, { file = "crates/**/*.rs" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

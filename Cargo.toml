@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["crates/triplum-core", "crates/triplum-py"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+arrow-schema = "59"
+pyo3 = { version = "0.29", features = ["abi3-py312"] }
+pyo3-arrow = "0.19"

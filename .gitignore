@@ -219,3 +219,8 @@ __marimo__/
 
 # git worktrees
 .worktrees/
+
+# build
+target/
+.venv/
+*.so
