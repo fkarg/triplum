@@ -118,13 +118,30 @@ class RunStore:
     def identity_hash(meta: dict) -> str:
         return content_key("run", {k: meta.get(k) for k in IDENTITY_FIELDS})
 
-    def find_run(self, identity_hash: str) -> str | None:
+    def find_run(self, identity_hash: str, status: str = "ok") -> str | None:
         row = self.conn.execute(
-            "SELECT run_id FROM runs WHERE identity_hash = ? AND status = 'ok'"
+            "SELECT run_id FROM runs WHERE identity_hash = ? AND status = ?"
             " ORDER BY created_at DESC LIMIT 1",
-            (identity_hash,),
+            (identity_hash, status),
         ).fetchone()
         return None if row is None else row[0]
+
+    def completed_questions(self, run_id: str) -> set[str]:
+        return {r[0] for r in self.conn.execute(
+            "SELECT question_id FROM run_questions WHERE run_id = ?", (run_id,)
+        )}
+
+    @contextmanager
+    def question_unit(self):
+        """One transaction per finished question: its events and its row commit together, so a
+        crash in between leaves nothing half-written and resume can trust run_questions."""
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        except BaseException:
+            self.conn.execute("ROLLBACK")
+            raise
+        self.conn.execute("COMMIT")
 
     def start_run(self, meta: dict) -> str:
         run_id = uuid.uuid4().hex[:12]

@@ -97,3 +97,32 @@ def test_cli_show_and_rerun(tmp_path, capsys):
     assert main(["bench", "rerun", rid, "--force", "--runstore", str(tmp_path / "runs.db")]) == 0
     out = capsys.readouterr().out
     assert out.startswith("new ") and rid not in out.split("\n")[0]
+
+
+def test_crash_then_resume_completes_same_run(tmp_path, monkeypatch):
+    from triplum.llm import fake as fake_mod
+
+    calls = {"n": 0}
+    orig = fake_mod._default_responder
+
+    def flaky(msgs, schema):
+        calls["n"] += 1
+        if calls["n"] == 6:
+            raise RuntimeError("simulated provider crash")
+        return orig(msgs, schema)
+
+    monkeypatch.setattr(fake_mod, "_default_responder", flaky)
+    cfg = _cfg(tmp_path, "bm25")
+    cfg = RunConfig(**{**cfg.__dict__, "judge": None})
+    with pytest.raises(RuntimeError):
+        run_benchmark(cfg)
+    rs = RunStore(tmp_path / "runs.db")
+    runs = rs.runs()
+    assert runs.height == 1 and runs["status"][0] == "failed"
+    rid = runs["run_id"][0]
+    n_done = rs.questions(rid).height
+    assert 0 < n_done < 20
+    resumed = run_benchmark(RunConfig(**{**cfg.__dict__, "resume": True}))
+    assert resumed == rid
+    assert rs.questions(rid).height == 20 and rs.runs()["status"][0] == "ok"
+    assert calls["n"] == 21  # 5 ok + 1 crash + 15 remaining; completed ones were not re-read

@@ -22,12 +22,12 @@ def _default_responder(messages: list[Message], schema: dict | None) -> str:
 class FakeLLM:
     adapter = "fake"
 
-    def __init__(self, responder: Responder = _default_responder, model: str = "fake-1") -> None:
-        self.responder = responder
+    def __init__(self, responder: Responder | None = None, model: str = "fake-1") -> None:
+        self.responder = responder  # None: use the module-level default, resolved at call time
         self.model = model
 
     def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
-        text = self.responder(messages, schema)
+        text = (self.responder or _default_responder)(messages, schema)
         parsed = json.loads(text) if schema is not None else None
         n_in = sum(len(m.content.split()) for m in messages)
         return Completion(

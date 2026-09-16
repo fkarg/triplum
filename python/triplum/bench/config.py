@@ -61,6 +61,7 @@ class RunConfig:
     principals: tuple[str, ...] = ("public",)
     seed: int = 0
     force: bool = False
+    resume: bool = False
     store_path: str | None = None
     runstore_path: str | None = None
     cache_root: str | None = None
