@@ -62,3 +62,29 @@ def test_openai_compat_embedder_calls_client():
     e = OpenAICompatEmbedder(spec, client=_Client())
     out = e.embed_queries(["a", "b"])
     assert out.shape == (2, 2) and np.allclose(out[0], [1.0, 0.0])
+
+
+import importlib.util
+
+import pytest
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed"
+)
+def test_sentence_transformers_adapter_small_model():
+    from triplum.embed.sentence_transformers import SentenceTransformersEmbedder
+
+    e = SentenceTransformersEmbedder.from_model("sentence-transformers/all-MiniLM-L6-v2")
+    v = e.embed_passages(["hello world", "hello there"])
+    assert v.shape == (2, e.spec.dims) and e.spec.runtime in {"cuda", "mps", "cpu"}
+    assert np.allclose(np.linalg.norm(v, axis=1), 1.0, atol=1e-4)
+
+
+@pytest.mark.skipif(importlib.util.find_spec("fastembed") is None, reason="extra not installed")
+def test_fastembed_adapter_small_model():
+    from triplum.embed.fastembed import FastEmbedEmbedder
+
+    e = FastEmbedEmbedder.from_model("BAAI/bge-small-en-v1.5")
+    v = e.embed_queries(["hello world"])
+    assert v.shape == (1, e.spec.dims) and e.spec.runtime == "onnx"
