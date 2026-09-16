@@ -1,0 +1,54 @@
+# AGENTS.md
+
+Conventions for anyone (human or agent) working in this repository. Read the README first, then
+`docs/research/design.md`; the design record is the source of truth for architecture decisions.
+
+## What this is
+
+triplum: a composable, benchmark-first sandbox for LLM knowledge-graph work (construction, GraphRAG
+retrieval, storage backends, evaluation). Python-first, Rust behind a clean Arrow boundary where it
+is measurably worth it. Bi-temporal facts and provenance-derived permissions are first-class and
+enforced in the store, never post-hoc. Industry-first: numbers over novelty.
+
+## Where things live
+
+- `docs/research/`: research foundation and the decision record. `design.md` is a living document:
+  change a decision there when it changes, do not append contradictions. Every doc carries its
+  snapshot date; versions and statuses are as-of that date.
+- `docs/specs/`: one spec per sub-project, written and reviewed before code. `docs/plans/`: the
+  implementation plan derived from a spec.
+- `python/triplum/`: the Python package (`data`, `llm`, `ingest`, `extract`, `store`, `retrieve`,
+  `generate`, `eval`, `bench`). `crates/`: the Cargo workspace. `notebooks/`: marimo notebooks.
+  `research/`: SOTA monitor, digests, per-paper notes (planned).
+
+## Rules that are easy to get wrong
+
+- **Placing code**: touches an LLM or a dataset loader, it is Python. Touches the graph or an index
+  and Python is the measured bottleneck, or a better crate exists, it is Rust. Never port
+  speculatively.
+- **Data layer**: the canonical tables in `design.md` D2 are the interface between modules. A
+  module accepts and returns those frames; it does not define its own row model.
+- **Visibility**: every store read takes a `Viewer`. Filtering happens inside the index, before
+  ranking. Graph kernels run on the viewer's projection. Derived content inherits the ACL of its
+  inputs and may never widen it. No community or global summaries until they are principal-scoped.
+- **Time**: UTC integer instants; closed-open intervals; open ends are a max sentinel. Rows are
+  never overwritten or deleted; invalidation closes and points at the invalidating fact.
+- **Benchmarks**: every results table carries the closed-book, BM25-only and oracle-passage
+  baselines, reports EM, F1, Contain-Acc, Judge-Acc, R@2, R@5 and indexing cost, holds the embedder
+  fixed across pipelines, and records the full run identity (see `design.md` D8). The judge comes
+  from a different model family than any reader under test.
+- **LLM calls**: through the one `LLM` protocol with the disk cache; cache keys are the full
+  effective request. Never call a provider SDK directly from pipeline code.
+- **Licences**: check before borrowing. DIGIMON has no licence (read only). `GEM/web_nlg` and
+  REBEL are non-commercial. GraphRAG-Bench arXiv 2506.02404 is academic-only.
+- **Secrets**: API keys come from the environment; never read, print or commit them.
+
+## Workflow
+
+- Spec, then plan, then code. Tests for behaviour that crosses a module boundary; the 20-question
+  fixture is the integration test for every pipeline.
+- Commit small and often. No `Co-Authored-By` or agent attribution trailers in commits or PRs.
+- New technique: it enters `docs/research/papers.md` as a candidate, gets a note when read, and
+  reaches "adopting" only with a harness run showing the delta.
+- Cross-model review at design gates via `peer-review --mode design|diff-review`; record the
+  outcome (changed / added verification / rejected with reason / no impact) in the design record.

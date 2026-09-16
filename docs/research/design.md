@@ -271,6 +271,12 @@ and tests. pytest and cargo test; one integration test per pipeline on a 20-ques
      increasing corpus scale and viewer selectivity. Question: where do the benefits of a graph
      database start to show for basic GraphRAG usage. Methodology in
      [`store-comparison.md`](store-comparison.md).
+   - **2d. Embedding sweep.** The dense baseline rerun once per embedding spec (API and local
+     models, several size tiers; list in [`embeddings.md`](embeddings.md)); the winner is then
+     pinned for 2a to 2c. Runs first, because the embedder swing on multi-hop recall is larger
+     than any architecture effect, and it is the cheapest sweep (no graph rebuild).
+   Part 1 of sub-project 2 (harness, non-graph baselines, embedding sweep) is specified in
+   [`../specs/2026-09-16-harness-and-baselines.md`](../specs/2026-09-16-harness-and-baselines.md).
    Before any graph ingestion in 2a or 2b: small deterministic temporal/ACL contract fixtures (the
    seven question families in `temporal-and-permissions.md`, at toy scale) gating on retrieval-level
    leakage of zero.
