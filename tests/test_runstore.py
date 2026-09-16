@@ -41,3 +41,29 @@ def test_find_existing_run(tmp_path):
     rs.finish_run(rid, status="ok", wall_s=0, cache_hits=0, cache_misses=0)
     assert rs.find_run(identity_hash=rs.identity_hash(META)) == rid
     assert rs.find_run(identity_hash="nope") is None
+
+
+def test_old_schema_is_migrated(tmp_path):
+    import sqlite3
+
+    db = tmp_path / "old.db"
+    conn = sqlite3.connect(db)
+    conn.executescript("""
+    CREATE TABLE runs (run_id TEXT PRIMARY KEY, identity_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
+      dataset TEXT NOT NULL, pipeline TEXT NOT NULL, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
+      code_version TEXT NOT NULL, dirty INTEGER NOT NULL, corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
+      n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT NOT NULL, judge_model TEXT,
+      seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER) STRICT;
+    CREATE TABLE run_questions (run_id TEXT NOT NULL, question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
+      answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
+      r2 REAL NOT NULL, r5 REAL NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
+      usd REAL, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL, PRIMARY KEY (run_id, question_id)) STRICT;
+    """)
+    conn.close()
+    rs = RunStore(db)
+    rid = rs.start_run(META)
+    rs.finish_run(rid, status="ok", wall_s=0, cache_hits=0, cache_misses=0)
+    assert rs.run(rid)["code_hash"] == "c0de"
+    cols = {r[1] for r in rs.conn.execute("PRAGMA table_info(run_questions)")}
+    assert "cached" in cols

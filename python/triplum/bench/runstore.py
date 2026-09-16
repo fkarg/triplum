@@ -7,6 +7,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import ClassVar
 
 import polars as pl
 
@@ -73,6 +74,25 @@ class RunStore:
         self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(DDL)
+        self._migrate()
+
+    # Columns added after the first release, with the default an old row gets. STRICT tables
+    # accept ADD COLUMN ... NOT NULL only with a default.
+    MIGRATIONS: ClassVar[dict[str, list[tuple[str, str]]]] = {
+        "runs": [
+            ("code_hash", "TEXT NOT NULL DEFAULT ''"),
+            ("reader_prompt_hash", "TEXT NOT NULL DEFAULT ''"),
+            ("judge_prompt_hash", "TEXT"),
+        ],
+        "run_questions": [("cached", "INTEGER NOT NULL DEFAULT 0")],
+    }
+
+    def _migrate(self) -> None:
+        for table, cols in self.MIGRATIONS.items():
+            have = {r[1] for r in self.conn.execute(f"PRAGMA table_info({table})")}
+            for name, decl in cols:
+                if name not in have:
+                    self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
     # ---- prices -----------------------------------------------------------------------------
 
