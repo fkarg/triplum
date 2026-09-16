@@ -5,6 +5,13 @@ description = "Composable, benchmark-first sandbox for LLM knowledge-graph const
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
   "polars>=1.44",
   "pyarrow>=25",
@@ -13,6 +20,10 @@ dependencies = [
   "openai>=3,<4",
   "typer>=0.27",
 ]
+
+[project.urls]
+Repository = "https://github.com/fkarg/triplum"
+Documentation = "https://github.com/fkarg/triplum/tree/main/docs"
 
 [project.scripts]
 triplum = "triplum.bench.cli:app"

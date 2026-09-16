@@ -65,6 +65,7 @@ nav:
       - eval: api/eval.md
       - bench: api/bench.md
   - Licences: licences.md
+  - Releasing: releasing.md
   - Research:
       - Index: research/README.md
       - Design record: research/design.md

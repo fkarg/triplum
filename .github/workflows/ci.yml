@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync (builds the Rust extension; optional extras stay out, their tests skip)
+        run: uv sync --group dev --group docs
+      - run: uv run ruff check python tests
+      - run: uv run pytest -q
+      - run: uv run mkdocs build --strict
+        if: matrix.os == 'ubuntu-latest'
