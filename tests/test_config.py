@@ -69,3 +69,18 @@ def test_cli_sweep_reads_embedder_specs(tmp_path):
     cfgs = [build_run_config(ns, embedder=e) for e in json.loads(specs.read_text())]
     assert [c.pipeline.embedder.dims for c in cfgs] == [8, 16]
     assert all(c.pipeline.name == "dense" for c in cfgs)
+
+
+def test_sweep_continues_past_failed_spec(tmp_path, capsys):
+    import json
+
+    from triplum.bench.cli import main
+
+    specs = tmp_path / "emb.json"
+    specs.write_text(json.dumps([{"kind": "fake", "dims": 8}, {"kind": "nonexistent"}, {"kind": "fake", "dims": 16}]))
+    rc = main([
+        "bench", "sweep", "--dataset", "musique", "--n", "5", "--fixture", "--reader", "fake",
+        "--embedders", str(specs), "--cache-root", str(tmp_path), "--runstore", str(tmp_path / "runs.db"),
+    ])
+    out = capsys.readouterr()
+    assert rc == 1 and "FAILED" in out.err and out.out.count("dense") == 2

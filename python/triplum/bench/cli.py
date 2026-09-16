@@ -235,10 +235,21 @@ def main(argv: list[str] | None = None) -> int:
     else:
         with open(ns.embedders) as f:
             cfgs = [build_run_config(ns, embedder=e) for e in json.load(f)]
-    ids = [run_benchmark(c) for c in cfgs]
+    ids, failed = [], []
+    for c in cfgs:
+        try:
+            ids.append(run_benchmark(c))
+        except Exception as e:
+            if ns.bench_cmd == "run":
+                raise
+            failed.append((c.pipeline.embedder.model if c.pipeline.embedder else "?", f"{type(e).__name__}: {e}"))
+            print(f"FAILED {failed[-1][0]}: {failed[-1][1]}", file=sys.stderr)
     rs = RunStore(runstore_path(cfgs[0]))
-    _print(summary(rs, ids))
-    return 0
+    if ids:
+        _print(summary(rs, ids))
+    if failed:
+        print(f"{len(failed)} spec(s) failed: " + ", ".join(m for m, _ in failed), file=sys.stderr)
+    return 0 if ids and not failed else 1
 
 
 if __name__ == "__main__":
