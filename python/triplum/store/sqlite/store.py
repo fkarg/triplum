@@ -50,11 +50,12 @@ def _q(n: int) -> str:
 
 
 def fts_query(text: str) -> str:
-    """Quote every term so user text cannot inject FTS5 operators."""
+    """Quote every term so user text cannot inject FTS5 operators, and OR them: BM25 ranks by
+    how many query terms a passage matches; FTS5's implicit AND would require all of them."""
     terms = re.findall(r"\w+", text)
     if not terms:
         return '""'
-    return " ".join(f'"{t}"' for t in terms)
+    return " OR ".join(f'"{t}"' for t in terms)
 
 
 class SqliteStore:

@@ -3,7 +3,7 @@ from triplum.store.sqlite.store import SqliteStore, fts_query
 
 
 def test_fts_query_quotes_terms():
-    assert fts_query('cat "dog" AND mat') == '"cat" "dog" "AND" "mat"'
+    assert fts_query('cat "dog" AND mat') == '"cat" OR "dog" OR "AND" OR "mat"'
     assert fts_query("") == '""'
 
 
