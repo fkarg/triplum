@@ -30,12 +30,13 @@ run store that records identity, cost and timing for every run. Nothing graph-sh
 
 ```
 uv sync --all-extras --group dev            # builds the Rust extension via maturin
-uv run pytest                               # 72 tests, all on fixtures and fakes
+uv run pytest                               # 84 tests, all on fixtures and fakes
 uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
 uv run triplum bench report
 uv run marimo edit notebooks/runs.py        # browse runs
+uv run mkdocs serve                         # these docs in the browser, http://127.0.0.1:8000
 uv run triplum bench show <run_id>          # exact configuration and identity of a run
 uv run triplum bench rerun <run_id> --force # recompute it
 uv run triplum bench run ... --resume       # finish a crashed run in place
@@ -44,8 +45,9 @@ uv run triplum bench diff <run_a> <run_b>   # what changed and by how much
 uv run triplum bench tail <run_id>          # progress of a running benchmark
 ```
 
-Runs are identified by the hash of their exact configuration and looked up before they are
-computed; expensive stages are cached and reused. The contract is in
+What a run does step by step, which module does it, and what is implemented versus planned is
+in [`docs/flow.md`](docs/flow.md). Runs are identified by the hash of their exact configuration and
+looked up before they are computed; expensive stages are cached and reused. The contract is in
 [`docs/benchmarking.md`](docs/benchmarking.md).
 
 Readers and judges are `--reader openai --reader-model <id>` with `OPENAI_API_KEY` (or any

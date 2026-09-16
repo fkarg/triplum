@@ -1,0 +1,58 @@
+site_name: triplum
+site_description: Composable, benchmark-first sandbox for LLM knowledge-graph work
+repo_url: https://github.com/fkarg/triplum
+docs_dir: docs
+# Research notes link into source files outside docs/; that is intended, so only downgrade
+# that one check. Broken links between pages still warn (`mkdocs build --strict`).
+validation:
+  links:
+    not_found: info
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: teal
+      toggle: { icon: material/brightness-7, name: dark mode }
+    - scheme: slate
+      primary: teal
+      toggle: { icon: material/brightness-4, name: light mode }
+markdown_extensions:
+  - admonition
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Overview: index.md
+  - Flow: flow.md
+  - Benchmarking and caching: benchmarking.md
+  - Licences: licences.md
+  - Research:
+      - Index: research/README.md
+      - Design record: research/design.md
+      - Landscape: research/landscape.md
+      - Multi-hop QA benchmarks: research/benchmarks-multihop-qa.md
+      - Embeddings: research/embeddings.md
+      - KG construction: research/kg-construction.md
+      - Store comparison: research/store-comparison.md
+      - Temporal and permissions: research/temporal-and-permissions.md
+      - SQLite storage: research/storage-sqlite.md
+      - Rust stack: research/rust-stack.md
+      - SOTA discovery: research/sota-discovery.md
+      - Paper ledger: research/papers.md
+      - Tooling and event logs: research/tooling-event-logs.md
+      - Naming: research/naming.md
+      - Fact check 2026-09-16: research/fact-check-2026-09-16.md
+  - Specs:
+      - Harness and baselines: specs/2026-09-16-harness-and-baselines.md
+  - Plans:
+      - Harness part 1, foundation: plans/2026-09-16-harness-part1-foundation.md
+      - Harness part 2, pipelines: plans/2026-09-16-harness-part2-pipelines.md
