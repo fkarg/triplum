@@ -1,0 +1,209 @@
+"""The run store is the metrics store: runs, per-question rows, timed and priced events, prices."""
+
+from __future__ import annotations
+
+import sqlite3
+import time
+import uuid
+from contextlib import contextmanager
+from pathlib import Path
+
+import polars as pl
+
+from triplum.cache import content_key
+from triplum.data.schema import now_us
+
+DDL = """
+CREATE TABLE IF NOT EXISTS runs (
+  run_id TEXT PRIMARY KEY, identity_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
+  dataset TEXT NOT NULL, pipeline TEXT NOT NULL, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
+  code_version TEXT NOT NULL, dirty INTEGER NOT NULL, corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
+  n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT NOT NULL, judge_model TEXT,
+  seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
+) STRICT;
+CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
+CREATE TABLE IF NOT EXISTS run_questions (
+  run_id TEXT NOT NULL REFERENCES runs(run_id), question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
+  answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
+  r2 REAL NOT NULL, r5 REAL NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
+  usd REAL, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
+  PRIMARY KEY (run_id, question_id)
+) STRICT;
+CREATE TABLE IF NOT EXISTS events (
+  run_id TEXT NOT NULL REFERENCES runs(run_id), stage TEXT NOT NULL, question_id TEXT, provider TEXT, model TEXT,
+  started_at INTEGER NOT NULL, ended_at INTEGER NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0, cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+  cached INTEGER NOT NULL DEFAULT 0, usd REAL
+) STRICT;
+CREATE INDEX IF NOT EXISTS events_run ON events(run_id, stage);
+CREATE TABLE IF NOT EXISTS prices (
+  model TEXT NOT NULL, provider TEXT NOT NULL, usd_in_per_m REAL NOT NULL, usd_out_per_m REAL NOT NULL,
+  usd_cached_in_per_m REAL NOT NULL, valid_from INTEGER NOT NULL, source TEXT NOT NULL,
+  PRIMARY KEY (model, provider, valid_from)
+) STRICT;
+CREATE TABLE IF NOT EXISTS run_artifacts (
+  run_id TEXT NOT NULL REFERENCES runs(run_id), kind TEXT NOT NULL, path TEXT NOT NULL, sha256 TEXT NOT NULL,
+  PRIMARY KEY (run_id, kind)
+) STRICT;
+"""
+
+IDENTITY_FIELDS = (
+    "dataset", "pipeline", "config_hash", "code_version", "corpus_hash", "questions_hash", "n",
+    "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json",
+)
+
+
+class RunStore:
+    def __init__(self, path: Path | str) -> None:
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(self.path, isolation_level=None)
+        self.conn.execute("PRAGMA journal_mode = WAL")
+        self.conn.execute("PRAGMA foreign_keys = ON")
+        self.conn.executescript(DDL)
+
+    # ---- prices -----------------------------------------------------------------------------
+
+    def set_price(
+        self, model: str, provider: str, *, usd_in_per_m: float, usd_out_per_m: float,
+        usd_cached_in_per_m: float, source: str, valid_from: int | None = None,
+    ) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO prices VALUES (?,?,?,?,?,?,?)",
+            (model, provider, usd_in_per_m, usd_out_per_m, usd_cached_in_per_m,
+             valid_from or now_us(), source),
+        )
+
+    def price(self, model: str) -> tuple[float, float, float] | None:
+        row = self.conn.execute(
+            "SELECT usd_in_per_m, usd_out_per_m, usd_cached_in_per_m FROM prices WHERE model = ?"
+            " ORDER BY valid_from DESC LIMIT 1",
+            (model,),
+        ).fetchone()
+        return None if row is None else (row[0], row[1], row[2])
+
+    # ---- runs -------------------------------------------------------------------------------
+
+    @staticmethod
+    def identity_hash(meta: dict) -> str:
+        return content_key("run", {k: meta.get(k) for k in IDENTITY_FIELDS})
+
+    def find_run(self, identity_hash: str) -> str | None:
+        row = self.conn.execute(
+            "SELECT run_id FROM runs WHERE identity_hash = ? AND status = 'ok'"
+            " ORDER BY created_at DESC LIMIT 1",
+            (identity_hash,),
+        ).fetchone()
+        return None if row is None else row[0]
+
+    def start_run(self, meta: dict) -> str:
+        run_id = uuid.uuid4().hex[:12]
+        cols = ["run_id", "identity_hash", "created_at", *meta.keys()]
+        vals = [run_id, self.identity_hash(meta), now_us(), *meta.values()]
+        self.conn.execute(
+            f"INSERT INTO runs({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", vals
+        )
+        return run_id
+
+    def finish_run(
+        self, run_id: str, *, status: str, wall_s: float, cache_hits: int, cache_misses: int
+    ) -> None:
+        self.conn.execute(
+            "UPDATE runs SET status = ?, wall_s = ?, cache_hits = ?, cache_misses = ?"
+            " WHERE run_id = ?",
+            (status, wall_s, cache_hits, cache_misses, run_id),
+        )
+
+    def add_question(self, run_id: str, row: dict) -> None:
+        cols = ["run_id", *row.keys()]
+        self.conn.execute(
+            f"INSERT OR REPLACE INTO run_questions({','.join(cols)})"
+            f" VALUES ({','.join('?' * len(cols))})",
+            [run_id, *row.values()],
+        )
+
+    def add_artifact(self, run_id: str, kind: str, path: str, sha256: str) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256)
+        )
+
+    def recorder(self, run_id: str) -> Recorder:
+        return Recorder(self, run_id)
+
+    # ---- reads ------------------------------------------------------------------------------
+
+    def _frame(self, sql: str, params: tuple = ()) -> pl.DataFrame:
+        cur = self.conn.execute(sql, params)
+        cols = [d[0] for d in cur.description]
+        return pl.DataFrame(cur.fetchall(), schema=cols, orient="row")
+
+    def runs(self) -> pl.DataFrame:
+        return self._frame("SELECT * FROM runs ORDER BY created_at")
+
+    def questions(self, run_id: str) -> pl.DataFrame:
+        return self._frame("SELECT * FROM run_questions WHERE run_id = ?", (run_id,))
+
+    def events(self, run_id: str) -> pl.DataFrame:
+        return self._frame(
+            "SELECT * FROM events WHERE run_id = ? ORDER BY started_at", (run_id,)
+        )
+
+
+class _Event:
+    def __init__(self) -> None:
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.cached_in = 0
+        self.cached = False
+
+    def usage(
+        self, input_tokens: int, output_tokens: int, cached_in: int = 0, cached: bool = False
+    ) -> None:
+        self.input_tokens += input_tokens
+        self.output_tokens += output_tokens
+        self.cached_in += cached_in
+        self.cached = self.cached or cached
+
+
+class Recorder:
+    def __init__(self, store: RunStore, run_id: str) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.cache_hits = 0
+        self.cache_misses = 0
+
+    def cost(
+        self, model: str | None, input_tokens: int, output_tokens: int, cached_in: int
+    ) -> float | None:
+        p = self.store.price(model) if model else None
+        if p is None:
+            return None
+        usd_in, usd_out, usd_cached = p
+        return (
+            (input_tokens - cached_in) * usd_in + cached_in * usd_cached + output_tokens * usd_out
+        ) / 1e6
+
+    @contextmanager
+    def stage(
+        self, stage: str, *, question_id: str | None = None, provider: str | None = None,
+        model: str | None = None,
+    ):
+        ev = _Event()
+        t0 = time.time_ns() // 1000
+        try:
+            yield ev
+        finally:
+            t1 = time.time_ns() // 1000
+            if ev.cached:
+                self.cache_hits += 1
+            elif ev.input_tokens or ev.output_tokens:
+                self.cache_misses += 1
+            usd = None if ev.cached else self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
+            self.store.conn.execute(
+                "INSERT INTO events(run_id, stage, question_id, provider, model, started_at,"
+                " ended_at, input_tokens, output_tokens, cached_input_tokens, cached, usd)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (self.run_id, stage, question_id, provider, model, t0, t1, ev.input_tokens,
+                 ev.output_tokens, ev.cached_in, int(ev.cached), usd),
+            )
