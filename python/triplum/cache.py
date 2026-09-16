@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,7 @@ class Cache:
     def put(self, key: str, data: bytes) -> None:
         p = self._path(key)
         p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
+        tmp = p.parent / f"{key}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"
         tmp.write_bytes(data)
         os.replace(tmp, p)
 

@@ -104,3 +104,15 @@ def test_cli_llm_json_output_field():
     ]
     llm = CliLLM(model="x", argv=argv, json_field="result")
     assert llm.complete([Message("user", "q")]).text == "ok"
+
+
+def test_cache_key_includes_endpoint_and_cli_config():
+    class _Client:
+        pass
+
+    a = OpenAICompatLLM(model="m", client=_Client())
+    b = OpenAICompatLLM(model="m", base_url="http://localhost:8000/v1", client=_Client())
+    assert a.adapter != b.adapter
+    x = CliLLM(model="m", argv=["echo"])
+    y = CliLLM(model="m", argv=["cat"])
+    assert x.adapter != y.adapter

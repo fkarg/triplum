@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -20,7 +21,7 @@ class OpenAICompatEmbedder:
         client: Any | None = None,
         batch_size: int = 128,
     ) -> None:
-        self.spec = spec
+        self.spec = replace(spec, runtime=f"api:{base_url}") if base_url else spec
         self.batch_size = batch_size
         if client is None:
             from openai import OpenAI

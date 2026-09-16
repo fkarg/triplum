@@ -26,6 +26,9 @@ class OpenAICompatLLM:
     ) -> None:
         self.model = model
         self.max_parse_retries = max_parse_retries
+        # The endpoint is part of the effective request (design D6): same model behind a
+        # different base_url must not share cache entries.
+        self.adapter = f"openai_compat:{base_url or 'default'}"
         if client is None:
             from openai import OpenAI
 

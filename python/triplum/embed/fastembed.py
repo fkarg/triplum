@@ -17,13 +17,14 @@ class FastEmbedEmbedder:
     def from_model(
         cls, name: str, *, query_prefix: str = "", passage_prefix: str = "", batch_size: int = 64
     ):
+        import fastembed
         from fastembed import TextEmbedding
 
         model = TextEmbedding(model_name=name)
         dims = next(m["dim"] for m in TextEmbedding.list_supported_models() if m["model"] == name)
         spec = EmbeddingSpec(
             model=name,
-            revision="fastembed",
+            revision=f"fastembed-{fastembed.__version__}",
             dims=int(dims),
             pooling="model",
             normalize=True,

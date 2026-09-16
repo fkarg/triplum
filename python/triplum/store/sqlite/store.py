@@ -15,7 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
+import pyarrow as pa
 
+from triplum.data.schema import CHUNKS
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import EmbeddingSpec
 from triplum.store.protocol import Capabilities
@@ -33,15 +35,8 @@ PRAGMAS = [
 DOC_COLS = ["id", "source", "uri", "observed_at", "metadata"]
 GRANT_COLS = ["document_id", "principal", "granted_at", "revoked_at"]
 CHUNK_COLS = ["id", "document_id", "parent_id", "level", "span_start", "span_end", "text"]
-CHUNK_SCHEMA = {
-    "id": pl.Int64,
-    "document_id": pl.Utf8,
-    "parent_id": pl.Int64,
-    "level": pl.Int64,
-    "span_start": pl.Int64,
-    "span_end": pl.Int64,
-    "text": pl.Utf8,
-}
+# The Polars view of the canonical Arrow schema: one definition, owned by the Rust core.
+CHUNK_SCHEMA = pl.from_arrow(pa.Table.from_pylist([], schema=CHUNKS)).schema
 
 
 def _require_cols(df: pl.DataFrame, cols: list[str], what: str) -> None:
@@ -86,36 +81,40 @@ class SqliteStore:
     # ---- documents and grants ------------------------------------------------------------
 
     def put_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None:
+        """Upsert documents and grants, then rederive every touched document's ACL
+        materialisations (acl_hash, acl_tokens on documents and chunks, vec0 partitions)."""
         _require_cols(docs, DOC_COLS, "documents")
         _require_cols(grants, GRANT_COLS, "document_grants")
-        by_doc: dict[str, set[str]] = {d: set() for d in docs["id"].to_list()}
-        for row in grants.filter(pl.col("revoked_at").is_null()).iter_rows(named=True):
-            by_doc.setdefault(row["document_id"], set()).add(row["principal"])
         with self._tx():
             self.conn.executemany(
-                "INSERT OR REPLACE INTO documents(id, source, uri, observed_at, metadata, acl_hash, acl_tokens)"
-                " VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO documents(id, source, uri, observed_at, metadata, acl_hash, acl_tokens)"
+                " VALUES (?,?,?,?,?,'','') ON CONFLICT(id) DO UPDATE SET source = excluded.source,"
+                " uri = excluded.uri, observed_at = excluded.observed_at, metadata = excluded.metadata",
                 [
-                    (
-                        r["id"],
-                        r["source"],
-                        r["uri"],
-                        int(r["observed_at"]),
-                        r["metadata"],
-                        acl_hash(by_doc[r["id"]]),
-                        acl_tokens(by_doc[r["id"]]),
-                    )
+                    (r["id"], r["source"], r["uri"], int(r["observed_at"]), r["metadata"])
                     for r in docs.iter_rows(named=True)
                 ],
             )
             self.conn.executemany(
-                "INSERT OR REPLACE INTO document_grants(document_id, principal, granted_at, revoked_at)"
-                " VALUES (?,?,?,?)",
+                "INSERT INTO document_grants(document_id, principal, granted_at, revoked_at)"
+                " VALUES (?,?,?,?) ON CONFLICT(document_id, principal, granted_at)"
+                " DO UPDATE SET revoked_at = excluded.revoked_at",
                 [
                     (r["document_id"], r["principal"], int(r["granted_at"]), r["revoked_at"])
                     for r in grants.iter_rows(named=True)
                 ],
             )
+            for doc_id in set(docs["id"].to_list()) | set(grants["document_id"].to_list()):
+                self._refresh_acl(doc_id)
+
+    def grant(self, document_id: str, principal: str, at: int) -> None:
+        with self._tx():
+            self.conn.execute(
+                "INSERT OR IGNORE INTO document_grants(document_id, principal, granted_at, revoked_at)"
+                " VALUES (?,?,?,NULL)",
+                (document_id, principal, at),
+            )
+            self._refresh_acl(document_id)
 
     def revoke(self, document_id: str, principal: str, at: int) -> None:
         with self._tx():
@@ -309,9 +308,9 @@ class SqliteStore:
                 ).fetchall()
             )
         cands.sort(key=lambda r: r[1])
-        ids = [c[0] for c in cands[:k]]
-        visible = set(self.get_chunks(ids, viewer)["id"].to_list())
-        rows = [(cid, 1.0 - dist) for cid, dist in cands[:k] if cid in visible]
+        ids = [c[0] for c in cands]
+        visible = set(self.get_chunks(ids, viewer)["id"].to_list()) if ids else set()
+        rows = [(cid, 1.0 - dist) for cid, dist in cands if cid in visible][:k]
         return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
 
     # ---- helpers ---------------------------------------------------------------------------

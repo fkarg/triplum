@@ -308,6 +308,19 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-16, `peer-review --mode diff-review` on the part-1 implementation (scaffold, data layer,
+  store, model protocols), peer: Codex (GPT family, CLI default model). Verdict "challenges".
+  **Found unique defects, all fixed with regression tests**: `INSERT OR REPLACE` on documents
+  cascaded and deleted the document's chunks and FTS rows on a second `put_documents`; grant
+  changes through `put_documents` left `chunks.acl_tokens` and vec0 partitions stale; vector search
+  cut top-k before the exact visibility check and the principal-set hash used an ambiguous NUL
+  join; the LLM cache key ignored adapter configuration (`base_url`, CLI argv), letting two
+  endpoints replay each other's answers. **Also fixed**: `level` typed Int64 in the store's chunk
+  frame against Int32 in the canonical schema (the Polars view is now derived from the Arrow
+  schema); a tmp-file race in the cache; fastembed's constant revision (now package version).
+  **Rejected/no impact**: none. The peer could not execute the Python tests (no polars on its
+  host) or build the PyO3 crate (host Python 3.9); those paths are covered by our own suite.
+
 - 2026-09-16, `peer-review --mode design`, peer: Codex (GPT family, CLI default model). Verdict
   "challenges". Ten executable falsification attempts. **Changed the decision**: separate
   proposition / assertion / extraction identities; `recorded_at` on support rows; entity attributes
