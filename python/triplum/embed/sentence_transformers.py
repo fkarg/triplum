@@ -26,7 +26,7 @@ def _hf_commit(name: str) -> str | None:
 
         for repo in scan_cache_dir().repos:
             if repo.repo_id == name and repo.revisions:
-                return sorted(repo.revisions, key=lambda r: r.last_modified)[-1].commit_hash
+                return max(repo.revisions, key=lambda r: r.last_modified).commit_hash
     except Exception:  # noqa: BLE001 - cache scan is best effort
         return None
     return None
