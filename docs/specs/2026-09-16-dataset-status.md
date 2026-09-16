@@ -18,6 +18,10 @@ adapter and whether its two required protocol artifacts are usable on this machi
   - `invalid`: both files exist but either hash does not match.
 - The command prints the data root and directs users to `triplum data fetch` when a dataset is not
   usable.
+- It prints a brief state legend. In particular, `verified` means the **local** question and
+  corpus files match their pinned SHA-256 hashes; it does not describe the remote download source.
+- The legend explains that `fetch` downloads only missing artifacts, then verifies both files; it
+  does not overwrite an existing invalid artifact.
 - After the status rows it renders the normal Typer group help, including every available
   subcommand. This is generated from the group so future data commands do not require a second
   manually maintained list.

@@ -169,8 +169,11 @@ def data(ctx: typer.Context) -> None:
     print(f"data root: {states[0].questions_path.parent}")
     for state in states:
         print(f"{state.name}: {state.state}")
+    print("States: verified = local files match pinned SHA-256; partial = one local file;")
+    print("        not downloaded = no local files; invalid = one or both local hashes mismatch.")
+    print("Fetch: downloads missing files, then verifies both; it does not overwrite invalid files.")
     if any(state.state != "verified" for state in states):
-        print("Run `triplum data fetch` to download or repair datasets.")
+        print("Run `triplum data fetch` to download missing datasets; remove invalid files first.")
     print()
     print(ctx.get_help())
 

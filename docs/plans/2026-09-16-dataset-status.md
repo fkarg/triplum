@@ -5,6 +5,8 @@
 **Architecture:** Add a small status value and read-only inspection function beside the existing
 HippoRAG artifact registry. Configure the `data` Typer group to call that function only when it
 has no subcommand, then render its generated help; `fetch` remains untouched.
+The status output includes a concise legend so `verified` is unambiguously local hash verification.
+It also says that `fetch` downloads missing files but does not overwrite invalid ones.
 
 **Files:**
 

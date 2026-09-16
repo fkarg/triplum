@@ -76,7 +76,9 @@ def test_cli_data_lists_registered_datasets_without_fetching(tmp_path, monkeypat
     assert main(["data"]) == 0
     out = capsys.readouterr().out
     assert "hotpotqa" in out and "musique" in out and "twowiki" in out
-    assert out.count("not downloaded") == 3
+    assert all(f"{name}: not downloaded" in out for name in ("hotpotqa", "musique", "twowiki"))
+    assert "States: verified = local files match pinned SHA-256" in out
+    assert "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files." in out
     assert "Usage: pytest data" in out and "Commands" in out and "fetch" in out
     assert not (tmp_path / "hipporag").exists()
 
