@@ -13,6 +13,9 @@ dependencies = [
   "openai>=3,<4",
 ]
 
+[project.scripts]
+triplum = "triplum.bench.cli:main"
+
 [project.optional-dependencies]
 local = ["sentence-transformers>=6", "fastembed>=0.8"]
 

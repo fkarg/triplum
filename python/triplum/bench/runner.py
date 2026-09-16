@@ -33,7 +33,7 @@ def code_version() -> tuple[str, int]:
             ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
         ).stdout.strip()
         return sha, int(porcelain != "")
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown", 1
 
 
@@ -52,9 +52,17 @@ def _retrieve(cfg: RunConfig, ds, store, embedder, reranker, viewer):
     raise ValueError(f"unknown pipeline {p.name}")
 
 
+def cache_root(cfg: RunConfig) -> Path:
+    return Path(cfg.cache_root) if cfg.cache_root else default_root()
+
+
+def runstore_path(cfg: RunConfig) -> Path:
+    return Path(cfg.runstore_path) if cfg.runstore_path else cache_root(cfg) / "runs.db"
+
+
 def run_benchmark(cfg: RunConfig) -> str:
     t_start = time.perf_counter()
-    root = Path(cfg.cache_root) if cfg.cache_root else default_root()
+    root = cache_root(cfg)
     ds = hr.load_fixture(cfg.dataset, cfg.n) if cfg.fixture else hr.load(cfg.dataset, cfg.n)
     p = cfg.pipeline
     needs_embed = p.name in ("dense", "hybrid")
@@ -64,7 +72,7 @@ def run_benchmark(cfg: RunConfig) -> str:
     judge = factories.make_llm(cfg.judge, root) if cfg.judge else None
     viewer = Viewer(principals=frozenset(cfg.principals))
     sha, dirty = code_version()
-    rs = RunStore(cfg.runstore_path or root / "runs.db")
+    rs = RunStore(runstore_path(cfg))
     meta = {
         "dataset": ds.name,
         "pipeline": p.name,

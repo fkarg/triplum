@@ -26,3 +26,32 @@ def test_factories_build_fakes(tmp_path):
     llm = factories.make_llm(LLMConfig(kind="fake"), cache_root=tmp_path)
     assert isinstance(llm, CachedLLM)
     assert factories.make_reranker(None) is None
+
+
+def test_cli_builds_run_config(tmp_path):
+    from triplum.bench.cli import build_run_config, parse_args
+
+    ns = parse_args([
+        "bench", "run", "--pipeline", "dense", "--dataset", "musique", "--n", "20", "--fixture",
+        "--reader", "fake", "--embedder", "fake", "--judge", "fake", "--cache-root", str(tmp_path),
+    ])
+    rc = build_run_config(ns)
+    assert rc.pipeline.name == "dense" and rc.n == 20 and rc.fixture
+    assert rc.pipeline.embedder.kind == "fake"
+    assert rc.judge is not None and rc.cache_root == str(tmp_path)
+
+
+def test_cli_sweep_reads_embedder_specs(tmp_path):
+    import json
+
+    from triplum.bench.cli import build_run_config, parse_args
+
+    specs = tmp_path / "emb.json"
+    specs.write_text('[{"kind": "fake", "dims": 8}, {"kind": "fake", "dims": 16}]')
+    ns = parse_args([
+        "bench", "sweep", "--dataset", "musique", "--fixture", "--reader", "fake",
+        "--embedders", str(specs), "--cache-root", str(tmp_path),
+    ])
+    cfgs = [build_run_config(ns, embedder=e) for e in json.loads(specs.read_text())]
+    assert [c.pipeline.embedder.dims for c in cfgs] == [8, 16]
+    assert all(c.pipeline.name == "dense" for c in cfgs)
