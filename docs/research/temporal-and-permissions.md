@@ -80,7 +80,7 @@ to attach a single `valid_from`/`valid_to` to a fact extracted from a sentence a
 | ComplexTempQA | ~100M QA pairs; across-time comparison, temporal aggregation, multi-hop ordering | arXiv:2406.04866 (EMNLP) |
 | Test of Time (ToT) | fully synthetic, so no pretraining contamination; isolates graph structure, fact order, question type | arXiv:2406.09170 |
 | TGB 2.0 | future-link prediction on large multi-relational temporal graphs (up to 53M edges); fixes inconsistent TKG evaluation | arXiv:2406.09639 (NeurIPS 2024 D&B) |
-| ECT-QA (TG-RAG) | time-sensitive QA over earnings calls with an **incremental update protocol**: evaluate before and after ingesting a new time slice | arXiv:2510.13590 |
+| ECT-QA (TG-RAG) | time-sensitive QA over earnings calls with an **incremental update protocol**: evaluate before and after ingesting a new time slice; released as HF `austinmyc/ECT-QA` (MIT, ungated): 480 transcripts split old/base/new, 1,005 local + 100 global questions, 261 unanswerable | arXiv:2510.13590 |
 
 ECT-QA's incremental protocol is the one closest to our episodic-ingestion requirement: split the
 corpus into a base period and an increment, then measure both answer quality and update cost/stability
@@ -88,7 +88,8 @@ across the boundary. For orientation across the field, Piryani et al.'s temporal
 (arXiv:2505.20243, rev. 2026) is the current map.
 
 None of these evaluate transaction-time as-of ("what did the system believe last March"), and none
-model a viewer.
+model a viewer. Viewer-conditional benchmarks do exist in adjacent modalities (GateMem for
+conversational memory, RBAC-Text2SQL for SQL); see [`benchmarks-catalogue.md`](benchmarks-catalogue.md) §3.5.
 
 ### Standards and store conventions
 
@@ -309,13 +310,19 @@ Do not build principal-scoped communities in v1. The options, in order of what w
 
 ### Evaluating this
 
-No published benchmark combines temporal and ACL dimensions. The closest artefacts: ECT-QA's
-incremental-update protocol (temporal only); TIQ/TimeQA/ToT (temporal only); and ARBITER (Lorenzo et
-al., arXiv:2512.20535, Dec 2025), which builds a *synthetic* RBAC corpus precisely because real
+No published benchmark combines valid time, transaction time and a viewer, and none applies a
+viewer predicate to *documents under retrieval*. The closest artefacts: ECT-QA's incremental-update
+protocol (temporal only); TIQ/TimeQA/ToT (temporal only); ARBITER (Lorenzo et al.,
+arXiv:2512.20535, Dec 2025), which builds a *synthetic* RBAC corpus precisely because real
 enterprise data cannot be shared and existing NLP datasets lack role–permission structure, and
-evaluates role-aware retrieval on 389 queries (85% accuracy / 89% F1 on query filtering). Its own
-stated limitation is that it does not cover temporal access restrictions or role inheritance. So we
-build one.
+evaluates role-aware retrieval on 389 queries (85% accuracy / 89% F1 on query filtering), but has
+released no data and by its own statement covers neither temporal access restrictions nor role
+inheritance; and GateMem (arXiv:2606.18829, CC BY 4.0, released), which is conversational memory
+rather than document retrieval but already has principals with roles, an `as_of_turn_id` prefix
+cut that behaves like transaction time within an episode, canary `leak_targets`, and
+answer/refuse/answer_redacted/no_memory as four distinct expected actions. Four of the design
+points below therefore have prior art in GateMem and should cite it rather than claim novelty. So
+we build one, for the document-retrieval modality and the bi-temporal axis that nothing covers.
 
 **Generator.** Scripted entity timelines (employer, role, price, address) with state changes at known
 world times. Each change is reported by 1–3 documents at *report* times that lag, and sometimes

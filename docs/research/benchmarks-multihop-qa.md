@@ -125,13 +125,13 @@ Everything below was verified on the linked page.
 | Benchmark | Size | Corpus | Ground truth | License | Agentic? |
 |---|---|---|---|---|---|
 | **FRAMES** [2409.12941](https://arxiv.org/abs/2409.12941), NAACL'25, HF `google/frames-benchmark` | 824 (test) | **none shipped** | short answer + gold Wikipedia URLs | Apache-2.0 | optional |
-| **MultiHop-RAG** [2401.15391](https://arxiv.org/abs/2401.15391), HF `yixuantt/MultiHopRAG` | 2,556 (HF shows 2,560) | 609 news articles | short answer + `evidence_list` chunks | ODC-BY | no |
-| **BrowseComp-Plus** [2508.06600](https://arxiv.org/abs/2508.06600), ACL'26, HF `Tevatron/browsecomp-plus` | 830 | **100,195 docs** | short answer + 2 tiers of gold doc ids | MIT | **required** |
+| **MultiHop-RAG** [2401.15391](https://arxiv.org/abs/2401.15391), HF `yixuantt/MultiHopRAG` | 2,556 (301 null) | 609 news articles | short answer + `evidence_list` chunks | ODC-BY | no |
+| **BrowseComp-Plus** [2508.06600](https://arxiv.org/abs/2508.06600), ACL'26, HF `Tevatron/browsecomp-plus` (queries, 11.6 GB) + `Tevatron/browsecomp-plus-corpus` (5.3 GB) | 830 | **100,195 docs** | short answer + 2 tiers of gold doc ids | MIT (both repos) | **required** |
 | **LongMemEval** [2410.10813](https://arxiv.org/abs/2410.10813), ICLR'25, HF `xiaowu0162/longmemeval` | 500 | chat history (`_S` ~115k tok, `_M` ~500 sessions) | answer + evidence session ids | MIT | no |
 | **Loong** [2406.17419](https://arxiv.org/abs/2406.17419), EMNLP'24, ModelScope `iic/Loong` | 1,600 | ~11 docs/instance, 10–250K tok | golden answer + 0–100 judge rubric | Apache-2.0 (repo badge) | no |
-| **GraphRAG-Bench (a)** [2506.02404](https://arxiv.org/abs/2506.02404), HF `jeremycp3/GraphRAG-Bench` | 1,018 | ~7M words, 20 CS textbooks | mixed + gold expert rationales | **academic-only, no redistribution** | no |
-| **GraphRAG-Bench (b)** [2506.05690](https://arxiv.org/abs/2506.05690) "When to use Graphs in RAG", HF `GraphRAG-Bench/GraphRAG-Bench` | 4,072 (medical 2,060 + novel 2,012) | domain corpora | answer + `evidence` + `evidence_relations` | MIT | no |
-| **WildGraphBench** [2602.02053](https://arxiv.org/abs/2602.02053), Findings ACL'26, HF `Bstwpy/WildGraphBench` | 1,197 (abstract says 1,100) | raw web pages cited by Wikipedia | short answer / multi-fact / statement rubric | Apache-2.0 | no |
+| **GraphRAG-Bench (a)** [2506.02404](https://arxiv.org/abs/2506.02404), HF `Awesome-GraphRAG/GraphRAG-Bench` (moved from `jeremycp3/`) | 1,018 | ~7M words, 20 CS textbooks | mixed + gold expert rationales | **academic-only, no redistribution** | no |
+| **GraphRAG-Bench (b)** [2506.05690](https://arxiv.org/abs/2506.05690) "When to use Graphs in RAG", HF `GraphRAG-Bench/GraphRAG-Bench` | 4,072 (medical 2,060 + novel 2,012) | domain corpora | full-sentence answer + `evidence` (sentence strings, no doc ids) + `evidence_relations` (one free-text string) | **none on the data card**; MIT only via a badge to the code repo | no |
+| **WildGraphBench** [2602.02053](https://arxiv.org/abs/2602.02053), Findings ACL'26, HF `Bstwpy/WildGraphBench` | 1,197 (12 splits; the abstract's 1,100 is stale) | raw web pages cited by Wikipedia | full-sentence answer + `ref_urls` (the card's `gold_statements` field is not in the data) | Apache-2.0 | no |
 | **InfoDeepSeek** [2505.15872](https://arxiv.org/abs/2505.15872) | 245 | **live web** | short answer, no gold docs | CC BY-NC 4.0 | **required** |
 
 **FRAMES** tests end-to-end RAG factuality on questions needing 2–15 Wikipedia articles (~36% need
@@ -159,7 +159,7 @@ temporal reasoning, knowledge updates, abstention. QA correctness via GPT-4o aut
 and session-level recall. Relevance to `triplum`: **it is the only benchmark here whose corpus grows
 over time**, which is exactly what a persistent KG is for. Low priority now; shape the ingestion API
 so it can be added. (`xiaowu0162/longmemeval` is marked deprecated in favour of
-`longmemeval-cleaned`, whose license I did not verify.)
+`longmemeval-cleaned`; both cards declare MIT, checked 2026-09-16.)
 
 **Loong** is constructed so that *every* document is load-bearing — Spotlight Locating 250,
 Comparison 300, Clustering 641, Chain of Reasoning 409, across finance/legal/academic, EN+ZH. GPT-4
@@ -171,9 +171,12 @@ makes it a useful negative control for a GraphRAG claim and a poor primary targe
 over CS textbooks with gold expert rationales, scored on accuracy plus R/AR reasoning scores — but
 its license is academic-research-only with redistribution and modification prohibited, which is a
 hard blocker. (b) 2506.05690 has four difficulty levels (L1 fact retrieval → L4 creative
-generation), is scored on Accuracy / ROUGE-L / Coverage / Factual Score, and is MIT. Take (b): the
-license works and `evidence_relations` gives a gold-triplet signal alongside 2Wiki's. The repo
-asserts ICLR'26; the arXiv page carries no venue string.
+generation), is scored on Accuracy / ROUGE-L / Coverage / Factual Score. Its HF card declares no
+licence; MIT appears only as a badge pointing at the code repo, the same authoritativeness problem
+as `102202132zbz/rag_test` in §1.3. Its `evidence` is a list of sentence strings and
+`evidence_relations` a single free-text string per question, so it is not a drop-in gold-triple
+signal; see [`benchmarks-catalogue.md`](benchmarks-catalogue.md). The repo asserts ICLR'26; the
+arXiv page carries no venue string.
 
 **WildGraphBench** (the arXiv id in the brief is real and the title matches) harvests the *external
 reference URLs* of high-citation-density Wikipedia pages with full raw text — boilerplate, nav, ads,
@@ -192,7 +195,7 @@ non-reproducible — cite it for metric design, do not adopt it.
 Also tracked, not adopted: **DeepResearch Bench** ([2506.11763](https://arxiv.org/abs/2506.11763),
 100 PhD-level report tasks, RACE reference-based criteria + FACT citation metrics) and **ResearchQA**
 ([2509.00496](https://arxiv.org/abs/2509.00496), ~21k queries / ~160k rubric items from survey
-articles across 75 fields, license unstated). Both score long-form output against rubrics — the same
+articles across 75 fields, HF card declares MIT). Both score long-form output against rubrics — the same
 machinery §4.4 needs. **Three name collisions to guard against: GraphRAG-Bench ×2 (above),
 "DeepResearch Bench" vs FutureSearch's "Deep Research Bench"
 ([2506.06287](https://arxiv.org/abs/2506.06287)), and ResearchQA 2509.00496 vs 2607.11074. Cite
@@ -609,7 +612,9 @@ rubric path, and is already implemented in `benchmark_qed/autoe/assertion/`.
 7. **Second tier of datasets, in priority order: BrowseComp-Plus** (the only fixed-corpus, tiered-
    gold, MIT-licensed, genuinely agentic benchmark), **WildGraphBench** (noisy real-world corpora,
    Apache-2.0, already benchmarks the exact systems `triplum` reimplements), **GraphRAG-Bench
-   2506.05690** (MIT, ships `evidence_relations`). Shape the dataset adapter so a benchmark can
+   2506.05690** (licence undeclared on the data card, and `evidence_relations` is free text, not
+   triples; demoted to "settle the licence first", see `benchmarks-catalogue.md`). Shape the
+   dataset adapter so a benchmark can
    declare its own metric set, its own gold-label tier(s), and whether it requires an agentic loop.
 8. **Exclude for licensing:** GraphRAG-Bench 2506.02404 (academic-only, no redistribution) and
    InfoDeepSeek (CC BY-NC, and live-web non-reproducible).
@@ -657,8 +662,8 @@ rubric path, and is already implemented in `benchmark_qed/autoe/assertion/`.
 - **Which judge models the 2026 papers actually use is only partly documented.** FRAMES
   (Gemini-Pro-1.5), LongMemEval (GPT-4o), GraphRAG-Bench (GPT-4o-mini) and BenchmarkQED's default
   (`gpt-4.1`) are verified; Edge et al. never states its judge. There is no 2026 consensus judge.
-- **Size discrepancies to resolve before publishing:** MultiHop-RAG 2,556 (paper) vs 2,560 (HF);
-  WildGraphBench 1,100 (abstract) vs 1,197 (repo README).
+- ~~Size discrepancies to resolve before publishing~~ Resolved 2026-09-16: MultiHop-RAG is 2,556
+  on datasets-server; WildGraphBench's 12 split counts sum to 1,197, the abstract is stale.
 - **BenchmarkQED has no accompanying arXiv paper** that I could find — only the MSR blog and the
   repo. Cite the source code.
 - **Does 2Wiki's `evidences` field (gold KG triples) support a direct triplet-extraction metric?**
