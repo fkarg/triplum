@@ -68,7 +68,7 @@ fails to load.
 | `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with state/action explanations and generated command help; does not create or migrate a database |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |
-| `triplum bench report` | summary frame over every run in the store |
+| `triplum bench report` | every run as a compact block of field/value pairs wrapped to terminal width; all metrics retained, missing values shown as `n/a`, floats at six significant digits |
 | `triplum bench show <run>` | identity fields and the full config JSON of one run |
 | `triplum bench rerun <run> [--force] [--resume]` | replays a stored config through step 3 onwards |
 | `triplum bench inspect <run> [--question <id>] [--json]` | answers, metrics, retrieved passages and model calls per question |

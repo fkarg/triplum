@@ -4,6 +4,7 @@ The command surface is documented in docs/flow.md; `main(argv)` runs it in-proce
 """
 
 import json
+import shutil
 import sqlite3
 import sys
 import time
@@ -153,6 +154,12 @@ def _print(df) -> None:
         print(df)
 
 
+def _print_summary(df) -> None:
+    from triplum.bench.report import format_summary
+
+    print(format_summary(df, width=shutil.get_terminal_size().columns))
+
+
 def _runstore(path: Path | None):
     from triplum.bench.runstore import RunStore
     from triplum.cache import default_root
@@ -272,7 +279,7 @@ def run(
         runstore=runstore,
     )
     rid = run_benchmark(cfg)
-    _print(summary(_runstore(runstore_path(cfg)), [rid]))
+    _print_summary(summary(_runstore(runstore_path(cfg)), [rid]))
 
 
 @bench_app.command()
@@ -328,7 +335,7 @@ def sweep(
             failed.append((c.pipeline.embedder.model, f"{type(e).__name__}: {e}"))
             print(f"FAILED {failed[-1][0]}: {failed[-1][1]}", file=sys.stderr)
     if ids:
-        _print(summary(_runstore(runstore_path(cfgs[0])), ids))
+        _print_summary(summary(_runstore(runstore_path(cfgs[0])), ids))
     if failed:
         print(f"{len(failed)} spec(s) failed: " + ", ".join(m for m, _ in failed), file=sys.stderr)
     if failed or not ids:
@@ -337,10 +344,10 @@ def sweep(
 
 @bench_app.command()
 def report(runstore: RunstoreOpt = None) -> None:
-    """Summary table of every run in the store."""
+    """Summary of every run, wrapped to fit the terminal."""
     from triplum.bench.report import summary
 
-    _print(summary(_runstore(runstore)))
+    _print_summary(summary(_runstore(runstore)))
 
 
 def _row(rs, run_id: str) -> dict:
@@ -373,7 +380,7 @@ def rerun(
     )
     rid = run_benchmark(cfg)
     print("reused" if rid == run_id else "new", rid)
-    _print(summary(rs, [rid]))
+    _print_summary(summary(rs, [rid]))
 
 
 @bench_app.command()

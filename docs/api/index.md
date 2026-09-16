@@ -19,7 +19,7 @@ signature is still shown.
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
 | `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.hipporag.load` | metrics, judge, datasets under the HippoRAG protocol |
-| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting |
+| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; terminal summaries wrap per run without dropping fields |
 | `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status and read-only recent-run overview, state explanations and generated subcommand help |
 | `triplum.ingest` | planned (2a) | chunking | hierarchical chunking for the graph pipelines |
 | `triplum.extract` | planned (2a, 2b) | entity and fact extraction | fills `entities`, `facts`, `fact_support`, `mentions` |
