@@ -55,6 +55,12 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
 - Spec, then plan, then code. Tests for behaviour that crosses a module boundary; the 20-question
   fixture is the integration test for every pipeline.
 - Commit small and often. No `Co-Authored-By` or agent attribution trailers in commits or PRs.
+- **Docs track the code.** `docs/flow.md` (what a run does, implemented vs planned) and
+  `docs/api/index.md` (module map: status, key symbols, contracts) describe the implementation
+  state; a change that adds a module, a stage, a pipeline, a CLI command or moves something from
+  planned to done updates them in the same commit. The per-package API pages are generated from
+  the source, so a new module only needs a `::: module` line in `docs/api/<package>.md` and the
+  nav in `mkdocs.yml`. `uv run mkdocs build --strict` must pass.
 - New technique: it enters `docs/research/papers.md` as a candidate, gets a note when read, and
   reaches "adopting" only with a harness run showing the delta.
 - Cross-model review at design gates via `peer-review --mode design|diff-review`; record the
