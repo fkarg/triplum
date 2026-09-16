@@ -43,7 +43,7 @@ class SentenceTransformersEmbedder:
         spec = EmbeddingSpec(
             model=name,
             revision=str(revision),
-            dims=int(model.get_sentence_embedding_dimension()),
+            dims=int(model.get_embedding_dimension()),
             pooling="model",
             normalize=True,
             query_prefix=query_prefix,
