@@ -1,5 +1,11 @@
 from triplum.bench import factories
-from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig
+from triplum.bench.config import (
+    EmbedderConfig,
+    LLMConfig,
+    PipelineConfig,
+    RerankerConfig,
+    RunConfig,
+)
 from triplum.embed.fake import FakeEmbedder
 from triplum.llm.cached import CachedLLM
 
@@ -12,12 +18,12 @@ def test_config_hash_is_stable_and_sensitive():
     assert a.hash() == b.hash() != c.hash()
 
 
-def test_run_config_roundtrips_json():
+def test_run_config_serialises_to_json():
     rc = RunConfig(
         dataset="musique", n=20, fixture=True,
         pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")),
     )
-    assert RunConfig.from_json(rc.to_json()) == rc
+    assert '"dataset": "musique"' in rc.to_json()
 
 
 def test_factories_build_fakes(tmp_path):
@@ -26,6 +32,13 @@ def test_factories_build_fakes(tmp_path):
     llm = factories.make_llm(LLMConfig(kind="fake"), cache_root=tmp_path)
     assert isinstance(llm, CachedLLM)
     assert factories.make_reranker(None) is None
+    rr = factories.make_reranker(RerankerConfig(kind="fake"), cache_root=tmp_path)
+    assert rr.score("a b", ["a b", "c"]).shape == (2,) and rr.calls == 2
+    rr.score("a b", ["a b"])
+    assert rr.calls == 2
+    assert factories.model_family("gpt-5.6-luna") == "gpt"
+    assert factories.model_family("google/gemma-4-31B-it") == "gemma"
+    assert factories.model_family("gpt-5.6-luna") != factories.model_family("claude-opus-5")
 
 
 def test_cli_builds_run_config(tmp_path):

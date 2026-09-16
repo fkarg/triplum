@@ -34,6 +34,7 @@ def summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
                 "latency_s": q["latency_s"].mean(),
                 "usd_per_q": q["usd"].mean(),
                 "usd_total": q["usd"].sum(),
+                "usd_spent": ev.filter(pl.col("cached") == 0)["usd"].sum(),
                 "indexing_s": float((idx["ended_at"] - idx["started_at"]).sum() or 0) / 1e6,
                 "cache_hits": r["cache_hits"],
                 "cache_misses": r["cache_misses"],

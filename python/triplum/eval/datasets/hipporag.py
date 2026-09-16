@@ -72,6 +72,11 @@ class HashMismatch(RuntimeError):
     pass
 
 
+class GoldMappingError(ValueError):
+    """A gold passage is missing from the corpus or a corpus key is ambiguous. Silently dropping
+    it would score an empty gold list as perfect recall, so the load fails instead."""
+
+
 @dataclass(frozen=True)
 class Dataset:
     name: str
@@ -130,7 +135,10 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None):
     for i, rec in enumerate(corpus):
         cid = i + 1
         doc_id = f"{name}:{i}"
-        key_to_chunk.setdefault(gold_key(name, rec["title"], rec["text"]), cid)
+        key = gold_key(name, rec["title"], rec["text"])
+        if key in key_to_chunk:
+            raise GoldMappingError(f"{name}: duplicate corpus key {key[0]!r} at passage {i}")
+        key_to_chunk[key] = cid
         text = f"{rec['title']}\n{rec['text']}"
         doc_rows.append((doc_id, f"hipporag/{name}", None, 0, json.dumps({"title": rec["title"]})))
         grant_rows.append((doc_id, "public", 0, None))
@@ -147,7 +155,10 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None):
             aliases = [answer]
             gold = sorted({(t,) for t, _ in q["supporting_facts"]})
             qtype = q.get("type", "")
-        gold_ids = sorted({key_to_chunk[g] for g in gold if g in key_to_chunk})
+        missing = [g for g in gold if g not in key_to_chunk]
+        if missing or not gold:
+            raise GoldMappingError(f"{name}: question {qid} gold not in corpus: {missing or 'none'}")
+        gold_ids = sorted({key_to_chunk[g] for g in gold})
         q_rows.append((qid, q["question"], answer, aliases, gold_ids, qtype))
     return (
         pl.DataFrame(q_rows, schema=QUESTION_SCHEMA, orient="row"),

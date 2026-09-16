@@ -16,9 +16,10 @@ from triplum.bench.index import ensure_documents, ensure_embeddings
 from triplum.bench.runstore import RunStore
 from triplum.cache import default_root
 from triplum.data.viewer import Viewer
+from triplum.eval import judge as judge_mod
 from triplum.eval import metrics
 from triplum.eval.datasets import hipporag as hr
-from triplum.eval.judge import judge_correct
+from triplum.generate import reader as reader_mod
 from triplum.generate.reader import read
 from triplum.retrieve import stages
 from triplum.store.sqlite.store import SqliteStore
@@ -67,7 +68,14 @@ def run_benchmark(cfg: RunConfig) -> str:
     p = cfg.pipeline
     needs_embed = p.name in ("dense", "hybrid")
     embedder = factories.make_embedder(p.embedder, root) if needs_embed and p.embedder else None
-    reranker = factories.make_reranker(p.reranker) if p.name == "hybrid" else None
+    real_models = cfg.judge is not None and cfg.judge.kind != "fake" and p.reader.kind != "fake"
+    if real_models and factories.model_family(cfg.judge.model) == factories.model_family(
+        p.reader.model
+    ):
+        raise ValueError(
+            f"judge {cfg.judge.model} and reader {p.reader.model} are the same model family"
+        )
+    reranker = factories.make_reranker(p.reranker, root) if p.name == "hybrid" else None
     reader = factories.make_llm(p.reader, root)
     judge = factories.make_llm(cfg.judge, root) if cfg.judge else None
     viewer = Viewer(principals=frozenset(cfg.principals))
@@ -90,12 +98,18 @@ def run_benchmark(cfg: RunConfig) -> str:
         "seed": cfg.seed,
         "viewer_json": json.dumps(sorted(viewer.principals)),
         "host": platform.node(),
+        "reader_prompt_hash": reader_mod.PROMPT_HASH,
+        "judge_prompt_hash": judge_mod.PROMPT_HASH if cfg.judge else None,
     }
     if not cfg.force:
         existing = rs.find_run(rs.identity_hash(meta))
         if existing:
             return existing
     run_id = rs.start_run(meta)
+    rs.snapshot_prices(
+        run_id,
+        [p.reader.model, cfg.judge.model if cfg.judge else None, embedder.spec.model if embedder else None],
+    )
     rec = rs.recorder(run_id)
     store_path = (
         Path(cfg.store_path)
@@ -109,10 +123,16 @@ def run_benchmark(cfg: RunConfig) -> str:
         ensure_documents(store, ds, rec)
         if embedder is not None:
             ensure_embeddings(store, ds, embedder, rec)
-        with rec.stage("retrieve"):
+        with rec.stage(
+            "retrieve",
+            model=reranker.spec.model if reranker else None,
+            provider=reranker.spec.runtime if reranker else None,
+        ) as ev:
             retrieved = _retrieve(cfg, ds, store, embedder, reranker, viewer)
+            if reranker is not None:
+                ev.usage(reranker.calls, 0, cached=reranker.calls == 0)
         answers = read(
-            ds.questions, retrieved, store, reader, viewer, factories.gen_params(p.reader)
+            ds.questions, retrieved, store, reader, viewer, factories.gen_params(p.reader, cfg.seed)
         )
         for q, a in zip(ds.questions.iter_rows(named=True), answers.iter_rows(named=True)):
             with rec.stage(
@@ -128,8 +148,13 @@ def run_benchmark(cfg: RunConfig) -> str:
             if judge is not None:
                 with rec.stage(
                     "judge", question_id=q["id"], provider=cfg.judge.kind, model=cfg.judge.model
-                ):
-                    jud = float(judge_correct(judge, q["question"], q["aliases"], a["answer"]))
+                ) as ev:
+                    ok, jc = judge_mod.judge_correct(
+                        judge, q["question"], q["aliases"], a["answer"],
+                        factories.gen_params(cfg.judge, cfg.seed),
+                    )
+                    ev.usage(jc.usage.input_tokens, jc.usage.output_tokens, jc.usage.cached_input_tokens, jc.cached)
+                    jud = float(ok)
             rs.add_question(
                 run_id,
                 {
@@ -144,9 +169,8 @@ def run_benchmark(cfg: RunConfig) -> str:
                     "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5),
                     "input_tokens": a["input_tokens"],
                     "output_tokens": a["output_tokens"],
-                    "usd": None
-                    if a["cached"]
-                    else rec.cost(p.reader.model, a["input_tokens"], a["output_tokens"], 0),
+                    "usd": rec.cost(p.reader.model, a["input_tokens"], a["output_tokens"], 0),
+                    "cached": int(a["cached"]),
                     "latency_s": a["latency_s"],
                     "n_passages": a["n_passages"],
                 },

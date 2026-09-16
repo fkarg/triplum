@@ -76,6 +76,13 @@ class SqliteStore:
     def close(self) -> None:
         self.conn.close()
 
+    def get_meta(self, key: str) -> str | None:
+        row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return None if row is None else row[0]
+
+    def set_meta(self, key: str, value: str) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)", (key, value))
+
     def capabilities(self) -> Capabilities:
         return Capabilities(exact_acl_filter=True, vector_search_exact=True, bm25=True)
 
@@ -230,7 +237,7 @@ class SqliteStore:
         rows = self.conn.execute(
             "SELECT c.id, -bm25(chunks_fts, 1.0, 0.0) AS score FROM chunks_fts"
             " JOIN chunks c ON c.id = chunks_fts.rowid"
-            f" WHERE chunks_fts MATCH ? AND {vis} ORDER BY bm25(chunks_fts, 1.0, 0.0) LIMIT ?",
+            f" WHERE chunks_fts MATCH ? AND {vis} ORDER BY bm25(chunks_fts, 1.0, 0.0), c.id LIMIT ?",
             [match, *params, k],
         ).fetchall()
         return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
@@ -308,7 +315,7 @@ class SqliteStore:
                     (q.tobytes(), k, h),
                 ).fetchall()
             )
-        cands.sort(key=lambda r: r[1])
+        cands.sort(key=lambda r: (r[1], r[0]))
         ids = [c[0] for c in cands]
         visible = set(self.get_chunks(ids, viewer)["id"].to_list()) if ids else set()
         rows = [(cid, 1.0 - dist) for cid, dist in cands if cid in visible][:k]

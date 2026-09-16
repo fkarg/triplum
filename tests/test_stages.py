@@ -69,4 +69,5 @@ def test_reader_uses_visible_chunks_only(tmp_db):
 
 def test_judge_parses_bool():
     llm = FakeLLM(responder=lambda m, s: '{"correct": true}')
-    assert judge_correct(llm, "q", ["gold"], "pred") is True
+    ok, completion = judge_correct(llm, "q", ["gold"], "pred")
+    assert ok is True and completion.usage.output_tokens >= 1

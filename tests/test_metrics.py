@@ -1,3 +1,4 @@
+import pytest
 from triplum.eval import metrics as m
 
 
@@ -26,4 +27,5 @@ def test_contain():
 def test_recall_at_k():
     assert m.recall_at_k([1, 2], [5, 1, 3, 2], 2) == 0.5
     assert m.recall_at_k([1, 2], [5, 1, 3, 2], 5) == 1.0
-    assert m.recall_at_k([], [1], 5) == 1.0
+    with pytest.raises(ValueError):
+        m.recall_at_k([], [1], 5)

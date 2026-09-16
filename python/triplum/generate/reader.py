@@ -7,11 +7,11 @@ import time
 
 import polars as pl
 
+from triplum.cache import content_key
 from triplum.data.viewer import Viewer
 from triplum.llm.protocol import DEFAULT_PARAMS, LLM, GenParams, Message
 from triplum.store.protocol import Store
 
-PROMPT_VERSION = "reader-v1"
 SYSTEM = (
     "You answer questions using the given passages. Reply with the shortest possible answer: a "
     "name, date, number, or yes/no. Do not explain."
@@ -21,6 +21,8 @@ ANSWER_SCHEMA = {
     "properties": {"answer": {"type": "string"}},
     "required": ["answer"],
 }
+
+PROMPT_HASH = content_key("reader_prompt", {"system": SYSTEM, "schema": ANSWER_SCHEMA})[:16]
 
 OUT_SCHEMA = {
     "question_id": pl.Utf8,

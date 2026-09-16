@@ -9,13 +9,24 @@ from triplum.eval.datasets.hipporag import Dataset
 from triplum.store.sqlite.store import SqliteStore
 
 
+class CorpusMismatch(RuntimeError):
+    pass
+
+
 def ensure_documents(store: SqliteStore, ds: Dataset, rec: Recorder) -> None:
-    n = store.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-    if n == ds.chunks.height:
+    """A store file is bound to exactly one corpus, identified by content hash."""
+    bound = store.get_meta("corpus_hash")
+    if bound == ds.corpus_hash:
         return
+    if bound is not None:
+        raise CorpusMismatch(
+            f"store {store.path} holds corpus {bound[:12]}, dataset is {ds.corpus_hash[:12]}"
+        )
     with rec.stage("index.documents"):
         store.put_documents(ds.documents, ds.grants)
         store.put_chunks(ds.chunks)
+        store.set_meta("corpus_hash", ds.corpus_hash)
+        store.set_meta("dataset", ds.name)
 
 
 def ensure_embeddings(

@@ -3,7 +3,6 @@ Visibility is the store's job: every call passes the Viewer through."""
 
 from __future__ import annotations
 
-import numpy as np
 import polars as pl
 
 from triplum.data.viewer import Viewer
@@ -59,7 +58,7 @@ def rrf(rankings: list[list[int]], k_const: int = 60) -> list[tuple[int, float]]
     for ranking in rankings:
         for r, cid in enumerate(ranking):
             acc[cid] = acc.get(cid, 0.0) + 1.0 / (k_const + r + 1)
-    return sorted(acc.items(), key=lambda t: -t[1])
+    return sorted(acc.items(), key=lambda t: (-t[1], t[0]))
 
 
 def hybrid(
@@ -84,6 +83,6 @@ def hybrid(
         text_by_id = dict(zip(chunks["id"].to_list(), chunks["text"].to_list()))
         ids = [c for c in fused if c in text_by_id]
         scores = reranker.score(q["question"], [text_by_id[c] for c in ids])
-        order = np.argsort(-scores)
+        order = sorted(range(len(ids)), key=lambda i: (-float(scores[i]), ids[i]))
         rows += _ranked(q["id"], [ids[i] for i in order], [float(scores[i]) for i in order], k)
     return _frame(rows)

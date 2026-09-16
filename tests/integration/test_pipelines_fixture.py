@@ -55,3 +55,31 @@ def test_identical_run_is_a_lookup(tmp_path):
     assert a == b
     c = run_benchmark(_cfg(tmp_path, "bm25", top_k=3))
     assert c != a
+
+
+def test_store_bound_to_one_corpus(tmp_path):
+    from triplum.bench.index import CorpusMismatch
+
+    run_benchmark(_cfg(tmp_path, "bm25", "musique"))
+    with pytest.raises(CorpusMismatch):
+        run_benchmark(_cfg(tmp_path, "bm25", "twowiki").__class__(
+            **{**_cfg(tmp_path, "bm25", "twowiki").__dict__, "store_path": str(tmp_path / "musique.sqlite")}
+        ))
+
+
+def test_same_family_judge_rejected(tmp_path):
+    cfg = _cfg(tmp_path, "bm25")
+    bad = RunConfig(**{**cfg.__dict__, "judge": LLMConfig(kind="openai", model="gpt-5.6-luna"),
+                       "pipeline": PipelineConfig(**{**cfg.pipeline.__dict__, "reader": LLMConfig(kind="openai", model="gpt-5.6-sol")})})
+    with pytest.raises(ValueError):
+        run_benchmark(bad)
+
+
+def test_events_reconcile_with_questions(tmp_path):
+    rid = run_benchmark(_cfg(tmp_path, "hybrid"))
+    rs = RunStore(tmp_path / "runs.db")
+    ev = rs.events(rid)
+    assert set(ev["stage"].to_list()) >= {"index.documents", "index.embed", "retrieve", "read", "judge"}
+    assert ev.filter(ev["stage"] == "judge")["output_tokens"].sum() > 0
+    reads = ev.filter(ev["stage"] == "read")
+    assert reads["input_tokens"].sum() == rs.questions(rid)["input_tokens"].sum()

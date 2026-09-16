@@ -70,19 +70,33 @@ def make_llm(cfg: LLMConfig, cache_root: Path | str | None):
     raise ValueError(f"unknown llm kind {cfg.kind}")
 
 
-def gen_params(cfg: LLMConfig) -> GenParams:
-    return GenParams(temperature=cfg.temperature, max_tokens=cfg.max_tokens)
+def gen_params(cfg: LLMConfig, seed: int | None = None) -> GenParams:
+    """The seed is part of the effective request, so it reaches the provider and the cache key."""
+    return GenParams(temperature=cfg.temperature, max_tokens=cfg.max_tokens, seed=seed)
 
 
-def make_reranker(cfg: RerankerConfig | None):
+def make_reranker(cfg: RerankerConfig | None, cache_root: Path | str | None = None):
     if cfg is None:
         return None
+    from triplum.rerank.cached import CachedReranker
+
     if cfg.kind == "fake":
         from triplum.rerank.fake import FakeReranker
 
-        return FakeReranker()
+        return CachedReranker(FakeReranker(), Cache(cache_root))
     if cfg.kind == "cross_encoder":
         from triplum.rerank.cross_encoder import CrossEncoderReranker
 
-        return CrossEncoderReranker.from_model(cfg.model)
+        return CachedReranker(CrossEncoderReranker.from_model(cfg.model), Cache(cache_root))
     raise ValueError(f"unknown reranker kind {cfg.kind}")
+
+
+FAMILIES = ("gpt", "o1", "o3", "o4", "claude", "gemini", "gemma", "muse", "llama", "qwen", "mistral", "deepseek")
+
+
+def model_family(model: str) -> str:
+    m = model.lower()
+    for fam in FAMILIES:
+        if fam in m:
+            return fam
+    return m.split("/")[-1].split("-")[0]

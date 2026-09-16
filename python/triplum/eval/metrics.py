@@ -43,6 +43,6 @@ def contain(pred: str, golds: list[str]) -> float:
 
 def recall_at_k(gold_ids: list[int], retrieved_ids: list[int], k: int) -> float:
     if not gold_ids:
-        return 1.0
+        raise ValueError("recall_at_k needs at least one gold id")
     top = set(retrieved_ids[:k])
     return sum(1 for g in gold_ids if g in top) / len(gold_ids)

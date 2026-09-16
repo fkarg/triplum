@@ -80,3 +80,24 @@ def test_fixture_files_load():
         ds = hr.load_fixture(name)
         assert ds.questions.height == 20 and ds.chunks.height > 20
         assert all(len(g) > 0 for g in ds.questions["gold_chunk_ids"].to_list())
+
+
+def test_missing_gold_raises(tmp_path):
+    questions = [{"_id": "q1", "question": "Who?", "answer": "Bob", "type": "bridge", "level": "hard",
+                  "supporting_facts": [["ZZZ", 0]], "context": [["A", ["x"]]]}]
+    corpus = [{"idx": 0, "title": "A", "text": "x"}]
+    qp, cp = tmp_path / "q.json", tmp_path / "c.json"
+    qp.write_text(json.dumps(questions))
+    cp.write_text(json.dumps(corpus))
+    with pytest.raises(hr.GoldMappingError):
+        hr.load_files("hotpotqa", qp, cp)
+
+
+def test_duplicate_corpus_key_raises(tmp_path):
+    questions = []
+    corpus = [{"idx": 0, "title": "A", "text": "x"}, {"idx": 1, "title": "A", "text": "y"}]
+    qp, cp = tmp_path / "q.json", tmp_path / "c.json"
+    qp.write_text(json.dumps(questions))
+    cp.write_text(json.dumps(corpus))
+    with pytest.raises(hr.GoldMappingError):
+        hr.load_files("hotpotqa", qp, cp)

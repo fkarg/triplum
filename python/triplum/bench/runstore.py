@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS runs (
   code_version TEXT NOT NULL, dirty INTEGER NOT NULL, corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
   n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT NOT NULL, judge_model TEXT,
   seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
+  reader_prompt_hash TEXT NOT NULL, judge_prompt_hash TEXT,
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
 ) STRICT;
 CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS run_questions (
   run_id TEXT NOT NULL REFERENCES runs(run_id), question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
   answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
   r2 REAL NOT NULL, r5 REAL NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
-  usd REAL, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
+  usd REAL, cached INTEGER NOT NULL DEFAULT 0, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
   PRIMARY KEY (run_id, question_id)
 ) STRICT;
 CREATE TABLE IF NOT EXISTS events (
@@ -42,6 +43,12 @@ CREATE TABLE IF NOT EXISTS prices (
   usd_cached_in_per_m REAL NOT NULL, valid_from INTEGER NOT NULL, source TEXT NOT NULL,
   PRIMARY KEY (model, provider, valid_from)
 ) STRICT;
+CREATE TABLE IF NOT EXISTS run_prices (
+  run_id TEXT NOT NULL REFERENCES runs(run_id), model TEXT NOT NULL, provider TEXT NOT NULL,
+  usd_in_per_m REAL NOT NULL, usd_out_per_m REAL NOT NULL, usd_cached_in_per_m REAL NOT NULL,
+  valid_from INTEGER NOT NULL, source TEXT NOT NULL,
+  PRIMARY KEY (run_id, model)
+) STRICT;
 CREATE TABLE IF NOT EXISTS run_artifacts (
   run_id TEXT NOT NULL REFERENCES runs(run_id), kind TEXT NOT NULL, path TEXT NOT NULL, sha256 TEXT NOT NULL,
   PRIMARY KEY (run_id, kind)
@@ -49,8 +56,9 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
 """
 
 IDENTITY_FIELDS = (
-    "dataset", "pipeline", "config_hash", "code_version", "corpus_hash", "questions_hash", "n",
-    "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json",
+    "dataset", "pipeline", "config_hash", "code_version", "dirty", "corpus_hash", "questions_hash",
+    "n", "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json",
+    "reader_prompt_hash", "judge_prompt_hash",
 )
 
 
@@ -80,6 +88,27 @@ class RunStore:
             "SELECT usd_in_per_m, usd_out_per_m, usd_cached_in_per_m FROM prices WHERE model = ?"
             " ORDER BY valid_from DESC LIMIT 1",
             (model,),
+        ).fetchone()
+        return None if row is None else (row[0], row[1], row[2])
+
+    def snapshot_prices(self, run_id: str, models: list[str]) -> None:
+        """Copy the price rows in force now into run_prices so the run's cost stays reproducible."""
+        for model in {m for m in models if m}:
+            row = self.conn.execute(
+                "SELECT model, provider, usd_in_per_m, usd_out_per_m, usd_cached_in_per_m,"
+                " valid_from, source FROM prices WHERE model = ? ORDER BY valid_from DESC LIMIT 1",
+                (model,),
+            ).fetchone()
+            if row is not None:
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO run_prices VALUES (?,?,?,?,?,?,?,?)", (run_id, *row)
+                )
+
+    def run_price(self, run_id: str, model: str) -> tuple[float, float, float] | None:
+        row = self.conn.execute(
+            "SELECT usd_in_per_m, usd_out_per_m, usd_cached_in_per_m FROM run_prices"
+            " WHERE run_id = ? AND model = ?",
+            (run_id, model),
         ).fetchone()
         return None if row is None else (row[0], row[1], row[2])
 
@@ -176,7 +205,7 @@ class Recorder:
     def cost(
         self, model: str | None, input_tokens: int, output_tokens: int, cached_in: int
     ) -> float | None:
-        p = self.store.price(model) if model else None
+        p = self.store.run_price(self.run_id, model) if model else None
         if p is None:
             return None
         usd_in, usd_out, usd_cached = p
@@ -199,7 +228,7 @@ class Recorder:
                 self.cache_hits += 1
             elif ev.input_tokens or ev.output_tokens:
                 self.cache_misses += 1
-            usd = None if ev.cached else self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
+            usd = self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
             self.store.conn.execute(
                 "INSERT INTO events(run_id, stage, question_id, provider, model, started_at,"
                 " ended_at, input_tokens, output_tokens, cached_input_tokens, cached, usd)"

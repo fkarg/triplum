@@ -308,6 +308,20 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-16, `peer-review --mode diff-review` on the part-2 harness (datasets, metrics, stages,
+  runner, run store, CLI), peer: Codex (GPT family). Verdict "challenges". **Found unique defects,
+  all fixed with regression tests**: unmapped gold passages silently scored recall 1.0 (loader now
+  raises on missing or duplicate keys; verified zero on the full corpora); store reuse was decided
+  by chunk count (now bound to the corpus hash in the store's meta table); run identity omitted the
+  dirty flag and the prompt text (now hashes of reader and judge prompts, plus dirty); the seed was
+  recorded but never sent to the model (now in GenParams, so in the cache key); judge usage was
+  discarded and cached calls had null cost (judge returns its completion; cost is always computed
+  and `cached` is a separate flag; report shows nominal vs spent); prices were not snapshotted per
+  run (new `run_prices` table); the judge-family rule was not enforced (now raises for real models);
+  the reranker was neither cached nor recorded (CachedReranker, pair count in the retrieve event);
+  ties at the top-k cut were nondeterministic (chunk id tie-break everywhere). **Simplification
+  accepted**: dead `RunConfig.from_json` removed. **Confirmed by the peer**: normalisation and F1
+  match the official HotpotQA evaluator; hidden chunks cannot reach the hybrid stage.
 - 2026-09-16, `peer-review --mode diff-review` on the part-1 implementation (scaffold, data layer,
   store, model protocols), peer: Codex (GPT family, CLI default model). Verdict "challenges".
   **Found unique defects, all fixed with regression tests**: `INSERT OR REPLACE` on documents
