@@ -137,6 +137,37 @@ per question with the gold answer, binary, judge model recorded and required to 
 family than the reader. R@k: fraction of gold supporting passages in the top-k retrieved, HippoRAG
 definition. Indexing cost: embedding tokens and seconds, reported per run, not amortised.
 
+## Caching and repeatability
+
+Every expensive step is content-addressed and skipped on rerun. Three levels:
+
+1. **Call cache**: LLM, embedder and reranker calls, keyed on the full effective request (design D6).
+   Stored as a content-addressed directory of small files so it can be synced between machines.
+2. **Artifact cache**: outputs of expensive stages keyed on (input content hash, config hash):
+   the built corpus per dataset, chunk embeddings per `EmbeddingSpec` (persisted in the store's
+   `chunk_embeddings`, so a corpus embedded once with a given spec is never embedded again), index
+   builds, reranker scores per (query, chunk, reranker spec). A stage declares its key; the runner
+   looks up before computing and writes after.
+3. **Run store**: completed runs are immutable; a run with an identical identity is a lookup, not a
+   rerun, unless `--force`.
+
+All three live under one configurable cache root (default `~/.cache/triplum`, overridable by env
+var) and are portable: syncing the directory to another machine gives the same hits. Non-
+deterministic providers are recorded as such per run (temperature, provider seed support), so a
+cache hit is exact replay and a miss is a fresh sample, and the run knows which it got.
+
+## Environments
+
+- **Laptop (Apple Silicon)**: development, tests, the 20-question smoke fixture, notebook work.
+  Local embedders via MPS or ONNX at small scale.
+- **Tower (Ryzen 9950X3D, RTX 3070 with 8 GB VRAM, Linux)**: full 1000-question runs, the
+  embedding sweep, anything that loads a local model. 8 GB VRAM fits 0.6B to 4B embedders in fp16
+  and 8B in int8 or 4-bit; readers of that size run locally via vLLM or llama.cpp, larger readers go
+  through an API. Embedder adapters must select CUDA, MPS or CPU automatically and record the
+  runtime in the embedding spec, since the same model on different runtimes is a different spec.
+- The run store and cache root are synced between the two (rsync or a shared drive); results are
+  compared only by run identity, never by machine.
+
 ## Error handling
 
 Provider errors retry with backoff and are recorded per question; a question whose reader call
