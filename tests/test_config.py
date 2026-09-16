@@ -18,12 +18,13 @@ def test_config_hash_is_stable_and_sensitive():
     assert a.hash() == b.hash() != c.hash()
 
 
-def test_run_config_serialises_to_json():
+def test_run_config_roundtrips_json():
     rc = RunConfig(
         dataset="musique", n=20, fixture=True,
         pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")),
+        judge=LLMConfig(kind="cli", argv=("claude", "-p"), json_field="result"),
     )
-    assert '"dataset": "musique"' in rc.to_json()
+    assert RunConfig.from_json(rc.to_json()) == rc
 
 
 def test_factories_build_fakes(tmp_path):

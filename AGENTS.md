@@ -39,6 +39,10 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   from a different model family than any reader under test.
 - **LLM calls**: through the one `LLM` protocol with the disk cache; cache keys are the full
   effective request. Never call a provider SDK directly from pipeline code.
+- **Benchmarks are cached by identity**: an identical configuration returns the stored run; use
+  `--force` to recompute. Every expensive stage is content-addressed on its inputs and config and
+  must still work with an empty cache. Anything that changes an answer goes into the run identity.
+  The contract is `docs/benchmarking.md`.
 - **Licences**: check before borrowing. DIGIMON has no licence (read only). `GEM/web_nlg` and
   REBEL are non-commercial. GraphRAG-Bench arXiv 2506.02404 is academic-only.
 - **Secrets**: API keys come from the environment; never read, print or commit them.

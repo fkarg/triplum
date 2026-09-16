@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 
 from triplum.cache import content_key
 
@@ -67,3 +67,34 @@ class RunConfig:
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True)
+
+    @classmethod
+    def from_json(cls, s: str) -> RunConfig:
+        """Inverse of to_json; used by `triplum bench rerun` to replay a stored configuration."""
+        return _from_dict(cls, json.loads(s))
+
+
+_NESTED = {
+    "pipeline": PipelineConfig,
+    "reader": LLMConfig,
+    "judge": LLMConfig,
+    "embedder": EmbedderConfig,
+    "reranker": RerankerConfig,
+}
+_TUPLES = {"principals", "argv"}
+
+
+def _from_dict(cls, d):
+    if d is None:
+        return None
+    kw = {}
+    for f in fields(cls):
+        if f.name not in d:
+            continue
+        v = d[f.name]
+        if f.name in _NESTED:
+            v = _from_dict(_NESTED[f.name], v)
+        elif f.name in _TUPLES and v is not None:
+            v = tuple(v)
+        kw[f.name] = v
+    return cls(**kw)

@@ -36,7 +36,13 @@ uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
 uv run triplum bench report
 uv run marimo edit notebooks/runs.py        # browse runs
+uv run triplum bench show <run_id>          # exact configuration and identity of a run
+uv run triplum bench rerun <run_id> --force # recompute it
 ```
+
+Runs are identified by the hash of their exact configuration and looked up before they are
+computed; expensive stages are cached and reused. The contract is in
+[`docs/benchmarking.md`](docs/benchmarking.md).
 
 Readers and judges are `--reader openai --reader-model <id>` with `OPENAI_API_KEY` (or any
 OpenAI-compatible `--base-url`), or `--reader claude-cli`. The first concrete task has three threads

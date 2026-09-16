@@ -73,6 +73,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         b.add_argument("--runstore", default=None)
     rep = bench.add_parser("report")
     rep.add_argument("--runstore", default=None)
+    show = bench.add_parser("show", help="print a run's exact configuration and identity")
+    show.add_argument("run_id")
+    show.add_argument("--runstore", default=None)
+    rerun = bench.add_parser("rerun", help="run a stored configuration again (lookup unless --force)")
+    rerun.add_argument("run_id")
+    rerun.add_argument("--force", action="store_true")
+    rerun.add_argument("--runstore", default=None)
     return p.parse_args(argv)
 
 
@@ -130,6 +137,21 @@ def main(argv: list[str] | None = None) -> int:
 
     if ns.bench_cmd == "report":
         _print(summary(RunStore(ns.runstore or default_root() / "runs.db")))
+        return 0
+    if ns.bench_cmd in ("show", "rerun"):
+        rs = RunStore(ns.runstore or default_root() / "runs.db")
+        row = rs.run(ns.run_id)
+        if row is None:
+            raise SystemExit(f"no run {ns.run_id}")
+        if ns.bench_cmd == "show":
+            identity = {k: row[k] for k in row if k not in ("config_json",)}
+            print(json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2))
+            return 0
+        cfg = RunConfig.from_json(row["config_json"])
+        cfg = RunConfig(**{**cfg.__dict__, "force": ns.force, "runstore_path": str(rs.path)})
+        rid = run_benchmark(cfg)
+        print("reused" if rid == ns.run_id else "new", rid)
+        _print(summary(rs, [rid]))
         return 0
     if ns.bench_cmd == "run":
         cfgs = [build_run_config(ns)]

@@ -167,6 +167,11 @@ class RunStore:
         cols = [d[0] for d in cur.description]
         return pl.DataFrame(cur.fetchall(), schema=cols, orient="row")
 
+    def run(self, run_id: str) -> dict | None:
+        cur = self.conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,))
+        row = cur.fetchone()
+        return None if row is None else dict(zip([d[0] for d in cur.description], row))
+
     def runs(self) -> pl.DataFrame:
         return self._frame("SELECT * FROM runs ORDER BY created_at")
 

@@ -83,3 +83,17 @@ def test_events_reconcile_with_questions(tmp_path):
     assert ev.filter(ev["stage"] == "judge")["output_tokens"].sum() > 0
     reads = ev.filter(ev["stage"] == "read")
     assert reads["input_tokens"].sum() == rs.questions(rid)["input_tokens"].sum()
+
+
+def test_cli_show_and_rerun(tmp_path, capsys):
+    from triplum.bench.cli import main
+
+    rid = run_benchmark(_cfg(tmp_path, "bm25"))
+    assert main(["bench", "show", rid, "--runstore", str(tmp_path / "runs.db")]) == 0
+    shown = capsys.readouterr().out
+    assert '"pipeline": "bm25"' in shown and '"identity_hash"' in shown
+    assert main(["bench", "rerun", rid, "--runstore", str(tmp_path / "runs.db")]) == 0
+    assert capsys.readouterr().out.startswith("reused " + rid)
+    assert main(["bench", "rerun", rid, "--force", "--runstore", str(tmp_path / "runs.db")]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("new ") and rid not in out.split("\n")[0]
