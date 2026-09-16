@@ -21,6 +21,24 @@ theme:
     - scheme: slate
       primary: teal
       toggle: { icon: material/brightness-4, name: light mode }
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [python]
+          options:
+            docstring_style: google
+            show_if_no_docstring: true
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            filters: ["!^_"]
+            heading_level: 2
 markdown_extensions:
   - admonition
   - tables
@@ -34,6 +52,18 @@ nav:
   - Overview: index.md
   - Flow: flow.md
   - Benchmarking and caching: benchmarking.md
+  - Modules and interfaces:
+      - Overview: api/index.md
+      - data: api/data.md
+      - cache: api/cache.md
+      - llm: api/llm.md
+      - embed: api/embed.md
+      - rerank: api/rerank.md
+      - store: api/store.md
+      - retrieve: api/retrieve.md
+      - generate: api/generate.md
+      - eval: api/eval.md
+      - bench: api/bench.md
   - Licences: licences.md
   - Research:
       - Index: research/README.md

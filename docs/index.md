@@ -9,6 +9,8 @@ Start here:
 
 - [Flow](flow.md): what a benchmark run does step by step, which modules implement each step,
   and what is implemented versus planned.
+- [Modules and interfaces](api/index.md): every module with its status, key symbols and the
+  cross-module contracts, plus the API reference generated from the source.
 - [Benchmarking and caching](benchmarking.md): the contract for run identity, caching, replay,
   crash recovery and inspection.
 - [Design record](research/design.md): the decisions, the alternatives rejected, and the order of

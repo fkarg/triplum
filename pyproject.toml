@@ -24,6 +24,7 @@ local = ["sentence-transformers>=6", "fastembed>=0.8"]
 dev = ["pytest>=9", "ruff>=0.14", "maturin>=1.15,<2", "marimo>=0.24"]
 docs = [
     "mkdocs-material>=9.7",
+    "mkdocstrings[python]>=1.0",
 ]
 
 [build-system]
