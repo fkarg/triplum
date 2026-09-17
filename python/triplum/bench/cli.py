@@ -9,7 +9,6 @@ import sys
 import time
 from contextlib import closing
 from dataclasses import replace
-from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -23,6 +22,7 @@ from triplum.bench.config import (
     RunConfig,
 )
 from triplum.bench.selection import SelectionGroup, adapter, no_input_callback, resolve
+from triplum.retrieve import pipelines
 
 app = typer.Typer(
     cls=SelectionGroup, no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False
@@ -37,14 +37,6 @@ app.add_typer(data_app, name="data")
 app.add_typer(bench_app, name="bench")
 
 CLAUDE_ARGV = ("claude", "-p", "--output-format", "json")
-
-
-class Pipeline(StrEnum):
-    closed_book = "closed_book"
-    bm25 = "bm25"
-    dense = "dense"
-    hybrid = "hybrid"
-    oracle = "oracle"
 
 
 # Options shared by `bench run` and `bench sweep`.
@@ -151,7 +143,7 @@ def build_run_config(
         top_k=top_k,
         candidates=candidates,
         embedder=_embedder(embedder),
-        reranker=rr if pipeline == "hybrid" else None,
+        reranker=rr if pipelines.get(pipeline).needs_reranker else None,
     )
     return RunConfig(
         dataset=str(dataset),
@@ -249,14 +241,14 @@ def bench(
             ).fetchall()
     from triplum.bench.bench_view import print_overview
 
-    print_overview(rows, path, list(Pipeline))
+    print_overview(rows, path, pipelines.NAMES)
 
 
 @bench_app.command()
 def run(
     ctx: typer.Context,
     pipeline: Annotated[
-        str | None, typer.Option(help="Retrieval pipeline: " + ", ".join(Pipeline))
+        str | None, typer.Option(help="Retrieval pipeline: " + ", ".join(pipelines.NAMES))
     ] = None,
     dataset: DatasetOpt = None,
     no_input: NoInputOpt = False,
@@ -280,7 +272,7 @@ def run(
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
 
-    pipeline = resolve(pipeline, Pipeline, "pipeline", ctx=ctx)
+    pipeline = resolve(pipeline, pipelines.NAMES, "pipeline", ctx=ctx)
     if dataset is None or not is_folder(dataset):
         dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
     reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
@@ -344,7 +336,7 @@ def sweep(
     reranker = adapter(reranker, ["fake", "cross_encoder"], "reranker", ctx)
     cfgs = [
         build_run_config(
-            pipeline=Pipeline.dense,
+            pipeline="dense",
             dataset=dataset,
             embedder=spec,
             n=n,

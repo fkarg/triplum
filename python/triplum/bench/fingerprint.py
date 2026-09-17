@@ -11,6 +11,8 @@ import hashlib
 import importlib
 from pathlib import Path
 
+from triplum.retrieve import pipelines
+
 # Modules every pipeline depends on: data layer, store, cache, LLM adapters (real and fake),
 # reader, metrics, datasets, and the factories that assemble them. Dataset parsers are not listed
 # because a parser change alters corpus_hash and questions_hash, which are identity fields.
@@ -33,6 +35,7 @@ BASE = [
     "triplum.eval.datasets.registry",
     "triplum.eval.datasets.hipporag",
     "triplum.retrieve.stages",
+    "triplum.retrieve.pipelines",
     "triplum.bench.factories",
     "triplum.bench.index",
     "triplum.bench.runner",
@@ -53,11 +56,8 @@ RERANK = [
 ]
 
 PIPELINE_MODULES = {
-    "closed_book": BASE,
-    "oracle": BASE,
-    "bm25": BASE,
-    "dense": BASE + EMBED,
-    "hybrid": BASE + EMBED + RERANK,
+    p.name: BASE + (EMBED if p.needs_embedder else []) + (RERANK if p.needs_reranker else [])
+    for p in pipelines.PIPELINES.values()
 }
 
 # Non-Python sources the data layer depends on, relative to the repository root.

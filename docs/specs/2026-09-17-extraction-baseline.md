@@ -97,19 +97,36 @@ stages), D8 (extraction output is part of the run identity).
    verbalised chunks are the two ends of one scale; the latter is labelled synthetic, since it
    measures the templates as much as the extractor.
 
+## Two extractors, one protocol
+
+The research note's two stacks are both in scope, as two `Extractor` implementations behind the
+same callable and the same `Extraction` output, so every number below is reported for each:
+
+- **`rules`** (first): spaCy `en_core_web_sm` 3.8.0 (MIT) with the dependency rules above.
+  Permissive, ~12 MB, tens of chunks per second.
+- **`small_model`** (second, same plan): GLiNER `gliner_small-v2.5` (Apache-2.0) for spans with
+  the dataset's type vocabulary, GLiREL `glirel-large-v0` for relations over a supplied relation
+  vocabulary (weights declared CC BY-NC-SA 4.0 in the model prose while the package says
+  Apache-2.0; recorded in `docs/licences.md` as research-only, which is fine for this project),
+  optional `fastcoref` (MIT) as a coreference ablation. Around 3 GB of weights and single-digit
+  chunks per second; installed through the `extract-models` extra. Its relation vocabulary is
+  what makes CoNLL04 and SciERC typed scoring possible, so the "unavailable" typed scores below
+  apply to `rules` only.
+
 ## Out of scope
 
-Coreference, external entity linking, temporal validity inference, atomic-claim decomposition,
-schema-typed predicates (a versioned surface-to-schema map for CoNLL04/SciERC scoring is
-follow-up work), the small-model stack (GLiNER, GLiREL: non-commercial relation weights, 4-6 GB,
-single-digit chunks per second; an optional second extractor later), and graph retrieval
-pipelines (the next spec; `neighbours` exists so it can start).
+Coreference in `rules`, external entity linking, temporal validity inference, atomic-claim
+decomposition, a surface-to-schema map for scoring `rules` on typed sets, REBEL (kept as a
+historical comparison if a paper needs it), and graph retrieval pipelines (the next spec;
+`neighbours` exists so it can start).
 
 ## Dependencies
 
 Extra `extract`: `spacy>=3.8.16`, the `en_core_web_sm` 3.8.0 wheel by URL (MIT), `rapidfuzz`,
-`dateparser`; rows in `docs/licences.md`. Lean environment stays lean: `triplum.extract`
-imports spaCy lazily and `ty` overrides list the module, as for the embedders.
+`dateparser`. Extra `extract-models`: `gliner`, `glirel`, `fastcoref` with the pinned model
+revisions from the research note. Rows in `docs/licences.md`. The lean environment stays lean:
+the extractor modules import their libraries lazily and `ty` overrides list them, as for the
+embedders.
 
 ## Verification
 
@@ -147,3 +164,7 @@ verdict "challenges", nine attempted falsifications named. Outcomes:
 - **No decision impact**: the three-part split becomes internal to the rule extractor (the
   peer's "should"); MetaQA verbalisation is labelled synthetic and uses full sentences.
 - **Rejected**: none.
+
+Owner's decision, 2026-09-17: this is a research project, so the GLiNER/GLiREL stack is a
+shipped second extractor rather than a deferred option; its non-commercial relation weights are
+recorded, not avoided. Intrinsic metrics first; graph retrieval is the next spec.

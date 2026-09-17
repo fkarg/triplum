@@ -46,14 +46,17 @@ Polars frames; the store enforces visibility, so every stage passes a `Viewer` t
 
 ## Pipelines
 
-`--pipeline` selects the retrieval stage; the reader, judge and metrics are the same for all.
+`--pipeline` selects a named pipeline from `retrieve/pipelines.py` (a composition of the stages
+with defaults, importable and overridable from Python); the reader, judge and metrics are the
+same for all.
 
 | pipeline | retrieval | needs |
 |---|---|---|
 | `closed_book` | nothing; the reader sees only the question | reader |
 | `bm25` | FTS5 BM25 over the viewer's chunks, top k | |
 | `dense` | query embedding, sqlite-vec KNN per eligible ACL partition, exact visibility check, top k | embedder |
-| `hybrid` | dense and BM25 candidates fused by reciprocal rank fusion, top `--candidates` reranked by a cross-encoder, top k | embedder, reranker |
+| `rrf` | dense and BM25 candidates (`--candidates` each) fused by reciprocal rank fusion, top k by fused score | embedder |
+| `hybrid` | the `rrf` fusion, then the top `--candidates` reranked by a cross-encoder, top k | embedder, reranker |
 | `oracle` | the gold supporting passages, in gold order | |
 
 `bench sweep` runs `dense` once per embedding spec in a JSON file and continues past a spec that
@@ -102,7 +105,7 @@ Implemented (sub-project 2, part 1; spec in
   `triplum data` lists them; the registry spec is `docs/specs/2026-09-17-dataset-registry.md`.
   A folder of local PDF, Word, Markdown or text files is a dataset too (`--dataset ~/papers`,
   optional `questions.jsonl`; text layer only, no OCR): `docs/specs/2026-09-17-local-files.md`.
-- **Pipelines**: the five above. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
+- **Pipelines**: the six above, each a named function in `retrieve/pipelines.py`. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
   latency, indexing time.
 - **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the
   commands in the table above.

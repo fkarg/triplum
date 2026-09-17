@@ -13,7 +13,7 @@ def test_bench_overview_missing_store_does_not_create_cache(tmp_path, monkeypatc
     assert result.exit_code == 0, result.output
     assert str(root / "runs.db") in "".join(Text.from_ansi(result.output).plain.split())
     assert "No local benchmark runs recorded." in result.output
-    assert "closed_book, bm25, dense, hybrid, oracle" in result.output
+    assert "closed_book, bm25, dense, rrf, hybrid, oracle" in result.output
     assert "triplum bench --help" in result.output
     assert "Usage:" not in result.output
     for command in ("run", "sweep", "report", "show", "rerun", "inspect", "diff", "tail"):

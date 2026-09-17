@@ -23,7 +23,8 @@ Real today:
   20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
   reading-comprehension, long-document and text-to-triple sets; and any folder of your own
   PDF, Word, Markdown or text files as a corpus (text layer only, no OCR yet).
-- Five non-graph baselines (closed-book, BM25, dense, hybrid with rerank, oracle) run end to
+- Six non-graph baselines (closed-book, BM25, dense, RRF fusion of both, hybrid with rerank,
+  oracle) run end to
   end with EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost and timing, recorded in a run store
   keyed by the full run identity.
 
@@ -62,6 +63,15 @@ cfg = RunConfig(
 run_id = run_benchmark(cfg)
 with RunStore(runstore_path(cfg)) as rs:
     print(format_summary(summary(rs, [run_id])))
+```
+
+The named pipelines are plain functions over a store and a viewer, so the same retrieval runs
+without the harness:
+
+```python
+from triplum.retrieve import pipelines
+
+hits = pipelines.rrf(ds.questions, store, viewer, embedder=embedder, k=5, candidates=50)
 ```
 
 Every stage is also usable on its own: load a dataset, put it in a store, embed, retrieve with

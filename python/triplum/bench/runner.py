@@ -25,7 +25,7 @@ from triplum.eval.datasets.base import Dataset
 from triplum.generate import reader as reader_mod
 from triplum.generate.reader import read
 from triplum.rerank.protocol import Reranker
-from triplum.retrieve import stages
+from triplum.retrieve import pipelines, stages
 from triplum.store.protocol import Store
 from triplum.store.sqlite.store import SqliteStore
 
@@ -53,22 +53,20 @@ def _retrieve(
 ) -> pl.DataFrame:
     """Run the pipeline's retrieval stage; the result has exactly `stages.SCHEMA`."""
     p = cfg.pipeline
-    if p.name == "closed_book":
-        out = stages.none(ds.questions)
-    elif p.name == "oracle":
-        out = stages.oracle(ds.questions, p.top_k)
-    elif p.name == "bm25":
-        out = stages.bm25(ds.questions, store, p.top_k, viewer)
-    elif p.name == "dense":
-        if embedder is None:
-            raise ValueError("pipeline dense needs an embedder")
-        out = stages.dense(ds.questions, store, embedder, p.top_k, viewer)
-    elif p.name == "hybrid":
-        if embedder is None or reranker is None:
-            raise ValueError("pipeline hybrid needs an embedder and a reranker")
-        out = stages.hybrid(ds.questions, store, embedder, reranker, p.top_k, p.candidates, viewer)
-    else:
-        raise ValueError(f"unknown pipeline {p.name}")
+    pipe = pipelines.get(p.name)
+    if pipe.needs_embedder and embedder is None:
+        raise ValueError(f"pipeline {p.name} needs an embedder")
+    if pipe.needs_reranker and reranker is None:
+        raise ValueError(f"pipeline {p.name} needs a reranker")
+    out = pipe.run(
+        ds.questions,
+        store,
+        viewer,
+        k=p.top_k,
+        candidates=p.candidates,
+        embedder=embedder,
+        reranker=reranker,
+    )
     if dict(out.schema) != stages.SCHEMA:
         raise TypeError(f"retrieval stage {p.name} returned {out.schema}, expected {stages.SCHEMA}")
     return out
@@ -102,7 +100,8 @@ def run_benchmark(cfg: RunConfig) -> str:
         raise ValueError(
             f"dataset {spec.name} ships no corpus; only the closed_book pipeline applies"
         )
-    needs_embed = p.name in ("dense", "hybrid")
+    pipe = pipelines.get(p.name)
+    needs_embed = pipe.needs_embedder
     embedder = factories.make_embedder(p.embedder, root) if needs_embed and p.embedder else None
     real_models = cfg.judge is not None and cfg.judge.kind != "fake" and p.reader.kind != "fake"
     if real_models and factories.model_family(cfg.judge.model) == factories.model_family(
@@ -111,7 +110,7 @@ def run_benchmark(cfg: RunConfig) -> str:
         raise ValueError(
             f"judge {cfg.judge.model} and reader {p.reader.model} are the same model family"
         )
-    reranker = factories.make_reranker(p.reranker, root) if p.name == "hybrid" else None
+    reranker = factories.make_reranker(p.reranker, root) if pipe.needs_reranker else None
     reader = factories.make_llm(p.reader, root)
     judge = factories.make_llm(cfg.judge, root) if cfg.judge else None
     viewer = Viewer(principals=frozenset(cfg.principals))

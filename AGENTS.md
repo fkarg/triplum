@@ -8,7 +8,22 @@ Conventions for anyone (human or agent) working in this repository. Read the REA
 triplum: a composable, benchmark-first sandbox for LLM knowledge-graph work (construction, GraphRAG
 retrieval, storage backends, evaluation). Python-first, Rust behind a clean Arrow boundary where it
 is measurably worth it. Bi-temporal facts and provenance-derived permissions are first-class and
-enforced in the store, never post-hoc. Industry-first: numbers over novelty.
+enforced in the store, never post-hoc. Numbers over novelty.
+
+**This is a research project.** It exists to measure techniques against each other on public
+benchmarks and the owner's own corpora. Consequences that decide arguments:
+
+- **Licences are recorded, not blocking.** A non-commercial dataset, model or weight is fine to
+  use here; the row in `docs/licences.md` says what it would cost to reuse commercially, and
+  that is the whole obligation. Never drop a candidate technique because its weights are
+  research-only; never claim commercial reuse that the row does not support.
+- **The library is the product.** Experiments are Python that recombines the modules; every
+  capability is importable and composable without the CLI. The CLI exists for the repetitive
+  operator tasks (fetch data, run, sweep, inspect, diff) and is a thin layer over library
+  functions, never the only way to do something.
+- **Baselines before novelty.** A new technique earns its place with a harness run against the
+  cheap comparators (closed-book, BM25, dense, fusion, oracle; a non-LLM extractor), reported
+  with the full run identity, or it stays a candidate in `docs/research/papers.md`.
 
 ## Where things live
 
@@ -20,7 +35,7 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   Keep both out of the MkDocs navigation; retain them as development records and link to them
   from other docs where the context is useful.
 - `python/triplum/`: the Python package (`data`, `cache`, `llm`, `embed`, `rerank`, `store`,
-  `retrieve`, `generate`, `eval`, `bench`; `ingest` and `extract` are planned). `crates/`: the
+  `retrieve`, `generate`, `eval`, `bench`, `ingest`; `extract` is planned). `crates/`: the
   Cargo workspace (`triplum-core`, `triplum-py`). `notebooks/`: marimo notebooks. `scripts/`:
   fixture generation and the pre-commit helper. `research/` (SOTA monitor, digests) is planned.
 
@@ -46,11 +61,11 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   `--force` to recompute. Every expensive stage is content-addressed on its inputs and config and
   must still work with an empty cache. Anything that changes an answer goes into the run identity.
   The contract is `docs/benchmarking.md`.
-- **Licences**: this repo is public and research-only, so non-commercial components are allowed
-  here, but every third-party dataset, model and code dependency goes into `docs/licences.md` with
-  its terms and whether it survives commercial reuse. Add the row when you add the dependency.
-  Code with no licence file is read-only. Never route private corpora through a provider that
-  trains on traffic.
+- **Licences**: every third-party dataset, model and code dependency goes into `docs/licences.md`
+  with its terms and whether it survives commercial reuse; add the row when you add the
+  dependency. Non-commercial terms never block adoption here (see the doctrine above). Code with
+  no licence file is read-only. Never route private corpora through a provider that trains on
+  traffic.
 - **Secrets**: API keys come from the environment; never read, print or commit them.
 
 ## Human-facing tools and tests
@@ -65,6 +80,8 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
 - The pre-commit gate exports the index and runs `cargo check`, `uvx ty check`,
   `ruff check` and `ruff format --check` there.
   Keep checks isolated from unstaged/untracked work; never stash another session's changes.
+  While working, run the modifying forms (`ruff format`, `ruff check --fix`) freely; the hook
+  and CI are the checks.
 
 - **Forgiving discovery is a priority on every user-facing surface.** Reuse the CLI selection
   policy: exact matches first, unique prefix/substring/typo matches accepted, multiple matches offered as

@@ -77,3 +77,20 @@ def test_judge_parses_bool():
     llm = FakeLLM(responder=lambda m, s: '{"correct": true}')
     ok, completion = judge_correct(llm, "q", ["gold"], "pred")
     assert ok is True and completion.usage.output_tokens >= 1
+
+
+def test_fusion_ranks_by_reciprocal_rank(tmp_db):
+    from triplum.retrieve import pipelines
+
+    ds = hr.load_fixture("hotpotqa", n=3)
+    e = FakeEmbedder(dims=64)
+    s = _store(tmp_db, ds, e)
+    fused = pipelines.rrf(ds.questions, s, PUBLIC, embedder=e, k=3, candidates=10)
+    assert dict(fused.schema) == stages.SCHEMA
+    q = ds.questions["id"][0]
+    mine = fused.filter(pl.col("question_id") == q).sort("rank")
+    assert mine["rank"].to_list() == list(range(1, mine.height + 1))
+    assert mine["score"].to_list() == sorted(mine["score"].to_list(), reverse=True)
+    bm = stages.bm25(ds.questions, s, 10, PUBLIC).filter(pl.col("question_id") == q)
+    de = stages.dense(ds.questions, s, e, 10, PUBLIC).filter(pl.col("question_id") == q)
+    assert set(mine["chunk_id"]) <= set(bm["chunk_id"]) | set(de["chunk_id"])

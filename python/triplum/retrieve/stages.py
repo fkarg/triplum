@@ -61,6 +61,31 @@ def rrf(rankings: list[list[int]], k_const: int = 60) -> list[tuple[int, float]]
     return sorted(acc.items(), key=lambda t: (-t[1], t[0]))
 
 
+def _fused(
+    question: str, qvec, store: Store, embedder: Embedder, candidates: int, viewer: Viewer
+) -> list[tuple[int, float]]:
+    d = store.vector_search(embedder.spec, qvec, candidates, viewer)["id"].to_list()
+    b = store.bm25(question, candidates, viewer)["id"].to_list()
+    return rrf([d, b])[:candidates]
+
+
+def fusion(
+    questions: pl.DataFrame,
+    store: Store,
+    embedder: Embedder,
+    k: int,
+    candidates: int,
+    viewer: Viewer,
+) -> pl.DataFrame:
+    """Dense and BM25 candidates (`candidates` each) fused by RRF; the fused score ranks the top k."""
+    qvecs = embedder.embed_queries(questions["question"].to_list())
+    rows = []
+    for q, v in zip(questions.iter_rows(named=True), qvecs):
+        fused = _fused(q["question"], v, store, embedder, candidates, viewer)
+        rows += _ranked(q["id"], [c for c, _ in fused], [s for _, s in fused], k)
+    return _frame(rows)
+
+
 def hybrid(
     questions: pl.DataFrame,
     store: Store,
@@ -74,9 +99,7 @@ def hybrid(
     qvecs = embedder.embed_queries(questions["question"].to_list())
     rows = []
     for q, v in zip(questions.iter_rows(named=True), qvecs):
-        d = store.vector_search(embedder.spec, v, candidates, viewer)["id"].to_list()
-        b = store.bm25(q["question"], candidates, viewer)["id"].to_list()
-        fused = [cid for cid, _ in rrf([d, b])][:candidates]
+        fused = [c for c, _ in _fused(q["question"], v, store, embedder, candidates, viewer)]
         if not fused:
             continue
         chunks = store.get_chunks(fused, viewer)

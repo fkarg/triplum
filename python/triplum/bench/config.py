@@ -44,7 +44,7 @@ class RerankerConfig:
 
 @dataclass(frozen=True)
 class PipelineConfig:
-    name: str  # closed_book | bm25 | dense | hybrid | oracle
+    name: str  # a key of triplum.retrieve.pipelines.PIPELINES
     reader: LLMConfig
     top_k: int = 5
     candidates: int = 20

@@ -16,7 +16,8 @@ signature is still shown.
 | `triplum.embed` | done | `EmbeddingSpec`, `Embedder`, `CachedEmbedder`, sentence-transformers, fastembed, OpenAI-compatible and fake adapters | embedding identity and adapters |
 | `triplum.rerank` | done | `RerankSpec`, `Reranker`, `CachedReranker`, cross-encoder and fake adapters | pointwise reranking |
 | `triplum.store` | chunk side done | `Store`, `Capabilities`, `SqliteStore` | viewer-filtered BM25 and vector search over chunks; graph tables exist but are unused |
-| `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `hybrid`, `rrf` | retrieval stages, frames in and out |
+| `triplum.retrieve.pipelines` | done | `PIPELINES`, `NAMES`, `get`, `closed_book`, `bm25`, `dense`, `rrf`, `hybrid`, `oracle` | named compositions of the stages with defaults; the one pipeline list the runner, CLI and fingerprint read |
+| `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `fusion`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
 | `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | metrics, judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
 | `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
@@ -37,6 +38,8 @@ The contracts that hold across modules:
   inside its indexes before ranking.
 - **Identity is a spec.** `EmbeddingSpec`, `RerankSpec`, `LLMConfig` and `PipelineConfig` are
   frozen dataclasses whose hashes name cache entries, index tables and runs.
+- **Pipelines are functions.** A named pipeline in `retrieve.pipelines` is a composition of
+  stages with defaults; the runner calls the same function a notebook would.
 - **Cache wrappers, not cache logic.** `CachedLLM`, `CachedEmbedder` and `CachedReranker` wrap
   any adapter; the key is the full effective request.
 
