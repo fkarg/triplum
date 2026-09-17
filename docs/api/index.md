@@ -9,10 +9,11 @@ signature is still shown.
 
 | module | status | key symbols | role |
 |---|---|---|---|
-| `triplum.utils.data` | done | `Dataset`, `IterableDataset`, `DataLoader` | author-defined records, indexed or streaming access, lazy batching and custom collation |
-| `triplum.datasets` | done | `FrameDataset`, `CorpusDataset`, `registry.load`, `base.Spec` | concrete fingerprinted sources and built-in benchmark catalog with pinned files and fixtures |
-| `triplum.data.corpus` | done | `CorpusBatch` | canonical document/grant/chunk batch at the ingestion boundary |
-| `triplum.bench.inputs` | done | `Benchmark`, `PreparedBenchmark`, `materialize` | compose independent sources; explicit eager bridge for existing algorithms |
+| `triplum.utils.data` | done | `Dataset`, `IterableDataset`, `Source`, `Take`, `RecordDataset`, `DataLoader` | author-defined records, indexed or streaming access, prefix selection, in-memory records, lazy batching and custom collation |
+| `triplum.settings` | done | `Settings` | data root, cache root and URL mirrors from `TRIPLUM_*`; never part of an identity |
+| `triplum.datasets` | done | `registry.load`, `registry.verify`, `base.Pinned`, `base.ListSource`, `base.InlineCorpus`, `base.Entry`, `files.Files`, `collate.*`, `fixtures.*`, `FrameDataset` | lazy built-in sources over pinned files (fetched on first use, fingerprinted without reading), the catalog, collators onto the canonical frames, committed fixtures |
+| `triplum.data.corpus` | done | `Document`, `Segment`, `content_id`, `chunk_id`, `CorpusBatch` | the corpus record with its source-declared id and segments; the canonical three-frame batch it projects onto |
+| `triplum.bench.inputs` | done | `Benchmark`, `PreparedBenchmark`, `materialize`, `check` | compose independent lazy sources; the explicit eager bridge for existing algorithms, with the cross-source integrity checks and identities from the sources' fingerprints |
 | `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
 | `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
 | `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |
@@ -23,13 +24,13 @@ signature is still shown.
 | `triplum.retrieve.pipelines` | done | `PIPELINES`, `NAMES`, `get`, `closed_book`, `bm25`, `dense`, `rrf`, `hybrid`, `oracle` | named compositions of the stages with defaults; the one pipeline list the runner, CLI and fingerprint read |
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `fusion`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
-| `triplum.eval` | done | `QAEvaluation`, `ExtractionEvaluation`, `metrics.*`, `triples.score`, `judge.judge_correct` | task-specific sources, QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge |
+| `triplum.eval` | done | `Question`, `Triple`, `GoldMappingError`, `metrics.*`, `triples.score`, `judge.judge_correct` | evaluation records and schemas, QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge |
 | `triplum.bench` | done | `RunConfig`, `run_benchmark`, `ExtractConfig`, `run_extraction`, `RunStore`, `summary`, `extraction_summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
-| `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, `bench extract`, finite-choice resolution and interactive drill-down |
+| `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, fetch and verify, recent-run overview, `bench extract`, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
 | `triplum.bench.bench_view` | done | `print_overview`, `print_summary`, `print_inspect`, `print_diff`, `print_tail` | width-aware benchmark projections, literal values and terminal-aware colors; no data access |
 | `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |
-| `triplum.ingest.files` | done | `frames`, `scan`, `spec`, `chunk` | a folder of PDF, Word, Markdown and text files as a corpus with portable identity, optional `questions.jsonl`; a directory path is accepted wherever a dataset name is |
+| `triplum.ingest.files` | done | `FolderCorpus`, `FolderQuestions`, `document`, `chunk`, `entry` | a folder of PDF, Word, Markdown and text files as a streamed corpus with portable identity from file bytes, optional `questions.jsonl`; a directory path is accepted wherever a dataset name is |
 | `triplum.extract` | done (baseline) | `Extractor`, `ExtractorSpec`, `ResolverSpec`, `Extraction`, `extract`, `resolve`, `RulesExtractor`, `SmallModelExtractor`, `CachedExtractor` | an extractor returns spans and claims; `extract` grounds them into the four graph frames with document-scoped entity ids; `resolve` adds supported `same_as` facts; `rules` (spaCy) and `small_model` (GLiNER + GLiREL) behind one protocol |
 | `triplum.ingest` chunking | planned (2a) | hierarchical chunking | replaces paragraph packing for the graph pipelines |
 | `triplum.store` graph kernels | planned (2a, 2c) | PPR, pattern queries | beyond k-hop; Neo4j arm |
@@ -37,13 +38,15 @@ signature is still shown.
 
 The contracts that hold across modules:
 
-- **Frames in, frames out.** A stage takes Polars frames in the canonical column layout and
-  returns one. Generic datasets choose their own records; canonical schemas apply at processing
-  and store boundaries, not to every source.
+- **Records at the source, frames at the stage.** A source yields `Document`, `Question` or
+  `Triple` records and identifies itself without reading; a collator projects them onto the
+  canonical frames, and a stage takes those frames and returns one. The consumer chooses the
+  batch size.
 - **Viewer everywhere.** Any read that could leak data takes a `Viewer`; the store filters
   inside its indexes before ranking.
 - **Identity is a spec.** `EmbeddingSpec`, `RerankSpec`, `LLMConfig` and `PipelineConfig` are
-  frozen dataclasses whose hashes name cache entries, index tables and runs.
+  frozen dataclasses whose hashes name cache entries, index tables and runs; a dataset's
+  `fingerprint()` names its corpus and evaluation identities the same way.
 - **Pipelines are functions.** A named pipeline in `retrieve.pipelines` is a composition of
   stages with defaults; the runner calls the same function a notebook would.
 - **Extractors produce claims, not facts.** An `Extractor` returns spans and every claim it

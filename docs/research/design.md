@@ -46,8 +46,17 @@ what makes the port painful; the Arrow decision below is the mitigation.
 Canonical frames govern store and processing-stage boundaries, not arbitrary dataset records.
 `utils.data` separates indexed/streaming access from lazy loading and collation; source authors
 choose their record types. Both dataset base classes require `fingerprint()` identifying ordered
-logical content without consuming iteration. Frame-backed datasets own content hashing; loading
-batch size and physical chunk layout do not affect identity. This is not Python `__hash__`.
+logical content without consuming iteration. A built-in source's identity is a versioned recipe
+(pinned file digests, parser version, record contract, resolved parameters) known before any
+read; an in-memory source hashes its content. Loading batch size and physical chunk layout do
+not affect identity. This is not Python `__hash__`.
+
+*Amended 2026-09-17 (built-in datasets).* Sources yield pydantic records at the boundary:
+`Document` with the segments the source ships as units, `Question`, `Triple`. Document ids are
+the source's declared key (an upstream id, else a content key), never parse position; chunk ids
+are `chunk_id(document_id, ordinal)`, so a question resolves its gold from its own record.
+Collators project record lists onto the canonical frames; the consumer chooses the batch size.
+Chunking beyond source segments is a later stage. Spec: `../specs/2026-09-17-builtin-datasets.md`.
 
 Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
 (integer microseconds); intervals are closed-open; an open end uses a max sentinel rather than NULL

@@ -17,9 +17,12 @@ spec, a cross-model design review, and a commit before the next layer starts.
 
 ### 0. `utils.data` and `datasets` (done, owner's rework)
 
-`Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`; sources own `fingerprint()`;
-`CorpusBatch` is the canonical batch value; `Benchmark` composes corpus, QA and extraction
-sources; `materialize` is the explicit eager bridge the old algorithms still use.
+`Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`, `Take`, `RecordDataset`; sources own
+`fingerprint()`. Built-in datasets reworked 2026-09-17 (`../specs/2026-09-17-builtin-datasets.md`):
+lazy source classes over pinned files, pydantic records (`Document` with segments, `Question`,
+`Triple`), ids from each source's declared key, `Benchmark` holds datasets and the consumer
+batches, identity without reading. `materialize` is still the explicit eager bridge the old
+algorithms use; consuming a corpus in batches is layer 1.
 
 ### 1. Store ingestion boundary
 

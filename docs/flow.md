@@ -10,7 +10,7 @@ the design record still plans. The caching and identity rules it relies on are i
 
 ```mermaid
 flowchart LR
-  DS[("dataset files<br/>pinned by sha256")] --> LOAD["load<br/><code>datasets/registry.py</code>"]
+  DS[("dataset files<br/>pinned by sha256")] --> LOAD["lazy sources<br/><code>datasets/registry.py</code>"]
   LOAD --> PREP["explicit materialization<br/><code>bench/inputs.py</code>"]
   PREP --> ID["run identity<br/><code>bench/runstore.py</code> + <code>bench/fingerprint.py</code>"]
   ID -- "identical run exists" --> RS
@@ -34,7 +34,7 @@ Polars frames; the store enforces visibility, so every stage passes a `Viewer` t
 
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
-| 1 | load dataset | `datasets/registry.py`, `base.py`, source parsers, `bench/inputs.py` | Fetches pinned files and verifies sha256, or loads committed fixtures. Parsers return a `Benchmark` composition of corpus and optional QA/extraction sources, not a universal dataset. Custom compositions can be passed directly as `data=` without registration. The current runner explicitly materializes sources into canonical frames; `--n` selects questions. QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | `CorpusDataset` and `FrameDataset` own fingerprints; the eager bridge currently hashes materialized content. Loading batch size and physical chunk layout do not alter identity. Missing gold passage mappings remain errors. |
+| 1 | load dataset | `datasets/registry.py`, `datasets/base.py`, one module per source, `bench/inputs.py` | Builds a `Benchmark` of lazy sources (corpus, questions, gold triples), or the committed fixture. Nothing is read to construct it; a source fetches and verifies its pinned files on first iteration. `--n` selects questions with `Take` and never truncates the corpus. Custom compositions pass as `data=` without registration. The runner then materializes the sources into canonical frames through loaders and collators and runs the cross-source checks (unique document ids, every gold chunk in the corpus). QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | Corpus and evaluation identities are the sources' fingerprints (pinned digests, parser version, record contract), so an identity lookup never parses a dataset. Chunk ids are `chunk_id(document_id, ordinal)`, stable between fixture and full corpus. |
 | 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/cache/`. |
 | 3 | run identity | `bench/runstore.py`, `bench/fingerprint.py` | Hashes dataset, pipeline, config, the source of every module the pipeline executes (not the git sha), corpus and question hashes, `n`, embedding and reranker spec, reader and judge model, seed, viewer, and both prompt hashes. An identical completed run is returned without doing anything. `--force` starts a fresh run; `--resume` continues a running or failed run with the same identity from its last committed question. | `runs` row with all identity fields plus git sha, dirty flag and host; `prices` snapshot for the models used. |
 | 4 | index documents | `bench/index.py: ensure_documents` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | Event `index.documents`. Skipped when the store already holds the corpus. |
@@ -87,7 +87,8 @@ typed sets is a floor, not a comparison.
 | command | does |
 |---|---|
 | `triplum data` | lists every registered dataset with family, default and large flags, and whether its cached files are absent, partial, verified, or invalid; does not download anything |
-| `triplum data fetch [--dataset <name>\|default\|all]` | step 1 only: download and verify files; bare `fetch` is the default protocol, `all` skips large datasets, which download only when named |
+| `triplum data fetch [--dataset <name>\|default\|all]` | download and verify files ahead of use; bare `fetch` is the default protocol, `all` skips large datasets, which download only when named or iterated |
+| `triplum data verify --dataset <name>` | reads a whole dataset and checks that document ids are unique and every gold chunk exists; a folder path works too |
 | `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with a status table and compact action hints; full help via `--help`; does not create or migrate a database |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |
@@ -100,14 +101,17 @@ typed sets is a floor, not a comparison.
 | `triplum bench tail <run> [--once]` | done/total and latest stage of a running benchmark |
 | `uv run marimo edit notebooks/runs.py` | the same summary frame in a notebook |
 
-Everything lives under the cache root (`$TRIPLUM_CACHE`, default `~/.cache/triplum`): datasets,
-the call cache, one store per corpus, and `runs.db`. `--cache-root` and `--runstore` override it.
+The call cache, one store per corpus and `runs.db` live under the cache root (`$TRIPLUM_CACHE`,
+default `~/.cache/triplum`); `--cache-root` and `--runstore` override it. Dataset files live
+under `$TRIPLUM_DATA` (default `~/.cache/triplum/data`) regardless of the cache root.
 
 ## Implemented and planned
 
-`triplum.utils.data` provides task-independent indexed and streaming dataset bases and a lazy
-loader with custom collation and native-batch pass-through. Existing benchmark materialization
-boundaries are being replaced separately; the loader alone does not make the runner streaming.
+`triplum.utils.data` provides task-independent indexed and streaming dataset bases, `Take` for
+prefix selection, `RecordDataset` for in-memory records, and a lazy loader with custom
+collation and native-batch pass-through. The built-in sources are lazy and streamable
+([datasets.md](datasets.md)); the runner still materializes them, so consuming a corpus in
+batches inside the store is the next boundary, not this one.
 
 Implemented (sub-project 2, part 1; spec in
 [specs/2026-09-16-harness-and-baselines.md](specs/2026-09-16-harness-and-baselines.md)):
@@ -122,17 +126,18 @@ Implemented (sub-project 2, part 1; spec in
   (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
 - **Data loading**: `utils.data.Dataset` and `IterableDataset` require source-owned fingerprints;
   `DataLoader` lazily batches arbitrary records or passes native batches through. No length,
-  registry, task schema or replay is required for streaming. Current benchmark algorithms still
-  materialize finite sources; early cache lookup from source fingerprints is deferred.
-- **Datasets**: a registry (`datasets/registry.py`) of 37 pinned, auto-fetched datasets with
-  one parser per source and canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA
+  registry, task schema or replay is required for streaming. Records at the boundary are the
+  pydantic `Document`, `Question` and `Triple`; `datasets.collate` projects them onto the
+  canonical frames. Run identity comes from source fingerprints without a read.
+- **Datasets**: a catalog (`datasets/registry.py`) of 37 pinned datasets, each a set of lazy
+  source classes that download on first use, with canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA
   under the HippoRAG 1000-question protocol are the default set. The others cover multi-hop with
   gold chains (MoreHopQA, the full HotpotQA/2Wiki/MuSiQue dev sets, BrowseComp-Plus), abstention
   (MultiHop-RAG, MuSiQue twins), temporal ingestion (ECT-QA, TEMPO, MQuAKE), memory
   (LongMemEval), access control (GateMem), question-only sets (PopQA, EntityQuestions, NQ-Open,
   AmbigQA, Bamboogle, FreshQA, ARC), reading comprehension (SQuAD 1.1/2.0, BoolQ), long documents
   (QuALITY, QASPER), a KG as source (MetaQA) and text-to-triple gold (GraphJudge, GenWiki, CaRB, CoNLL04, SciERC).
-  `triplum data` lists them; the registry spec is `docs/specs/2026-09-17-dataset-registry.md`.
+  `triplum data` lists them; the contract is `docs/specs/2026-09-17-builtin-datasets.md`.
   A folder of local PDF, Word, Markdown or text files is a dataset too (`--dataset ~/papers`,
   optional `questions.jsonl`; text layer only, no OCR): `docs/specs/2026-09-17-local-files.md`.
 - **Pipelines**: the six above, each a named function in `retrieve/pipelines.py`. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,

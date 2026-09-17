@@ -50,6 +50,7 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Flow: flow.md
+  - Datasets: datasets.md
   - Benchmarking and caching: benchmarking.md
   - Modules and interfaces:
       - Overview: api/index.md

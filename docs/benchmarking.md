@@ -11,7 +11,7 @@ A run's identity is the hash of these fields (see `IDENTITY_FIELDS` in
 
 | field | what it pins |
 |---|---|
-| dataset, corpus_hash, questions_hash, n | which data: hashes of the parsed corpus and question frames, so a parser change is a new identity even when the source bytes did not change; how many questions |
+| dataset, corpus_hash, questions_hash, n | which data: the sources' fingerprints (pinned file digests, parser version, record contract, selection), computed without reading a file, so a parser version bump is a new identity even when the source bytes did not change; how many questions |
 | pipeline, config_hash | the pipeline name and the hash of the full `PipelineConfig` (top-k, candidates, embedder config, reranker config, reader config) |
 | embedding_spec, reranker_spec | hashes of the model specs actually instantiated (model, revision, dims, prefixes, quantisation, runtime) |
 | reader_model, judge_model, reader_prompt_hash, judge_prompt_hash | which models answered and judged, and the exact prompt text and output schema |

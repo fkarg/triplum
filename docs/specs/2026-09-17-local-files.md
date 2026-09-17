@@ -1,5 +1,7 @@
 # Local files as a corpus
 
+Behaviour unchanged, shape superseded on 2026-09-17 by [`2026-09-17-builtin-datasets.md`](2026-09-17-builtin-datasets.md): the folder is `FolderCorpus` and `FolderQuestions`, fingerprinted from file bytes without parsing.
+
 Snapshot 2026-09-17. A folder of your own documents is a dataset like any registered one: the
 same frames, the same identity rules, the same pipelines. The first target is a folder of papers,
 a deliberately hard corpus for KG construction that exercises the whole pipeline end to end.

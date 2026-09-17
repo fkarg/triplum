@@ -19,8 +19,8 @@ Real today:
   viewer-filtered BM25 and vector search over chunks.
 - One LLM protocol with a disk cache, and adapters for OpenAI-compatible APIs, CLI harnesses and
   a deterministic fake; embedder and reranker protocols with local and fake adapters.
-- A registry of 37 pinned, auto-fetched datasets with a parser per source and committed
-  20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
+- A catalog of 37 pinned datasets, each a set of lazy sources that download on first use and
+  identify themselves without reading, with committed 20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
   reading-comprehension, long-document and text-to-triple sets; and any folder of your own
   PDF, Word, Markdown or text files as a corpus (text layer only, no OCR yet).
 - Six non-graph baselines (closed-book, BM25, dense, RRF fusion of both, hybrid with rerank,
@@ -53,9 +53,10 @@ Data access is independent of the benchmark harness: subclass `Dataset[T]` for i
 `IterableDataset[T]` for streaming, and implement `fingerprint()` to identify its logical content.
 `DataLoader` lazily batches either shape (or ordinary iterables), supports custom collation, and
 preserves native batches with `batch_size=None`. See the [data loading example](docs/api/utils-data.md).
-Concrete frame/corpus sources and the catalog live in `triplum.datasets`; a `Benchmark` composes
-corpus and optional task-specific evaluation sources. Current benchmark algorithms still explicitly
-materialize those sources; the generic loading API does not.
+Sources yield `Document`, `Question` and `Triple` records; the built-in sources and the catalog
+live in `triplum.datasets`, and a `Benchmark` composes a corpus with optional question and gold
+triple sources, all lazy ([docs/datasets.md](docs/datasets.md)). Current benchmark algorithms
+still explicitly materialize those sources; the generic loading API does not.
 
 Experiments are Python. A run is a frozen configuration; identical configurations return the
 stored run instead of recomputing (the contract is [`docs/benchmarking.md`](docs/benchmarking.md)).

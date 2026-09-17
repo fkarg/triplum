@@ -1,4 +1,9 @@
-# datasets: concrete sources and benchmark catalog
+# datasets: built-in sources and the benchmark catalog
+
+The tutorial is [Datasets](../datasets.md). Settings first, then the shared machinery, the
+catalog, and one module per built-in source.
+
+::: triplum.settings
 
 ::: triplum.datasets.frames
 

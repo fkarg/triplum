@@ -1,5 +1,7 @@
 # Dataset registry
 
+Superseded on 2026-09-17 by [`2026-09-17-builtin-datasets.md`](2026-09-17-builtin-datasets.md): the `Spec` and parse callable are gone; sources are lazy classes and the catalog is `Entry` metadata. Kept as the record of what each registration decided.
+
 Snapshot 2026-09-17. Follows the [benchmark note](../research/benchmarks.md) and
 the [dataset status](2026-09-16-dataset-status.md) spec.
 

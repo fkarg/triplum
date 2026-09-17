@@ -12,7 +12,7 @@ the data page, never an inference.
 
 ## 1. Registered
 
-`triplum data` lists these; `python/triplum/eval/datasets/manifest.json` pins every file's URL,
+`triplum data` lists these; `python/triplum/datasets/manifest.json` pins every file's URL,
 sha256 and size; each has a committed 20-question fixture unless noted. Licences in full in
 `docs/licences.md`. "MB" is the pinned download.
 

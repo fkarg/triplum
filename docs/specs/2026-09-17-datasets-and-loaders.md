@@ -1,5 +1,7 @@
 # Dataset and loader foundation
 
+The eager parts of this spec (`CorpusDataset`, content-hashed identity at the benchmark boundary, `QAEvaluation`) were replaced on 2026-09-17 by [`2026-09-17-builtin-datasets.md`](2026-09-17-builtin-datasets.md); `Dataset`, `IterableDataset` and `DataLoader` stand as specified here.
+
 Snapshot: 2026-09-17. Approved by the owner in conversation. Replace the existing API outright;
 work and commit on local main. There are no compatibility consumers.
 

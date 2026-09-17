@@ -35,6 +35,8 @@ Python is in the [README](https://github.com/fkarg/triplum#use-it-as-a-library).
 
 - [Flow](flow.md): what a benchmark run does step by step, which modules implement each step,
   and what is implemented versus planned.
+- [Datasets](datasets.md): the built-in benchmarks, the record types, identity without reading,
+  and how to bring your own corpus, questions or folder.
 - [Modules and interfaces](api/index.md): every module with its status, key symbols and the
   cross-module contracts, plus the API reference generated from the source.
 - [Benchmarking and caching](benchmarking.md): the contract for run identity, caching, replay,
