@@ -12,6 +12,8 @@ from triplum.embed.protocol import EmbeddingSpec, l2_normalize
 
 
 class OpenAICompatEmbedder:
+    seed_sensitive = False
+
     def __init__(
         self,
         spec: EmbeddingSpec,

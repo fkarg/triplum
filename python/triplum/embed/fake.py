@@ -11,6 +11,8 @@ from triplum.embed.protocol import EmbeddingSpec, l2_normalize
 
 
 class FakeEmbedder:
+    seed_sensitive = False
+
     def __init__(self, dims: int = 64) -> None:
         self.spec = EmbeddingSpec(model="fake", revision="1", dims=dims, runtime="fake")
 

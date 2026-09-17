@@ -14,6 +14,7 @@ from triplum.llm.protocol import DEFAULT_PARAMS, Completion, GenParams, Message,
 
 class OpenAICompatLLM:
     adapter = "openai_compat"
+    seed_sensitive = True
 
     def __init__(
         self,

@@ -37,6 +37,8 @@ DATE_SETTINGS = {
 
 
 class RulesExtractor:
+    seed_sensitive = False
+
     def __init__(self, model: str = MODEL) -> None:
         import spacy
 

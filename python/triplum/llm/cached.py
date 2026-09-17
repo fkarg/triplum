@@ -14,6 +14,7 @@ class CachedLLM:
         self.cache = cache
         self.adapter = inner.adapter
         self.model = inner.model
+        self.seed_sensitive = inner.seed_sensitive
 
     def complete(self, messages, *, schema=None, params=DEFAULT_PARAMS) -> Completion:
         key = request_hash(self.adapter, self.model, messages, schema, params)

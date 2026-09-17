@@ -8,6 +8,8 @@ from triplum.embed.protocol import EmbeddingSpec, l2_normalize
 
 
 class FastEmbedEmbedder:
+    seed_sensitive = False
+
     def __init__(self, spec: EmbeddingSpec, model, batch_size: int = 64) -> None:
         self.spec = spec
         self.model = model

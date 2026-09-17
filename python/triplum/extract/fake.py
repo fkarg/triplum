@@ -9,6 +9,8 @@ from triplum.extract.protocol import CLAIM_SCHEMA, SPAN_SCHEMA, ExtractorSpec
 
 
 class FakeExtractor:
+    seed_sensitive = False
+
     def __init__(self, spans: list[tuple], claims: list[tuple], version: str = "1") -> None:
         self.spans = pl.DataFrame(spans, schema=SPAN_SCHEMA, orient="row")
         self.claims = pl.DataFrame(claims, schema=CLAIM_SCHEMA, orient="row")

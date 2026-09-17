@@ -6,7 +6,6 @@ import json
 import platform
 import subprocess
 import time
-from dataclasses import replace
 from pathlib import Path
 
 import polars as pl
@@ -332,7 +331,8 @@ def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig
             f"dataset {ds.name} gives no entity types or relation vocabulary; pass"
             " --entity-types and --relation-types for small_model"
         )
-    return replace(cfg, extractor=replace(x, entity_types=types, relation_types=relations))
+    extractor = x.model_copy(update={"entity_types": types, "relation_types": relations})
+    return cfg.model_copy(update={"extractor": extractor})
 
 
 def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:

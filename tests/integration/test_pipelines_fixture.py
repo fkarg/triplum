@@ -1,5 +1,3 @@
-from dataclasses import replace
-
 import pytest
 from triplum.bench.config import (
     EmbedderConfig,
@@ -7,6 +5,7 @@ from triplum.bench.config import (
     PipelineConfig,
     RerankerConfig,
     RunConfig,
+    replace,
 )
 from triplum.bench.inputs import materialize
 from triplum.bench.report import summary

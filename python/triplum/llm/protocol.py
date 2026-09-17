@@ -62,6 +62,7 @@ def request_hash(adapter: str, model: str, messages, schema, params) -> str:
 class LLM(Protocol):
     adapter: str
     model: str
+    seed_sensitive: bool  # the seed changes the answer; it enters the call cache key
 
     def complete(
         self,

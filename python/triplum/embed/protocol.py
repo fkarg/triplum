@@ -35,6 +35,7 @@ class EmbeddingSpec:
 
 class Embedder(Protocol):
     spec: EmbeddingSpec
+    seed_sensitive: bool  # False: every replicate is served from the same vectors
 
     def embed_queries(self, texts: list[str]) -> np.ndarray: ...
     def embed_passages(self, texts: list[str]) -> np.ndarray: ...

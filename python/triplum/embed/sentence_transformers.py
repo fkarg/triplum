@@ -33,6 +33,8 @@ def _hf_commit(name: str) -> str | None:
 
 
 class SentenceTransformersEmbedder:
+    seed_sensitive = False
+
     def __init__(self, spec: EmbeddingSpec, model, batch_size: int = 32) -> None:
         self.spec = spec
         self.model = model

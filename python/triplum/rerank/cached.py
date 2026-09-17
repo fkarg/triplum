@@ -13,6 +13,7 @@ class CachedReranker:
         self.inner = inner
         self.cache = cache
         self.spec = inner.spec
+        self.seed_sensitive = inner.seed_sensitive
         self.calls = 0  # pairs actually scored by the inner reranker
 
     def score(self, query: str, passages: list[str]) -> np.ndarray:

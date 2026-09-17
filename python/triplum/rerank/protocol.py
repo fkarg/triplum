@@ -24,6 +24,7 @@ class RerankSpec:
 
 class Reranker(Protocol):
     spec: RerankSpec
+    seed_sensitive: bool
 
     def score(self, query: str, passages: list[str]) -> np.ndarray:
         """Higher is more relevant. Shape (len(passages),), float32."""

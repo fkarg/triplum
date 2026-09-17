@@ -23,6 +23,8 @@ TOKEN = re.compile(r"\w+(?:[-_]\w+)*|\S")
 
 
 class SmallModelExtractor:
+    seed_sensitive = False
+
     def __init__(
         self,
         gliner_model: str | None = None,

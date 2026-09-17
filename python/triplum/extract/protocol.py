@@ -80,6 +80,7 @@ class ResolverSpec:
 
 class Extractor(Protocol):
     spec: ExtractorSpec
+    seed_sensitive: bool
 
     def run(self, chunks: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
         """Spans and claims (`SPAN_SCHEMA`, `CLAIM_SCHEMA`) for the given canonical chunks.

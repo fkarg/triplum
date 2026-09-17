@@ -23,6 +23,7 @@ def render_prompt(messages: list[Message]) -> str:
 
 class CliLLM:
     adapter = "cli"
+    seed_sensitive = True
 
     def __init__(
         self, model: str, argv: list[str], json_field: str | None = None, timeout_s: int = 600

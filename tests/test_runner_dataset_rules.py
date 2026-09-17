@@ -1,9 +1,7 @@
 """The runner refuses what it cannot evaluate honestly and nulls recall where it is undefined."""
 
-from dataclasses import replace
-
 import pytest
-from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig
+from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig, replace
 from triplum.bench.inputs import Benchmark
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore

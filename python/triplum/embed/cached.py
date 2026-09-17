@@ -13,6 +13,7 @@ class CachedEmbedder:
         self.inner = inner
         self.cache = cache
         self.spec = inner.spec
+        self.seed_sensitive = inner.seed_sensitive
 
     def _embed(self, texts: list[str], role: str) -> np.ndarray:
         keys = [

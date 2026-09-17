@@ -9,6 +9,8 @@ from triplum.rerank.protocol import RerankSpec
 
 
 class CrossEncoderReranker:
+    seed_sensitive = False
+
     def __init__(self, spec: RerankSpec, model, batch_size: int = 32) -> None:
         self.spec = spec
         self.model = model

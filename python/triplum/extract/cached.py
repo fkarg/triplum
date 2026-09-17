@@ -13,6 +13,7 @@ class CachedExtractor:
         self.inner = inner
         self.cache = cache
         self.spec = inner.spec
+        self.seed_sensitive = inner.seed_sensitive
         self.misses = 0
 
     def run(self, chunks: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:

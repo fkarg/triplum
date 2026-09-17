@@ -10,6 +10,7 @@ from triplum.rerank.protocol import RerankSpec
 
 
 class FakeReranker:
+    seed_sensitive = False
     spec = RerankSpec(model="fake", revision="1", runtime="fake")
 
     def score(self, query: str, passages: list[str]) -> np.ndarray:

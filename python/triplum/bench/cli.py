@@ -8,7 +8,6 @@ import sqlite3
 import sys
 import time
 from contextlib import closing
-from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -518,12 +517,16 @@ def rerun(
         row = rs.run(run_id)
         if row["kind"] == "extract":
             xcfg = ExtractConfig.from_json(row["config_json"])
-            rid = run_extraction(replace(xcfg, force=force, runstore_path=str(rs.path)))
+            rid = run_extraction(
+                xcfg.model_copy(update={"force": force, "runstore_path": str(rs.path)})
+            )
             print("reused" if rid == run_id else "new", rid)
             _print_summary(extraction_summary(rs, [rid]))
             return
         cfg = RunConfig.from_json(row["config_json"])
-        cfg = replace(cfg, force=force, resume=resume, runstore_path=str(rs.path))
+        cfg = cfg.model_copy(
+            update={"force": force, "resume": resume, "runstore_path": str(rs.path)}
+        )
         rid = run_benchmark(cfg)
         print("reused" if rid == run_id else "new", rid)
         _print_summary(summary(rs, [rid]))

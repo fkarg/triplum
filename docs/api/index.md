@@ -18,7 +18,7 @@ signature is still shown.
 | `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
 | `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
 | `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |
-| `triplum.llm` | done | `LLM`, `Message`, `GenParams`, `Completion`, `CachedLLM`, `OpenAICompatLLM`, `CliLLM`, `FakeLLM` | one completion protocol; adapters, never provider SDKs, in pipeline code |
+| `triplum.llm` | done | `LLM`, `Message`, `GenParams`, `Completion`, `CachedLLM`, `OpenAICompatLLM`, `CliLLM`, `FakeLLM` | one completion protocol; adapters, never provider SDKs, in pipeline code; every adapter declares `seed_sensitive`, and the perturbing fake answers per seed for replicate tests |
 | `triplum.embed` | done | `EmbeddingSpec`, `Embedder`, `CachedEmbedder`, sentence-transformers, fastembed, OpenAI-compatible and fake adapters | embedding identity and adapters |
 | `triplum.rerank` | done | `RerankSpec`, `Reranker`, `CachedReranker`, cross-encoder and fake adapters | pointwise reranking |
 | `triplum.store` | done | `Store`, `Capabilities`, `SqliteStore`; graph side `put_graph`, `facts`, `mentions`, `neighbours` | viewer-filtered BM25 and vector search over chunks; facts visible only through a fully visible support group and both as-of instants; k-hop over visible `same_as` |
@@ -45,8 +45,9 @@ The contracts that hold across modules:
   batch size.
 - **Viewer everywhere.** Any read that could leak data takes a `Viewer`; the store filters
   inside its indexes before ranking.
-- **Identity is a spec.** `EmbeddingSpec`, `RerankSpec`, `LLMConfig` and `PipelineConfig` are
-  frozen dataclasses whose hashes name cache entries, index tables and runs; a dataset's
+- **Identity is a spec.** `EmbeddingSpec` and `RerankSpec` are frozen dataclasses, `LLMConfig`
+  and `PipelineConfig` frozen pydantic models; their hashes name cache entries, index tables
+  and runs; a dataset's
   `fingerprint()` names its corpus and evaluation identities the same way.
   A stage's artifact is addressed by a data key over those identities and validated by the
   manifest of the code that produced it and its inputs, so a code edit reruns exactly the

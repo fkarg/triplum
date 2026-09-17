@@ -67,7 +67,7 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
 def make_llm(cfg: LLMConfig, cache_root: Path | str | None):
     cache = Cache(cache_root)
     if cfg.kind == "fake":
-        return CachedLLM(FakeLLM(model=cfg.model), cache)
+        return CachedLLM(FakeLLM(model=cfg.model, perturb=cfg.perturb), cache)
     if cfg.kind == "openai":
         from triplum.llm.openai_compat import OpenAICompatLLM
 

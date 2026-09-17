@@ -1,10 +1,8 @@
 """The extraction run end to end on the committed fixtures with the rules extractor."""
 
-from dataclasses import replace
-
 import pytest
 from triplum.bench.cli import main
-from triplum.bench.config import ExtractConfig, ExtractorConfig
+from triplum.bench.config import ExtractConfig, ExtractorConfig, replace
 from triplum.bench.report import extraction_summary
 from triplum.bench.runner import run_extraction
 from triplum.bench.runstore import RunStore

@@ -143,3 +143,48 @@ def test_sweep_continues_past_failed_spec(tmp_path, capsys):
     )
     out = capsys.readouterr()
     assert rc == 1 and "FAILED" in out.err and out.out.count("dense") == 2
+
+
+def test_config_hashes_survived_the_move_to_pydantic():
+    """Extraction literals captured from the dataclass configs on 2026-09-18: those identities
+    did not move with the config type. The pipeline literals are from the pydantic configs:
+    the pipeline hash moved once because `LLMConfig` gained `perturb`, and is pinned here."""
+    from triplum.bench.config import ExtractConfig, ExtractorConfig
+    from triplum.extract.protocol import ResolverSpec
+
+    assert PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")).hash() == "8b9a61d024a0a76e"
+    dense = PipelineConfig(
+        name="dense",
+        reader=LLMConfig(kind="fake"),
+        embedder=EmbedderConfig(kind="fake", dims=32),
+        top_k=3,
+    )
+    assert dense.hash() == "3460d900f43b1598"
+    assert ExtractConfig(dataset="x").hash() == "04b4c9eb4282f2bf"
+    x = ExtractConfig(
+        dataset="x",
+        extractor=ExtractorConfig(kind="small_model", entity_types=("A", "B")),
+        resolver=ResolverSpec("fuzzy", 0.9),
+    )
+    assert x.hash() == "d8572cd4aa15751e"
+    assert ExtractConfig.from_json(x.to_json()) == x
+    assert x.model_copy(update={"n": 3}).n == 3 and x.n is None
+
+
+def test_adapters_declare_seed_sensitivity(tmp_path):
+    from triplum.llm.protocol import GenParams, Message
+
+    plain = factories.make_llm(LLMConfig(kind="fake"), cache_root=tmp_path)
+    shaky = factories.make_llm(LLMConfig(kind="fake", perturb=True), cache_root=tmp_path)
+    assert plain.seed_sensitive is False and shaky.seed_sensitive is True
+    msgs = [Message(role="user", content="What is 2+2?")]
+    a = shaky.complete(msgs, params=GenParams(seed=1)).text
+    b = shaky.complete(msgs, params=GenParams(seed=2)).text
+    c = shaky.complete(msgs, params=GenParams(seed=1)).text
+    assert a != b and a == c
+    assert (
+        plain.complete(msgs, params=GenParams(seed=1)).text
+        == plain.complete(msgs, params=GenParams(seed=2)).text
+    )
+    assert factories.make_embedder(EmbedderConfig(kind="fake"), tmp_path).seed_sensitive is False
+    assert factories.make_reranker(RerankerConfig(kind="fake"), tmp_path).seed_sensitive is False
