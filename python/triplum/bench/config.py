@@ -54,6 +54,9 @@ class LLMConfig(Config):
     json_field: str | None = None
     perturb: bool = False  # fake only: the answer depends on the seed, for replicate tests
 
+    def hash(self) -> str:
+        return content_key("llm", self.model_dump(mode="json"))[:16]
+
 
 class RerankerConfig(Config):
     kind: str  # fake | cross_encoder

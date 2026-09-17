@@ -318,3 +318,60 @@ def test_records_artifact_round_trips(run):
     assert inv["fetched"].to_list() == [0, 1]
     art = artifacts.complete(run.root, make.name, inv["key"][0], inv["code"][0])
     assert art is not None and art.kind == "records" and art.rows == 3
+
+
+def test_an_edited_effect_stage_runs_again_against_a_complete_store(run, tmp_path, helpers):
+    mod, path = helpers
+    calls = Calls()
+
+    @stage
+    def mark(store: SqliteStore, items: RecordDataset[Item]) -> None:
+        calls.n += 1
+        store.set_meta("mark", str(mod.scale(len(items))))
+
+    src = RecordDataset([Item(n=1)])
+    a = SqliteStore(tmp_path / "a.sqlite")
+    mark(a, src)
+    mark(a, src)
+    assert calls.n == 1 and a.get_meta("mark") == "2"
+    reload_after(mod, path, "return x * FACTOR", "return x * FACTOR + 5")
+    mark(a, src)  # the store holds the effect, but the code that made it changed
+    assert calls.n == 2 and a.get_meta("mark") == "7"
+    inv = run.store.invocations(run.run_id)
+    assert inv["fetched"].to_list() == [0, 1, 0]
+
+
+def test_an_empty_stream_publishes_an_empty_artifact(run):
+    @stage
+    def nothing(items: RecordDataset[Item]) -> Iterator[Item]:
+        return iter(())
+
+    @stage
+    def count(items: Iterator[Item]) -> pl.DataFrame:
+        return pl.DataFrame({"c": [sum(1 for _ in items)]})
+
+    src = RecordDataset([])
+    live = nothing(src)
+    assert count(live)["c"][0] == 0
+    assert isinstance(live, LiveStream) and live.artifact is not None and live.artifact.rows == 0
+    assert list(nothing(src)) == []
+    inv = run.store.invocations(run.run_id)
+    assert inv["status"].to_list() == ["ok", "ok", "ok"] and inv["fetched"].to_list() == [0, 0, 1]
+
+
+def test_a_dict_subclass_of_frames_is_a_different_input(run):
+    class Special(dict):
+        pass
+
+    calls = Calls()
+
+    @stage
+    def over(frames: dict) -> pl.DataFrame:
+        calls.n += 1
+        return pl.DataFrame({"n": [len(frames)]})
+
+    df = pl.DataFrame({"a": [1]})
+    over({"x": df})
+    over({"x": df})
+    over(Special({"x": df}))
+    assert calls.n == 2

@@ -51,7 +51,7 @@ def identity(value: Any) -> Any:
         and value
         and all(isinstance(v, pl.DataFrame) for v in value.values())
     ):
-        return {"frames": {k: FrameDataset(v).fingerprint() for k, v in value.items()}}
+        return {"type": t, "frames": {k: FrameDataset(v).fingerprint() for k, v in value.items()}}
     if isinstance(value, BaseModel):
         return {"type": t, "model": value.model_dump(mode="json")}
     if is_dataclass(value) and not isinstance(value, type):
@@ -91,16 +91,6 @@ def seeded(arguments: dict[str, Any]) -> bool:
     return "seed" in arguments or any(
         getattr(v, "seed_sensitive", False) is True for v in arguments.values()
     )
-
-
-def keys(name: str, arguments: dict[str, Any], seed: int | None) -> tuple[str, str]:
-    """The structural key (stage and inputs, stable across replicates) and the execution key
-    (the structural key plus the derived seed for a seeded stage; equal otherwise)."""
-    inputs = [[k, identity(v)] for k, v in arguments.items() if k != "seed"]
-    structural = content_key("stage", [name, inputs])
-    if seed is None:
-        return structural, structural
-    return structural, content_key("stage", [structural, seed])
 
 
 def derive(*parts: Any) -> int:

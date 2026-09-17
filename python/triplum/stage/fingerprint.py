@@ -37,7 +37,6 @@ SITE = tuple(
         }
     )
 )
-PLAIN = (str, int, float, bool, bytes, type(None))
 MODULE = "<module>"
 
 

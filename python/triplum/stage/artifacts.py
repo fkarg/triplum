@@ -44,6 +44,7 @@ class Artifact(BaseModel):
     rows: int
     bytes: int
     record_type: str | None = None
+    items: str | None = None  # a stream of "records" or of "frames"
 
 
 def directory(root: Path, stage: str, key: str, code: str) -> Path:
@@ -86,6 +87,7 @@ class Writer:
         self.files: list[Path] = []
         self.record_type: str | None = None
         self.names: list[str] = []
+        self.items: str | None = None
 
     def frame(self, df: pl.DataFrame) -> None:
         self.kind = "frame"
@@ -117,9 +119,11 @@ class Writer:
         self.kind = "stream"
         name = self.tmp / f"batch-{len(self.files):06d}.parquet"
         if isinstance(batch, pl.DataFrame):
+            self.items = "frames"
             self.rows += batch.height
             self._write_frame(name, batch)
         else:
+            self.items = "records"
             if not batch:
                 return
             self.record_type = self.record_type or _record_type(type(batch[0]))
@@ -151,6 +155,7 @@ class Writer:
             "files": {p.name: p.stat().st_size for p in self.files},
             "record_type": self.record_type,
             "names": self.names,
+            "items": self.items or ("records" if self.kind == "stream" else None),
         }
         (self.tmp / COMPLETE).write_text(json.dumps(record, sort_keys=True))
         try:
@@ -190,6 +195,7 @@ def complete(root: Path, stage: str, key: str, code: str) -> Artifact | None:
         rows=rec["rows"],
         bytes=sum(sizes.values()),
         record_type=rec.get("record_type"),
+        items=rec.get("items"),
     )
 
 
@@ -219,14 +225,16 @@ class Stream[T](IterableDataset[T]):
         return self.artifact.code
 
     def __iter__(self) -> Iterator[T]:
-        model = _resolve_type(self.artifact.record_type) if self.artifact.record_type else None
+        if self.artifact.items == "frames":
+            for p in sorted(self.dir.glob("batch-*.parquet")):
+                yield cast("T", pl.read_parquet(p))
+            return
+        if not self.artifact.record_type:
+            return  # an empty stream of records
+        model = _resolve_type(self.artifact.record_type)
         for p in sorted(self.dir.glob("batch-*.parquet")):
-            df = pl.read_parquet(p)
-            if model is None:
-                yield cast("T", df)  # a stream of frames yields frames
-            else:
-                for s in df["json"]:
-                    yield cast("T", model.model_validate_json(s))
+            for s in pl.read_parquet(p)["json"]:
+                yield cast("T", model.model_validate_json(s))
 
     def fingerprint(self) -> str:
         return content_key("artifact", self.artifact.key)

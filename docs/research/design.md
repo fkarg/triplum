@@ -398,6 +398,13 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-18, `peer-review --mode diff-review` on the stages implementation
+  (`../specs/2026-09-17-stages.md`), peer: Codex (GPT family). Verdict "challenges", five
+  probes. **Found unique defects, fixed with tests**: store effects fetched without manifest
+  validation, empty streams crashing at publication, judge configuration outside the run
+  identity, untyped frame dictionaries. **Rejected**: run reuse gated on artifact presence (a run
+  is a recorded result). Full record in the spec.
+
 - 2026-09-17, `peer-review --mode design` on the stages spec
   (`../specs/2026-09-17-stages.md`), peer: Codex (GPT family). Verdict "challenges", seven
   falsification attempts, two as local probes. **Changed the decision** on five points

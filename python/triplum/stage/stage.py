@@ -215,14 +215,18 @@ class _Call:
         return art
 
     def effect(self, store: Any) -> None:
+        # The store says whether the effect is present; the run store says whether the code
+        # that produced it still hashes the same. Both, or the function runs again (every
+        # store effect is idempotent over what is already there).
         if store.effect_complete(self.key):
-            rows = self.run.store.artifacts(self.key)
-            inv = self.start()
-            self.record_inputs(inv)
-            self.run.store.finish_invocation(
-                inv, status="ok", code=rows[0]["code"] if rows else None, fetched=True
-            )
-            return
+            for row in self.run.store.artifacts(self.key):
+                if valid(self.run, self.key, row["code"], set()):
+                    inv = self.start()
+                    self.record_inputs(inv)
+                    self.run.store.finish_invocation(
+                        inv, status="ok", code=row["code"], fetched=True
+                    )
+                    return
         inv = self.start()
         store.begin_effect(self.key, self.stage.name)
         rec = Recording().start()
@@ -288,6 +292,7 @@ class LiveStream[T](IterableDataset[T]):
         self.started = True
         run = self.call.run
         writer = Writer(run.root, self.call.stage.name, self.key)
+        writer.kind = "stream"  # an exhausted empty stream still publishes an empty artifact
         batch: list[Any] = []
         try:
             for item in self.inner:

@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS runs (
   corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
   n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT, judge_model TEXT,
   seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
-  reader_prompt_hash TEXT, judge_prompt_hash TEXT,
+  reader_prompt_hash TEXT, judge_prompt_hash TEXT, judge_hash TEXT,
   extractor_spec TEXT, resolver_spec TEXT, graph_identity TEXT,
   experiment_id TEXT, replicate INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
@@ -133,6 +133,7 @@ IDENTITY_FIELDS = (
     "reranker_spec",
     "reader_model",
     "judge_model",
+    "judge_hash",
     "seed",
     "replicate",
     "viewer_json",
@@ -174,6 +175,7 @@ class RunStore:
             ("code_hash", "TEXT NOT NULL DEFAULT ''"),
             ("reader_prompt_hash", "TEXT NOT NULL DEFAULT ''"),
             ("judge_prompt_hash", "TEXT"),
+            ("judge_hash", "TEXT"),
             ("kind", "TEXT NOT NULL DEFAULT 'qa'"),
             ("extractor_spec", "TEXT"),
             ("resolver_spec", "TEXT"),
@@ -324,12 +326,8 @@ class RunStore:
         return int(row[0]), int(row[1])
 
     def find_run(self, identity_hash: str, status: str = "ok") -> str | None:
-        row = self.conn.execute(
-            "SELECT run_id FROM runs WHERE identity_hash = ? AND status = ?"
-            " ORDER BY created_at DESC LIMIT 1",
-            (identity_hash, status),
-        ).fetchone()
-        return None if row is None else row[0]
+        runs = self.find_runs(identity_hash, status)
+        return runs[0] if runs else None
 
     def completed_questions(self, run_id: str) -> set[str]:
         return {

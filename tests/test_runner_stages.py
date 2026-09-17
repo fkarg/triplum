@@ -156,3 +156,11 @@ def test_cli_replicates_prints_the_variance_tables(tmp_path, capsys):
 def test_an_extraction_only_benchmark_cannot_be_run(tmp_path):
     with pytest.raises(ValueError, match="no questions"):
         run_benchmark(_cfg(tmp_path), data=Benchmark(name="x", corpus=RecordDataset(DOCS)))
+
+
+def test_judge_configuration_is_in_the_run_identity(tmp_path):
+    cfg = _cfg(tmp_path)
+    first = run_benchmark(cfg, data=_bench())
+    hotter = replace(cfg, judge=LLMConfig(kind="fake", temperature=0.7))
+    assert run_benchmark(hotter, data=_bench()) != first
+    assert run_benchmark(cfg, data=_bench()) == first
