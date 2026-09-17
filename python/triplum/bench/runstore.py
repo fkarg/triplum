@@ -60,9 +60,21 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
 # code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
 # recorded for bookkeeping only, so edits outside the pipeline do not orphan finished runs.
 IDENTITY_FIELDS = (
-    "dataset", "pipeline", "config_hash", "code_hash", "corpus_hash", "questions_hash",
-    "n", "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json",
-    "reader_prompt_hash", "judge_prompt_hash",
+    "dataset",
+    "pipeline",
+    "config_hash",
+    "code_hash",
+    "corpus_hash",
+    "questions_hash",
+    "n",
+    "embedding_spec",
+    "reranker_spec",
+    "reader_model",
+    "judge_model",
+    "seed",
+    "viewer_json",
+    "reader_prompt_hash",
+    "judge_prompt_hash",
 )
 
 
@@ -97,13 +109,27 @@ class RunStore:
     # ---- prices -----------------------------------------------------------------------------
 
     def set_price(
-        self, model: str, provider: str, *, usd_in_per_m: float, usd_out_per_m: float,
-        usd_cached_in_per_m: float, source: str, valid_from: int | None = None,
+        self,
+        model: str,
+        provider: str,
+        *,
+        usd_in_per_m: float,
+        usd_out_per_m: float,
+        usd_cached_in_per_m: float,
+        source: str,
+        valid_from: int | None = None,
     ) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO prices VALUES (?,?,?,?,?,?,?)",
-            (model, provider, usd_in_per_m, usd_out_per_m, usd_cached_in_per_m,
-             valid_from or now_us(), source),
+            (
+                model,
+                provider,
+                usd_in_per_m,
+                usd_out_per_m,
+                usd_cached_in_per_m,
+                valid_from or now_us(),
+                source,
+            ),
         )
 
     def price(self, model: str) -> tuple[float, float, float] | None:
@@ -150,9 +176,12 @@ class RunStore:
         return None if row is None else row[0]
 
     def completed_questions(self, run_id: str) -> set[str]:
-        return {r[0] for r in self.conn.execute(
-            "SELECT question_id FROM run_questions WHERE run_id = ?", (run_id,)
-        )}
+        return {
+            r[0]
+            for r in self.conn.execute(
+                "SELECT question_id FROM run_questions WHERE run_id = ?", (run_id,)
+            )
+        }
 
     @contextmanager
     def question_unit(self):
@@ -219,9 +248,7 @@ class RunStore:
         return self._frame("SELECT * FROM run_questions WHERE run_id = ?", (run_id,))
 
     def events(self, run_id: str) -> pl.DataFrame:
-        return self._frame(
-            "SELECT * FROM events WHERE run_id = ? ORDER BY started_at", (run_id,)
-        )
+        return self._frame("SELECT * FROM events WHERE run_id = ? ORDER BY started_at", (run_id,))
 
 
 class _Event:
@@ -260,7 +287,11 @@ class Recorder:
 
     @contextmanager
     def stage(
-        self, stage: str, *, question_id: str | None = None, provider: str | None = None,
+        self,
+        stage: str,
+        *,
+        question_id: str | None = None,
+        provider: str | None = None,
         model: str | None = None,
     ):
         ev = _Event()
@@ -278,6 +309,18 @@ class Recorder:
                 "INSERT INTO events(run_id, stage, question_id, provider, model, started_at,"
                 " ended_at, input_tokens, output_tokens, cached_input_tokens, cached, usd)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (self.run_id, stage, question_id, provider, model, t0, t1, ev.input_tokens,
-                 ev.output_tokens, ev.cached_in, int(ev.cached), usd),
+                (
+                    self.run_id,
+                    stage,
+                    question_id,
+                    provider,
+                    model,
+                    t0,
+                    t1,
+                    ev.input_tokens,
+                    ev.output_tokens,
+                    ev.cached_in,
+                    int(ev.cached),
+                    usd,
+                ),
             )

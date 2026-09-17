@@ -7,7 +7,6 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
-
     from triplum.bench.report import summary
     from triplum.bench.runstore import RunStore
     from triplum.cache import default_root
@@ -40,7 +39,6 @@ def _(mo, table):
 @app.cell
 def _(pick, rs):
     rs.questions(pick.value) if pick.value else None
-    return
 
 
 if __name__ == "__main__":

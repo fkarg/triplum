@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import time
 from contextlib import closing
+from dataclasses import replace
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -375,6 +376,7 @@ def sweep(
     ]
     ids, failed = [], []
     for c in cfgs:
+        assert c.pipeline.embedder is not None  # Every sweep config has an embedding spec.
         try:
             ids.append(run_benchmark(c))
         except Exception as e:  # noqa: BLE001  one bad spec must not stop the sweep
@@ -455,9 +457,7 @@ def rerun(
     with closing(rs.conn):
         run_id = _run_id(rs, run_id, ctx)
         cfg = RunConfig.from_json(rs.run(run_id)["config_json"])
-        cfg = RunConfig(
-            **{**cfg.__dict__, "force": force, "resume": resume, "runstore_path": str(rs.path)}
-        )
+        cfg = replace(cfg, force=force, resume=resume, runstore_path=str(rs.path))
         rid = run_benchmark(cfg)
         print("reused" if rid == run_id else "new", rid)
         _print_summary(summary(rs, [rid]))

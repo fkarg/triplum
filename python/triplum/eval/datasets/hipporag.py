@@ -174,7 +174,9 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None):
         if name == "musique":
             qid, answer = q["id"], q["answer"]
             aliases = [answer, *[a for a in q.get("answer_aliases", []) if a != answer]]
-            gold = [(p["title"], p["paragraph_text"]) for p in q["paragraphs"] if p["is_supporting"]]
+            gold = [
+                (p["title"], p["paragraph_text"]) for p in q["paragraphs"] if p["is_supporting"]
+            ]
             qtype = q["id"].split("__")[0]
         else:
             qid, answer = q["_id"], q["answer"]
@@ -183,7 +185,9 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None):
             qtype = q.get("type", "")
         missing = [g for g in gold if g not in key_to_chunk]
         if missing or not gold:
-            raise GoldMappingError(f"{name}: question {qid} gold not in corpus: {missing or 'none'}")
+            raise GoldMappingError(
+                f"{name}: question {qid} gold not in corpus: {missing or 'none'}"
+            )
         gold_ids = sorted({key_to_chunk[g] for g in gold})
         q_rows.append((qid, q["question"], answer, aliases, gold_ids, qtype))
     return (

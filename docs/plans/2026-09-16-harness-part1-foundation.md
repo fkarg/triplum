@@ -89,7 +89,13 @@ def test_documents_schema_columns():
 
 def test_chunks_schema_columns():
     assert schema.CHUNKS.names == [
-        "id", "document_id", "parent_id", "level", "span_start", "span_end", "text",
+        "id",
+        "document_id",
+        "parent_id",
+        "level",
+        "span_start",
+        "span_end",
+        "text",
     ]
     assert schema.CHUNKS.field("id").type == pa.int64()
 
@@ -102,9 +108,20 @@ def test_chunk_embeddings_is_parametric_in_dims():
 
 def test_facts_schema_columns():
     assert schema.FACTS.names == [
-        "id", "proposition_id", "subject_id", "predicate", "object_id", "object_literal",
-        "object_datatype", "object_lang", "valid_from", "valid_to", "recorded_at",
-        "invalidated_at", "invalidated_by_fact_id", "confidence",
+        "id",
+        "proposition_id",
+        "subject_id",
+        "predicate",
+        "object_id",
+        "object_literal",
+        "object_datatype",
+        "object_lang",
+        "valid_from",
+        "valid_to",
+        "recorded_at",
+        "invalidated_at",
+        "invalidated_by_fact_id",
+        "confidence",
     ]
 
 
@@ -535,7 +552,11 @@ class Viewer:
     permission_revision: int | None = None
 
     def __post_init__(self) -> None:
-        ps = frozenset(self.principals) if not isinstance(self.principals, frozenset) else self.principals
+        ps = (
+            frozenset(self.principals)
+            if not isinstance(self.principals, frozenset)
+            else self.principals
+        )
         if not ps:
             raise ValueError("Viewer needs at least one principal")
         object.__setattr__(self, "principals", ps)
@@ -898,7 +919,13 @@ class CachedLLM:
         c = self.inner.complete(messages, schema=schema, params=params)
         self.cache.put_json(
             key,
-            {"text": c.text, "parsed": c.parsed, "usage": asdict(c.usage), "model": c.model, "raw": c.raw},
+            {
+                "text": c.text,
+                "parsed": c.parsed,
+                "usage": asdict(c.usage),
+                "model": c.model,
+                "raw": c.raw,
+            },
         )
         return c
 ```
@@ -977,13 +1004,19 @@ def test_openai_compat_builds_request_and_parses(monkeypatch):
 
 
 def test_cli_llm_runs_command_and_reads_stdout():
-    llm = CliLLM(model="echo", argv=[sys.executable, "-c", "import sys; print(sys.stdin.read().upper())"])
+    llm = CliLLM(
+        model="echo", argv=[sys.executable, "-c", "import sys; print(sys.stdin.read().upper())"]
+    )
     c = llm.complete([Message("user", "hello")])
     assert "HELLO" in c.text and c.usage.output_tokens >= 1
 
 
 def test_cli_llm_json_output_field():
-    argv = [sys.executable, "-c", "import json,sys; sys.stdin.read(); print(json.dumps({'result': 'ok'}))"]
+    argv = [
+        sys.executable,
+        "-c",
+        "import json,sys; sys.stdin.read(); print(json.dumps({'result': 'ok'}))",
+    ]
     llm = CliLLM(model="x", argv=argv, json_field="result")
     assert llm.complete([Message("user", "q")]).text == "ok"
 ```
@@ -1059,7 +1092,11 @@ class OpenAICompatLLM:
                 except json.JSONDecodeError:
                     attempts += 1
                     if attempts <= self.max_parse_retries:
-                        messages = [*messages, Message("assistant", text), Message("user", "Return only valid JSON matching the schema.")]
+                        messages = [
+                            *messages,
+                            Message("assistant", text),
+                            Message("user", "Return only valid JSON matching the schema."),
+                        ]
                         continue
             u = resp.usage
             details = getattr(u, "prompt_tokens_details", None)
@@ -1105,7 +1142,9 @@ def render_prompt(messages: list[Message]) -> str:
 class CliLLM:
     adapter = "cli"
 
-    def __init__(self, model: str, argv: list[str], json_field: str | None = None, timeout_s: int = 600) -> None:
+    def __init__(
+        self, model: str, argv: list[str], json_field: str | None = None, timeout_s: int = 600
+    ) -> None:
         self.model = model
         self.argv = argv
         self.json_field = json_field
@@ -1116,7 +1155,12 @@ class CliLLM:
         if schema is not None:
             prompt += "\n\nRespond with JSON only, matching this schema:\n" + json.dumps(schema)
         proc = subprocess.run(
-            self.argv, input=prompt, capture_output=True, text=True, timeout=self.timeout_s, check=True
+            self.argv,
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=self.timeout_s,
+            check=True,
         )
         text = proc.stdout.strip()
         if self.json_field is not None:
@@ -1182,7 +1226,9 @@ def test_fake_embedder_shapes_and_determinism():
 
 def test_fake_embedder_similar_texts_are_closer():
     e = FakeEmbedder(dims=64)
-    v = e.embed_passages(["the cat sat on the mat", "the cat sat on a mat", "quarterly revenue grew"])
+    v = e.embed_passages(
+        ["the cat sat on the mat", "the cat sat on a mat", "quarterly revenue grew"]
+    )
     assert v[0] @ v[1] > v[0] @ v[2]
 
 
@@ -1213,7 +1259,9 @@ def test_openai_compat_embedder_calls_client():
     class _Client:
         embeddings = _Emb()
 
-    spec = EmbeddingSpec(model="text-embedding-3-large", revision="2026", dims=2, query_prefix="q: ")
+    spec = EmbeddingSpec(
+        model="text-embedding-3-large", revision="2026", dims=2, query_prefix="q: "
+    )
     e = OpenAICompatEmbedder(spec, client=_Client())
     out = e.embed_queries(["a", "b"])
     assert out.shape == (2, 2) and np.allclose(out[0], [1.0, 0.0])
@@ -1328,7 +1376,9 @@ class CachedEmbedder:
         self.spec = inner.spec
 
     def _embed(self, texts: list[str], role: str) -> np.ndarray:
-        keys = [content_key("embed", {"spec": self.spec.hash(), "role": role, "text": t}) for t in texts]
+        keys = [
+            content_key("embed", {"spec": self.spec.hash(), "role": role, "text": t}) for t in texts
+        ]
         out = np.zeros((len(texts), self.spec.dims), dtype=np.float32)
         missing: list[int] = []
         for i, k in enumerate(keys):
@@ -1388,7 +1438,9 @@ class OpenAICompatEmbedder:
         rows: list[list[float]] = []
         for i in range(0, len(texts), self.batch_size):
             batch = [prefix + t for t in texts[i : i + self.batch_size]]
-            resp = self.client.embeddings.create(model=self.spec.model, input=batch, dimensions=self.spec.dims)
+            resp = self.client.embeddings.create(
+                model=self.spec.model, input=batch, dimensions=self.spec.dims
+            )
             rows.extend(item.embedding for item in resp.data)
         arr = np.asarray(rows, dtype=np.float32).reshape(len(texts), self.spec.dims)
         return l2_normalize(arr) if self.spec.normalize else arr
@@ -1429,7 +1481,9 @@ import importlib.util
 import pytest
 
 
-@pytest.mark.skipif(importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed")
+@pytest.mark.skipif(
+    importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed"
+)
 def test_sentence_transformers_adapter_small_model():
     from triplum.embed.sentence_transformers import SentenceTransformersEmbedder
 
@@ -1497,7 +1551,10 @@ class SentenceTransformersEmbedder:
 
         device = device or pick_device()
         model = SentenceTransformer(name, device=device, trust_remote_code=trust_remote_code)
-        revision = getattr(getattr(model, "model_card_data", None), "base_model_revision", None) or "unknown"
+        revision = (
+            getattr(getattr(model, "model_card_data", None), "base_model_revision", None)
+            or "unknown"
+        )
         spec = EmbeddingSpec(
             model=name,
             revision=str(revision),
@@ -1546,19 +1603,31 @@ class FastEmbedEmbedder:
         self.batch_size = batch_size
 
     @classmethod
-    def from_model(cls, name: str, *, query_prefix: str = "", passage_prefix: str = "", batch_size: int = 64):
+    def from_model(
+        cls, name: str, *, query_prefix: str = "", passage_prefix: str = "", batch_size: int = 64
+    ):
         from fastembed import TextEmbedding
 
         model = TextEmbedding(model_name=name)
         dims = next(m["dim"] for m in TextEmbedding.list_supported_models() if m["model"] == name)
         spec = EmbeddingSpec(
-            model=name, revision="fastembed", dims=int(dims), pooling="model", normalize=True,
-            query_prefix=query_prefix, passage_prefix=passage_prefix, quantization="onnx-default", runtime="onnx",
+            model=name,
+            revision="fastembed",
+            dims=int(dims),
+            pooling="model",
+            normalize=True,
+            query_prefix=query_prefix,
+            passage_prefix=passage_prefix,
+            quantization="onnx-default",
+            runtime="onnx",
         )
         return cls(spec, model, batch_size)
 
     def _embed(self, texts: list[str], prefix: str) -> np.ndarray:
-        arr = np.asarray(list(self.model.embed([prefix + t for t in texts], batch_size=self.batch_size)), dtype=np.float32)
+        arr = np.asarray(
+            list(self.model.embed([prefix + t for t in texts], batch_size=self.batch_size)),
+            dtype=np.float32,
+        )
         return l2_normalize(arr) if self.spec.normalize else arr
 
     def embed_queries(self, texts: list[str]) -> np.ndarray:
@@ -1612,12 +1681,16 @@ def test_fake_reranker_prefers_overlap():
     assert s.shape == (2,) and s[0] > s[1]
 
 
-@pytest.mark.skipif(importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed")
+@pytest.mark.skipif(
+    importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed"
+)
 def test_cross_encoder_small_model():
     from triplum.rerank.cross_encoder import CrossEncoderReranker
 
     r = CrossEncoderReranker.from_model("cross-encoder/ms-marco-MiniLM-L-6-v2")
-    s = r.score("what is the capital of France", ["Paris is the capital of France.", "Bananas are yellow."])
+    s = r.score(
+        "what is the capital of France", ["Paris is the capital of France.", "Bananas are yellow."]
+    )
     assert s[0] > s[1]
 ```
 
@@ -1700,7 +1773,9 @@ class CrossEncoderReranker:
         self.batch_size = batch_size
 
     @classmethod
-    def from_model(cls, name: str, *, device: str | None = None, batch_size: int = 32, max_length: int = 512):
+    def from_model(
+        cls, name: str, *, device: str | None = None, batch_size: int = 32, max_length: int = 512
+    ):
         from sentence_transformers import CrossEncoder
 
         device = device or pick_device()
@@ -1709,7 +1784,10 @@ class CrossEncoderReranker:
 
     def score(self, query: str, passages: list[str]) -> np.ndarray:
         pairs = [(query, p) for p in passages]
-        return np.asarray(self.model.predict(pairs, batch_size=self.batch_size, show_progress_bar=False), dtype=np.float32)
+        return np.asarray(
+            self.model.predict(pairs, batch_size=self.batch_size, show_progress_bar=False),
+            dtype=np.float32,
+        )
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1748,10 +1826,21 @@ from triplum.store.sqlite.store import SqliteStore
 def _docs():
     t = now_us()
     docs = pl.DataFrame(
-        {"id": ["d1", "d2"], "source": ["t", "t"], "uri": [None, None], "observed_at": [t, t], "metadata": [None, None]}
+        {
+            "id": ["d1", "d2"],
+            "source": ["t", "t"],
+            "uri": [None, None],
+            "observed_at": [t, t],
+            "metadata": [None, None],
+        }
     )
     grants = pl.DataFrame(
-        {"document_id": ["d1", "d1", "d2"], "principal": ["public", "alice", "alice"], "granted_at": [t, t, t], "revoked_at": [None, None, None]}
+        {
+            "document_id": ["d1", "d1", "d2"],
+            "principal": ["public", "alice", "alice"],
+            "granted_at": [t, t, t],
+            "revoked_at": [None, None, None],
+        }
     )
     chunks = pl.DataFrame(
         {
@@ -1799,7 +1888,9 @@ def test_revoked_grant_hides_document(tmp_db):
 def test_put_documents_rejects_wrong_columns(tmp_db):
     s = SqliteStore(tmp_db)
     with pytest.raises(ValueError):
-        s.put_documents(pl.DataFrame({"id": ["x"]}), pl.DataFrame({"document_id": [], "principal": []}))
+        s.put_documents(
+            pl.DataFrame({"id": ["x"]}), pl.DataFrame({"document_id": [], "principal": []})
+        )
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1837,9 +1928,13 @@ class Capabilities:
 class Store(Protocol):
     def put_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None: ...
     def put_chunks(self, chunks: pl.DataFrame) -> None: ...
-    def put_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray) -> None: ...
+    def put_embeddings(
+        self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray
+    ) -> None: ...
     def get_chunks(self, ids: list[int], viewer: Viewer) -> pl.DataFrame: ...
-    def vector_search(self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer) -> pl.DataFrame: ...
+    def vector_search(
+        self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer
+    ) -> pl.DataFrame: ...
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame: ...
     def capabilities(self) -> Capabilities: ...
 ```
@@ -2038,7 +2133,9 @@ class SqliteStore:
         self.conn.enable_load_extension(False)
         for p in PRAGMAS:
             self.conn.execute(p)
-        self.conn.executescript(files("triplum.store.sqlite").joinpath("migrations.sql").read_text())
+        self.conn.executescript(
+            files("triplum.store.sqlite").joinpath("migrations.sql").read_text()
+        )
 
     def close(self) -> None:
         self.conn.close()
@@ -2058,14 +2155,24 @@ class SqliteStore:
             self.conn.executemany(
                 "INSERT OR REPLACE INTO documents(id, source, uri, observed_at, metadata, acl_hash, acl_tokens) VALUES (?,?,?,?,?,?,?)",
                 [
-                    (r["id"], r["source"], r["uri"], int(r["observed_at"]), r["metadata"],
-                     acl_hash(by_doc[r["id"]]), acl_tokens(by_doc[r["id"]]))
+                    (
+                        r["id"],
+                        r["source"],
+                        r["uri"],
+                        int(r["observed_at"]),
+                        r["metadata"],
+                        acl_hash(by_doc[r["id"]]),
+                        acl_tokens(by_doc[r["id"]]),
+                    )
                     for r in docs.iter_rows(named=True)
                 ],
             )
             self.conn.executemany(
                 "INSERT OR REPLACE INTO document_grants(document_id, principal, granted_at, revoked_at) VALUES (?,?,?,?)",
-                [(r["document_id"], r["principal"], int(r["granted_at"]), r["revoked_at"]) for r in grants.iter_rows(named=True)],
+                [
+                    (r["document_id"], r["principal"], int(r["granted_at"]), r["revoked_at"])
+                    for r in grants.iter_rows(named=True)
+                ],
             )
 
     def revoke(self, document_id: str, principal: str, at: int) -> None:
@@ -2077,22 +2184,42 @@ class SqliteStore:
             self._refresh_acl(document_id)
 
     def _refresh_acl(self, document_id: str) -> None:
-        live = [r[0] for r in self.conn.execute(
-            "SELECT principal FROM document_grants WHERE document_id = ? AND revoked_at IS NULL", (document_id,)
-        )]
+        live = [
+            r[0]
+            for r in self.conn.execute(
+                "SELECT principal FROM document_grants WHERE document_id = ? AND revoked_at IS NULL",
+                (document_id,),
+            )
+        ]
         h, toks = acl_hash(live), acl_tokens(live)
-        self.conn.execute("UPDATE documents SET acl_hash = ?, acl_tokens = ? WHERE id = ?", (h, toks, document_id))
-        self.conn.execute("UPDATE chunks SET acl_tokens = ? WHERE document_id = ?", (toks, document_id))
+        self.conn.execute(
+            "UPDATE documents SET acl_hash = ?, acl_tokens = ? WHERE id = ?", (h, toks, document_id)
+        )
+        self.conn.execute(
+            "UPDATE chunks SET acl_tokens = ? WHERE document_id = ?", (toks, document_id)
+        )
         for (table,) in self.conn.execute("SELECT 'emb_' || spec_hash FROM embedding_specs"):
-            ids = [r[0] for r in self.conn.execute("SELECT id FROM chunks WHERE document_id = ?", (document_id,))]
+            ids = [
+                r[0]
+                for r in self.conn.execute(
+                    "SELECT id FROM chunks WHERE document_id = ?", (document_id,)
+                )
+            ]
             for cid in ids:
-                row = self.conn.execute(f"SELECT embedding FROM {table} WHERE chunk_id = ?", (cid,)).fetchone()
+                row = self.conn.execute(
+                    f"SELECT embedding FROM {table} WHERE chunk_id = ?", (cid,)
+                ).fetchone()
                 if row is not None:
                     self.conn.execute(f"DELETE FROM {table} WHERE chunk_id = ?", (cid,))
-                    self.conn.execute(f"INSERT INTO {table}(chunk_id, acl_hash, embedding) VALUES (?,?,?)", (cid, h, row[0]))
+                    self.conn.execute(
+                        f"INSERT INTO {table}(chunk_id, acl_hash, embedding) VALUES (?,?,?)",
+                        (cid, h, row[0]),
+                    )
 
     def document_acl_hash(self, document_id: str) -> str:
-        return self.conn.execute("SELECT acl_hash FROM documents WHERE id = ?", (document_id,)).fetchone()[0]
+        return self.conn.execute(
+            "SELECT acl_hash FROM documents WHERE id = ?", (document_id,)
+        ).fetchone()[0]
 
     # ---- chunks ----------------------------------------------------------------------------
 
@@ -2103,8 +2230,16 @@ class SqliteStore:
             self.conn.executemany(
                 "INSERT OR REPLACE INTO chunks(id, document_id, parent_id, level, span_start, span_end, text, acl_tokens) VALUES (?,?,?,?,?,?,?,?)",
                 [
-                    (int(r["id"]), r["document_id"], r["parent_id"], int(r["level"]), int(r["span_start"]),
-                     int(r["span_end"]), r["text"], toks[r["document_id"]])
+                    (
+                        int(r["id"]),
+                        r["document_id"],
+                        r["parent_id"],
+                        int(r["level"]),
+                        int(r["span_start"]),
+                        int(r["span_end"]),
+                        r["text"],
+                        toks[r["document_id"]],
+                    )
                     for r in chunks.iter_rows(named=True)
                 ],
             )
@@ -2119,7 +2254,12 @@ class SqliteStore:
 
     def get_chunks(self, ids: list[int], viewer: Viewer) -> pl.DataFrame:
         if not ids:
-            return pl.DataFrame(schema={c: pl.Int64 if c in ("id", "parent_id", "span_start", "span_end") else pl.Utf8 for c in CHUNK_COLS})
+            return pl.DataFrame(
+                schema={
+                    c: pl.Int64 if c in ("id", "parent_id", "span_start", "span_end") else pl.Utf8
+                    for c in CHUNK_COLS
+                }
+            )
         vis, params = self._visible_ids_sql(viewer)
         rows = self.conn.execute(
             f"SELECT c.id, c.document_id, c.parent_id, c.level, c.span_start, c.span_end, c.text FROM chunks c "
@@ -2130,11 +2270,14 @@ class SqliteStore:
 
     def eligible_acl_hashes(self, viewer: Viewer) -> list[str]:
         ps = viewer.sorted_principals()
-        return [r[0] for r in self.conn.execute(
-            f"SELECT DISTINCT d.acl_hash FROM documents d WHERE EXISTS (SELECT 1 FROM document_grants g "
-            f"WHERE g.document_id = d.id AND g.revoked_at IS NULL AND g.principal IN ({_q(len(ps))}))",
-            ps,
-        )]
+        return [
+            r[0]
+            for r in self.conn.execute(
+                f"SELECT DISTINCT d.acl_hash FROM documents d WHERE EXISTS (SELECT 1 FROM document_grants g "
+                f"WHERE g.document_id = d.id AND g.revoked_at IS NULL AND g.principal IN ({_q(len(ps))}))",
+                ps,
+            )
+        ]
 
     # ---- helpers ---------------------------------------------------------------------------
 
@@ -2229,19 +2372,20 @@ def fts_query(text: str) -> str:
 
 Add to the `SqliteStore` class:
 ```python
-    # ---- BM25 -------------------------------------------------------------------------------
+# ---- BM25 -------------------------------------------------------------------------------
 
-    def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame:
-        acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
-        match = f"({fts_query(query)}) AND acl_tokens:({acl})"
-        vis, params = self._visible_ids_sql(viewer)
-        rows = self.conn.execute(
-            f"SELECT c.id, -bm25(chunks_fts, 1.0, 0.0) AS score FROM chunks_fts "
-            f"JOIN chunks c ON c.id = chunks_fts.rowid "
-            f"WHERE chunks_fts MATCH ? AND {vis} ORDER BY bm25(chunks_fts, 1.0, 0.0) LIMIT ?",
-            [match, *params, k],
-        ).fetchall()
-        return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
+
+def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame:
+    acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
+    match = f"({fts_query(query)}) AND acl_tokens:({acl})"
+    vis, params = self._visible_ids_sql(viewer)
+    rows = self.conn.execute(
+        f"SELECT c.id, -bm25(chunks_fts, 1.0, 0.0) AS score FROM chunks_fts "
+        f"JOIN chunks c ON c.id = chunks_fts.rowid "
+        f"WHERE chunks_fts MATCH ? AND {vis} ORDER BY bm25(chunks_fts, 1.0, 0.0) LIMIT ?",
+        [match, *params, k],
+    ).fetchall()
+    return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
 ```
 
 The `acl_tokens` column weight is 0.0 in `bm25()` so principal tokens never influence ranking; the exact `EXISTS` re-check is belt and braces against a stale token column.
@@ -2330,65 +2474,81 @@ Expected: FAIL with `AttributeError: 'SqliteStore' object has no attribute 'put_
 
 Add to the `SqliteStore` class:
 ```python
-    # ---- embeddings and vector search --------------------------------------------------------
+# ---- embeddings and vector search --------------------------------------------------------
 
-    def _ensure_vec_table(self, spec: EmbeddingSpec) -> str:
-        table = spec.table_name()
-        self.conn.execute(
-            "INSERT OR IGNORE INTO embedding_specs(spec_hash, spec_json, dims) VALUES (?,?,?)",
-            (spec.hash(), json.dumps(spec.__dict__, sort_keys=True), spec.dims),
-        )
-        self.conn.execute(
-            f"CREATE VIRTUAL TABLE IF NOT EXISTS {table} USING vec0("
-            f"chunk_id INTEGER PRIMARY KEY, acl_hash TEXT PARTITION KEY, "
-            f"embedding float[{spec.dims}] distance_metric=cosine)"
-        )
-        return table
 
-    def put_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray) -> None:
-        if vectors.shape != (len(chunk_ids), spec.dims):
-            raise ValueError(f"vectors shape {vectors.shape} != ({len(chunk_ids)}, {spec.dims})")
-        table = self._ensure_vec_table(spec)
-        hashes = dict(self.conn.execute(
+def _ensure_vec_table(self, spec: EmbeddingSpec) -> str:
+    table = spec.table_name()
+    self.conn.execute(
+        "INSERT OR IGNORE INTO embedding_specs(spec_hash, spec_json, dims) VALUES (?,?,?)",
+        (spec.hash(), json.dumps(spec.__dict__, sort_keys=True), spec.dims),
+    )
+    self.conn.execute(
+        f"CREATE VIRTUAL TABLE IF NOT EXISTS {table} USING vec0("
+        f"chunk_id INTEGER PRIMARY KEY, acl_hash TEXT PARTITION KEY, "
+        f"embedding float[{spec.dims}] distance_metric=cosine)"
+    )
+    return table
+
+
+def put_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray) -> None:
+    if vectors.shape != (len(chunk_ids), spec.dims):
+        raise ValueError(f"vectors shape {vectors.shape} != ({len(chunk_ids)}, {spec.dims})")
+    table = self._ensure_vec_table(spec)
+    hashes = dict(
+        self.conn.execute(
             f"SELECT c.id, d.acl_hash FROM chunks c JOIN documents d ON d.id = c.document_id WHERE c.id IN ({_q(len(chunk_ids))})",
             [int(i) for i in chunk_ids],
-        ))
-        vectors = vectors.astype(np.float32)
-        with self._tx():
-            self.conn.executemany(f"DELETE FROM {table} WHERE chunk_id = ?", [(int(i),) for i in chunk_ids])
-            self.conn.executemany(
-                f"INSERT INTO {table}(chunk_id, acl_hash, embedding) VALUES (?,?,?)",
-                [(int(cid), hashes[int(cid)], vectors[j].tobytes()) for j, cid in enumerate(chunk_ids)],
-            )
+        )
+    )
+    vectors = vectors.astype(np.float32)
+    with self._tx():
+        self.conn.executemany(
+            f"DELETE FROM {table} WHERE chunk_id = ?", [(int(i),) for i in chunk_ids]
+        )
+        self.conn.executemany(
+            f"INSERT INTO {table}(chunk_id, acl_hash, embedding) VALUES (?,?,?)",
+            [(int(cid), hashes[int(cid)], vectors[j].tobytes()) for j, cid in enumerate(chunk_ids)],
+        )
 
-    def has_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int]) -> list[bool]:
-        table = spec.table_name()
-        exists = self.conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
-        ).fetchone()
-        if not exists:
-            return [False] * len(chunk_ids)
-        present = {r[0] for r in self.conn.execute(
-            f"SELECT chunk_id FROM {table} WHERE chunk_id IN ({_q(len(chunk_ids))})", [int(i) for i in chunk_ids]
-        )}
-        return [int(i) in present for i in chunk_ids]
 
-    def vector_search(self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer) -> pl.DataFrame:
-        table = spec.table_name()
-        q = np.asarray(query, dtype=np.float32).reshape(-1)
-        if q.shape[0] != spec.dims:
-            raise ValueError(f"query dims {q.shape[0]} != spec dims {spec.dims}")
-        cands: list[tuple[int, float]] = []
-        for h in self.eligible_acl_hashes(viewer):
-            cands.extend(self.conn.execute(
+def has_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int]) -> list[bool]:
+    table = spec.table_name()
+    exists = self.conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone()
+    if not exists:
+        return [False] * len(chunk_ids)
+    present = {
+        r[0]
+        for r in self.conn.execute(
+            f"SELECT chunk_id FROM {table} WHERE chunk_id IN ({_q(len(chunk_ids))})",
+            [int(i) for i in chunk_ids],
+        )
+    }
+    return [int(i) in present for i in chunk_ids]
+
+
+def vector_search(
+    self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer
+) -> pl.DataFrame:
+    table = spec.table_name()
+    q = np.asarray(query, dtype=np.float32).reshape(-1)
+    if q.shape[0] != spec.dims:
+        raise ValueError(f"query dims {q.shape[0]} != spec dims {spec.dims}")
+    cands: list[tuple[int, float]] = []
+    for h in self.eligible_acl_hashes(viewer):
+        cands.extend(
+            self.conn.execute(
                 f"SELECT chunk_id, distance FROM {table} WHERE embedding MATCH ? AND k = ? AND acl_hash = ?",
                 (q.tobytes(), k, h),
-            ).fetchall())
-        cands.sort(key=lambda r: r[1])
-        ids = [c[0] for c in cands[:k]]
-        visible = set(self.get_chunks(ids, viewer)["id"].to_list())
-        rows = [(cid, 1.0 - dist) for cid, dist in cands[:k] if cid in visible]
-        return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
+            ).fetchall()
+        )
+    cands.sort(key=lambda r: r[1])
+    ids = [c[0] for c in cands[:k]]
+    visible = set(self.get_chunks(ids, viewer)["id"].to_list())
+    rows = [(cid, 1.0 - dist) for cid, dist in cands[:k] if cid in visible]
+    return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
 ```
 
 Partition-key equality is what vec0 supports natively; one query per eligible principal-set hash keeps every scan pre-filtered, and the number of distinct sets is small in practice (design D4 open question: measure it). Score is cosine similarity.

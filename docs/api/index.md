@@ -56,23 +56,23 @@ from triplum.llm.protocol import DEFAULT_PARAMS
 from triplum.retrieve import stages
 from triplum.store.sqlite.store import SqliteStore
 
-ds = hr.load_fixture("musique", n=5)     # questions, documents, grants, chunks as Polars frames
+ds = hr.load_fixture("musique", n=5)  # questions, documents, grants, chunks as Polars frames
 store = SqliteStore(Path(tempfile.mkdtemp()) / "demo.sqlite")
 store.put_documents(ds.documents, ds.grants)
 store.put_chunks(ds.chunks)
 
-embedder = FakeEmbedder(dims=64)         # any Embedder; wrap a real one in CachedEmbedder
+embedder = FakeEmbedder(dims=64)  # any Embedder; wrap a real one in CachedEmbedder
 store.put_embeddings(
     embedder.spec, ds.chunks["id"].to_list(), embedder.embed_passages(ds.chunks["text"].to_list())
 )
 
-viewer = Viewer.of("public")             # every read is scoped to a viewer
+viewer = Viewer.of("public")  # every read is scoped to a viewer
 hits = stages.dense(ds.questions, store, embedder, k=5, viewer=viewer)
 answers = read(ds.questions, hits, store, FakeLLM(), viewer, DEFAULT_PARAMS)
 
 q = ds.questions.row(0, named=True)
 ids = hits.filter(hits["question_id"] == q["id"]).sort("rank")["chunk_id"].to_list()
-print(answers.columns)                   # question_id, answer, tokens, cached, latency_s, n_passages
+print(answers.columns)  # question_id, answer, tokens, cached, latency_s, n_passages
 print(metrics.recall_at_k(q["gold_chunk_ids"], ids, 5))
 ```
 

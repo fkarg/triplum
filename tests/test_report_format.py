@@ -8,13 +8,15 @@ from typer.testing import CliRunner
 
 @pytest.mark.parametrize("width", [40, 80, 120])
 def test_summary_wraps_without_losing_fields_or_runs(width):
-    frame = pl.DataFrame({
-        "run_id": [f"run-{i:012}" for i in range(101)],
-        "reader_model": ["long-model-" + "x" * 150] * 101,
-        "em": [0.0] * 101,
-        "r5": [0.5216666667] * 101,
-        "usd_total": [None] * 101,
-    })
+    frame = pl.DataFrame(
+        {
+            "run_id": [f"run-{i:012}" for i in range(101)],
+            "reader_model": ["long-model-" + "x" * 150] * 101,
+            "em": [0.0] * 101,
+            "r5": [0.5216666667] * 101,
+            "usd_total": [None] * 101,
+        }
+    )
     rendered = report.format_summary(frame, width=width)
     assert all(len(line) <= width for line in rendered.splitlines())
     compact = "".join(rendered.split())
@@ -35,10 +37,26 @@ def test_report_cli_uses_terminal_width(tmp_path, monkeypatch):
     from triplum.bench.cli import main
 
     path = tmp_path / "runs.db"
-    assert main([
-        "bench", "run", "--pipeline", "bm25", "--dataset", "musique",
-        "--n", "1", "--fixture", "--reader", "fake", "--cache-root", str(tmp_path),
-    ]) == 0
+    assert (
+        main(
+            [
+                "bench",
+                "run",
+                "--pipeline",
+                "bm25",
+                "--dataset",
+                "musique",
+                "--n",
+                "1",
+                "--fixture",
+                "--reader",
+                "fake",
+                "--cache-root",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
     store = RunStore(path)
     frame = report.summary(store)
     store.conn.close()

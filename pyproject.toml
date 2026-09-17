@@ -38,6 +38,7 @@ dev = [
     "maturin>=1.15,<2",
     "marimo>=0.24",
     "pytest-cov>=7.1.0",
+    "ty>=0.0.81",
 ]
 docs = [
     "mkdocs-material>=9.7",
@@ -75,3 +76,30 @@ branch = true
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint.per-file-ignores]
+# A cell's final expression is its displayed output in marimo.
+"notebooks/*.py" = ["B018"]
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ty.rules]
+unused-ignore-comment = "error"
+
+# Keep the default environment lean; CI also checks with the local extra installed.
+# These allowances only apply when the optional imports are absent.
+[[tool.ty.overrides]]
+include = ["python/triplum/embed/sentence_transformers.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["sentence_transformers", "torch", "huggingface_hub"]
+
+[[tool.ty.overrides]]
+include = ["python/triplum/embed/fastembed.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["fastembed"]
+
+[[tool.ty.overrides]]
+include = ["python/triplum/rerank/cross_encoder.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["sentence_transformers"]

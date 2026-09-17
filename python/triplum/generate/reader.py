@@ -54,9 +54,7 @@ def read(
 ) -> pl.DataFrame:
     rows = []
     for q in questions.iter_rows(named=True):
-        ids = (
-            retrieved.filter(pl.col("question_id") == q["id"]).sort("rank")["chunk_id"].to_list()
-        )
+        ids = retrieved.filter(pl.col("question_id") == q["id"]).sort("rank")["chunk_id"].to_list()
         passages: list[str] = []
         if ids:
             chunks = store.get_chunks(ids, viewer)

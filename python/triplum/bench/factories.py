@@ -101,7 +101,20 @@ def make_reranker(cfg: RerankerConfig | None, cache_root: Path | str | None = No
     raise ValueError(f"unknown reranker kind {cfg.kind}")
 
 
-FAMILIES = ("gpt", "o1", "o3", "o4", "claude", "gemini", "gemma", "muse", "llama", "qwen", "mistral", "deepseek")
+FAMILIES = (
+    "gpt",
+    "o1",
+    "o3",
+    "o4",
+    "claude",
+    "gemini",
+    "gemma",
+    "muse",
+    "llama",
+    "qwen",
+    "mistral",
+    "deepseek",
+)
 
 
 def model_family(model: str) -> str:

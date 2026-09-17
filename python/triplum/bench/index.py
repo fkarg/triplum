@@ -38,9 +38,7 @@ def ensure_embeddings(
     todo = [i for i, h in enumerate(have) if not h]
     if not todo:
         return
-    with rec.stage(
-        "index.embed", model=embedder.spec.model, provider=embedder.spec.runtime
-    ) as ev:
+    with rec.stage("index.embed", model=embedder.spec.model, provider=embedder.spec.runtime) as ev:
         for start in range(0, len(todo), batch):
             idx = todo[start : start + batch]
             vecs = embedder.embed_passages([texts[i] for i in idx])

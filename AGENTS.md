@@ -52,6 +52,14 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
 
 ## Human-facing tools and tests
 
+- `uv run ty check` must pass across source and tests, alongside `cargo check`, lint and tests.
+  Fix contracts and narrowing; do not hide errors with broad ignores, `Any`, or excluded modules.
+  Keep the Rust extension stub aligned with its exports. Optional adapter imports are allowed
+  only where absent in the lean environment; CI also checks with the `local` extra installed.
+- The pre-commit gate exports the index and runs `cargo check`, `uvx ty check`,
+  `ruff check` and `ruff format --check` there.
+  Keep checks isolated from unstaged/untracked work; never stash another session's changes.
+
 - **Forgiving discovery is a priority on every user-facing surface.** Reuse the CLI selection
   policy: exact matches first, unique prefix/substring/typo matches accepted, multiple matches offered as
   choices. Missing required finite selectors should guide the user. Never expose a lookup

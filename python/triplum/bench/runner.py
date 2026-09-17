@@ -121,9 +121,13 @@ def run_benchmark(cfg: RunConfig) -> str:
         rs.snapshot_prices(
             run_id,
             [
-                p.reader.model,
-                cfg.judge.model if cfg.judge else None,
-                embedder.spec.model if embedder else None,
+                model
+                for model in (
+                    p.reader.model,
+                    cfg.judge.model if cfg.judge else None,
+                    embedder.spec.model if embedder else None,
+                )
+                if model is not None
             ],
         )
     rec = rs.recorder(run_id)
@@ -164,6 +168,7 @@ def run_benchmark(cfg: RunConfig) -> str:
                 )
                 jud = None
                 if judge is not None:
+                    assert cfg.judge is not None  # The adapter is built from this config above.
                     with rec.stage(
                         "judge", question_id=q["id"], provider=cfg.judge.kind, model=cfg.judge.model
                     ) as ev:

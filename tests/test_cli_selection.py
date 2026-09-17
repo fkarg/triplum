@@ -29,6 +29,7 @@ def runs(tmp_path):
     for table in ("runs", "run_questions", "events", "run_artifacts", "run_prices"):
         rs.conn.execute(f"UPDATE {table} SET run_id = ? WHERE run_id = ?", ("43a111111111", rid))
     row = rs.run("43a111111111")
+    assert row is not None
     row["run_id"] = "43a222222222"
     row["identity_hash"] = "other-identity"
     row["reader_model"] = "other-reader"

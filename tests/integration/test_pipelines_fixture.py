@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from triplum.bench.config import (
     EmbedderConfig,
@@ -62,15 +64,18 @@ def test_store_bound_to_one_corpus(tmp_path):
 
     run_benchmark(_cfg(tmp_path, "bm25", "musique"))
     with pytest.raises(CorpusMismatch):
-        run_benchmark(_cfg(tmp_path, "bm25", "twowiki").__class__(
-            **{**_cfg(tmp_path, "bm25", "twowiki").__dict__, "store_path": str(tmp_path / "musique.sqlite")}
-        ))
+        run_benchmark(
+            replace(_cfg(tmp_path, "bm25", "twowiki"), store_path=str(tmp_path / "musique.sqlite"))
+        )
 
 
 def test_same_family_judge_rejected(tmp_path):
     cfg = _cfg(tmp_path, "bm25")
-    bad = RunConfig(**{**cfg.__dict__, "judge": LLMConfig(kind="openai", model="gpt-5.6-luna"),
-                       "pipeline": PipelineConfig(**{**cfg.pipeline.__dict__, "reader": LLMConfig(kind="openai", model="gpt-5.6-sol")})})
+    bad = replace(
+        cfg,
+        judge=LLMConfig(kind="openai", model="gpt-5.6-luna"),
+        pipeline=replace(cfg.pipeline, reader=LLMConfig(kind="openai", model="gpt-5.6-sol")),
+    )
     with pytest.raises(ValueError):
         run_benchmark(bad)
 
@@ -79,7 +84,13 @@ def test_events_reconcile_with_questions(tmp_path):
     rid = run_benchmark(_cfg(tmp_path, "hybrid"))
     rs = RunStore(tmp_path / "runs.db")
     ev = rs.events(rid)
-    assert set(ev["stage"].to_list()) >= {"index.documents", "index.embed", "retrieve", "read", "judge"}
+    assert set(ev["stage"].to_list()) >= {
+        "index.documents",
+        "index.embed",
+        "retrieve",
+        "read",
+        "judge",
+    }
     assert ev.filter(ev["stage"] == "judge")["output_tokens"].sum() > 0
     reads = ev.filter(ev["stage"] == "read")
     assert reads["input_tokens"].sum() == rs.questions(rid)["input_tokens"].sum()
@@ -113,7 +124,7 @@ def test_crash_then_resume_completes_same_run(tmp_path, monkeypatch):
 
     monkeypatch.setattr(fake_mod, "_default_responder", flaky)
     cfg = _cfg(tmp_path, "bm25")
-    cfg = RunConfig(**{**cfg.__dict__, "judge": None})
+    cfg = replace(cfg, judge=None)
     with pytest.raises(RuntimeError):
         run_benchmark(cfg)
     rs = RunStore(tmp_path / "runs.db")
@@ -122,7 +133,7 @@ def test_crash_then_resume_completes_same_run(tmp_path, monkeypatch):
     rid = runs["run_id"][0]
     n_done = rs.questions(rid).height
     assert 0 < n_done < 20
-    resumed = run_benchmark(RunConfig(**{**cfg.__dict__, "resume": True}))
+    resumed = run_benchmark(replace(cfg, resume=True))
     assert resumed == rid
     assert rs.questions(rid).height == 20 and rs.runs()["status"][0] == "ok"
     assert calls["n"] == 21  # 5 ok + 1 crash + 15 remaining; completed ones were not re-read

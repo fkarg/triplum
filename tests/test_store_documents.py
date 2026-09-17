@@ -55,7 +55,10 @@ def test_put_documents_twice_keeps_chunks_and_embeddings(tmp_db, sample_corpus):
     s.put_documents(docs, grants)
     assert s.get_chunks([1, 2, 3], Viewer.of("alice")).height == 3
     assert s.bm25("public", k=5, viewer=Viewer.of("public")).height == 2
-    assert s.vector_search(e.spec, e.embed_queries(["alice secret"])[0], 3, Viewer.of("alice")).height == 3
+    assert (
+        s.vector_search(e.spec, e.embed_queries(["alice secret"])[0], 3, Viewer.of("alice")).height
+        == 3
+    )
 
 
 def test_regrant_after_revoke_restores_all_paths(tmp_db, sample_corpus):
@@ -104,6 +107,6 @@ def test_get_chunks_schema_matches_canonical(tmp_db, sample_corpus):
     docs, grants, chunks = sample_corpus
     s.put_documents(docs, grants)
     s.put_chunks(chunks)
-    expected = pl.from_arrow(pa.Table.from_pylist([], schema=schema.CHUNKS)).schema
+    expected = pl.DataFrame(pa.Table.from_pylist([], schema=schema.CHUNKS)).schema
     assert s.get_chunks([1], Viewer.of("public")).schema == expected
     assert s.get_chunks([], Viewer.of("public")).schema == expected

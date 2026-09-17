@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+# Export the index, including partial staging. Never stash or edit the working tree.
+project_root=$(git rev-parse --show-toplevel)
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/triplum-pre-commit.XXXXXX")
+trap 'rm -rf "$snapshot"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+git checkout-index --all --prefix="$snapshot/"
+
+# Reuse installed dependencies and Cargo's build cache, but check only staged sources.
+if [ -d "$project_root/.venv" ]; then
+    ln -s "$project_root/.venv" "$snapshot/.venv"
+    PATH="$project_root/.venv/bin:$PATH"
+    export PATH
+fi
+CARGO_TARGET_DIR="$project_root/target"
+export CARGO_TARGET_DIR
+cd "$snapshot"
+
+status=0
+cargo check || status=1
+uvx ty check || status=1
+ruff check || status=1
+ruff format --check || status=1
+exit "$status"

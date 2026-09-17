@@ -36,10 +36,13 @@ def test_bench_overview_recent_runs_without_migrating(tmp_path):
     path = tmp_path / "runs #1?.db"
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE runs (run_id, created_at, dataset, pipeline, n, status)")
-        conn.executemany("INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?)", [
-            (f"run-{i:02}", i, "musique", "dense", 20, ("ok", "failed", "running")[i % 3])
-            for i in range(12)
-        ])
+        conn.executemany(
+            "INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (f"run-{i:02}", i, "musique", "dense", 20, ("ok", "failed", "running")[i % 3])
+                for i in range(12)
+            ],
+        )
     conn.close()
     before = path.read_bytes()
     result = CliRunner().invoke(app, ["bench", "--runstore", str(path)])

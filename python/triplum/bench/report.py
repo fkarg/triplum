@@ -20,10 +20,19 @@ def format_summary(frame: pl.DataFrame, width: int = 80) -> str:
         for key, value in row.items():
             if key == "run_id":
                 continue
-            value = "n/a" if value is None else f"{value:.6g}" if isinstance(value, float) else str(value)
+            value = (
+                "n/a"
+                if value is None
+                else f"{value:.6g}"
+                if isinstance(value, float)
+                else str(value)
+            )
             fields.append(f"{key}={value}")
         body = textwrap.fill(
-            "  ".join(fields), width=width, initial_indent="  ", subsequent_indent="  ",
+            "  ".join(fields),
+            width=width,
+            initial_indent="  ",
+            subsequent_indent="  ",
             break_on_hyphens=False,
         )
         blocks.append(f"{header}\n{body}")

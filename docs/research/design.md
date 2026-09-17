@@ -273,6 +273,18 @@ usage errors. Library identities
 and opaque values stay exact. Contract: `docs/specs/2026-09-16-cli-selection.md`.
 Tests use focused helpers and real workflow fixtures. Report durations by default and branch
 coverage explicitly in CI/on demand; mark real-model tests so the offline suite remains fast.
+`uv run ty check` is required across source and tests; `cargo check` checks the Rust workspace.
+Native exports carry matching Python stubs. Optional model dependencies stay optional in the
+lean check, with a second CI check against installed local-model dependencies. Fix contracts
+instead of excluding modules or using broad diagnostic suppressions.
+Pre-commit exports the Git index and runs Cargo, ty and Ruff against that snapshot, preserving
+unstaged and untracked work. Ruff formatting is checked without rewriting files during commit.
+
+As of 2026-09-17, stage/adapter boundaries are cohesive; no broad module split is warranted.
+The next focused structural work is RunStore's connection ownership, followed by an audit of
+the manually maintained benchmark fingerprint dependencies (factories and fake adapters are
+currently omitted). The benchmark assembly layer still assumes SQLite; extend that seam when
+introducing a second backend rather than adding speculative interfaces now.
 
 ### D10. Name
 
@@ -378,3 +390,17 @@ Each sub-project gets its own spec and plan before code.
   peer.** Fresh-context GPT-family review completed instead: no blocking code defect;
   **added verification** above, and corrected stale docs after the user explicitly chose
   automatic acceptance of a single plausible fuzzy match. Its 40 CLI tests passed.
+
+- 2026-09-17, typing and modularity design review, peer **Claude Opus 5**; thirteen named
+  falsification attempts. **Changed decision:** run the optional-model type check on macOS
+  rather than install the CUDA dependency stack on Linux. **Added verification:** precise
+  Viewer constructor/helper types and whole-project Ruff scope. **Rejected with reason:**
+  replacing the explicitly requested `uvx` hook with `uv run`; the tool-version difference is
+  documented. The claim that the global hooks path bypasses `.githooks` was false: the
+  installed dispatcher explicitly delegates there. Executable mode is enabled at installation.
+  Dataset migration/typing observations concerned concurrent, separate work and are not included
+  in this commit. Fingerprint omissions and RunStore ownership are recorded above as follow-ups;
+  changing the missing-run API or introducing broad splits is outside this typing task.
+- 2026-09-17, fresh-context GPT-family hook/typing review: **added verification** for alternate
+  indexes, dependency-environment reuse and snapshot cleanup. Its editable-install leakage
+  attack confirmed ty rejects modules absent from the snapshot. No blocking defect found.

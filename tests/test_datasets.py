@@ -7,12 +7,20 @@ from triplum.eval.datasets import hipporag as hr
 def _mini_hotpot(tmp_path):
     questions = [
         {
-            "_id": "q1", "question": "Who?", "answer": "Bob", "type": "bridge", "level": "hard",
+            "_id": "q1",
+            "question": "Who?",
+            "answer": "Bob",
+            "type": "bridge",
+            "level": "hard",
             "supporting_facts": [["A", 0], ["B", 0]],
             "context": [["A", ["Alice met Bob."]], ["B", ["Bob is tall."]], ["C", ["Noise."]]],
         },
         {
-            "_id": "q2", "question": "What?", "answer": "yes", "type": "comparison", "level": "hard",
+            "_id": "q2",
+            "question": "What?",
+            "answer": "yes",
+            "type": "comparison",
+            "level": "hard",
             "supporting_facts": [["C", 0]],
             "context": [["C", ["Noise."]], ["D", ["Other."]]],
         },
@@ -44,7 +52,11 @@ def test_parse_hotpot_style(tmp_path):
 def test_parse_musique_style(tmp_path):
     questions = [
         {
-            "id": "m1", "question": "Q", "answer": "X", "answer_aliases": ["Y"], "answerable": True,
+            "id": "m1",
+            "question": "Q",
+            "answer": "X",
+            "answer_aliases": ["Y"],
+            "answerable": True,
             "paragraphs": [
                 {"idx": 0, "title": "T", "paragraph_text": "one", "is_supporting": True},
                 {"idx": 1, "title": "T", "paragraph_text": "two", "is_supporting": True},
@@ -53,7 +65,11 @@ def test_parse_musique_style(tmp_path):
             "question_decomposition": [],
         }
     ]
-    corpus = [{"title": "T", "text": "one"}, {"title": "T", "text": "two"}, {"title": "U", "text": "three"}]
+    corpus = [
+        {"title": "T", "text": "one"},
+        {"title": "T", "text": "two"},
+        {"title": "U", "text": "three"},
+    ]
     qp, cp = tmp_path / "q.json", tmp_path / "c.json"
     qp.write_text(json.dumps(questions))
     cp.write_text(json.dumps(corpus))
@@ -79,8 +95,14 @@ def test_status_reports_missing_partial_verified_and_invalid_artifacts(tmp_path,
     monkeypatch.setitem(hr.FILES, "status-test", ("questions.json", "corpus.json"))
     protocol_root = tmp_path / "hipporag"
     questions, corpus = protocol_root / "questions.json", protocol_root / "corpus.json"
-    monkeypatch.setitem(hr.HASHES, "questions.json", "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945")
-    monkeypatch.setitem(hr.HASHES, "corpus.json", "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945")
+    monkeypatch.setitem(
+        hr.HASHES,
+        "questions.json",
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    )
+    monkeypatch.setitem(
+        hr.HASHES, "corpus.json", "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    )
 
     assert hr.status("status-test", tmp_path).state == "not downloaded"
     protocol_root.mkdir()
@@ -103,8 +125,17 @@ def test_fixture_files_load():
 
 
 def test_missing_gold_raises(tmp_path):
-    questions = [{"_id": "q1", "question": "Who?", "answer": "Bob", "type": "bridge", "level": "hard",
-                  "supporting_facts": [["ZZZ", 0]], "context": [["A", ["x"]]]}]
+    questions = [
+        {
+            "_id": "q1",
+            "question": "Who?",
+            "answer": "Bob",
+            "type": "bridge",
+            "level": "hard",
+            "supporting_facts": [["ZZZ", 0]],
+            "context": [["A", ["x"]]],
+        }
+    ]
     corpus = [{"idx": 0, "title": "A", "text": "x"}]
     qp, cp = tmp_path / "q.json", tmp_path / "c.json"
     qp.write_text(json.dumps(questions))

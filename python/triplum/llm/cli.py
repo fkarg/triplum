@@ -38,7 +38,12 @@ class CliLLM:
         if schema is not None:
             prompt += "\n\nRespond with JSON only, matching this schema:\n" + json.dumps(schema)
         proc = subprocess.run(
-            self.argv, input=prompt, capture_output=True, text=True, timeout=self.timeout_s, check=True
+            self.argv,
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=self.timeout_s,
+            check=True,
         )
         text = proc.stdout.strip()
         if self.json_field is not None:

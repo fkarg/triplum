@@ -36,7 +36,7 @@ DOC_COLS = ["id", "source", "uri", "observed_at", "metadata"]
 GRANT_COLS = ["document_id", "principal", "granted_at", "revoked_at"]
 CHUNK_COLS = ["id", "document_id", "parent_id", "level", "span_start", "span_end", "text"]
 # The Polars view of the canonical Arrow schema: one definition, owned by the Rust core.
-CHUNK_SCHEMA = pl.from_arrow(pa.Table.from_pylist([], schema=CHUNKS)).schema
+CHUNK_SCHEMA = pl.DataFrame(pa.Table.from_pylist([], schema=CHUNKS)).schema
 
 
 def _require_cols(df: pl.DataFrame, cols: list[str], what: str) -> None:

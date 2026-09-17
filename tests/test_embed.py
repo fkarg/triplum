@@ -30,11 +30,13 @@ def test_fake_embedder_similar_texts_are_closer():
     assert v[0] @ v[1] > v[0] @ v[2]
 
 
-def test_cached_embedder_hits_per_text(tmp_path):
+def test_cached_embedder_hits_per_text(tmp_path, monkeypatch):
     inner = FakeEmbedder(dims=8)
     calls = []
     orig = inner.embed_passages
-    inner.embed_passages = lambda texts: (calls.append(list(texts)), orig(texts))[1]
+    monkeypatch.setattr(
+        inner, "embed_passages", lambda texts: (calls.append(list(texts)), orig(texts))[1]
+    )
     e = CachedEmbedder(inner, Cache(tmp_path))
     e.embed_passages(["x", "y"])
     e.embed_passages(["y", "z"])
@@ -57,7 +59,9 @@ def test_openai_compat_embedder_calls_client():
     class _Client:
         embeddings = _Emb()
 
-    spec = EmbeddingSpec(model="text-embedding-3-large", revision="2026", dims=2, query_prefix="q: ")
+    spec = EmbeddingSpec(
+        model="text-embedding-3-large", revision="2026", dims=2, query_prefix="q: "
+    )
     e = OpenAICompatEmbedder(spec, client=_Client())
     out = e.embed_queries(["a", "b"])
     assert out.shape == (2, 2) and np.allclose(out[0], [1.0, 0.0])
@@ -66,6 +70,25 @@ def test_openai_compat_embedder_calls_client():
 import importlib.util
 
 import pytest
+
+
+def test_sentence_transformers_requires_known_dimensions(monkeypatch):
+    # Some model modules cannot report dimensions; fail at the adapter boundary with context.
+    import sys
+    from types import SimpleNamespace
+
+    from triplum.embed.sentence_transformers import SentenceTransformersEmbedder
+
+    model = SimpleNamespace(get_embedding_dimension=lambda: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        SimpleNamespace(
+            SentenceTransformer=lambda *args, **kwargs: model,
+        ),
+    )
+    with pytest.raises(ValueError, match="embedding dimensions.*unknown-dims"):
+        SentenceTransformersEmbedder.from_model("unknown-dims", device="cpu", revision="pinned")
 
 
 @pytest.mark.model

@@ -1,0 +1,9 @@
+"""Type surface of crates/triplum-py/src/lib.rs (Arrow PyCapsule export)."""
+
+from typing import Protocol
+
+class _ArrowSchema(Protocol):
+    def __arrow_c_schema__(self) -> object: ...
+
+def schema(name: str, dims: int | None = None) -> _ArrowSchema: ...
+def ts_max() -> int: ...

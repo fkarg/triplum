@@ -83,26 +83,47 @@ plumbing is exercised, the semantics are tested in 2a.
 
 ```python
 class LLM(Protocol):
-    def complete(self, messages: list[Message], *, schema: dict | None = None,
-                 params: GenParams = GenParams()) -> Completion: ...
+    def complete(
+        self,
+        messages: list[Message],
+        *,
+        schema: dict | None = None,
+        params: GenParams = GenParams(),
+    ) -> Completion: ...
+
+
 # Completion: text, parsed, usage(input, output, cached), cached: bool, request_hash
+
 
 @dataclass(frozen=True)
 class EmbeddingSpec:
-    model: str; revision: str; dims: int; pooling: str; normalize: bool
-    query_prefix: str; passage_prefix: str; quantization: str; runtime: str
+    model: str
+    revision: str
+    dims: int
+    pooling: str
+    normalize: bool
+    query_prefix: str
+    passage_prefix: str
+    quantization: str
+    runtime: str
+
     def hash(self) -> str: ...
+
 
 class Embedder(Protocol):
     spec: EmbeddingSpec
+
     def embed_queries(self, texts: list[str]) -> np.ndarray: ...
     def embed_passages(self, texts: list[str]) -> np.ndarray: ...
+
 
 class Store(Protocol):
     def put_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None: ...
     def put_chunks(self, chunks: pl.DataFrame) -> None: ...
     def put_embeddings(self, spec: EmbeddingSpec, emb: pl.DataFrame) -> None: ...
-    def vector_search(self, spec: EmbeddingSpec, q: np.ndarray, k: int, viewer: Viewer) -> pl.DataFrame: ...
+    def vector_search(
+        self, spec: EmbeddingSpec, q: np.ndarray, k: int, viewer: Viewer
+    ) -> pl.DataFrame: ...
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame: ...
     def get_chunks(self, ids: list[int], viewer: Viewer) -> pl.DataFrame: ...
     def capabilities(self) -> Capabilities: ...

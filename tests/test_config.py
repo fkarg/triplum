@@ -20,7 +20,9 @@ def test_config_hash_is_stable_and_sensitive():
 
 def test_run_config_roundtrips_json():
     rc = RunConfig(
-        dataset="musique", n=20, fixture=True,
+        dataset="musique",
+        n=20,
+        fixture=True,
         pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")),
         judge=LLMConfig(kind="cli", argv=("claude", "-p"), json_field="result"),
     )
@@ -47,16 +49,39 @@ def test_cli_run_records_the_flags_it_was_given(tmp_path):
     from triplum.bench.runstore import RunStore
 
     db = tmp_path / "runs.db"
-    rc = main([
-        "bench", "run", "--pipeline", "dense", "--dataset", "musique", "--n", "5", "--fixture",
-        "--reader", "fake", "--embedder", "fake", "--judge", "fake", "--top-k", "3",
-        "--cache-root", str(tmp_path), "--runstore", str(db),
-    ])
+    rc = main(
+        [
+            "bench",
+            "run",
+            "--pipeline",
+            "dense",
+            "--dataset",
+            "musique",
+            "--n",
+            "5",
+            "--fixture",
+            "--reader",
+            "fake",
+            "--embedder",
+            "fake",
+            "--judge",
+            "fake",
+            "--top-k",
+            "3",
+            "--cache-root",
+            str(tmp_path),
+            "--runstore",
+            str(db),
+        ]
+    )
     assert rc == 0
     rs = RunStore(db)
     (run_id,) = [r["run_id"] for r in rs.runs().iter_rows(named=True)]
-    cfg = RunConfig.from_json(rs.run(run_id)["config_json"])
+    row = rs.run(run_id)
+    assert row is not None
+    cfg = RunConfig.from_json(row["config_json"])
     assert cfg.pipeline.name == "dense" and cfg.dataset == "musique" and cfg.n == 5 and cfg.fixture
+    assert cfg.pipeline.embedder is not None
     assert cfg.pipeline.embedder.kind == "fake" and cfg.pipeline.top_k == 3
     assert cfg.judge is not None and cfg.cache_root == str(tmp_path)
 
@@ -64,7 +89,9 @@ def test_cli_run_records_the_flags_it_was_given(tmp_path):
 def test_cli_embedder_shorthand():
     from triplum.bench.cli import _embedder
 
-    assert _embedder("st:BAAI/bge-large-en-v1.5") == EmbedderConfig(kind="st", model="BAAI/bge-large-en-v1.5")
+    assert _embedder("st:BAAI/bge-large-en-v1.5") == EmbedderConfig(
+        kind="st", model="BAAI/bge-large-en-v1.5"
+    )
     assert _embedder("openai:text-embedding-3-large").dims == 3072
     assert _embedder({"kind": "fake", "dims": 8}).dims == 8
 
@@ -78,7 +105,10 @@ def test_cli_data_lists_registered_datasets_without_fetching(tmp_path, monkeypat
     assert "hotpotqa" in out and "musique" in out and "twowiki" in out
     assert all(f"{name}: not downloaded" in out for name in ("hotpotqa", "musique", "twowiki"))
     assert "States: verified = local files match pinned SHA-256" in out
-    assert "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files." in out
+    assert (
+        "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files."
+        in out
+    )
     assert "Usage: pytest data" in out and "Commands" in out and "fetch" in out
     assert not (tmp_path / "hipporag").exists()
 
@@ -89,10 +119,29 @@ def test_sweep_continues_past_failed_spec(tmp_path, capsys):
     from triplum.bench.cli import main
 
     specs = tmp_path / "emb.json"
-    specs.write_text(json.dumps([{"kind": "fake", "dims": 8}, {"kind": "nonexistent"}, {"kind": "fake", "dims": 16}]))
-    rc = main([
-        "bench", "sweep", "--dataset", "musique", "--n", "5", "--fixture", "--reader", "fake",
-        "--embedders", str(specs), "--cache-root", str(tmp_path), "--runstore", str(tmp_path / "runs.db"),
-    ])
+    specs.write_text(
+        json.dumps(
+            [{"kind": "fake", "dims": 8}, {"kind": "nonexistent"}, {"kind": "fake", "dims": 16}]
+        )
+    )
+    rc = main(
+        [
+            "bench",
+            "sweep",
+            "--dataset",
+            "musique",
+            "--n",
+            "5",
+            "--fixture",
+            "--reader",
+            "fake",
+            "--embedders",
+            str(specs),
+            "--cache-root",
+            str(tmp_path),
+            "--runstore",
+            str(tmp_path / "runs.db"),
+        ]
+    )
     out = capsys.readouterr()
     assert rc == 1 and "FAILED" in out.err and out.out.count("dense") == 2

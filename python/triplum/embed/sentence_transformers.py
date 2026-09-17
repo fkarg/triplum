@@ -64,10 +64,13 @@ class SentenceTransformersEmbedder:
         if padding_side:
             model.tokenizer.padding_side = padding_side
         resolved = revision or _hf_commit(name) or "unknown"
+        dims = model.get_embedding_dimension()
+        if dims is None:
+            raise ValueError(f"Cannot determine embedding dimensions for {name}")
         spec = EmbeddingSpec(
             model=name,
             revision=str(resolved),
-            dims=int(model.get_embedding_dimension()),
+            dims=dims,
             pooling="model",
             normalize=True,
             query_prefix=render_query_prefix(query_template, instruction),

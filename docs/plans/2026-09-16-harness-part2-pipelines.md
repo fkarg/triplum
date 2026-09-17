@@ -60,15 +60,31 @@ from triplum.eval.datasets import hipporag as hr
 
 def _mini_hotpot(tmp_path):
     questions = [
-        {"_id": "q1", "question": "Who?", "answer": "Bob", "type": "bridge", "level": "hard",
-         "supporting_facts": [["A", 0], ["B", 0]],
-         "context": [["A", ["Alice met Bob."]], ["B", ["Bob is tall."]], ["C", ["Noise."]]]},
-        {"_id": "q2", "question": "What?", "answer": "yes", "type": "comparison", "level": "hard",
-         "supporting_facts": [["C", 0]],
-         "context": [["C", ["Noise."]], ["D", ["Other."]]]},
+        {
+            "_id": "q1",
+            "question": "Who?",
+            "answer": "Bob",
+            "type": "bridge",
+            "level": "hard",
+            "supporting_facts": [["A", 0], ["B", 0]],
+            "context": [["A", ["Alice met Bob."]], ["B", ["Bob is tall."]], ["C", ["Noise."]]],
+        },
+        {
+            "_id": "q2",
+            "question": "What?",
+            "answer": "yes",
+            "type": "comparison",
+            "level": "hard",
+            "supporting_facts": [["C", 0]],
+            "context": [["C", ["Noise."]], ["D", ["Other."]]],
+        },
     ]
-    corpus = [{"idx": 0, "title": "A", "text": "Alice met Bob."}, {"idx": 1, "title": "B", "text": "Bob is tall."},
-              {"idx": 2, "title": "C", "text": "Noise."}, {"idx": 3, "title": "D", "text": "Other."}]
+    corpus = [
+        {"idx": 0, "title": "A", "text": "Alice met Bob."},
+        {"idx": 1, "title": "B", "text": "Bob is tall."},
+        {"idx": 2, "title": "C", "text": "Noise."},
+        {"idx": 3, "title": "D", "text": "Other."},
+    ]
     qp, cp = tmp_path / "q.json", tmp_path / "c.json"
     qp.write_text(json.dumps(questions))
     cp.write_text(json.dumps(corpus))
@@ -80,19 +96,35 @@ def test_parse_hotpot_style(tmp_path):
     ds = hr.load_files("hotpotqa", qp, cp)
     assert ds.name == "hotpotqa" and ds.chunks.height == 4 and ds.documents.height == 4
     q = ds.questions.filter(ds.questions["id"] == "q1").row(0, named=True)
-    assert q["answer"] == "Bob" and sorted(q["gold_chunk_ids"]) == [1, 2] and q["aliases"] == ["Bob"]
+    assert (
+        q["answer"] == "Bob" and sorted(q["gold_chunk_ids"]) == [1, 2] and q["aliases"] == ["Bob"]
+    )
     assert ds.chunks.filter(ds.chunks["id"] == 1)["text"][0] == "A\nAlice met Bob."
     assert ds.grants["principal"].unique().to_list() == ["public"]
     assert len(ds.corpus_hash) == 64 and len(ds.questions_hash) == 64
 
 
 def test_parse_musique_style(tmp_path):
-    questions = [{"id": "m1", "question": "Q", "answer": "X", "answer_aliases": ["Y"], "answerable": True,
-                  "paragraphs": [{"idx": 0, "title": "T", "paragraph_text": "one", "is_supporting": True},
-                                 {"idx": 1, "title": "T", "paragraph_text": "two", "is_supporting": True},
-                                 {"idx": 2, "title": "U", "paragraph_text": "three", "is_supporting": False}],
-                  "question_decomposition": []}]
-    corpus = [{"title": "T", "text": "one"}, {"title": "T", "text": "two"}, {"title": "U", "text": "three"}]
+    questions = [
+        {
+            "id": "m1",
+            "question": "Q",
+            "answer": "X",
+            "answer_aliases": ["Y"],
+            "answerable": True,
+            "paragraphs": [
+                {"idx": 0, "title": "T", "paragraph_text": "one", "is_supporting": True},
+                {"idx": 1, "title": "T", "paragraph_text": "two", "is_supporting": True},
+                {"idx": 2, "title": "U", "paragraph_text": "three", "is_supporting": False},
+            ],
+            "question_decomposition": [],
+        }
+    ]
+    corpus = [
+        {"title": "T", "text": "one"},
+        {"title": "T", "text": "two"},
+        {"title": "U", "text": "three"},
+    ]
     qp, cp = tmp_path / "q.json", tmp_path / "c.json"
     qp.write_text(json.dumps(questions))
     cp.write_text(json.dumps(corpus))
@@ -224,7 +256,9 @@ def _gold_key(name: str, title: str, text: str) -> tuple:
     return (title,) if name in ("hotpotqa", "twowiki") else (title, text)
 
 
-def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -> tuple[pl.DataFrame, ...]:
+def _parse(
+    name: str, questions: list[dict], corpus: list[dict], n: int | None
+) -> tuple[pl.DataFrame, ...]:
     if n is not None:
         questions = questions[:n]
     key_to_chunk: dict[tuple, int] = {}
@@ -242,7 +276,9 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) 
         if name == "musique":
             qid, answer = q["id"], q["answer"]
             aliases = [answer, *[a for a in q.get("answer_aliases", []) if a != answer]]
-            gold = [(p["title"], p["paragraph_text"]) for p in q["paragraphs"] if p["is_supporting"]]
+            gold = [
+                (p["title"], p["paragraph_text"]) for p in q["paragraphs"] if p["is_supporting"]
+            ]
             qtype = q["id"].split("__")[0]
         else:
             qid, answer = q["_id"], q["answer"]
@@ -253,13 +289,50 @@ def _parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) 
         q_rows.append((qid, q["question"], answer, aliases, gold_ids, qtype))
     questions_df = pl.DataFrame(
         q_rows,
-        schema={"id": pl.Utf8, "question": pl.Utf8, "answer": pl.Utf8, "aliases": pl.List(pl.Utf8),
-                "gold_chunk_ids": pl.List(pl.Int64), "qtype": pl.Utf8},
+        schema={
+            "id": pl.Utf8,
+            "question": pl.Utf8,
+            "answer": pl.Utf8,
+            "aliases": pl.List(pl.Utf8),
+            "gold_chunk_ids": pl.List(pl.Int64),
+            "qtype": pl.Utf8,
+        },
         orient="row",
     )
-    documents = pl.DataFrame(doc_rows, schema={"id": pl.Utf8, "source": pl.Utf8, "uri": pl.Utf8, "observed_at": pl.Int64, "metadata": pl.Utf8}, orient="row")
-    grants = pl.DataFrame(grant_rows, schema={"document_id": pl.Utf8, "principal": pl.Utf8, "granted_at": pl.Int64, "revoked_at": pl.Int64}, orient="row")
-    chunks = pl.DataFrame(chunk_rows, schema={"id": pl.Int64, "document_id": pl.Utf8, "parent_id": pl.Int64, "level": pl.Int64, "span_start": pl.Int64, "span_end": pl.Int64, "text": pl.Utf8}, orient="row")
+    documents = pl.DataFrame(
+        doc_rows,
+        schema={
+            "id": pl.Utf8,
+            "source": pl.Utf8,
+            "uri": pl.Utf8,
+            "observed_at": pl.Int64,
+            "metadata": pl.Utf8,
+        },
+        orient="row",
+    )
+    grants = pl.DataFrame(
+        grant_rows,
+        schema={
+            "document_id": pl.Utf8,
+            "principal": pl.Utf8,
+            "granted_at": pl.Int64,
+            "revoked_at": pl.Int64,
+        },
+        orient="row",
+    )
+    chunks = pl.DataFrame(
+        chunk_rows,
+        schema={
+            "id": pl.Int64,
+            "document_id": pl.Utf8,
+            "parent_id": pl.Int64,
+            "level": pl.Int64,
+            "span_start": pl.Int64,
+            "span_end": pl.Int64,
+            "text": pl.Utf8,
+        },
+        orient="row",
+    )
     return questions_df, documents, grants, chunks
 
 
@@ -267,7 +340,9 @@ def load_files(name: str, questions_path: Path, corpus_path: Path, n: int | None
     questions = json.loads(Path(questions_path).read_text())
     corpus = json.loads(Path(corpus_path).read_text())
     q, d, g, c = _parse(name, questions, corpus, n)
-    return Dataset(name, q, d, g, c, sha256_file(Path(corpus_path)), sha256_file(Path(questions_path)))
+    return Dataset(
+        name, q, d, g, c, sha256_file(Path(corpus_path)), sha256_file(Path(questions_path))
+    )
 
 
 def load(name: str, n: int | None = None, root: Path | None = None) -> Dataset:
@@ -276,7 +351,9 @@ def load(name: str, n: int | None = None, root: Path | None = None) -> Dataset:
 
 
 def load_fixture(name: str, n: int | None = None) -> Dataset:
-    return load_files(name, FIXTURE_DIR / f"{name}_questions.json", FIXTURE_DIR / f"{name}_corpus.json", n)
+    return load_files(
+        name, FIXTURE_DIR / f"{name}_questions.json", FIXTURE_DIR / f"{name}_corpus.json", n
+    )
 ```
 
 `scripts/make_fixture.py`:
@@ -496,7 +573,11 @@ def _store(tmp_db, ds, embedder):
     s = SqliteStore(tmp_db)
     s.put_documents(ds.documents, ds.grants)
     s.put_chunks(ds.chunks)
-    s.put_embeddings(embedder.spec, ds.chunks["id"].to_list(), embedder.embed_passages(ds.chunks["text"].to_list()))
+    s.put_embeddings(
+        embedder.spec,
+        ds.chunks["id"].to_list(),
+        embedder.embed_passages(ds.chunks["text"].to_list()),
+    )
     return s
 
 
@@ -536,7 +617,15 @@ def test_reader_uses_visible_chunks_only(tmp_db):
 
     retrieved = stages.oracle(ds.questions, k=5)
     out = read(ds.questions, retrieved, s, FakeLLM(responder=responder), viewer=Viewer.of("nobody"))
-    assert out.columns == ["question_id", "answer", "input_tokens", "output_tokens", "cached", "latency_s", "n_passages"]
+    assert out.columns == [
+        "question_id",
+        "answer",
+        "input_tokens",
+        "output_tokens",
+        "cached",
+        "latency_s",
+        "n_passages",
+    ]
     assert out["n_passages"].to_list() == [0, 0]
     assert all("Passage" not in p for p in seen)
 
@@ -593,7 +682,9 @@ def oracle(questions: pl.DataFrame, k: int) -> pl.DataFrame:
     return _frame(rows)
 
 
-def dense(questions: pl.DataFrame, store: Store, embedder: Embedder, k: int, viewer: Viewer) -> pl.DataFrame:
+def dense(
+    questions: pl.DataFrame, store: Store, embedder: Embedder, k: int, viewer: Viewer
+) -> pl.DataFrame:
     qvecs = embedder.embed_queries(questions["question"].to_list())
     rows = []
     for q, v in zip(questions.iter_rows(named=True), qvecs):
@@ -620,8 +711,13 @@ def rrf(rankings: list[list[int]], k_const: int = 60) -> list[tuple[int, float]]
 
 
 def hybrid(
-    questions: pl.DataFrame, store: Store, embedder: Embedder, reranker: Reranker,
-    k: int, candidates: int, viewer: Viewer,
+    questions: pl.DataFrame,
+    store: Store,
+    embedder: Embedder,
+    reranker: Reranker,
+    k: int,
+    candidates: int,
+    viewer: Viewer,
 ) -> pl.DataFrame:
     """Dense and BM25 candidates fused by RRF, top `candidates` reranked, top k returned."""
     qvecs = embedder.embed_queries(questions["question"].to_list())
@@ -661,11 +757,20 @@ SYSTEM = (
     "You answer questions using the given passages. Reply with the shortest possible answer: a "
     "name, date, number, or yes/no. Do not explain."
 )
-ANSWER_SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {"answer": {"type": "string"}},
+    "required": ["answer"],
+}
 
 OUT_SCHEMA = {
-    "question_id": pl.Utf8, "answer": pl.Utf8, "input_tokens": pl.Int64, "output_tokens": pl.Int64,
-    "cached": pl.Boolean, "latency_s": pl.Float64, "n_passages": pl.Int64,
+    "question_id": pl.Utf8,
+    "answer": pl.Utf8,
+    "input_tokens": pl.Int64,
+    "output_tokens": pl.Int64,
+    "cached": pl.Boolean,
+    "latency_s": pl.Float64,
+    "n_passages": pl.Int64,
 }
 
 
@@ -679,8 +784,12 @@ def build_messages(question: str, passages: list[str]) -> list[Message]:
 
 
 def read(
-    questions: pl.DataFrame, retrieved: pl.DataFrame, store: Store, llm: LLM,
-    viewer: Viewer, params: GenParams = DEFAULT_PARAMS,
+    questions: pl.DataFrame,
+    retrieved: pl.DataFrame,
+    store: Store,
+    llm: LLM,
+    viewer: Viewer,
+    params: GenParams = DEFAULT_PARAMS,
 ) -> pl.DataFrame:
     rows = []
     for q in questions.iter_rows(named=True):
@@ -691,10 +800,21 @@ def read(
             by_id = dict(zip(chunks["id"].to_list(), chunks["text"].to_list()))
             passages = [by_id[c] for c in ids if c in by_id]
         t0 = time.perf_counter()
-        c = llm.complete(build_messages(q["question"], passages), schema=ANSWER_SCHEMA, params=params)
+        c = llm.complete(
+            build_messages(q["question"], passages), schema=ANSWER_SCHEMA, params=params
+        )
         answer = c.parsed.get("answer", "") if isinstance(c.parsed, dict) else c.text
-        rows.append((q["id"], str(answer), c.usage.input_tokens, c.usage.output_tokens, c.cached,
-                     time.perf_counter() - t0, len(passages)))
+        rows.append(
+            (
+                q["id"],
+                str(answer),
+                c.usage.input_tokens,
+                c.usage.output_tokens,
+                c.cached,
+                time.perf_counter() - t0,
+                len(passages),
+            )
+        )
     return pl.DataFrame(rows, schema=OUT_SCHEMA, orient="row")
 ```
 
@@ -713,8 +833,11 @@ SCHEMA = {"type": "object", "properties": {"correct": {"type": "boolean"}}, "req
 
 def judge_correct(llm: LLM, question: str, golds: list[str], answer: str) -> bool:
     msgs = [
-        Message("system", "You grade short answers. Given the question, the gold answer(s) and a candidate, "
-                          "say whether the candidate is correct (same meaning; extra words are fine)."),
+        Message(
+            "system",
+            "You grade short answers. Given the question, the gold answer(s) and a candidate, "
+            "say whether the candidate is correct (same meaning; extra words are fine).",
+        ),
         Message("user", f"Question: {question}\nGold: {' | '.join(golds)}\nCandidate: {answer}"),
     ]
     c = llm.complete(msgs, schema=SCHEMA)
@@ -752,15 +875,28 @@ from triplum.llm.cached import CachedLLM
 
 
 def test_config_hash_is_stable_and_sensitive():
-    a = PipelineConfig(name="dense", embedder=EmbedderConfig(kind="fake", dims=32), reader=LLMConfig(kind="fake"))
-    b = PipelineConfig(name="dense", embedder=EmbedderConfig(kind="fake", dims=32), reader=LLMConfig(kind="fake"))
-    c = PipelineConfig(name="dense", top_k=3, embedder=EmbedderConfig(kind="fake", dims=32), reader=LLMConfig(kind="fake"))
+    a = PipelineConfig(
+        name="dense", embedder=EmbedderConfig(kind="fake", dims=32), reader=LLMConfig(kind="fake")
+    )
+    b = PipelineConfig(
+        name="dense", embedder=EmbedderConfig(kind="fake", dims=32), reader=LLMConfig(kind="fake")
+    )
+    c = PipelineConfig(
+        name="dense",
+        top_k=3,
+        embedder=EmbedderConfig(kind="fake", dims=32),
+        reader=LLMConfig(kind="fake"),
+    )
     assert a.hash() == b.hash() != c.hash()
 
 
 def test_run_config_roundtrips_json():
-    rc = RunConfig(dataset="musique", n=20, fixture=True,
-                   pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")))
+    rc = RunConfig(
+        dataset="musique",
+        n=20,
+        fixture=True,
+        pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake")),
+    )
     assert RunConfig.from_json(rc.to_json()) == rc
 
 
@@ -905,19 +1041,35 @@ def make_embedder(cfg: EmbedderConfig, cache_root: Path | str | None):
     if cfg.kind == "openai":
         from triplum.embed.openai_compat import OpenAICompatEmbedder
 
-        spec = EmbeddingSpec(model=cfg.model, revision=cfg.revision or "api", dims=cfg.dims,
-                             query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix, runtime="api")
-        return CachedEmbedder(OpenAICompatEmbedder(spec, base_url=cfg.base_url, api_key_env=cfg.api_key_env), cache)
+        spec = EmbeddingSpec(
+            model=cfg.model,
+            revision=cfg.revision or "api",
+            dims=cfg.dims,
+            query_prefix=cfg.query_prefix,
+            passage_prefix=cfg.passage_prefix,
+            runtime="api",
+        )
+        return CachedEmbedder(
+            OpenAICompatEmbedder(spec, base_url=cfg.base_url, api_key_env=cfg.api_key_env), cache
+        )
     if cfg.kind == "st":
         from triplum.embed.sentence_transformers import SentenceTransformersEmbedder
 
-        return CachedEmbedder(SentenceTransformersEmbedder.from_model(
-            cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix), cache)
+        return CachedEmbedder(
+            SentenceTransformersEmbedder.from_model(
+                cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix
+            ),
+            cache,
+        )
     if cfg.kind == "fastembed":
         from triplum.embed.fastembed import FastEmbedEmbedder
 
-        return CachedEmbedder(FastEmbedEmbedder.from_model(
-            cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix), cache)
+        return CachedEmbedder(
+            FastEmbedEmbedder.from_model(
+                cfg.model, query_prefix=cfg.query_prefix, passage_prefix=cfg.passage_prefix
+            ),
+            cache,
+        )
     raise ValueError(f"unknown embedder kind {cfg.kind}")
 
 
@@ -928,7 +1080,9 @@ def make_llm(cfg: LLMConfig, cache_root: Path | str | None):
     if cfg.kind == "openai":
         from triplum.llm.openai_compat import OpenAICompatLLM
 
-        return CachedLLM(OpenAICompatLLM(cfg.model, base_url=cfg.base_url, api_key_env=cfg.api_key_env), cache)
+        return CachedLLM(
+            OpenAICompatLLM(cfg.model, base_url=cfg.base_url, api_key_env=cfg.api_key_env), cache
+        )
     if cfg.kind == "cli":
         from triplum.llm.cli import CliLLM
 
@@ -983,18 +1137,51 @@ from triplum.bench.runstore import RunStore
 
 def test_runstore_roundtrip(tmp_path):
     rs = RunStore(tmp_path / "runs.db")
-    rs.set_price("m1", "openai", usd_in_per_m=1.0, usd_out_per_m=2.0, usd_cached_in_per_m=0.5, source="test")
-    run_id = rs.start_run({"dataset": "musique", "pipeline": "dense", "config_hash": "abc", "config_json": "{}",
-                           "code_version": "deadbeef", "dirty": 0, "corpus_hash": "c", "questions_hash": "q",
-                           "n": 1, "embedding_spec": "e", "reranker_spec": None, "reader_model": "m1",
-                           "judge_model": None, "seed": 0, "viewer_json": "{}", "host": "h"})
+    rs.set_price(
+        "m1", "openai", usd_in_per_m=1.0, usd_out_per_m=2.0, usd_cached_in_per_m=0.5, source="test"
+    )
+    run_id = rs.start_run(
+        {
+            "dataset": "musique",
+            "pipeline": "dense",
+            "config_hash": "abc",
+            "config_json": "{}",
+            "code_version": "deadbeef",
+            "dirty": 0,
+            "corpus_hash": "c",
+            "questions_hash": "q",
+            "n": 1,
+            "embedding_spec": "e",
+            "reranker_spec": None,
+            "reader_model": "m1",
+            "judge_model": None,
+            "seed": 0,
+            "viewer_json": "{}",
+            "host": "h",
+        }
+    )
     rec = rs.recorder(run_id)
     with rec.stage("read", question_id="q1", provider="openai", model="m1") as ev:
         ev.usage(1_000_000, 500_000, cached_in=0)
-    rs.add_question(run_id, {"question_id": "q1", "retrieved_json": "[]", "answer": "x", "em": 1.0, "f1": 1.0,
-                             "contain": 1.0, "judge": None, "r2": 0.5, "r5": 1.0, "input_tokens": 1_000_000,
-                             "output_tokens": 500_000, "usd": rec.cost("m1", 1_000_000, 500_000, 0),
-                             "latency_s": 0.1, "n_passages": 5})
+    rs.add_question(
+        run_id,
+        {
+            "question_id": "q1",
+            "retrieved_json": "[]",
+            "answer": "x",
+            "em": 1.0,
+            "f1": 1.0,
+            "contain": 1.0,
+            "judge": None,
+            "r2": 0.5,
+            "r5": 1.0,
+            "input_tokens": 1_000_000,
+            "output_tokens": 500_000,
+            "usd": rec.cost("m1", 1_000_000, 500_000, 0),
+            "latency_s": 0.1,
+            "n_passages": 5,
+        },
+    )
     rs.finish_run(run_id, status="ok", wall_s=1.0, cache_hits=0, cache_misses=1)
     runs = rs.runs()
     assert runs.height == 1 and runs["status"][0] == "ok"
@@ -1006,9 +1193,24 @@ def test_runstore_roundtrip(tmp_path):
 
 def test_find_existing_run(tmp_path):
     rs = RunStore(tmp_path / "runs.db")
-    meta = {"dataset": "d", "pipeline": "p", "config_hash": "h", "config_json": "{}", "code_version": "v", "dirty": 0,
-            "corpus_hash": "c", "questions_hash": "q", "n": 1, "embedding_spec": None, "reranker_spec": None,
-            "reader_model": "m", "judge_model": None, "seed": 0, "viewer_json": "{}", "host": "h"}
+    meta = {
+        "dataset": "d",
+        "pipeline": "p",
+        "config_hash": "h",
+        "config_json": "{}",
+        "code_version": "v",
+        "dirty": 0,
+        "corpus_hash": "c",
+        "questions_hash": "q",
+        "n": 1,
+        "embedding_spec": None,
+        "reranker_spec": None,
+        "reader_model": "m",
+        "judge_model": None,
+        "seed": 0,
+        "viewer_json": "{}",
+        "host": "h",
+    }
     rid = rs.start_run(meta)
     rs.finish_run(rid, status="ok", wall_s=0, cache_hits=0, cache_misses=0)
     assert rs.find_run(identity_hash=rs.identity_hash(meta)) == rid
@@ -1075,8 +1277,21 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
 ) STRICT;
 """
 
-IDENTITY_FIELDS = ("dataset", "pipeline", "config_hash", "code_version", "corpus_hash", "questions_hash",
-                   "n", "embedding_spec", "reranker_spec", "reader_model", "judge_model", "seed", "viewer_json")
+IDENTITY_FIELDS = (
+    "dataset",
+    "pipeline",
+    "config_hash",
+    "code_version",
+    "corpus_hash",
+    "questions_hash",
+    "n",
+    "embedding_spec",
+    "reranker_spec",
+    "reader_model",
+    "judge_model",
+    "seed",
+    "viewer_json",
+)
 
 
 class RunStore:
@@ -1090,17 +1305,35 @@ class RunStore:
 
     # ---- prices -----------------------------------------------------------------------------
 
-    def set_price(self, model: str, provider: str, *, usd_in_per_m: float, usd_out_per_m: float,
-                  usd_cached_in_per_m: float, source: str, valid_from: int | None = None) -> None:
+    def set_price(
+        self,
+        model: str,
+        provider: str,
+        *,
+        usd_in_per_m: float,
+        usd_out_per_m: float,
+        usd_cached_in_per_m: float,
+        source: str,
+        valid_from: int | None = None,
+    ) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO prices VALUES (?,?,?,?,?,?,?)",
-            (model, provider, usd_in_per_m, usd_out_per_m, usd_cached_in_per_m, valid_from or now_us(), source),
+            (
+                model,
+                provider,
+                usd_in_per_m,
+                usd_out_per_m,
+                usd_cached_in_per_m,
+                valid_from or now_us(),
+                source,
+            ),
         )
 
     def price(self, model: str) -> tuple[float, float, float] | None:
         row = self.conn.execute(
             "SELECT usd_in_per_m, usd_out_per_m, usd_cached_in_per_m FROM prices WHERE model = ?"
-            " ORDER BY valid_from DESC LIMIT 1", (model,)
+            " ORDER BY valid_from DESC LIMIT 1",
+            (model,),
         ).fetchone()
         return None if row is None else (row[0], row[1], row[2])
 
@@ -1121,10 +1354,14 @@ class RunStore:
         run_id = uuid.uuid4().hex[:12]
         cols = ["run_id", "identity_hash", "created_at", *meta.keys()]
         vals = [run_id, self.identity_hash(meta), now_us(), *meta.values()]
-        self.conn.execute(f"INSERT INTO runs({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", vals)
+        self.conn.execute(
+            f"INSERT INTO runs({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", vals
+        )
         return run_id
 
-    def finish_run(self, run_id: str, *, status: str, wall_s: float, cache_hits: int, cache_misses: int) -> None:
+    def finish_run(
+        self, run_id: str, *, status: str, wall_s: float, cache_hits: int, cache_misses: int
+    ) -> None:
         self.conn.execute(
             "UPDATE runs SET status = ?, wall_s = ?, cache_hits = ?, cache_misses = ? WHERE run_id = ?",
             (status, wall_s, cache_hits, cache_misses, run_id),
@@ -1138,7 +1375,9 @@ class RunStore:
         )
 
     def add_artifact(self, run_id: str, kind: str, path: str, sha256: str) -> None:
-        self.conn.execute("INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256))
+        self.conn.execute(
+            "INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256)
+        )
 
     def recorder(self, run_id: str) -> "Recorder":
         return Recorder(self, run_id)
@@ -1167,7 +1406,9 @@ class _Event:
         self.cached_in = 0
         self.cached = False
 
-    def usage(self, input_tokens: int, output_tokens: int, cached_in: int = 0, cached: bool = False) -> None:
+    def usage(
+        self, input_tokens: int, output_tokens: int, cached_in: int = 0, cached: bool = False
+    ) -> None:
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
         self.cached_in += cached_in
@@ -1181,15 +1422,26 @@ class Recorder:
         self.cache_hits = 0
         self.cache_misses = 0
 
-    def cost(self, model: str | None, input_tokens: int, output_tokens: int, cached_in: int) -> float | None:
+    def cost(
+        self, model: str | None, input_tokens: int, output_tokens: int, cached_in: int
+    ) -> float | None:
         p = self.store.price(model) if model else None
         if p is None:
             return None
         usd_in, usd_out, usd_cached = p
-        return ((input_tokens - cached_in) * usd_in + cached_in * usd_cached + output_tokens * usd_out) / 1e6
+        return (
+            (input_tokens - cached_in) * usd_in + cached_in * usd_cached + output_tokens * usd_out
+        ) / 1e6
 
     @contextmanager
-    def stage(self, stage: str, *, question_id: str | None = None, provider: str | None = None, model: str | None = None):
+    def stage(
+        self,
+        stage: str,
+        *,
+        question_id: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+    ):
         ev = _Event()
         t0 = time.time_ns() // 1000
         try:
@@ -1200,12 +1452,28 @@ class Recorder:
                 self.cache_hits += 1
             elif ev.input_tokens or ev.output_tokens:
                 self.cache_misses += 1
-            usd = None if ev.cached else self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
+            usd = (
+                None
+                if ev.cached
+                else self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
+            )
             self.store.conn.execute(
                 "INSERT INTO events(run_id, stage, question_id, provider, model, started_at, ended_at,"
                 " input_tokens, output_tokens, cached_input_tokens, cached, usd) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (self.run_id, stage, question_id, provider, model, t0, t1, ev.input_tokens, ev.output_tokens,
-                 ev.cached_in, int(ev.cached), usd),
+                (
+                    self.run_id,
+                    stage,
+                    question_id,
+                    provider,
+                    model,
+                    t0,
+                    t1,
+                    ev.input_tokens,
+                    ev.output_tokens,
+                    ev.cached_in,
+                    int(ev.cached),
+                    usd,
+                ),
             )
 ```
 
@@ -1235,7 +1503,13 @@ git commit -m "Add run store: runs, per-question rows, priced timed events, pric
 ```python
 import pytest
 
-from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RerankerConfig, RunConfig
+from triplum.bench.config import (
+    EmbedderConfig,
+    LLMConfig,
+    PipelineConfig,
+    RerankerConfig,
+    RunConfig,
+)
 from triplum.bench.report import summary
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
@@ -1246,18 +1520,29 @@ FAKE_EMB = EmbedderConfig(kind="fake", dims=64)
 
 def _cfg(tmp_path, name, dataset="musique", **kw):
     return RunConfig(
-        dataset=dataset, n=20, fixture=True,
-        pipeline=PipelineConfig(name=name, reader=FAKE_READER, embedder=FAKE_EMB,
-                                reranker=RerankerConfig(kind="fake") if name == "hybrid" else None, **kw),
+        dataset=dataset,
+        n=20,
+        fixture=True,
+        pipeline=PipelineConfig(
+            name=name,
+            reader=FAKE_READER,
+            embedder=FAKE_EMB,
+            reranker=RerankerConfig(kind="fake") if name == "hybrid" else None,
+            **kw,
+        ),
         judge=LLMConfig(kind="fake", model="judge-fake"),
-        store_path=str(tmp_path / f"{dataset}.sqlite"), runstore_path=str(tmp_path / "runs.db"),
+        store_path=str(tmp_path / f"{dataset}.sqlite"),
+        runstore_path=str(tmp_path / "runs.db"),
         cache_root=str(tmp_path / "cache"),
     )
 
 
 @pytest.mark.parametrize("dataset", ["hotpotqa", "musique", "twowiki"])
 def test_all_baselines_run_on_fixture(tmp_path, dataset):
-    ids = {name: run_benchmark(_cfg(tmp_path, name, dataset)) for name in ("closed_book", "bm25", "dense", "hybrid", "oracle")}
+    ids = {
+        name: run_benchmark(_cfg(tmp_path, name, dataset))
+        for name in ("closed_book", "bm25", "dense", "hybrid", "oracle")
+    }
     rs = RunStore(tmp_path / "runs.db")
     s = summary(rs).sort("pipeline")
     assert s.height == 5 and set(s["pipeline"]) == set(ids)
@@ -1307,7 +1592,9 @@ def ensure_documents(store: SqliteStore, ds: Dataset, rec: Recorder) -> None:
         store.put_chunks(ds.chunks)
 
 
-def ensure_embeddings(store: SqliteStore, ds: Dataset, embedder: Embedder, rec: Recorder, batch: int = 256) -> None:
+def ensure_embeddings(
+    store: SqliteStore, ds: Dataset, embedder: Embedder, rec: Recorder, batch: int = 256
+) -> None:
     ids = ds.chunks["id"].to_list()
     texts = ds.chunks["text"].to_list()
     have = store.has_embeddings(embedder.spec, ids)
@@ -1352,8 +1639,15 @@ from triplum.store.sqlite.store import SqliteStore
 
 def code_version() -> tuple[str, int]:
     try:
-        sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=True).stdout.strip() != ""
+        sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        dirty = (
+            subprocess.run(
+                ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
+            ).stdout.strip()
+            != ""
+        )
         return sha, int(dirty)
     except Exception:
         return "unknown", 1
@@ -1388,12 +1682,22 @@ def run_benchmark(cfg: RunConfig) -> str:
     sha, dirty = code_version()
     rs = RunStore(cfg.runstore_path or root / "runs.db")
     meta = {
-        "dataset": ds.name, "pipeline": p.name, "config_hash": p.hash(), "config_json": cfg.to_json(),
-        "code_version": sha, "dirty": dirty, "corpus_hash": ds.corpus_hash, "questions_hash": ds.questions_hash,
-        "n": ds.questions.height, "embedding_spec": embedder.spec.hash() if embedder else None,
-        "reranker_spec": reranker.spec.hash() if reranker else None, "reader_model": p.reader.model,
-        "judge_model": cfg.judge.model if cfg.judge else None, "seed": cfg.seed,
-        "viewer_json": json.dumps(sorted(viewer.principals)), "host": platform.node(),
+        "dataset": ds.name,
+        "pipeline": p.name,
+        "config_hash": p.hash(),
+        "config_json": cfg.to_json(),
+        "code_version": sha,
+        "dirty": dirty,
+        "corpus_hash": ds.corpus_hash,
+        "questions_hash": ds.questions_hash,
+        "n": ds.questions.height,
+        "embedding_spec": embedder.spec.hash() if embedder else None,
+        "reranker_spec": reranker.spec.hash() if reranker else None,
+        "reader_model": p.reader.model,
+        "judge_model": cfg.judge.model if cfg.judge else None,
+        "seed": cfg.seed,
+        "viewer_json": json.dumps(sorted(viewer.principals)),
+        "host": platform.node(),
     }
     if not cfg.force:
         existing = rs.find_run(rs.identity_hash(meta))
@@ -1401,7 +1705,11 @@ def run_benchmark(cfg: RunConfig) -> str:
             return existing
     run_id = rs.start_run(meta)
     rec = rs.recorder(run_id)
-    store_path = Path(cfg.store_path) if cfg.store_path else root / "stores" / f"{ds.name}-{ds.corpus_hash[:8]}.sqlite"
+    store_path = (
+        Path(cfg.store_path)
+        if cfg.store_path
+        else root / "stores" / f"{ds.name}-{ds.corpus_hash[:8]}.sqlite"
+    )
     store_path.parent.mkdir(parents=True, exist_ok=True)
     store = SqliteStore(store_path)
     status = "failed"
@@ -1411,31 +1719,58 @@ def run_benchmark(cfg: RunConfig) -> str:
             ensure_embeddings(store, ds, embedder, rec)
         with rec.stage("retrieve"):
             retrieved = _retrieve(cfg, ds, store, embedder, reranker, viewer)
-        answers = read(ds.questions, retrieved, store, reader, viewer, factories.gen_params(p.reader))
+        answers = read(
+            ds.questions, retrieved, store, reader, viewer, factories.gen_params(p.reader)
+        )
         for q, a in zip(ds.questions.iter_rows(named=True), answers.iter_rows(named=True)):
-            with rec.stage("read", question_id=q["id"], provider=p.reader.kind, model=p.reader.model) as ev:
+            with rec.stage(
+                "read", question_id=q["id"], provider=p.reader.kind, model=p.reader.model
+            ) as ev:
                 ev.usage(a["input_tokens"], a["output_tokens"], cached=a["cached"])
-            ids = retrieved.filter(pl.col("question_id") == q["id"]).sort("rank")["chunk_id"].to_list()
+            ids = (
+                retrieved.filter(pl.col("question_id") == q["id"])
+                .sort("rank")["chunk_id"]
+                .to_list()
+            )
             jud = None
             if judge is not None:
-                with rec.stage("judge", question_id=q["id"], provider=cfg.judge.kind, model=cfg.judge.model) as ev:
+                with rec.stage(
+                    "judge", question_id=q["id"], provider=cfg.judge.kind, model=cfg.judge.model
+                ) as ev:
                     jc = judge_correct(judge, q["question"], q["aliases"], a["answer"])
                     jud = float(jc)
-            rs.add_question(run_id, {
-                "question_id": q["id"], "retrieved_json": json.dumps(ids), "answer": a["answer"],
-                "em": metrics.exact_match(a["answer"], q["aliases"]), "f1": metrics.f1(a["answer"], q["aliases"]),
-                "contain": metrics.contain(a["answer"], q["aliases"]), "judge": jud,
-                "r2": metrics.recall_at_k(q["gold_chunk_ids"], ids, 2), "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5),
-                "input_tokens": a["input_tokens"], "output_tokens": a["output_tokens"],
-                "usd": None if a["cached"] else rec.cost(p.reader.model, a["input_tokens"], a["output_tokens"], 0),
-                "latency_s": a["latency_s"], "n_passages": a["n_passages"],
-            })
+            rs.add_question(
+                run_id,
+                {
+                    "question_id": q["id"],
+                    "retrieved_json": json.dumps(ids),
+                    "answer": a["answer"],
+                    "em": metrics.exact_match(a["answer"], q["aliases"]),
+                    "f1": metrics.f1(a["answer"], q["aliases"]),
+                    "contain": metrics.contain(a["answer"], q["aliases"]),
+                    "judge": jud,
+                    "r2": metrics.recall_at_k(q["gold_chunk_ids"], ids, 2),
+                    "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5),
+                    "input_tokens": a["input_tokens"],
+                    "output_tokens": a["output_tokens"],
+                    "usd": None
+                    if a["cached"]
+                    else rec.cost(p.reader.model, a["input_tokens"], a["output_tokens"], 0),
+                    "latency_s": a["latency_s"],
+                    "n_passages": a["n_passages"],
+                },
+            )
         rs.add_artifact(run_id, "store", str(store_path), hr.sha256_file(store_path))
         status = "ok"
     finally:
         store.close()
-        rs.finish_run(run_id, status=status, wall_s=time.perf_counter() - t_start,
-                      cache_hits=rec.cache_hits, cache_misses=rec.cache_misses)
+        rs.finish_run(
+            run_id,
+            status=status,
+            wall_s=time.perf_counter() - t_start,
+            cache_hits=rec.cache_hits,
+            cache_misses=rec.cache_misses,
+        )
     return run_id
 ```
 
@@ -1459,16 +1794,30 @@ def summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
         q = rs.questions(r["run_id"])
         ev = rs.events(r["run_id"])
         idx = ev.filter(pl.col("stage").str.starts_with("index."))
-        rows.append({
-            "run_id": r["run_id"], "dataset": r["dataset"], "pipeline": r["pipeline"], "n": q.height,
-            "reader_model": r["reader_model"], "embedding_spec": r["embedding_spec"],
-            "em": q["em"].mean(), "f1": q["f1"].mean(), "contain": q["contain"].mean(),
-            "judge": q["judge"].mean(), "r2": q["r2"].mean(), "r5": q["r5"].mean(),
-            "n_passages": q["n_passages"].mean(), "latency_s": q["latency_s"].mean(),
-            "usd_per_q": q["usd"].mean(), "usd_total": q["usd"].sum(),
-            "indexing_s": float(((idx["ended_at"] - idx["started_at"]).sum() or 0) / 1e6),
-            "cache_hits": r["cache_hits"], "cache_misses": r["cache_misses"], "wall_s": r["wall_s"],
-        })
+        rows.append(
+            {
+                "run_id": r["run_id"],
+                "dataset": r["dataset"],
+                "pipeline": r["pipeline"],
+                "n": q.height,
+                "reader_model": r["reader_model"],
+                "embedding_spec": r["embedding_spec"],
+                "em": q["em"].mean(),
+                "f1": q["f1"].mean(),
+                "contain": q["contain"].mean(),
+                "judge": q["judge"].mean(),
+                "r2": q["r2"].mean(),
+                "r5": q["r5"].mean(),
+                "n_passages": q["n_passages"].mean(),
+                "latency_s": q["latency_s"].mean(),
+                "usd_per_q": q["usd"].mean(),
+                "usd_total": q["usd"].sum(),
+                "indexing_s": float(((idx["ended_at"] - idx["started_at"]).sum() or 0) / 1e6),
+                "cache_hits": r["cache_hits"],
+                "cache_misses": r["cache_misses"],
+                "wall_s": r["wall_s"],
+            }
+        )
     return pl.DataFrame(rows)
 ```
 
@@ -1501,21 +1850,59 @@ from triplum.bench.cli import build_run_config, parse_args
 
 
 def test_cli_builds_run_config(tmp_path):
-    ns = parse_args(["bench", "run", "--pipeline", "dense", "--dataset", "musique", "--n", "20", "--fixture",
-                     "--reader", "fake", "--embedder", "fake", "--judge", "fake",
-                     "--cache-root", str(tmp_path)])
+    ns = parse_args(
+        [
+            "bench",
+            "run",
+            "--pipeline",
+            "dense",
+            "--dataset",
+            "musique",
+            "--n",
+            "20",
+            "--fixture",
+            "--reader",
+            "fake",
+            "--embedder",
+            "fake",
+            "--judge",
+            "fake",
+            "--cache-root",
+            str(tmp_path),
+        ]
+    )
     rc = build_run_config(ns)
-    assert rc.pipeline.name == "dense" and rc.n == 20 and rc.fixture and rc.pipeline.embedder.kind == "fake"
+    assert (
+        rc.pipeline.name == "dense"
+        and rc.n == 20
+        and rc.fixture
+        and rc.pipeline.embedder.kind == "fake"
+    )
     assert rc.judge is not None and rc.cache_root == str(tmp_path)
 
 
 def test_cli_sweep_reads_embedder_specs(tmp_path):
     specs = tmp_path / "emb.json"
     specs.write_text('[{"kind": "fake", "dims": 8}, {"kind": "fake", "dims": 16}]')
-    ns = parse_args(["bench", "sweep", "--dataset", "musique", "--fixture", "--reader", "fake",
-                     "--embedders", str(specs), "--cache-root", str(tmp_path)])
+    ns = parse_args(
+        [
+            "bench",
+            "sweep",
+            "--dataset",
+            "musique",
+            "--fixture",
+            "--reader",
+            "fake",
+            "--embedders",
+            str(specs),
+            "--cache-root",
+            str(tmp_path),
+        ]
+    )
     cfgs = [build_run_config(ns, embedder=e) for e in __import__("json").loads(specs.read_text())]
-    assert [c.pipeline.embedder.dims for c in cfgs] == [8, 16] and all(c.pipeline.name == "dense" for c in cfgs)
+    assert [c.pipeline.embedder.dims for c in cfgs] == [8, 16] and all(
+        c.pipeline.name == "dense" for c in cfgs
+    )
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1535,7 +1922,13 @@ import argparse
 import json
 import sys
 
-from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RerankerConfig, RunConfig
+from triplum.bench.config import (
+    EmbedderConfig,
+    LLMConfig,
+    PipelineConfig,
+    RerankerConfig,
+    RunConfig,
+)
 
 
 def _llm(kind: str, model: str | None, base_url: str | None) -> LLMConfig:
@@ -1544,7 +1937,12 @@ def _llm(kind: str, model: str | None, base_url: str | None) -> LLMConfig:
     if kind == "openai":
         return LLMConfig(kind="openai", model=model or "gpt-5.6-luna", base_url=base_url)
     if kind == "claude-cli":
-        return LLMConfig(kind="cli", model=model or "claude-cli", argv=("claude", "-p", "--output-format", "json"), json_field="result")
+        return LLMConfig(
+            kind="cli",
+            model=model or "claude-cli",
+            argv=("claude", "-p", "--output-format", "json"),
+            json_field="result",
+        )
     raise SystemExit(f"unknown reader kind {kind}")
 
 
@@ -1566,15 +1964,23 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="triplum")
     sub = p.add_subparsers(dest="cmd", required=True)
     data = sub.add_parser("data").add_subparsers(dest="data_cmd", required=True)
-    data.add_parser("fetch").add_argument("--dataset", choices=["hotpotqa", "musique", "twowiki", "all"], default="all")
+    data.add_parser("fetch").add_argument(
+        "--dataset", choices=["hotpotqa", "musique", "twowiki", "all"], default="all"
+    )
     bench = sub.add_parser("bench").add_subparsers(dest="bench_cmd", required=True)
     for name in ("run", "sweep"):
         b = bench.add_parser(name)
         if name == "run":
-            b.add_argument("--pipeline", required=True, choices=["closed_book", "bm25", "dense", "hybrid", "oracle"])
+            b.add_argument(
+                "--pipeline",
+                required=True,
+                choices=["closed_book", "bm25", "dense", "hybrid", "oracle"],
+            )
             b.add_argument("--embedder", default="fake")
         else:
-            b.add_argument("--embedders", required=True, help="JSON file: list of EmbedderConfig dicts")
+            b.add_argument(
+                "--embedders", required=True, help="JSON file: list of EmbedderConfig dicts"
+            )
         b.add_argument("--dataset", required=True, choices=["hotpotqa", "musique", "twowiki"])
         b.add_argument("--n", type=int, default=None)
         b.add_argument("--fixture", action="store_true")
@@ -1598,13 +2004,31 @@ def build_run_config(ns: argparse.Namespace, embedder: dict | str | None = None)
     reader = _llm(ns.reader, ns.reader_model, ns.base_url)
     judge = _llm(ns.judge, ns.judge_model, ns.base_url) if ns.judge else None
     rr = ns.reranker
-    reranker = RerankerConfig(kind="fake") if rr == "fake" else RerankerConfig(kind="cross_encoder", model=rr.split(":", 1)[1])
+    reranker = (
+        RerankerConfig(kind="fake")
+        if rr == "fake"
+        else RerankerConfig(kind="cross_encoder", model=rr.split(":", 1)[1])
+    )
     pipeline_name = getattr(ns, "pipeline", "dense")
     emb = _embedder(embedder if embedder is not None else getattr(ns, "embedder", "fake"))
-    pipeline = PipelineConfig(name=pipeline_name, reader=reader, top_k=ns.top_k, candidates=ns.candidates,
-                              embedder=emb, reranker=reranker if pipeline_name == "hybrid" else None)
-    return RunConfig(dataset=ns.dataset, pipeline=pipeline, n=ns.n, fixture=ns.fixture, judge=judge,
-                     force=ns.force, cache_root=ns.cache_root, runstore_path=ns.runstore)
+    pipeline = PipelineConfig(
+        name=pipeline_name,
+        reader=reader,
+        top_k=ns.top_k,
+        candidates=ns.candidates,
+        embedder=emb,
+        reranker=reranker if pipeline_name == "hybrid" else None,
+    )
+    return RunConfig(
+        dataset=ns.dataset,
+        pipeline=pipeline,
+        n=ns.n,
+        fixture=ns.fixture,
+        judge=judge,
+        force=ns.force,
+        cache_root=ns.cache_root,
+        runstore_path=ns.runstore,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1612,7 +2036,7 @@ def main(argv: list[str] | None = None) -> int:
     if ns.cmd == "data":
         from triplum.eval.datasets import hipporag as hr
 
-        for name in (hr.FILES if ns.dataset == "all" else [ns.dataset]):
+        for name in hr.FILES if ns.dataset == "all" else [ns.dataset]:
             qp, cp = hr.fetch(name)
             print(f"{name}: {qp} {cp} (verified)")
         return 0
@@ -1626,9 +2050,11 @@ def main(argv: list[str] | None = None) -> int:
         with __import__("polars").Config(tbl_cols=-1, tbl_width_chars=200):
             print(summary(rs))
         return 0
-    cfgs = [build_run_config(ns)] if ns.bench_cmd == "run" else [
-        build_run_config(ns, embedder=e) for e in json.loads(open(ns.embedders).read())
-    ]
+    cfgs = (
+        [build_run_config(ns)]
+        if ns.bench_cmd == "run"
+        else [build_run_config(ns, embedder=e) for e in json.loads(open(ns.embedders).read())]
+    )
     ids = [run_benchmark(c) for c in cfgs]
     rs = RunStore(cfgs[0].runstore_path or default_root() / "runs.db")
     with __import__("polars").Config(tbl_cols=-1, tbl_width_chars=200):

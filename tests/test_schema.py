@@ -9,7 +9,13 @@ def test_documents_schema_columns():
 
 def test_chunks_schema_columns():
     assert schema.CHUNKS.names == [
-        "id", "document_id", "parent_id", "level", "span_start", "span_end", "text",
+        "id",
+        "document_id",
+        "parent_id",
+        "level",
+        "span_start",
+        "span_end",
+        "text",
     ]
     assert schema.CHUNKS.field("id").type == pa.int64()
 
@@ -22,9 +28,20 @@ def test_chunk_embeddings_is_parametric_in_dims():
 
 def test_facts_schema_columns():
     assert schema.FACTS.names == [
-        "id", "proposition_id", "subject_id", "predicate", "object_id", "object_literal",
-        "object_datatype", "object_lang", "valid_from", "valid_to", "recorded_at",
-        "invalidated_at", "invalidated_by_fact_id", "confidence",
+        "id",
+        "proposition_id",
+        "subject_id",
+        "predicate",
+        "object_id",
+        "object_literal",
+        "object_datatype",
+        "object_lang",
+        "valid_from",
+        "valid_to",
+        "recorded_at",
+        "invalidated_at",
+        "invalidated_by_fact_id",
+        "confidence",
     ]
 
 

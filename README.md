@@ -31,6 +31,8 @@ run store that records identity, cost and timing for every run. Nothing graph-sh
 ```
 uv sync --all-extras                        # builds the Rust extension via maturin
 uv run pytest -m "not model"                 # fast, offline fixtures and fakes
+uv run ty check                             # required: Python source and tests
+uv run cargo check                          # Rust workspace, using the project's Python
 uv run pytest                               # includes installed optional real-model adapters
 uv run triplum data                         # local state of each supported dataset
 uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
@@ -71,6 +73,21 @@ download). For branch coverage, run `uv run pytest -m "not model" --cov
 --cov-report=term-missing:skip-covered` on one line; CI measures coverage explicitly.
 Coverage stays opt-in locally to keep single-test feedback quick. Match/selection behavior
 lives in one focused module and tests exercise CLI workflows over temporary SQLite stores.
+
+Type checking is required in CI. The default check supports the lean environment;
+`uv run --extra local ty check` additionally checks against installed model-library types.
+Fix type errors at their contracts rather than suppressing whole modules.
+
+The versioned `.githooks/pre-commit` runs `cargo check`, `uvx ty check`, `ruff check`
+and `ruff format --check` against an
+isolated export of the Git index. Partial staging is respected; unstaged and untracked
+files never enter the check and are not moved or stashed. Run `uv sync` first so the
+project interpreter and dependencies are available. The hook reuses `.venv` and the
+Cargo build cache. On machines with the global hook dispatcher it is discovered
+automatically; otherwise install it with
+`ln -s ../../.githooks/pre-commit "$(git rev-parse --git-common-dir)/hooks/pre-commit"`
+from the primary checkout (preserve an existing hook rather than overwriting it).
+The requested `uvx` hook uses uv's tool version; CI uses the version locked in `uv.lock`.
 
 What a run does step by step, which module does it, and what is implemented versus planned is
 in [`docs/flow.md`](docs/flow.md). Runs are identified by the hash of their exact configuration and

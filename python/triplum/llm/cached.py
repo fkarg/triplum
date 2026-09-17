@@ -31,6 +31,12 @@ class CachedLLM:
         c = self.inner.complete(messages, schema=schema, params=params)
         self.cache.put_json(
             key,
-            {"text": c.text, "parsed": c.parsed, "usage": asdict(c.usage), "model": c.model, "raw": c.raw},
+            {
+                "text": c.text,
+                "parsed": c.parsed,
+                "usage": asdict(c.usage),
+                "model": c.model,
+                "raw": c.raw,
+            },
         )
         return c

@@ -35,7 +35,7 @@ def test_stages_return_ranked_frames(tmp_db):
         stages.oracle(ds.questions, k=5),
     ):
         assert out.columns == ["question_id", "chunk_id", "rank", "score"]
-        assert out.group_by("question_id").len()["len"].max() <= 5
+        assert (out.group_by("question_id").len()["len"] <= 5).all()
         assert out.filter(pl.col("rank") == 1).height == 3
     assert stages.none(ds.questions).height == 0
 
@@ -61,7 +61,13 @@ def test_reader_uses_visible_chunks_only(tmp_db):
     retrieved = stages.oracle(ds.questions, k=5)
     out = read(ds.questions, retrieved, s, FakeLLM(responder=responder), viewer=Viewer.of("nobody"))
     assert out.columns == [
-        "question_id", "answer", "input_tokens", "output_tokens", "cached", "latency_s", "n_passages",
+        "question_id",
+        "answer",
+        "input_tokens",
+        "output_tokens",
+        "cached",
+        "latency_s",
+        "n_passages",
     ]
     assert out["n_passages"].to_list() == [0, 0]
     assert all("Passage" not in p for p in seen)
