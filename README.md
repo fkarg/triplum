@@ -107,6 +107,7 @@ uv run triplum bench report                      # summary table over stored run
 uv run triplum bench inspect <run_id>            # per-question answers, passages, model calls
 uv run triplum bench diff <run_a> <run_b>        # what changed and by how much
 uv run marimo edit notebooks/runs.py             # browse runs in a notebook
+uv run python examples/run_a_benchmark.py        # the examples/ folder: scripts and a notebook
 ```
 
 The full command table, what each step does and which module does it are in
