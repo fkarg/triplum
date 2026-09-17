@@ -377,6 +377,16 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-17, `peer-review --mode design` on the stages spec
+  (`../specs/2026-09-17-stages.md`), peer: Codex (GPT family). Verdict "challenges", seven
+  falsification attempts, two as local probes. **Changed the decision** on five points
+  (stream discovery lifetime, structural versus execution key, store-owned effect records,
+  seeding by adapter argument, atomic publication with completion records). **Refuted** the
+  soundness argument for trace-discovered manifests under mutable dispatch registries; the
+  contract now captures dispatch state, with the peer's conservative whole-source hash recorded
+  as the alternative pending the owner's call. **Rejected**: spooling streams before use. Full
+  record in the spec.
+
 - 2026-09-17, `peer-review --mode design` on the built-in datasets spec
   (`../specs/2026-09-17-builtin-datasets.md`), peer: Codex (GPT family). Verdict "challenges",
   ten executed falsification attempts. **Changed the decision** on eight findings: identity is
