@@ -62,7 +62,7 @@ def summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
                 "judge": q["judge"].mean(),
                 "r2": q["r2"].mean(),
                 "r5": q["r5"].mean(),
-                "n_passages": q["n_passages"].mean(),
+                "n_chunks": q["n_chunks"].mean(),
                 "latency_s": q["latency_s"].mean(),
                 "usd_per_q": q["usd"].mean(),
                 "usd_total": q["usd"].sum(),

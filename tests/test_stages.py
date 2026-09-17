@@ -67,9 +67,9 @@ def test_reader_uses_visible_chunks_only(tmp_db):
         "output_tokens",
         "cached",
         "latency_s",
-        "n_passages",
+        "n_chunks",
     ]
-    assert out["n_passages"].to_list() == [0, 0]
+    assert out["n_chunks"].to_list() == [0, 0]
     assert all("Passage" not in p for p in seen)
 
 

@@ -46,9 +46,9 @@ def test_all_baselines_run_on_fixture(tmp_path, dataset):
     assert s.height == len(PIPELINES) and set(s["pipeline"]) == set(ids)
     by = {r["pipeline"]: r for r in s.iter_rows(named=True)}
     assert by["oracle"]["r5"] == 1.0
-    assert by["closed_book"]["r5"] == 0.0 and by["closed_book"]["n_passages"] == 0.0
+    assert by["closed_book"]["r5"] == 0.0 and by["closed_book"]["n_chunks"] == 0.0
     assert by["oracle"]["r5"] >= by["dense"]["r5"] >= by["closed_book"]["r5"]
-    assert by["rrf"]["r5"] >= by["closed_book"]["r5"] and by["rrf"]["n_passages"] > 0
+    assert by["rrf"]["r5"] >= by["closed_book"]["r5"] and by["rrf"]["n_chunks"] > 0
     for r in by.values():
         assert r["n"] == 20 and r["indexing_s"] >= 0 and r["latency_s"] >= 0
     assert rs.questions(ids["dense"]).height == 20

@@ -53,7 +53,7 @@ def test_runstore_roundtrip(tmp_path):
             "usd": rec.cost("m1", 1_000_000, 500_000, 0),
             "cached": 0,
             "latency_s": 0.1,
-            "n_passages": 5,
+            "n_chunks": 5,
         },
     )
     rs.finish_run(run_id, status="ok", wall_s=1.0, cache_hits=0, cache_misses=1)
@@ -116,7 +116,9 @@ def test_old_store_with_not_null_recall_is_rebuilt(tmp_path):
     from triplum.bench import runstore
 
     path = tmp_path / "old.db"
-    old_ddl = runstore.DDL.replace("r2 REAL, r5 REAL,", "r2 REAL NOT NULL, r5 REAL NOT NULL,")
+    old_ddl = runstore.DDL.replace(
+        "r2 REAL, r5 REAL,", "r2 REAL NOT NULL, r5 REAL NOT NULL,"
+    ).replace("n_chunks INTEGER", "n_passages INTEGER")
     with sqlite3.connect(path) as conn:
         conn.executescript(old_ddl)
         conn.execute(
@@ -134,9 +136,10 @@ def test_old_store_with_not_null_recall_is_rebuilt(tmp_path):
     notnull = {r[1]: r[3] for r in rs.conn.execute("PRAGMA table_info(run_questions)")}
     assert notnull["r2"] == 0 and notnull["r5"] == 0 and notnull["em"] == 1
     assert rs.questions("r")["r2"].to_list() == [0.5]
+    assert "n_chunks" in notnull and "n_passages" not in notnull  # renamed on migration
     rs.conn.execute(
         "INSERT INTO run_questions (run_id, question_id, retrieved_json, answer, em, f1, contain,"
-        " input_tokens, output_tokens, latency_s, n_passages) VALUES ('r', 'q2', '[]', 'a', 0, 0, 0,"
+        " input_tokens, output_tokens, latency_s, n_chunks) VALUES ('r', 'q2', '[]', 'a', 0, 0, 0,"
         " 0, 0, 0.1, 0)"
     )
     assert RunStore(path).questions("r").height == 2

@@ -247,7 +247,7 @@ def run_benchmark(cfg: RunConfig) -> str:
                             ),
                             "cached": int(a["cached"]),
                             "latency_s": a["latency_s"],
-                            "n_passages": a["n_passages"],
+                            "n_chunks": a["n_chunks"],
                         },
                     )
             rs.add_artifact(run_id, "store", str(store_path), base.sha256_file(store_path))

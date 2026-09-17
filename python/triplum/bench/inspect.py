@@ -1,5 +1,5 @@
 """Pure projections over the run store for human-facing tooling: inspect, diff, tail.
-No printing here; the CLI renders. Passage text is resolved from the run's store artifact when it
+No printing here; the CLI renders. Chunk text is resolved from the run's store artifact when it
 still exists at the recorded path."""
 
 from __future__ import annotations

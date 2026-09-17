@@ -98,7 +98,7 @@ def print_summary(frame: pl.DataFrame, *, console: Console | None = None) -> Non
 
 
 def print_inspect(view: Mapping[str, Any], *, console: Console | None = None) -> None:
-    """Render answers, all question metrics, passage previews and model calls."""
+    """Render answers, all question metrics, chunk previews and model calls."""
     console = console or Console(markup=False, highlight=False)
     identity = view["identity"]
     console.print(Text(f"Run {identity['run_id']}", style="bold cyan"))
@@ -111,7 +111,7 @@ def print_inspect(view: Mapping[str, Any], *, console: Console | None = None) ->
     )
     if not view["store_available"]:
         console.print(
-            Text("Store artifact not available: passages shown as ids only", style="yellow")
+            Text("Store artifact not available: chunks shown as ids only", style="yellow")
         )
     for question in view["questions"]:
         console.print()
@@ -119,10 +119,10 @@ def print_inspect(view: Mapping[str, Any], *, console: Console | None = None) ->
         console.print(Text("Answer: " + _value(question["answer"])))
         _fields(question["metrics"], console)
         if question["retrieved"]:
-            console.print(Text("Passages", style="bold"))
-            for passage in question["retrieved"]:
-                preview = (passage["text"] or "").replace("\n", " ")[:160]
-                console.print(Text(f"  #{passage['chunk_id']}: {preview}"))
+            console.print(Text("Chunks", style="bold"))
+            for chunk in question["retrieved"]:
+                preview = (chunk["text"] or "").replace("\n", " ")[:160]
+                console.print(Text(f"  #{chunk['chunk_id']}: {preview}"))
         if question["events"]:
             console.print(Text("Model calls", style="bold"))
             for event in question["events"]:

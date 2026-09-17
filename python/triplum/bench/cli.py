@@ -55,7 +55,7 @@ BaseUrlOpt = Annotated[str | None, typer.Option(help="OpenAI-compatible base URL
 JudgeOpt = Annotated[str | None, typer.Option(help="Judge LLM: fake | openai | claude-cli.")]
 JudgeModelOpt = Annotated[str | None, typer.Option(help="Judge model id (default per kind).")]
 RerankerOpt = Annotated[str, typer.Option(help="fake | cross_encoder:<model> (hybrid only).")]
-TopKOpt = Annotated[int, typer.Option(help="Passages handed to the reader.")]
+TopKOpt = Annotated[int, typer.Option(help="Chunks handed to the reader.")]
 CandidatesOpt = Annotated[int, typer.Option(help="Fused candidates to rerank (hybrid only).")]
 ForceOpt = Annotated[
     bool, typer.Option("--force", help="Recompute even if an identical run exists.")
@@ -451,7 +451,7 @@ def inspect(
     json_: Annotated[bool, typer.Option("--json", help="Print the raw view as JSON.")] = False,
     runstore: RunstoreOpt = None,
 ) -> None:
-    """Per-question drill-down: answer, metrics, retrieved passages, model calls."""
+    """Per-question drill-down: answer, metrics, retrieved chunks, model calls."""
     from triplum.bench.inspect import inspect_run
 
     rs = _existing_runstore(runstore)

@@ -78,7 +78,7 @@ answers = read(ds.questions, hits, store, FakeLLM(), viewer, DEFAULT_PARAMS)
 
 q = ds.questions.row(0, named=True)
 ids = hits.filter(hits["question_id"] == q["id"]).sort("rank")["chunk_id"].to_list()
-print(answers.columns)  # question_id, answer, tokens, cached, latency_s, n_passages
+print(answers.columns)  # question_id, answer, tokens, cached, latency_s, n_chunks
 print(metrics.recall_at_k(q["gold_chunk_ids"], ids, 5))
 ```
 

@@ -61,7 +61,7 @@ class HashMismatch(RuntimeError):
 
 
 class GoldMappingError(ValueError):
-    """A gold passage is missing from the corpus or a corpus key is ambiguous. Silently dropping
+    """A gold chunk is missing from the corpus or a corpus key is ambiguous. Silently dropping
     it would score an empty gold list as perfect recall, so the load fails instead."""
 
 

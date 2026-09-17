@@ -1,4 +1,4 @@
-"""One reader prompt for every pipeline. Passages come from the store through the Viewer, so a
+"""One reader prompt for every pipeline. Chunks come from the store through the Viewer, so a
 retrieved id the viewer may not see is silently dropped before the prompt is built."""
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ OUT_SCHEMA = {
     "output_tokens": pl.Int64,
     "cached": pl.Boolean,
     "latency_s": pl.Float64,
-    "n_passages": pl.Int64,
+    "n_chunks": pl.Int64,
 }
 
 

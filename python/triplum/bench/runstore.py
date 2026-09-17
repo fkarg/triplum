@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS run_questions (
   run_id TEXT NOT NULL REFERENCES runs(run_id), question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
   answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
   r2 REAL, r5 REAL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
-  usd REAL, cached INTEGER NOT NULL DEFAULT 0, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
+  usd REAL, cached INTEGER NOT NULL DEFAULT 0, latency_s REAL NOT NULL, n_chunks INTEGER NOT NULL,
   PRIMARY KEY (run_id, question_id)
 ) STRICT;
 """
@@ -124,6 +124,10 @@ class RunStore:
             for name, decl in cols:
                 if name not in have:
                     self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        # n_passages was renamed to n_chunks (the canonical layer's word) on 2026-09-17.
+        names = {r[1] for r in self.conn.execute("PRAGMA table_info(run_questions)")}
+        if "n_passages" in names:
+            self.conn.execute("ALTER TABLE run_questions RENAME COLUMN n_passages TO n_chunks")
         # r2/r5 became nullable (recall is undefined without gold chunks); SQLite cannot drop a
         # NOT NULL, so stores created before that rebuild the table once.
         notnull = {r[1]: r[3] for r in self.conn.execute("PRAGMA table_info(run_questions)")}
