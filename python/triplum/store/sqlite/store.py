@@ -16,7 +16,8 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from triplum.data.schema import CHUNKS, FACT_SUPPORT, FACTS, MENTIONS, polars_schema
+from triplum.cache import content_key
+from triplum.data.schema import CHUNKS, FACT_SUPPORT, FACTS, MENTIONS, now_us, polars_schema
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import EmbeddingSpec
 from triplum.store.protocol import Capabilities
@@ -99,6 +100,25 @@ class SqliteStore:
 
     def set_meta(self, key: str, value: str) -> None:
         self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)", (key, value))
+
+    def identity(self) -> str:
+        return content_key(
+            "store", [self.get_meta("corpus_hash"), self.get_meta("graph_identity")]
+        )[:16]
+
+    def begin_effect(self, key: str, stage: str) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO effects(key, stage, started_us, completed_us)"
+            " VALUES (?, ?, ?, NULL)",
+            (key, stage, now_us()),
+        )
+
+    def complete_effect(self, key: str) -> None:
+        self.conn.execute("UPDATE effects SET completed_us = ? WHERE key = ?", (now_us(), key))
+
+    def effect_complete(self, key: str) -> bool:
+        row = self.conn.execute("SELECT completed_us FROM effects WHERE key = ?", (key,)).fetchone()
+        return row is not None and row[0] is not None
 
     def capabilities(self) -> Capabilities:
         return Capabilities(exact_acl_filter=True, vector_search_exact=True, bm25=True)

@@ -68,6 +68,7 @@ nav:
       - ingest: api/ingest.md
       - extract: api/extract.md
       - bench: api/bench.md
+      - stage: api/stage.md
   - Licences: licences.md
   - Releasing: releasing.md
   - Research:

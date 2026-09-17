@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import platform
 import sqlite3
 import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import Any, ClassVar, Self
 
 import polars as pl
 
 from triplum.cache import content_key
 from triplum.data.schema import now_us
+
+_HOST = platform.node()
 
 RUN_QUESTIONS_DDL = """
 CREATE TABLE IF NOT EXISTS run_questions (
@@ -37,6 +40,7 @@ CREATE TABLE IF NOT EXISTS runs (
   seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
   reader_prompt_hash TEXT, judge_prompt_hash TEXT,
   extractor_spec TEXT, resolver_spec TEXT, graph_identity TEXT,
+  experiment_id TEXT, replicate INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
 ) STRICT;
 CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
@@ -54,6 +58,33 @@ CREATE TABLE IF NOT EXISTS extraction_runs (
   span_precision REAL, span_recall REAL, span_f1 REAL,
   chunks_per_s REAL, graph_written INTEGER NOT NULL
 ) STRICT;
+"""
+
+# Provenance in the entity, activity and used shape: an artifact is a completed stage output
+# addressed by data key and code fingerprint; an invocation is one stage call inside a run; the
+# inputs are the edges an invocation used; a manifest is stored once per distinct code.
+PROVENANCE_DDL = """
+CREATE TABLE IF NOT EXISTS artifacts (
+  key TEXT NOT NULL, code TEXT NOT NULL, stage TEXT NOT NULL, kind TEXT NOT NULL, path TEXT,
+  content_hash TEXT NOT NULL, rows INTEGER NOT NULL, bytes INTEGER NOT NULL, record_type TEXT,
+  created_by INTEGER NOT NULL, created_us INTEGER NOT NULL,
+  PRIMARY KEY (key, code)
+) STRICT;
+CREATE TABLE IF NOT EXISTS invocations (
+  id INTEGER PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(run_id), stage TEXT NOT NULL,
+  structural_key TEXT NOT NULL, key TEXT NOT NULL, code TEXT, inputs_json TEXT NOT NULL,
+  seed INTEGER, replicate INTEGER NOT NULL, fetched INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'running', error TEXT,
+  started_us INTEGER NOT NULL, finished_us INTEGER, wall_s REAL, host TEXT NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS invocations_run ON invocations(run_id);
+CREATE INDEX IF NOT EXISTS invocations_key ON invocations(structural_key);
+CREATE TABLE IF NOT EXISTS invocation_inputs (
+  invocation_id INTEGER NOT NULL REFERENCES invocations(id), position INTEGER NOT NULL,
+  name TEXT NOT NULL, kind TEXT NOT NULL, identity TEXT NOT NULL, code TEXT,
+  PRIMARY KEY (invocation_id, position)
+) STRICT;
+CREATE TABLE IF NOT EXISTS manifests (code TEXT PRIMARY KEY, manifest_json TEXT NOT NULL) STRICT;
 """
 
 DDL = (
@@ -84,6 +115,7 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
   PRIMARY KEY (run_id, kind)
 ) STRICT;
 """
+    + PROVENANCE_DDL
 )
 
 # code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
@@ -145,6 +177,8 @@ class RunStore:
             ("extractor_spec", "TEXT"),
             ("resolver_spec", "TEXT"),
             ("graph_identity", "TEXT"),
+            ("experiment_id", "TEXT"),
+            ("replicate", "INTEGER NOT NULL DEFAULT 0"),
         ],
         "run_questions": [("cached", "INTEGER NOT NULL DEFAULT 0")],
     }
@@ -338,6 +372,128 @@ class RunStore:
         self.conn.execute(
             "INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256)
         )
+
+    # ---- provenance: artifacts, invocations, inputs, manifests -----------------------------
+
+    def start_invocation(
+        self,
+        run_id: str,
+        stage: str,
+        structural_key: str,
+        key: str,
+        seed: int | None,
+        replicate: int,
+        inputs_json: str,
+    ) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO invocations(run_id, stage, structural_key, key, inputs_json, seed,"
+            " replicate, started_us, host) VALUES (?,?,?,?,?,?,?,?,?)",
+            (run_id, stage, structural_key, key, inputs_json, seed, replicate, now_us(), _HOST),
+        )
+        assert cur.lastrowid is not None
+        return cur.lastrowid
+
+    def finish_invocation(
+        self,
+        invocation_id: int,
+        *,
+        status: str,
+        code: str | None,
+        fetched: bool,
+        error: str | None = None,
+    ) -> None:
+        self.conn.execute(
+            "UPDATE invocations SET status = ?, code = ?, fetched = ?, error = ?,"
+            " finished_us = ?, wall_s = (? - started_us) / 1e6 WHERE id = ?",
+            (status, code, int(fetched), error, now_us(), now_us(), invocation_id),
+        )
+
+    def add_invocation_inputs(
+        self, invocation_id: int, rows: list[tuple[int, str, str, str, str | None]]
+    ) -> None:
+        """Rows of (position, name, kind, identity, code); code only for artifact inputs."""
+        self.conn.executemany(
+            "INSERT OR REPLACE INTO invocation_inputs VALUES (?,?,?,?,?,?)",
+            [(invocation_id, *r) for r in rows],
+        )
+
+    def invocation_inputs(self, invocation_id: int) -> list[dict]:
+        return self._rows(
+            "SELECT * FROM invocation_inputs WHERE invocation_id = ? ORDER BY position",
+            (invocation_id,),
+        )
+
+    def invocations(self, run_id: str) -> pl.DataFrame:
+        return self._frame("SELECT * FROM invocations WHERE run_id = ? ORDER BY id", (run_id,))
+
+    def add_artifact_row(self, artifact: Any, *, created_by: int) -> None:
+        """Record a published artifact (a `stage.artifacts.Artifact`); a second publication at
+        the same key and code keeps the first row."""
+        self.conn.execute(
+            "INSERT OR IGNORE INTO artifacts(key, code, stage, kind, path, content_hash, rows,"
+            " bytes, record_type, created_by, created_us) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                artifact.key,
+                artifact.code,
+                artifact.stage,
+                artifact.kind,
+                artifact.path,
+                artifact.content_hash,
+                artifact.rows,
+                artifact.bytes,
+                artifact.record_type,
+                created_by,
+                now_us(),
+            ),
+        )
+
+    def artifacts(self, key: str) -> list[dict]:
+        """Every artifact at a data key, newest first."""
+        return self._rows("SELECT * FROM artifacts WHERE key = ? ORDER BY created_us DESC", (key,))
+
+    def artifact_row(self, key: str, code: str) -> dict | None:
+        rows = self._rows("SELECT * FROM artifacts WHERE key = ? AND code = ?", (key, code))
+        return rows[0] if rows else None
+
+    def put_manifest(self, manifest: Any) -> None:
+        """Store a `stage.fingerprint.Manifest` once per distinct code."""
+        self.conn.execute(
+            "INSERT OR IGNORE INTO manifests VALUES (?, ?)",
+            (manifest.code, manifest.model_dump_json()),
+        )
+
+    def manifest(self, code: str) -> Any | None:
+        from triplum.stage.fingerprint import Manifest
+
+        row = self.conn.execute(
+            "SELECT manifest_json FROM manifests WHERE code = ?", (code,)
+        ).fetchone()
+        return None if row is None else Manifest.model_validate_json(row[0])
+
+    def lineage(self, key: str, code: str) -> list[dict]:
+        """The artifacts an artifact was built from, transitively: rows of (key, code, stage),
+        the artifact itself first, each input after the artifact that used it."""
+        out: list[dict] = []
+        seen: set[tuple[str, str]] = set()
+        todo = [(key, code)]
+        while todo:
+            k, c = todo.pop(0)
+            if (k, c) in seen:
+                continue
+            seen.add((k, c))
+            row = self.artifact_row(k, c)
+            if row is None:
+                continue
+            out.append({"key": k, "code": c, "stage": row["stage"]})
+            for inp in self.invocation_inputs(row["created_by"]):
+                if inp["kind"] == "artifact" and inp["code"] is not None:
+                    todo.append((inp["identity"], inp["code"]))
+        return out
+
+    def _rows(self, sql: str, params: tuple = ()) -> list[dict]:
+        cur = self.conn.execute(sql, params)
+        names = [d[0] for d in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
 
     def add_event(
         self,

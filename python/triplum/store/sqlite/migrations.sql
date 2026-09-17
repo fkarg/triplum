@@ -1,6 +1,14 @@
 -- triplum SQLite store, schema v2 (v1 had NOT NULL confidence on facts and mentions). Times are INTEGER microseconds UTC.
 -- Open interval ends use the sentinel 9223372036854775807.
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
+-- The store's own record of every store-effect stage (ingestion, embeddings, the graph) by
+-- execution key: a stage asks here, not the run store, whether its effect is already present.
+CREATE TABLE IF NOT EXISTS effects (
+  key          TEXT PRIMARY KEY,
+  stage        TEXT NOT NULL,
+  started_us   INTEGER NOT NULL,
+  completed_us INTEGER
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS documents (
   id          TEXT PRIMARY KEY,

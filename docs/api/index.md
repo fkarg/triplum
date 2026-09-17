@@ -14,6 +14,7 @@ signature is still shown.
 | `triplum.datasets` | done | `registry.load`, `registry.verify`, `base.Pinned`, `base.ListSource`, `base.InlineCorpus`, `base.Entry`, `files.Files`, `collate.*`, `fixtures.*`, `FrameDataset` | lazy built-in sources over pinned files (fetched on first use, fingerprinted without reading), the catalog, collators onto the canonical frames, committed fixtures |
 | `triplum.data.corpus` | done | `Document`, `Segment`, `content_id`, `chunk_id`, `CorpusBatch` | the corpus record with its source-declared id and segments; the canonical three-frame batch it projects onto |
 | `triplum.bench.inputs` | done | `Benchmark`, `PreparedBenchmark`, `materialize`, `check` | compose independent lazy sources; the explicit eager bridge for existing algorithms, with the cross-source integrity checks and identities from the sources' fingerprints |
+| `triplum.stage` | done | `stage`, `Stage`, `Run`, `active`, `Artifact`, `Stream`, `Manifest`, `derive` | a plain function with a data key from its arguments, a trace-discovered code manifest, a published artifact and an invocation row; lookup by key, validity along the lineage; live streams tee to parquet |
 | `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
 | `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
 | `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |
@@ -47,6 +48,9 @@ The contracts that hold across modules:
 - **Identity is a spec.** `EmbeddingSpec`, `RerankSpec`, `LLMConfig` and `PipelineConfig` are
   frozen dataclasses whose hashes name cache entries, index tables and runs; a dataset's
   `fingerprint()` names its corpus and evaluation identities the same way.
+  A stage's artifact is addressed by a data key over those identities and validated by the
+  manifest of the code that produced it and its inputs, so a code edit reruns exactly the
+  stages that executed it.
 - **Pipelines are functions.** A named pipeline in `retrieve.pipelines` is a composition of
   stages with defaults; the runner calls the same function a notebook would.
 - **Extractors produce claims, not facts.** An `Extractor` returns spans and every claim it

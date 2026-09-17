@@ -32,6 +32,19 @@ class Store(Protocol):
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame: ...
     def capabilities(self) -> Capabilities: ...
 
+    # ---- identity and effects: what a stage sees, and what a store-effect stage records ----
+
+    def identity(self) -> str:
+        """What the store holds, as a content key of its corpus and graph identities; the
+        identity of a store argument to a stage, and what a run records instead of a file hash."""
+        ...
+
+    def begin_effect(self, key: str, stage: str) -> None: ...
+    def complete_effect(self, key: str) -> None: ...
+    def effect_complete(self, key: str) -> bool:
+        """Whether the store-effect stage with this execution key ran to completion here."""
+        ...
+
     # ---- graph side: the D2 fact tables under D4 visibility -------------------------------
 
     def put_graph(
