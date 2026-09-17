@@ -20,7 +20,7 @@ entirely. A scripted monitor plus a reading ledger is the only way to stay curre
 | dblp | SPARQL endpoint / RDF dumps | The JSON search API is behind Anubis anti-bot; automated fetches got 403 on 2026-09-16. Use SPARQL. |
 | CEUR-WS | probe `ceur-ws.org/Vol-NNNN/` | No RSS. Volumes are sequential (around Vol-4226 in Sept 2026); diff the homepage or probe the next numbers. Volume pages carry RDFa. ESWC 2026 workshop volumes are out (4205, 4212). SEMANTiCS research papers are LNCS (Springer), not CEUR; workshops (e.g. SGKi) are CEUR. |
 | alphaXiv | MCP server `https://api.alphaxiv.org/mcp/v1` | OAuth or bearer key; no documented public REST. |
-| Papers With Code | revived at `paperswithcode.co` | The original `.com` was sunset 2025-07-24 and still redirects to HF Trending Papers with deep links dead; snapshot in HF org `pwc-archive`. A revival at **paperswithcode.co** (`.co`) appeared around 2026-05-17; treat its leaderboards as unverified until checked. |
+| Papers With Code | revived at `paperswithcode.co` | The original `.com` was sunset 2025-07-24 and still redirects to HF Trending Papers with deep links dead; snapshot in HF org `pwc-archive`. A revival at **paperswithcode.co** (`.co`) exists (Niels Rogge's Hugging Face post of 2026-08-21 dates it to about three months earlier; the exact shutdown and revival dates are not documented at a primary source); its leaderboards are unchecked. |
 | Conference programmes | scrape | The `fkarg/semantics_2026_schedule` site is the seed for SEMANTiCS 2026 (61 talks with abstracts). ISWC 2026 is Bari, 25–29 Oct. |
 
 ## Tooling

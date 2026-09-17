@@ -1,7 +1,7 @@
 # Spec: benchmark harness, baselines and embedding sweep (sub-project 2, part 1)
 
 Date: 2026-09-16. Status: approved 2026-09-16. Parent: `docs/research/design.md`. Protocol source:
-`docs/research/benchmarks-multihop-qa.md`. Storage source: `docs/research/storage-sqlite.md`.
+`docs/research/benchmarks.md`. Storage source: `docs/research/storage-sqlite.md`.
 
 ## Goal
 

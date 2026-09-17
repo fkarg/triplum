@@ -89,7 +89,7 @@ across the boundary. For orientation across the field, Piryani et al.'s temporal
 
 None of these evaluate transaction-time as-of ("what did the system believe last March"), and none
 model a viewer. Viewer-conditional benchmarks do exist in adjacent modalities (GateMem for
-conversational memory, RBAC-Text2SQL for SQL); see [`benchmarks-catalogue.md`](benchmarks-catalogue.md) §3.5.
+conversational memory, RBAC-Text2SQL for SQL); see [`benchmarks.md`](benchmarks.md) §4.2.
 
 ### Standards and store conventions
 

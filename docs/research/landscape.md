@@ -10,7 +10,7 @@ reported by the research pass but not re-checked against a primary source; see
 - The niche "composable sandbox with evaluation, temporal facts and permissions" is open. Nothing
   found combines those.
 - The two best pipeline designs to learn from are **neo4j-graphrag-python** (component DAG with
-  splitter, embedder, schema builder, extractor, resolvers, writer) and **DIGIMON** (16 operators in
+  splitter, embedder, schema builder, extractor, resolvers, writer) and **DIGIMON** (19 operators in
   five categories reproducing nine GraphRAG methods, used by GraphRAG-Bench).
 - The most-used library, **LightRAG**, is a monolithic class with open data-integrity bugs.
   **Microsoft GraphRAG** is officially in maintenance mode.
@@ -35,8 +35,8 @@ reported by the research pass but not re-checked against a primary source; see
 | [iText2KG / ATOM](https://github.com/AuvaLab/itext2kg) | Python / Apache-2.0 | Active (last push 2026-09-04); hosts iText2KG (WISE 2024), ATOM (Findings of EACL 2026) and C-Unseen | Atomic-fact distiller, extractor, matcher; dual-time 5-tuples | Temporal extraction reference; the atomic-fact decomposition step is adopted (design D3). |
 | [KG-Gen](https://github.com/stair-lab/kg-gen) | Python / MIT declared in `pyproject.toml` only, **no LICENSE file** | NeurIPS 2025; PyPI 0.4.0 from 2025-09-30, repo last push 2026-03-24 | DSPy + LiteLLM; ships the MINE evaluation dataset | Simple text-to-KG baseline with its own eval set. |
 | [RAGFlow](https://github.com/infiniflow/ragflow) | Python / Apache-2.0 | ~90k stars, very active | Monolith platform (Elasticsearch or Infinity, Redis, MySQL, MinIO) | Not composable. Sept 2026: KG toggle regression in 0.27 (#19379). |
-| [DIGIMON](https://github.com/JayLZhou/GraphRAG) ([VLDB 2025](https://www.vldb.org/pvldb/vol18/p5623-zhou.pdf)) | Python / **no LICENSE file** (all rights reserved by default; verified 2026-09-16) | ~1.5k stars; last commit 2025-07-01 | 16 operators (entity, relationship, chunk, subgraph, community) composed via YAML to reproduce RAPTOR, KGP, DALK, HippoRAG, G-Retriever, ToG, LightRAG, MS GraphRAG, FastGraphRAG | The closest academic precedent for "one framework, many methods". Used by GraphRAG-Bench. **Do not copy code**: no licence means no permission. Read for the operator taxonomy only. |
-| Newer entrants | | | | [ApeRAG](https://github.com/apecloud/ApeRAG) (Apache-2.0, modified LightRAG plus entity normalisation), [fast-graphrag](https://github.com/circlemind-ai/fast-graphrag) (MIT, PPR), LinearRAG (ICLR 2026), [Youtu-GraphRAG](https://github.com/TencentCloudADP/youtu-graphrag) (Tencent, ICLR 2026), LazyGraphRAG inside the MS repo. *(all unverified beyond existence)* |
+| [DIGIMON](https://github.com/JayLZhou/GraphRAG) ([VLDB 2025](https://www.vldb.org/pvldb/vol18/p5623-zhou.pdf)) | Python / **no LICENSE file** (all rights reserved by default; verified 2026-09-16) | ~1.5k stars; last commit 2025-07-01 | 19 operators (entity, relationship, chunk, subgraph, community) composed via YAML to reproduce RAPTOR, KGP, DALK, HippoRAG, G-Retriever, ToG, LightRAG, MS GraphRAG, FastGraphRAG | The closest academic precedent for "one framework, many methods". Used by GraphRAG-Bench. **Do not copy code**: no licence means no permission. Read for the operator taxonomy only. |
+| Newer entrants | | | | [ApeRAG](https://github.com/apecloud/ApeRAG) (Apache-2.0, modified LightRAG plus entity normalisation), [fast-graphrag](https://github.com/circlemind-ai/fast-graphrag) (MIT, PPR), LinearRAG (ICLR 2026), [Youtu-GraphRAG](https://github.com/TencentCloudADP/youtu-graphrag) (Tencent, ICLR 2026), LazyGraphRAG is an experimental internal-only Microsoft fork; the public repo offers fast indexing plus DRIFT search instead. *(licences, venues and the LazyGraphRAG status checked against the primary pages on 2026-09-17)* |
 
 ## Rust-based
 
@@ -62,7 +62,7 @@ and the legal-corpus setup.
 
 **Adjacent talk in the same session:** Tiwari et al., *Ontology-Aware Prompting for KG Construction
 from Text*, evaluated on Text2KGBench, code at
-`anonymous.4open.science/r/ontology-aware-kg-construction-2B0C` *(unverified)*. Directly relevant to
+the official implementation is [dice-group/ontology-aware-kg-construction](https://github.com/dice-group/ontology-aware-kg-construction) (GPL-3.0; evaluated on Text2KGBench; the anonymous 4open.science link it replaced is no longer reachable). Directly relevant to
 the V&V sub-project.
 
 ## Awesome lists

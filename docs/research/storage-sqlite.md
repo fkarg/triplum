@@ -329,7 +329,7 @@ Retrieval then over-fetches from `chunk_vec`/`chunks_fts` (partition- and metada
 - **Embedding storage duplication.** `vec0` owns the vectors in shadow tables. Do we also keep a canonical BLOB copy in `chunks` for re-indexing and model swaps (doubling storage), or re-embed on model change?
 - **Vector ceiling.** At what corpus size do we switch to binary-quantized first-stage + float rescore, and is that our own logic or sqlite-vec's `rescore` index once stable?
 - **Write coordination.** Notebook + benchmark runner is two processes. Do we enforce a single writer by convention, or add an advisory lock table?
-- **Unverified:** no credible first-party production report of sqlite-vec at 1M–10M vectors; no published Polars/ADBC SQLite bulk-ingest throughput figures. Both need our own benchmarks before the ingest path is designed around them.
+- **Evidence at scale:** the maintainer's own sqlite-vec v0.1.0 benchmark reports 33 ms/query for `vec0` (chunk 8192/2048) over 1,000,000 SIFT-128 vectors at k=20; no production report at 1M-10M vectors was found, and no published Polars-to-ADBC SQLite bulk-ingest throughput figure exists (checked 2026-09-17). Both still need our own benchmarks before the ingest path is designed around them.
 
 ---
 

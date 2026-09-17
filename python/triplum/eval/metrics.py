@@ -1,5 +1,5 @@
 """QA and retrieval metrics. EM/F1 follow HotpotQA's normalisation, aggregated as max over gold
-aliases (HippoRAG convention), without the yes/no zeroing rule. See benchmarks-multihop-qa.md §2."""
+aliases (HippoRAG convention), without the yes/no zeroing rule. See docs/research/benchmarks.md §2.2."""
 
 from __future__ import annotations
 

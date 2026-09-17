@@ -104,7 +104,7 @@ usd_cached_in_per_m=..., source=<url>)`; the source URL is required and travels 
 
 ## What a results table must carry
 
-Per `docs/research/benchmarks-multihop-qa.md`: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, indexing
+Per `docs/research/benchmarks.md` §2: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, indexing
 cost, per-question latency and cost, the reader and judge model ids (different families, enforced),
 the embedding spec, the corpus hash, and the closed-book, BM25-only and oracle baselines on the
 same rows. `triplum bench report` prints all of it from the run store; the marimo notebook in

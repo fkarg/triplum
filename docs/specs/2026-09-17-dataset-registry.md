@@ -1,6 +1,6 @@
 # Dataset registry
 
-Snapshot 2026-09-17. Follows the [benchmark catalogue](../research/benchmarks-catalogue.md) and
+Snapshot 2026-09-17. Follows the [benchmark note](../research/benchmarks.md) and
 the [dataset status](2026-09-16-dataset-status.md) spec.
 
 ## Goal

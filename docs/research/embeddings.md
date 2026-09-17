@@ -115,7 +115,7 @@ Qwen3-Embedding, gte-Qwen2, Arctic, granite, Octen, F2LLM, harrier, bge-*.
 ## 2. Multi-hop QA specifically
 
 The HippoRAG 2 baseline table (R@2/R@5 and EM/F1 per retriever) is already reproduced in
-[`benchmarks-multihop-qa.md` §3.1](benchmarks-multihop-qa.md) and is not repeated here. What that
+[`benchmarks.md` §3.1](benchmarks.md) and is not repeated here. What that
 table does not tell you is how the *current* embedders rank.
 
 **The only panel that exists.** *The Commercial Tax* (arXiv:2608.16096, Sanchez & Dehnad,
@@ -278,7 +278,7 @@ beats Qwen3-Reranker-4B on BEIR. **BEIR numbers are not comparable across vendor
 
 **Cost for the protocol (1000 questions × top-50 × ~200 tokens):** Cohere bills per *search unit* = one
 query with up to 100 documents → **1000 units = $2.00** (rerank-3.5, verified on AWS Bedrock; the
-direct-API rate is unverified). Voyage bills `(query_tokens × n_docs) + Σ doc_tokens` = 11.0M tokens →
+direct-API rate is not published; checked 2026-09-17). Voyage bills `(query_tokens × n_docs) + Σ doc_tokens` = 11.0M tokens →
 **$0.55** (rerank-2.5), **$0.22** (lite), **$0.00** for rerank-3/-lite under their 200M free tokens.
 Locally, 50,000 pairs with bge-reranker-v2-m3 is **~2–4 min on an 8 GB card, ~10–15 min on an M-series
 Max** [calc — no reranker throughput has been published for consumer GPUs or Apple Silicon].
@@ -323,7 +323,7 @@ no MRL truncation in the primary sweep.
 | 7 | `BAAI/bge-large-en-v1.5` | cheap floor, 100% zero-shot | `mps`/`onnx` | `Represent this sentence for searching relevant passages: ` | `""` |
 
 Rationale: #1 is the comparison target and cost baseline; #2 is required for cross-paper comparability
-with [`benchmarks-multihop-qa.md` §3.1](benchmarks-multihop-qa.md), despite being unusable
+with [`benchmarks.md` §3.1](benchmarks.md), despite being unusable
 commercially; #3/#4 are the Apache-2.0 tier that runs on our hardware and on which **no
 HippoRAG-protocol numbers have ever been published**; #5 is the strongest commercially licensed open
 model that fits 8 GB at fp16; #6/#7 bound the cheap end. Drop #5 or #7 first if trimming.

@@ -70,9 +70,7 @@ nav:
       - Index: research/README.md
       - Design record: research/design.md
       - Landscape: research/landscape.md
-      - Multi-hop QA benchmarks: research/benchmarks-multihop-qa.md
-      - Benchmark catalogue: research/benchmarks-catalogue.md
-      - Standard benchmarks: research/benchmarks-standard.md
+      - Benchmarks: research/benchmarks.md
       - Embeddings: research/embeddings.md
       - KG construction: research/kg-construction.md
       - KG construction without an LLM: research/kg-construction-nonllm.md

@@ -47,7 +47,7 @@ for the log. Re-check before pinning.
   directly. [DuckPGQ](https://duckdb.org/community_extensions/extensions/duckpgq) (CWI research
   project, 0.3.1) has **no build for DuckDB 1.5.5**; newest supported is 1.5.4 and the docs still
   recommend 1.4.4. Pin accordingly if we use it.
-- **LanceDB** Rust 0.38 *(unverified)*: Lance format is now native on the Hugging Face Hub. Candidate
+- **LanceDB** Rust 0.38.0 (crates.io, 2026-08-31): Lance format is native on the Hugging Face Hub (`hf://` paths); lzma-sys links dynamically by default, the `static` feature links statically. Candidate
   for embedding persistence if sqlite-vec does not scale; note the `lzma-sys` dynamic-link gotcha.
 
 ## Indexes and kernels
