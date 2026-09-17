@@ -1,4 +1,44 @@
 {
+"ambigqa": [
+{
+"bytes": 1061383,
+"name": "ambignq_light.zip",
+"sha256": "3f5dada69dec05cef1533a64945cd7bafde1aa94b0cdd6fa9a22f881206220db",
+"url": "https://nlp.cs.washington.edu/ambigqa/data/ambignq_light.zip"
+}
+],
+"arc_challenge": [
+{
+"bytes": 203808,
+"name": "ARC-Challenge/test-00000-of-00001.parquet",
+"sha256": "62f03257e737aed263f55c6abf87c7bb0028a44a6bdd2a26eb1279eb42c1d1e9",
+"url": "https://huggingface.co/datasets/allenai/ai2_arc/resolve/main/ARC-Challenge/test-00000-of-00001.parquet"
+}
+],
+"arc_easy": [
+{
+"bytes": 346257,
+"name": "ARC-Easy/test-00000-of-00001.parquet",
+"sha256": "4160597d618ae851c7eb04e281574f3f654776216ac6b6641588d64527b47177",
+"url": "https://huggingface.co/datasets/allenai/ai2_arc/resolve/main/ARC-Easy/test-00000-of-00001.parquet"
+}
+],
+"bamboogle": [
+{
+"bytes": 8383,
+"name": "data/test-00000-of-00001-fd9def31e0acf72c.parquet",
+"sha256": "0a2dfaac73a9e604dc2b1a84b612550e09dbe92dcea652b83102af6d267c1270",
+"url": "https://huggingface.co/datasets/chiayewken/bamboogle/resolve/main/data/test-00000-of-00001-fd9def31e0acf72c.parquet"
+}
+],
+"boolq": [
+{
+"bytes": 1257630,
+"name": "data/validation-00000-of-00001.parquet",
+"sha256": "52355d11524b4b874a9b9dcc278feb10f672d52c4f4eff9872e695ede59820f8",
+"url": "https://huggingface.co/datasets/google/boolq/resolve/main/data/validation-00000-of-00001.parquet"
+}
+],
 "browsecomp_plus": [
 {
 "bytes": 508023004,
@@ -3027,6 +3067,14 @@
 "url": "https://nlp.cs.princeton.edu/projects/entity-questions/dataset.zip"
 }
 ],
+"freshqa": [
+{
+"bytes": 202939,
+"name": "FreshQA_April21_2026.csv",
+"sha256": "3769244f66bb2666fe5160c8cc235339b7c54c61fc88d360995aa91d4c904789",
+"url": "https://docs.google.com/spreadsheets/d/1_8mi-yuK30mvoDJu1KQXD6ODem7MKMcIgVAwDSzJkjM/export?format=csv"
+}
+],
 "gatemem": [
 {
 "bytes": 458194,
@@ -3219,12 +3267,36 @@
 "url": "https://huggingface.co/datasets/bdsaglam/musique/resolve/main/musique_full_v1.0_dev.jsonl"
 }
 ],
+"nq_open": [
+{
+"bytes": 213603,
+"name": "nq_open/validation-00000-of-00001.parquet",
+"sha256": "b074bed0bccb56fa1551a8ac1c9c51ce89bc11c7fbb6a9c713b2c33a98531e12",
+"url": "https://huggingface.co/datasets/google-research-datasets/nq_open/resolve/main/nq_open/validation-00000-of-00001.parquet"
+}
+],
 "popqa": [
 {
 "bytes": 5205200,
 "name": "test.tsv",
 "sha256": "9a5227f41bff0e4c331d4a774d946b12f95307892b58f860a9606ef356e6089b",
 "url": "https://huggingface.co/datasets/akariasai/PopQA/resolve/main/test.tsv"
+}
+],
+"qasper": [
+{
+"bytes": 3865061,
+"name": "qasper-test-and-evaluator-v0.3.tgz",
+"sha256": "72a52a41193e2838b8074f80ac074b94f956b84886c36a61c58a7df4171bdd72",
+"url": "https://qasper-dataset.s3.us-west-2.amazonaws.com/qasper-test-and-evaluator-v0.3.tgz"
+}
+],
+"quality": [
+{
+"bytes": 18023502,
+"name": "QuALITY.v1.0.1.zip",
+"sha256": "58552970c3dc4fe199654579e9f74139becd90fca61ddc2eb0b0d82cbb437341",
+"url": "https://raw.githubusercontent.com/nyu-mll/quality/main/data/v1.0.1/QuALITY.v1.0.1.zip"
 }
 ],
 "scierc": [
@@ -3245,6 +3317,22 @@
 "name": "spert/scierc_test.json",
 "sha256": "ecc88eca58a88cf2087aaa996dada9edad433c3c2f3f8f5be93625b098c20703",
 "url": "https://lavis.cs.hs-rm.de/storage/spert/public/datasets/scierc/scierc_test.json"
+}
+],
+"squad": [
+{
+"bytes": 1819889,
+"name": "plain_text/validation-00000-of-00001.parquet",
+"sha256": "8c6646d36bd5a95061e076788cf3161d11f6f3e7d625dac7a83bbed0a49f69f7",
+"url": "https://huggingface.co/datasets/rajpurkar/squad/resolve/main/plain_text/validation-00000-of-00001.parquet"
+}
+],
+"squad_v2": [
+{
+"bytes": 1350511,
+"name": "squad_v2/validation-00000-of-00001.parquet",
+"sha256": "0560174ab095c5ac0a8c8dc8da05f1625453c45a77e4ce9cabc6947ddfdd24cb",
+"url": "https://huggingface.co/datasets/rajpurkar/squad_v2/resolve/main/squad_v2/validation-00000-of-00001.parquet"
 }
 ],
 "tempo": [

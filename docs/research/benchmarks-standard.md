@@ -5,9 +5,10 @@ with every listed data URL exercised by an anonymous HTTP request; the tables be
 report, kept verbatim apart from this header. It fills the two families the
 [benchmark catalogue](benchmarks-catalogue.md) could not cover (KGQA over an existing KG, entity
 linking) and lists the standard QA sets that catalogue skipped. Nine licence and gating claims
-were re-checked by hand against the Hugging Face API on 2026-09-17 and matched. Nothing here is
-registered yet; the adoption tiers at the end are the pass's recommendation, and registration
-needs a download per file to pin its hash.
+were re-checked by hand against the Hugging Face API on 2026-09-17 and matched. The first two
+adoption tiers at the end are registered except the KG-as-source sets (MetaQA, KQA Pro) and the
+non-QA sets (OpenEA, BEIR); see the [catalogue](benchmarks-catalogue.md#4b-registered-on-2026-09-17)
+for what each registration decided.
 
 Row counts are configurations, not independent datasets. "Unverified" is stated wherever a size,
 count or licence could not be established from a primary source.

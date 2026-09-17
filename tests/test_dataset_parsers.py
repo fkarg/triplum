@@ -11,13 +11,15 @@ import pytest
 from triplum.eval.datasets import (
     base,
     browsecomp_plus,
-    controls,
     ectqa,
     extraction,
     gatemem,
+    long_document,
     longmemeval,
     mquake,
     multihoprag,
+    question_only,
+    reading,
     tempo,
     wiki_multihop,
 )
@@ -189,7 +191,7 @@ def test_popqa_and_entityquestions_have_no_corpus(tmp_path):
     header = "id\tsubj\tprop\tobj\tsubj_id\tprop_id\tobj_id\ts_aliases\to_aliases\ts_uri\to_uri\ts_wiki_title\to_wiki_title\ts_pop\to_pop\tquestion\tpossible_answers"
     row = '7\tParis\tcountry\tFrance\t1\t2\t3\t[]\t[]\tu\tv\tParis\tFrance\t100\t200\tIn what country is Paris?\t["France", "French Republic"]'
     tsv = _write(tmp_path, "test.tsv", header + "\n" + row + "\n")
-    fr = controls.parse_popqa({"x": tsv}, None)
+    fr = question_only.parse_popqa({"x": tsv}, None)
     q = fr.questions.row(0, named=True)
     assert (
         q["aliases"] == ["France", "French Republic"]
@@ -206,7 +208,7 @@ def test_popqa_and_entityquestions_have_no_corpus(tmp_path):
         zf.writestr(
             "dataset/dev/P19.dev.json", json.dumps([{"question": "ignored", "answers": ["n"]}])
         )
-    fr = controls.parse_entityquestions({"x": zpath}, None)
+    fr = question_only.parse_entityquestions({"x": zpath}, None)
     assert fr.questions["id"].to_list() == ["P19:0"] and fr.questions["aliases"][0].to_list() == [
         "Y",
         "Z",
@@ -410,3 +412,179 @@ def test_browsecomp_plus_decodes_queries_and_docids(tmp_path):
     assert q["question"] == "Which university?" and q["answer"] == "Queen Arwa University"
     assert q["gold_chunk_ids"] == [1] and _meta(fr)["candidate_chunk_ids"] == [1, 2]
     assert browsecomp_plus.decode(_encode("round trip")) == "round trip"
+
+
+def test_document_frames_numbers_chunks_across_documents():
+    docs, grants, chunks = base.document_frames(
+        "src", [("d1", ["ab", "cde"], 0, {"title": "t"}), ("d2", ["f"], 7, None)]
+    )
+    assert docs["id"].to_list() == ["d1", "d2"] and docs["observed_at"].to_list() == [0, 7]
+    assert grants["principal"].to_list() == ["public", "public"]
+    assert chunks["id"].to_list() == [1, 2, 3]
+    assert chunks["document_id"].to_list() == ["d1", "d1", "d2"]
+    assert chunks.select("span_start", "span_end").rows() == [(0, 2), (4, 7), (0, 1)]
+
+
+def test_question_only_sets(tmp_path):
+    pq = tmp_path / "b.parquet"
+    pl.DataFrame({"Question": ["q?"], "Answer": ["a"]}).write_parquet(pq)
+    assert question_only.parse_bamboogle({"x": pq}, None).questions["qtype"][0] == "multihop"
+    pl.DataFrame({"question": ["q"], "answer": [["a1", "a2"]]}).write_parquet(pq)
+    fr = question_only.parse_nq_open({"x": pq}, None)
+    assert fr.questions["aliases"][0].to_list() == ["a1", "a2"] and fr.chunks.height == 0
+    pl.DataFrame(
+        {
+            "id": ["M_1"],
+            "question": ["Which?"],
+            "choices": [{"text": ["one", "two"], "label": ["A", "B"]}],
+            "answerKey": ["B"],
+        }
+    ).write_parquet(pq)
+    q = question_only.parse_arc({"x": pq}, None).questions.row(0, named=True)
+    assert q["answer"] == "two" and q["aliases"] == ["two", "B"]
+    zpath = tmp_path / "ambignq_light.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr(
+            "dev_light.json",
+            json.dumps(
+                [
+                    {
+                        "id": "1",
+                        "question": "who?",
+                        "annotations": [
+                            {
+                                "type": "multipleQAs",
+                                "qaPairs": [
+                                    {"question": "who 1?", "answer": ["A", "A2"]},
+                                    {"question": "who 2?", "answer": ["B"]},
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            ),
+        )
+    q = question_only.parse_ambigqa({"x": zpath}, None).questions.row(0, named=True)
+    assert q["answer"] == "A" and q["aliases"] == ["A", "A2", "B"] and q["qtype"] == "multipleQAs"
+    header = ",".join(
+        ["id", "split", "question", "effective_year", "next_review", "false_premise", "num_hops"]
+        + ["fact_type", "source"]
+        + [f"answer_{i}" for i in range(10)]
+        + ["note"]
+    )
+    csv_text = "Warning,,,\n,,,\n" + header + "\n"
+    csv_text += "3,TEST,q?,2024,daily,TRUE,one-hop,fast-changing,http://s,x,y,,,,,,,,,n\n"
+    fr = question_only.parse_freshqa({"x": _write(tmp_path, "f.csv", csv_text)}, None)
+    q = fr.questions.row(0, named=True)
+    assert q["id"] == "freshqa:3" and q["aliases"] == ["x", "y"] and q["qtype"] == "fast-changing"
+    assert _meta(fr)["false_premise"] is True
+
+
+def test_reading_sets_use_the_passage_as_gold(tmp_path):
+    pq = tmp_path / "v.parquet"
+    pl.DataFrame(
+        {
+            "id": ["1", "2", "3"],
+            "title": ["Super_Bowl", "Super_Bowl", "Normans"],
+            "context": ["c1", "c1", "c2"],
+            "question": ["q1", "q2", "q3"],
+            "answers": [
+                {"text": ["a", "a", "b"], "answer_start": [0, 0, 1]},
+                {"text": [], "answer_start": []},
+                {"text": ["c"], "answer_start": [0]},
+            ],
+        }
+    ).write_parquet(pq)
+    fr = reading.parse_squad_v2({"x": pq}, None)
+    assert fr.chunks.height == 2 and fr.chunks["text"][0] == "Super Bowl\nc1"
+    q1, q2, q3 = fr.questions.iter_rows(named=True)
+    assert q1["aliases"] == ["a", "b"] and q1["gold_chunk_ids"] == [1]
+    assert q2["answerable"] is False and q2["gold_chunk_ids"] == []
+    assert _meta(fr, 1)["candidate_chunk_ids"] == [1] and q3["gold_chunk_ids"] == [2]
+    pl.DataFrame({"question": ["is it"], "answer": [True], "passage": ["p"]}).write_parquet(pq)
+    fr = reading.parse_boolq({"x": pq}, None)
+    assert fr.questions["answer"][0] == "yes" and fr.chunks["text"][0] == "p"
+
+
+def test_quality_scores_the_gold_option(tmp_path):
+    article = {
+        "article_id": "a1",
+        "set_unique_id": "s1",
+        "title": "T",
+        "article": "long text",
+        "source": "gutenberg",
+        "year": 1950,
+        "author": "A",
+        "topic": "x",
+        "license": "L",
+        "questions": [
+            {
+                "question": "q?",
+                "question_unique_id": "a1_s1_1",
+                "options": ["w", "x", "y", "z"],
+                "gold_label": 3,
+                "difficult": 1,
+            }
+        ],
+    }
+    zpath = tmp_path / "q.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr(long_document.QUALITY_MEMBER, json.dumps(article) + "\n" + json.dumps(article))
+    fr = long_document.parse_quality({"x": zpath}, None)
+    assert fr.chunks.height == 1 and fr.questions.height == 2
+    q = fr.questions.row(0, named=True)
+    assert q["answer"] == "y" and q["aliases"] == ["y", "3"] and q["qtype"] == "hard"
+    assert json.loads(fr.documents["metadata"][0])["license"] == "L"
+
+
+def test_qasper_gold_is_the_evidence_paragraph(tmp_path):
+    def answer(**kw):
+        a = {
+            "unanswerable": False,
+            "extractive_spans": [],
+            "yes_no": None,
+            "free_form_answer": "",
+            "evidence": [],
+            "highlighted_evidence": [],
+        }
+        return {"answer": a | kw, "annotation_id": "x", "worker_id": "w"}
+
+    paper = {
+        "title": "Paper",
+        "abstract": "Abs.",
+        "full_text": [{"section_name": "Intro", "paragraphs": ["p1", "p2"]}],
+        "figures_and_tables": [{"file": "f.png", "caption": "Figure 1: cap"}],
+        "qas": [
+            {
+                "question": "q1",
+                "question_id": "q1",
+                "answers": [
+                    answer(extractive_spans=[" s1 ", "s2"], evidence=["p2", "table only"]),
+                    answer(free_form_answer="ff", evidence=["Figure 1: cap"]),
+                ],
+            },
+            {"question": "q2", "question_id": "q2", "answers": [answer(unanswerable=True)]},
+            {"question": "q3", "question_id": "q3", "answers": [answer(yes_no=True)]},
+        ],
+    }
+    tpath = tmp_path / "q.tgz"
+    import io
+    import tarfile
+
+    data = json.dumps({"pid": paper}).encode()
+    with tarfile.open(tpath, "w:gz") as tf:
+        info = tarfile.TarInfo(long_document.QASPER_MEMBER)
+        info.size = len(data)
+        tf.addfile(info, io.BytesIO(data))
+    fr = long_document.parse_qasper({"x": tpath}, None)
+    assert fr.documents.height == 1 and fr.chunks["text"].to_list() == [
+        "Paper\nAbs.",
+        "Intro\np1",
+        "Intro\np2",
+        "Figure 1: cap",
+    ]
+    assert fr.questions["id"].to_list() == ["q1", "q2"]  # q3 has no matching evidence
+    q1, q2 = fr.questions.iter_rows(named=True)
+    assert q1["answer"] == "s1, s2" and q1["aliases"] == ["s1, s2", "ff", "s1", "s2"]
+    assert q1["gold_chunk_ids"] == [3, 4] and q1["qtype"] == "free_form"
+    assert q2["answerable"] is False and q2["answer"] == "unanswerable"

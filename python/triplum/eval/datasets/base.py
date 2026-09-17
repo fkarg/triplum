@@ -234,6 +234,29 @@ def corpus_frames(
     )
 
 
+def document_frames(
+    source: str,
+    documents: Iterable[tuple[str, list[str], int, dict | None]],
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """Documents with several chunks each, from `(doc_id, chunk_texts, observed_at, metadata)`
+    rows. Chunk ids are 1-based across all documents in order; spans are offsets into the chunk
+    texts joined by a blank line."""
+    doc_rows, grant_rows, chunk_rows = [], [], []
+    for doc_id, texts, observed_at, meta in documents:
+        doc_rows.append((doc_id, source, None, observed_at, json.dumps(meta or {})))
+        grant_rows.append((doc_id, "public", 0, None))
+        offset = 0
+        for text in texts:
+            cid = len(chunk_rows) + 1
+            chunk_rows.append((cid, doc_id, None, 0, offset, offset + len(text), text))
+            offset += len(text) + 2
+    return (
+        pl.DataFrame(doc_rows, schema=DOC_SCHEMA, orient="row"),
+        pl.DataFrame(grant_rows, schema=GRANT_SCHEMA, orient="row"),
+        pl.DataFrame(chunk_rows, schema=CHUNK_SCHEMA, orient="row"),
+    )
+
+
 class Corpus:
     """Accumulates distinct (title, text) passages in first-seen order and hands out chunk ids, for
     datasets whose corpus is the union of per-question inline paragraphs."""

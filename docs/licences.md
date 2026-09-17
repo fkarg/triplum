@@ -43,6 +43,15 @@ Dates are when the licence was checked; re-check before relying on a row.
 | CaRB (`dair-iitd/CaRB`) | MIT | yes | 2026-09-17 | registered as `carb` |
 | CoNLL04 (`DFKI-SLT/conll04`) | none declared | check | 2026-09-17 | registered as `conll04` |
 | SciERC (SpERT release files) | none declared | check | 2026-09-17 | registered as `scierc` |
+| NQ-Open (`google-research-datasets/nq_open`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `nq_open`; validation split, no corpus |
+| AmbigQA light (UW) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `ambigqa`; dev split, no corpus |
+| Bamboogle (`chiayewken/bamboogle`, from ofirpress/self-ask) | MIT | yes | 2026-09-17 | registered as `bamboogle`; 125 questions, no corpus |
+| FreshQA (freshllms/freshqa) | Apache-2.0 (repository) | yes | 2026-09-17 | registered as `freshqa`; sheet export of 2026-04-21, no corpus |
+| AI2 ARC (`allenai/ai2_arc`) | CC BY-SA 4.0 | yes, share-alike | 2026-09-17 | registered as `arc_easy`, `arc_challenge`; test splits, no corpus |
+| SQuAD 1.1 and 2.0 (`rajpurkar/squad`, `squad_v2`) | CC BY-SA 4.0 | yes, share-alike | 2026-09-17 | registered as `squad`, `squad_v2`; validation splits |
+| BoolQ (`google/boolq`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `boolq`; validation split |
+| QuALITY v1.0.1 (NYU) | CC BY 4.0 annotations; articles carry their own licence field (Project Gutenberg, OANC, CC BY) | yes, per article | 2026-09-17 | registered as `quality`; htmlstripped dev split |
+| QASPER v0.3 (`allenai/qasper`) | CC BY 4.0 | yes | 2026-09-17 | registered as `qasper`; test split, paper text under arXiv terms |
 | Text2KGBench | Apache-2.0 (`cenguix/Text2KGBench`) | yes | 2026-09-16 | LettrIA refinement: data "upon request", terms unknown |
 | `GEM/web_nlg` (HF) | CC BY-NC 4.0 | **no** | 2026-09-16 | non-commercial |
 | REBEL dataset | CC BY-NC-SA 4.0 | **no** | 2026-09-16 | non-commercial, share-alike |

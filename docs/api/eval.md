@@ -16,7 +16,11 @@
 
 ::: triplum.eval.datasets.ectqa
 
-::: triplum.eval.datasets.controls
+::: triplum.eval.datasets.reading
+
+::: triplum.eval.datasets.long_document
+
+::: triplum.eval.datasets.question_only
 
 ::: triplum.eval.datasets.mquake
 

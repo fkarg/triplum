@@ -244,6 +244,14 @@ sample of gold to the shipped corpus (50/50 everywhere a corpus ships); the pins
 - **LongMemEval-cleaned**: only `_s` (277 MB) is registered; haystacks are namespaced per
   question and the set is declared `needs` a corpus per question.
 - **GraphJudge** GenWiki-Hard has a few hundred non-3-tuples, kept in document metadata.
+- **Standard sets from the [standard benchmarks note](benchmarks-standard.md)**, registered the
+  same day: its first two adoption tiers minus the KG-as-source sets. NQ-Open, AmbigQA, Bamboogle,
+  FreshQA and both ARC splits are question-only; SQuAD 1.1/2.0 and BoolQ use the question's own
+  passage as gold; QuALITY (115 articles as single chunks) and QASPER (papers chunked into
+  abstract, paragraphs and captions, the first multi-chunk documents in the registry; 78 of 1,451
+  test questions whose evidence is table content match no chunk and are not loaded) cover long
+  documents. MetaQA and KQA Pro wait for a KG-as-source representation; OpenEA and the BEIR sets
+  are not question sets in the canonical frames.
 - **WildGraphBench** is not registered: its 3,894 reference pages are separate files joined by a
   slugified title, a 3,930-entry manifest for a second-tier set. **LLMs4OL** is term typing and
   taxonomy induction, which the canonical frames do not represent; both stay catalogue-only.

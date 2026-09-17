@@ -91,14 +91,15 @@ Implemented (sub-project 2, part 1; spec in
   tables are created by the migration and unused.
 - **Protocols with disk cache**: `LLM` (OpenAI-compatible, CLI subprocess, fake), `Embedder`
   (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
-- **Datasets**: a registry (`eval/datasets/registry.py`) of 25 pinned, auto-fetched datasets with
+- **Datasets**: a registry (`eval/datasets/registry.py`) of 36 pinned, auto-fetched datasets with
   one parser per source and canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA
   under the HippoRAG 1000-question protocol are the default set. The others cover multi-hop with
   gold chains (MoreHopQA, the full HotpotQA/2Wiki/MuSiQue dev sets, BrowseComp-Plus), abstention
   (MultiHop-RAG, MuSiQue twins), temporal ingestion (ECT-QA, TEMPO, MQuAKE), memory
-  (LongMemEval), access control (GateMem), long-tail controls without a corpus (PopQA,
-  EntityQuestions) and text-to-triple gold (GraphJudge, GenWiki, CaRB, CoNLL04, SciERC). `triplum
-  data` lists them; the registry spec is `docs/specs/2026-09-17-dataset-registry.md`.
+  (LongMemEval), access control (GateMem), question-only sets (PopQA, EntityQuestions, NQ-Open,
+  AmbigQA, Bamboogle, FreshQA, ARC), reading comprehension (SQuAD 1.1/2.0, BoolQ), long documents
+  (QuALITY, QASPER) and text-to-triple gold (GraphJudge, GenWiki, CaRB, CoNLL04, SciERC).
+  `triplum data` lists them; the registry spec is `docs/specs/2026-09-17-dataset-registry.md`.
 - **Pipelines**: the five above. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
   latency, indexing time.
 - **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the

@@ -14,3 +14,7 @@ and sources per dataset are in `docs/licences.md`; in short:
   `longmemeval_s` (MIT), `graphjudge_genwiki` (CC0), `graphjudge_scierc` (none declared),
   `graphjudge_rebel` (CC BY-NC-SA 4.0, research only), `genwiki` (CC0), `carb` (MIT), `conll04`
   (none declared), `scierc` (none declared).
+- `nq_open` (CC BY-SA 3.0), `ambigqa` (CC BY-SA 3.0), `bamboogle` (MIT), `freshqa` (Apache-2.0),
+  `arc_easy` and `arc_challenge` (CC BY-SA 4.0), `squad` and `squad_v2` (CC BY-SA 4.0), `boolq`
+  (CC BY-SA 3.0), `quality` (CC BY 4.0 annotations; article licences in document metadata),
+  `qasper` (CC BY 4.0).
