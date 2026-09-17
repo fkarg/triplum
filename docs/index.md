@@ -9,7 +9,7 @@ and enforced in the store.
 
 The non-graph half: canonical schemas, a SQLite store with viewer-filtered BM25 and vector
 search over chunks, cached LLM, embedder and reranker protocols with real and fake adapters, a
-registry of 36 pinned datasets with committed fixtures, five baselines (closed-book, BM25, dense,
+registry of 37 pinned datasets with committed fixtures, five baselines (closed-book, BM25, dense,
 hybrid with rerank, oracle), the metrics, and a run store keyed by run identity. Nothing
 graph-shaped yet: the fact tables exist and are empty. [Flow](flow.md) keeps the implemented
 versus planned list exact.

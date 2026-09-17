@@ -3223,6 +3223,32 @@
 "url": "https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json"
 }
 ],
+"metaqa": [
+{
+"bytes": 5220771,
+"name": "kb.txt",
+"sha256": "9b4d3b3066266075ad1577b4beed68e6e112e76e1a29ed2cb00a2896d2b792af",
+"url": "https://drive.usercontent.google.com/download?id=0B-36Uca2AvwhMUFHeUpTRWp5eUU&export=download&resourcekey=0-rcKwcmfpRl7uH17ZXU_M5g"
+},
+{
+"bytes": 675227,
+"name": "1hop_qa_test.txt",
+"sha256": "c57e9c2c4c05e5eec4503460042c09bfa3e80ea1a5ecaf361c92dd81d6c7bece",
+"url": "https://drive.usercontent.google.com/download?id=0B-36Uca2Avwhcy1BRXpQeWdva1k&export=download&resourcekey=0-SlLgDe-MNTAaSJ8wFaobuw"
+},
+{
+"bytes": 2150912,
+"name": "2hop_qa_test.txt",
+"sha256": "b1c4f1ad77f34a27e0e5a13c08b436c6f4c9a49dccd8d43639a569ee5cd906a1",
+"url": "https://drive.usercontent.google.com/download?id=1pFZJRANkIfKkOXHTvaDybSuPpRa3R8T3&export=download"
+},
+{
+"bytes": 3328337,
+"name": "3hop_qa_test.txt",
+"sha256": "f4c2a801f864e80e809655a20b4b8c9904f4a2885a7f23850b2fabd8d38a6540",
+"url": "https://drive.usercontent.google.com/download?id=0B-36Uca2AvwhMWwyUVh1X0tJSGc&export=download&resourcekey=0-SFbJg0j0NaoYpxZhf3HLkQ"
+}
+],
 "morehopqa": [
 {
 "bytes": 4230947,

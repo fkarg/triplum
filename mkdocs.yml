@@ -74,6 +74,7 @@ nav:
       - Standard benchmarks: research/benchmarks-standard.md
       - Embeddings: research/embeddings.md
       - KG construction: research/kg-construction.md
+      - KG construction without an LLM: research/kg-construction-nonllm.md
       - Store comparison: research/store-comparison.md
       - Temporal and permissions: research/temporal-and-permissions.md
       - SQLite storage: research/storage-sqlite.md

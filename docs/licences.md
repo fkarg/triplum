@@ -52,6 +52,7 @@ Dates are when the licence was checked; re-check before relying on a row.
 | BoolQ (`google/boolq`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `boolq`; validation split |
 | QuALITY v1.0.1 (NYU) | CC BY 4.0 annotations; articles carry their own licence field (Project Gutenberg, OANC, CC BY) | yes, per article | 2026-09-17 | registered as `quality`; htmlstripped dev split |
 | QASPER v0.3 (`allenai/qasper`) | CC BY 4.0 | yes | 2026-09-17 | registered as `qasper`; test split, paper text under arXiv terms |
+| MetaQA (yuyuz/MetaQA, vanilla test splits and `kb.txt`) | CC BY 3.0 | yes, attribution | 2026-09-17 | registered as `metaqa`; KB verbalised per entity, triples kept |
 | Text2KGBench | Apache-2.0 (`cenguix/Text2KGBench`) | yes | 2026-09-16 | LettrIA refinement: data "upon request", terms unknown |
 | `GEM/web_nlg` (HF) | CC BY-NC 4.0 | **no** | 2026-09-16 | non-commercial |
 | REBEL dataset | CC BY-NC-SA 4.0 | **no** | 2026-09-16 | non-commercial, share-alike |

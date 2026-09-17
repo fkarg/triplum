@@ -250,8 +250,10 @@ sample of gold to the shipped corpus (50/50 everywhere a corpus ships); the pins
   passage as gold; QuALITY (115 articles as single chunks) and QASPER (papers chunked into
   abstract, paragraphs and captions, the first multi-chunk documents in the registry; 78 of 1,451
   test questions whose evidence is table content match no chunk and are not loaded) cover long
-  documents. MetaQA and KQA Pro wait for a KG-as-source representation; OpenEA and the BEIR sets
-  are not question sets in the canonical frames.
+  documents. **MetaQA** is the first KG-as-source set: the movie KB is loaded as `triples` with
+  `document_id` set and verbalised into one chunk per entity (see the extraction baseline spec),
+  the three hop levels interleaved into one question set. KQA Pro (182 MB, its own KB format)
+  waits; OpenEA and the BEIR sets are not question sets in the canonical frames.
 - **WildGraphBench** is not registered: its 3,894 reference pages are separate files joined by a
   slugified title, a 3,930-entry manifest for a second-tier set. **LLMs4OL** is term typing and
   taxonomy induction, which the canonical frames do not represent; both stay catalogue-only.

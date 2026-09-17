@@ -22,6 +22,8 @@
 
 ::: triplum.eval.datasets.question_only
 
+::: triplum.eval.datasets.metaqa
+
 ::: triplum.eval.datasets.mquake
 
 ::: triplum.eval.datasets.gatemem

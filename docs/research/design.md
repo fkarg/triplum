@@ -95,9 +95,14 @@ but every Rust call converts object graphs and two definitions must stay in sync
 N-ary statements (an event with several participants) are represented as an event entity plus
 binary role facts; this survived the peer review's grouping attack and needs no extra table.
 
-**v1 restriction.** Extraction produces only single-chunk support groups (independently sufficient
-evidence). Multi-chunk groups exist only for explicit derivations, which v1 does not perform. Any
-fact without support is rejected at the store boundary.
+**v1 restriction.** Extraction produces only single-chunk support groups (independently
+sufficient evidence). Multi-chunk groups exist only for explicit derivations; the one v1
+derivation is a `same_as` fact from resolving two mentions, which cites both mention chunks as
+one group, so a merge is invisible to a viewer who cannot see both sides. Traversal follows
+visible `same_as` facts; `canonical_id` is a global materialisation for reporting, never a
+visibility shortcut (peer review of the extraction spec, 2026-09-17). Rule-based extractors have
+no calibrated confidence, so `confidence` is nullable on facts and mentions rather than a
+fabricated number. Any fact without support is rejected at the store boundary.
 
 ### D3. Bi-temporal facts
 

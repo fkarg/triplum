@@ -16,6 +16,7 @@ from triplum.eval.datasets import (
     gatemem,
     long_document,
     longmemeval,
+    metaqa,
     mquake,
     multihoprag,
     question_only,
@@ -588,3 +589,30 @@ def test_qasper_gold_is_the_evidence_paragraph(tmp_path):
     assert q1["answer"] == "s1, s2" and q1["aliases"] == ["s1, s2", "ff", "s1", "s2"]
     assert q1["gold_chunk_ids"] == [3, 4] and q1["qtype"] == "free_form"
     assert q2["answerable"] is False and q2["answer"] == "unanswerable"
+
+
+def test_metaqa_verbalises_the_kb_and_interleaves_hops(tmp_path):
+    kb = _write(
+        tmp_path, "kb.txt", "Kismet|directed_by|William Dieterle\nKismet|release_year|1944\n"
+    )
+    h1 = _write(tmp_path, "1hop_qa_test.txt", "who directed [Kismet]\tWilliam Dieterle\n")
+    h2 = _write(
+        tmp_path, "2hop_qa_test.txt", "when were films by [William Dieterle] released\t1944\n"
+    )
+    h3 = _write(tmp_path, "3hop_qa_test.txt", "")
+    fr = metaqa.parse(
+        {"kb.txt": kb, "1hop_qa_test.txt": h1, "2hop_qa_test.txt": h2, "3hop_qa_test.txt": h3}, None
+    )
+    assert fr.chunks["text"].to_list() == [
+        "Kismet\nKismet was directed by William Dieterle. Kismet was released in 1944.",
+        "William Dieterle\nWilliam Dieterle directed Kismet.",
+        "1944\nKismet was released in 1944.",
+    ]
+    assert fr.triples.select("document_id", "predicate").rows() == [
+        ("metaqa:Kismet", "directed_by"),
+        ("metaqa:Kismet", "release_year"),
+    ]
+    q1, q2 = fr.questions.iter_rows(named=True)
+    assert q1["id"] == "metaqa:1hop:0" and q2["id"] == "metaqa:2hop:0"
+    assert q1["question"] == "who directed Kismet" and _meta(fr)["topic"] == "Kismet"
+    assert q1["gold_chunk_ids"] == [1, 2] and q2["gold_chunk_ids"] == [2, 3]

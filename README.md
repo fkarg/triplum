@@ -19,7 +19,7 @@ Real today:
   viewer-filtered BM25 and vector search over chunks.
 - One LLM protocol with a disk cache, and adapters for OpenAI-compatible APIs, CLI harnesses and
   a deterministic fake; embedder and reranker protocols with local and fake adapters.
-- A registry of 36 pinned, auto-fetched datasets with a parser per source and committed
+- A registry of 37 pinned, auto-fetched datasets with a parser per source and committed
   20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
   reading-comprehension, long-document and text-to-triple sets.
 - Five non-graph baselines (closed-book, BM25, dense, hybrid with rerank, oracle) run end to
