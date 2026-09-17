@@ -360,6 +360,15 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-17, dataset/loader redesign, owner-approved: generic indexed `Dataset[T]` and
+  streaming `IterableDataset[T]`, with composable `DataLoader`, replace the universal five-frame
+  dataset outright. Corpus and evaluation sources are composed by the benchmark layer. Existing
+  algorithms may explicitly materialize inputs while their boundaries are addressed separately.
+  Claude Opus 5 design review **added verification** for ACL/partial-ingestion/global-resolution
+  semantics; its no-loader/eager-evaluation counterproposal was **rejected** as contrary to the
+  extension goal, and its batch-dependent digest proposal was **rejected** because batching must
+  not alter content identity. Spec: `../specs/2026-09-17-datasets-and-loaders.md`.
+
 - 2026-09-17, `peer-review --mode diff-review` on the extraction baseline (store graph side,
   extract package, metrics, run store), peer: Codex (GPT family). Verdict "challenges", with
   executed probes. **Found unique defects, all fixed with regression tests**: four visibility
