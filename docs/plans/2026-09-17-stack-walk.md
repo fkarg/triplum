@@ -21,8 +21,11 @@ spec, a cross-model design review, and a commit before the next layer starts.
 `fingerprint()`. Built-in datasets reworked 2026-09-17 (`../specs/2026-09-17-builtin-datasets.md`):
 lazy source classes over pinned files, pydantic records (`Document` with segments, `Question`,
 `Triple`), ids from each source's declared key, `Benchmark` holds datasets and the consumer
-batches, identity without reading. `materialize` is still the explicit eager bridge the old
-algorithms use; consuming a corpus in batches is layer 1.
+batches, identity without reading. Stages added 2026-09-18 (`../specs/2026-09-17-stages.md`):
+the runner is a composition of stages with data keys, trace-discovered code manifests,
+artifacts and provenance rows; the corpus is read once into a frames artifact and every later
+run fetches it. Consuming a corpus in batches into the store, with the store's `effects` table
+as the first form of its ingestion log, is layer 1.
 
 ### 1. Store ingestion boundary
 

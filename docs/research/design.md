@@ -222,14 +222,24 @@ adapter.
 ### D6a. Every expensive stage is repeatable and cacheable
 
 Not just LLM calls. Any stage whose cost is noticeable (corpus build, embedding a corpus,
-index build, reranking, extraction, a whole run) is content-addressed on (input hash, config hash),
-persists its output, and is skipped on rerun. The cache root is one directory per machine. Cache
-hits are recorded in the run identity. Cost and runtime are metrics: every call and stage writes a
-timed, priced event to the run store, and effective cost and runtime per question are reported next
-to quality. This is a
-second-class concern in the sense that no stage may *require* the cache to function, but every
-stage must participate. Spec: `docs/specs/2026-09-16-harness-and-baselines.md`, "Caching and
-repeatability".
+index build, reranking, extraction, a whole run) is a plain function wrapped as a *stage*
+(`triplum.stage`): its artifact is addressed by a **data key** over the identities of its
+arguments (source fingerprints, upstream artifact keys, configs, adapter specs, the derived seed)
+and validated by a **code manifest** discovered at run time, the first-party functions the stage
+actually executed with docstring-stripped source hashes, the plain-data constants they read, and
+the distribution versions involved. A rerun fetches the artifact when the key matches and the
+manifest, and the manifests of every input artifact along the lineage, still hash the same; a
+code edit reruns exactly the stages that executed it, against fetched inputs. No version strings:
+a library whose users override helpers cannot rely on anyone bumping one. Author rules: a stage
+reads everything that shapes its output from its arguments and constants, never from mutable
+module state or the environment. Store effects (ingestion, embeddings, the graph) are recorded by
+the store itself. Provenance (artifacts, invocations, their input edges, manifests) lives in the
+run store, so lineage is a query. The cache root is one directory per machine. Cost and runtime
+are metrics: every call and stage writes a timed, priced event to the run store, and effective
+cost and runtime per question are reported next to quality. No stage may *require* the cache to
+function, but every stage participates. Amended 2026-09-18; spec:
+`docs/specs/2026-09-17-stages.md`. The earlier form (a hash of the pipeline's source files in
+the run identity) is superseded.
 
 ### D7. Store protocol with SQLite first
 
@@ -291,6 +301,17 @@ Protocol and metrics in [`benchmarks.md`](benchmarks.md).
 
 The "auto-benchmark for your corpus" is the same runner plus BenchmarkQED-style question synthesis
 for corpora without gold answers; that arrives with the temporal+ACL synthetic benchmark.
+
+*Replicates (added 2026-09-18).* An experiment is a configuration, a root seed and a replicate
+count, default one. Replicate `r` runs under `derive(root, r)`; a stage draws from a seed derived
+from that and its name, so stages perturb only themselves. Adapters declare whether the seed
+changes their answer (LLMs yes, embedders and rerankers no by default); the derived seed enters
+a seed-sensitive adapter's request and cache key, and a stage taking such an adapter reruns per
+replicate while everything else is fetched. Every replicate is a run; replicate 0 is the run a
+plain command reports. The variance report joins the replicates' stages by structural key and
+classifies each from the recorded content hashes: inputs agreeing and outputs differing *adds*
+variance, inputs differing and outputs agreeing *absorbs* it; with the metric spread underneath.
+It measures variance under the declared seed policy, not all execution variance.
 
 ### D9. Repository and DX
 

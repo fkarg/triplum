@@ -1,6 +1,9 @@
 # Caching and run monitoring, end to end
 
-Snapshot 2026-09-17. Status: **requirements and gap map, not yet a contract.** The owner is
+Snapshot 2026-09-17, updated 2026-09-18: gaps 7, 8 and 9 are closed and R6, R7, R9, R10, R14
+and R15 satisfied by the stages contract (`2026-09-17-stages.md`, commits `25861fe` to
+`40c5260`); the rest keep their layer. Status: **requirements and gap map, not yet a contract.**
+The owner is
 redefining the interfaces layer by layer (see
 [`../plans/2026-09-17-stack-walk.md`](../plans/2026-09-17-stack-walk.md)); each requirement
 below names the layer that must satisfy it, and its interface is decided when the walk reaches
@@ -41,17 +44,17 @@ purpose; the function names are stable enough to find.
 
 ### Recomputation
 
-7. **Grounding and resolution run on every extraction run**, even when every chunk is a cache
+7. *(closed 2026-09-18: `ground` and `resolve` are stages with artifacts.)* **Grounding and resolution run on every extraction run**, even when every chunk is a cache
    hit: the per-chunk cache stores spans and claims, and `stages.build` (`extract/stages.py`)
    rebuilds the frames and re-runs the resolver (quadratic for `fuzzy`) each time. The graph is
    written to the store, but the store is a single slot, so the `Extraction` value has no home
    of its own.
-8. **Dataset parse and frame hashing run on every invocation**, including a pure identity
+8. *(closed 2026-09-18: identity from fingerprints before any read; the corpus frames are an artifact.)* **Dataset parse and frame hashing run on every invocation**, including a pure identity
    lookup and `bench rerun`: `materialize` (`bench/inputs.py`) consumes the sources before
    `find_run` is consulted. The new dataset fingerprints (`datasets-and-loaders` spec) exist to
    make the lookup possible before reading; the runner does not use them yet. Local folders
    re-extract every PDF each time.
-9. **`sha256_file(store)` at the end of every run** hashes a store of hundreds of MB, and the
+9. *(closed 2026-09-18: the store's identity is recorded.)* **`sha256_file(store)` at the end of every run** hashes a store of hundreds of MB, and the
    hash is stale by construction because later runs add tables to the same file; `inspect`
    only checks existence.
 
