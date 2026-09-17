@@ -19,9 +19,10 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   implementation plan derived from a spec.
   Keep both out of the MkDocs navigation; retain them as development records and link to them
   from other docs where the context is useful.
-- `python/triplum/`: the Python package (`data`, `llm`, `ingest`, `extract`, `store`, `retrieve`,
-  `generate`, `eval`, `bench`). `crates/`: the Cargo workspace. `notebooks/`: marimo notebooks.
-  `research/`: SOTA monitor, digests, per-paper notes (planned).
+- `python/triplum/`: the Python package (`data`, `cache`, `llm`, `embed`, `rerank`, `store`,
+  `retrieve`, `generate`, `eval`, `bench`; `ingest` and `extract` are planned). `crates/`: the
+  Cargo workspace (`triplum-core`, `triplum-py`). `notebooks/`: marimo notebooks. `scripts/`:
+  fixture generation and the pre-commit helper. `research/` (SOTA monitor, digests) is planned.
 
 ## Rules that are easy to get wrong
 
@@ -82,6 +83,9 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
 - Spec, then plan, then code. Tests for behaviour that crosses a module boundary; the 20-question
   fixture is the integration test for every pipeline.
 - Commit small and often. No `Co-Authored-By` or agent attribution trailers in commits or PRs.
+- **Two sources of truth, by kind.** `docs/research/design.md` holds decisions; `docs/flow.md`
+  and `docs/api/index.md` hold implementation state. A decision changes in design.md, a status
+  changes in flow.md; neither restates the other.
 - **Docs track the code.** `docs/flow.md` (what a run does, implemented vs planned) and
   `docs/api/index.md` (module map: status, key symbols, contracts) describe the implementation
   state; a change that adds a module, a stage, a pipeline, a CLI command or moves something from

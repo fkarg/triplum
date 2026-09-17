@@ -1,3 +1,5 @@
+"""Deterministic token-overlap reranker for tests and offline runs."""
+
 from __future__ import annotations
 
 import re

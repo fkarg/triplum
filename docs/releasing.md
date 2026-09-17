@@ -14,10 +14,11 @@ anywhere. The workflow is `.github/workflows/release.yml`.
 
 ## Cutting a release
 
-1. Set the same version in `pyproject.toml` and the workspace `Cargo.toml`; commit.
+1. Set the same version in `pyproject.toml` and the workspace `Cargo.toml`; commit. The Python
+   package reads its version from the installed metadata, so there is no third copy.
 2. Tag and push: `git tag v0.0.2 && git push origin v0.0.2`.
 3. The workflow refuses a tag that does not match the `pyproject.toml` version, builds one abi3
-   wheel per platform (Linux x86_64 and aarch64, macOS arm64 and x86_64) plus the sdist, smoke
+   wheel per platform (Linux x86_64 and aarch64, macOS arm64) plus the sdist, smoke
    tests each wheel, and publishes with attestations. Watch it with
    `gh run watch` or on the Actions tab.
 

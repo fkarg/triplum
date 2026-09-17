@@ -168,8 +168,9 @@ while the number of pipelines is single-digit.
 ### D6. One LLM protocol, thin adapters, disk cache
 
 `complete(messages, schema=None) -> Completion(text, parsed, usage, cached)`. Adapters:
-OpenAI-compatible (covers vLLM, Ollama, OpenRouter, most providers), Anthropic, and a CLI subprocess
-adapter for local harness subscriptions (`claude -p`, `codex exec`). A content-addressed disk cache
+OpenAI-compatible (covers vLLM, Ollama, OpenRouter, most providers), a CLI subprocess adapter for
+local harness subscriptions (`claude -p`, `codex exec`), and a native Anthropic adapter when a
+reader needs it (not built; the CLI adapter covers Claude today). A content-addressed disk cache
 keyed on the **full effective request** (adapter id, model id and revision, messages, output schema,
 generation parameters) stores the raw response plus parse/retry provenance, so reruns are free and
 replay is exact. Model id plus prompt alone is not a valid key: the peer review collided two requests
@@ -280,11 +281,9 @@ instead of excluding modules or using broad diagnostic suppressions.
 Pre-commit exports the Git index and runs Cargo, ty and Ruff against that snapshot, preserving
 unstaged and untracked work. Ruff formatting is checked without rewriting files during commit.
 
-As of 2026-09-17, stage/adapter boundaries are cohesive; no broad module split is warranted.
-The next focused structural work is RunStore's connection ownership, followed by an audit of
-the manually maintained benchmark fingerprint dependencies (factories and fake adapters are
-currently omitted). The benchmark assembly layer still assumes SQLite; extend that seam when
-introducing a second backend rather than adding speculative interfaces now.
+The benchmark assembly layer assumes SQLite; that seam is extended when a second backend
+arrives, not before. Implementation state lives in `docs/flow.md` and `docs/api/index.md`, not
+here.
 
 ### D10. Name
 

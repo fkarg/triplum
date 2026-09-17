@@ -1,9 +1,10 @@
 # Benchmark protocol: agentic multi-hop QA for `triplum`
 
-Status: research note, 2026-09-16. Scope: the first `triplum` sub-project — a harness that runs four
-pipelines (Naive dense RAG; Hybrid dense+BM25+cross-encoder; Liao-style best-practice GraphRAG;
-PPR-over-KG / HippoRAG 2 style) over public multi-hop QA datasets and produces numbers that are
-comparable to published ones.
+Status: research note, 2026-09-16. Scope: the first `triplum` sub-project, a harness that runs the
+pipelines under comparison (naive dense RAG; hybrid dense+BM25+cross-encoder; Liao-style
+best-practice GraphRAG; PPR-over-KG / HippoRAG 2 style; the harness since added closed-book,
+BM25-only and oracle baselines, see `docs/flow.md`) over public multi-hop QA datasets and
+produces numbers that are comparable to published ones.
 
 Everything below that carries a citation was read off the cited page or file. Facts I derived by
 running code over the actual released data files are marked **[measured]** and the command is

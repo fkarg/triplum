@@ -1,3 +1,7 @@
+"""Reranker identity and protocol: a `RerankSpec` names the model, revision and runtime so the
+run identity and the call cache can tell rerankers apart; a `Reranker` scores (query, passage)
+pairs pointwise."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

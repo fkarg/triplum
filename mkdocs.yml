@@ -2,11 +2,10 @@ site_name: triplum
 site_description: Composable, benchmark-first sandbox for LLM knowledge-graph work
 repo_url: https://github.com/fkarg/triplum
 docs_dir: docs
-# Research notes link into source files outside docs/; that is intended, so only downgrade
-# that one check. Broken links between pages still warn (`mkdocs build --strict`).
-validation:
-  links:
-    not_found: info
+# Specs and plans are development records: built and searchable, deliberately not in the nav.
+not_in_nav: |
+  specs/*
+  plans/*
 theme:
   name: material
   features:

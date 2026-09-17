@@ -1,3 +1,5 @@
+"""Local cross-encoder reranker over sentence-transformers (the `local` extra)."""
+
 from __future__ import annotations
 
 import numpy as np

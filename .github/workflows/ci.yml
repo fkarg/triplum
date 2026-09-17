@@ -23,14 +23,12 @@ jobs:
         with:
           enable-cache: true
       - name: Sync (builds the Rust extension; optional extras stay out, their tests skip)
-        run: uv sync --group dev --group docs
+        run: uv sync
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run cargo check
       - run: uv run ty check
       - run: uv run pytest -q --cov --cov-report=term-missing:skip-covered
       - run: uv run mkdocs build --strict
-        if: matrix.os == 'ubuntu-latest'
       - name: Check optional model adapters with their dependencies installed
         run: uv run --extra local ty check
-        if: matrix.os == 'macos-latest'

@@ -1,155 +1,104 @@
 # triplum
 
-*triplum* (Latin: "triple"; also the third, independent voice in medieval polyphony) is a composable,
-benchmark-first sandbox for LLM-based knowledge-graph work: KG construction from text, GraphRAG
-retrieval, graph serialisation for prompts, storage backends, and thorough evaluation. Python-first,
-with a Rust core wherever it is measurably worth it. Every module is usable on its own or in
-composition, over one shared Arrow-native data layer.
+A composable, benchmark-first sandbox for knowledge-graph work with LLMs: building a KG from
+text, GraphRAG retrieval over it, storage backends, and evaluation. It is a Python library with a
+Rust core behind an Arrow boundary. Two properties are enforced in the store rather than added
+later: every fact is bi-temporal (valid time and transaction time), and visibility derives from
+the provenance of a fact's supporting chunks, so a viewer never sees a fact, entity or summary
+built on text they could not read.
 
-Two things are first-class citizens from day one, because they cannot be bolted on later:
+The project is public and research-oriented, and it is run with industrial priorities: numbers
+over novelty, every result reproducible from its run identity, and non-commercial components
+allowed only where [`docs/licences.md`](docs/licences.md) records what that costs.
 
-- **Bi-temporal facts.** Every fact carries validity time (when it was true in the world) and
-  transaction time (when the system learned or invalidated it). Ingestion is episodic; later
-  documents can invalidate earlier facts. Queries take an "as-of" on both axes.
-- **Permissions derived from provenance.** Documents carry principals. A fact is visible to a viewer
-  iff at least one supporting chunk is; an entity is visible iff a visible fact touches it. Filtering
-  happens in the store, never post-hoc, so nothing leaks through neighbours or summaries.
+## Status (2026-09-17)
 
-This is an industry-first project, not a research project: the goal is one high-performing system
-that reproduces and extends state-of-the-art techniques, measured on public and (later) private
-benchmarks.
+Real today:
 
-## Status
+- The canonical Arrow schemas (Rust core, exposed to Python) and a SQLite store with
+  viewer-filtered BM25 and vector search over chunks.
+- One LLM protocol with a disk cache, and adapters for OpenAI-compatible APIs, CLI harnesses and
+  a deterministic fake; embedder and reranker protocols with local and fake adapters.
+- A registry of 36 pinned, auto-fetched datasets with a parser per source and committed
+  20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
+  reading-comprehension, long-document and text-to-triple sets.
+- Five non-graph baselines (closed-book, BM25, dense, hybrid with rerank, oracle) run end to
+  end with EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost and timing, recorded in a run store
+  keyed by the full run identity.
 
-The benchmark harness for the non-graph baselines exists and runs end to end (2026-09-16). What
-works: the canonical schemas (Rust core, exposed to Python), a SQLite store with viewer-filtered
-BM25 and vector search, cached LLM / embedder / reranker protocols with OpenAI-compatible, CLI and
-local adapters, the HippoRAG 1000-question protocol data with pinned hashes and 20-question
-fixtures, five baselines (closed-book, BM25, dense, hybrid with rerank, oracle), the metrics, and a
-run store that records identity, cost and timing for every run. Nothing graph-shaped yet.
+Not yet: nothing graph-shaped. The entity, fact, support and mention tables exist in the schema
+and the SQLite migration but nothing writes to them; extraction, graph retrieval and the store
+comparison are the next sub-projects. [`docs/flow.md`](docs/flow.md) keeps the implemented
+versus planned list current.
+
+## Install
 
 ```
-uv sync --all-extras                        # builds the Rust extension via maturin
-uv run pytest -m "not model"                 # fast, offline fixtures and fakes
-uv run ty check                             # required: Python source and tests
-uv run cargo check                          # Rust workspace, using the project's Python
-uv run pytest                               # includes installed optional real-model adapters
-uv run triplum data                         # every registered dataset and its local state
-uv run triplum data fetch                   # the default protocol files, verified by sha256
-uv run triplum data fetch --dataset all     # every dataset except the large ones
-uv run triplum bench                        # recent local runs, states and available commands
+pip install triplum                # abi3 wheels for Linux x86_64/aarch64 and macOS arm64
+uv sync --all-extras               # from a clone: builds the Rust extension via maturin
+```
+
+Real models need `OPENAI_API_KEY` (or an OpenAI-compatible `--base-url`), or a local
+`claude` CLI; the `local` extra adds sentence-transformers and fastembed embedders.
+
+## Use it as a library
+
+Experiments are Python. A run is a frozen configuration; identical configurations return the
+stored run instead of recomputing (the contract is [`docs/benchmarking.md`](docs/benchmarking.md)).
+
+```python
+from triplum.bench.config import LLMConfig, PipelineConfig, RunConfig
+from triplum.bench.report import format_summary, summary
+from triplum.bench.runner import run_benchmark, runstore_path
+from triplum.bench.runstore import RunStore
+
+cfg = RunConfig(
+    dataset="musique",
+    pipeline=PipelineConfig(name="bm25", reader=LLMConfig(kind="fake"), top_k=5),
+    n=20,
+    fixture=True,  # the committed 20-question fixture; drop it to fetch the pinned files
+)
+run_id = run_benchmark(cfg)
+with RunStore(runstore_path(cfg)) as rs:
+    print(format_summary(summary(rs, [run_id])))
+```
+
+Every stage is also usable on its own: load a dataset, put it in a store, embed, retrieve with
+one of the stages, read with any `LLM`. [`docs/api/index.md`](docs/api/index.md) has the module
+map, the contracts that hold across modules, and a worked composition without the runner.
+
+## The command line
+
+`triplum` is the operator surface for the same library: fetch data, run and sweep benchmarks,
+and inspect stored runs. It resolves names forgivingly (unique prefixes, typo matches, numbered
+choices when ambiguous) and never prompts under `--no-input`.
+
+```
+uv run triplum data                              # every dataset and its local state
+uv run triplum data fetch                        # the default protocol files, sha256-verified
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
-uv run triplum bench report
-uv run marimo edit notebooks/runs.py        # browse runs
-uv run mkdocs serve                         # these docs in the browser, http://127.0.0.1:8000
-uv run triplum bench show <run_id>          # exact configuration and identity of a run
-uv run triplum bench rerun <run_id> --force # recompute it
-uv run triplum bench run ... --resume       # finish a crashed run in place
-uv run triplum bench inspect <run_id>       # per-question answers, passages, model calls
-uv run triplum bench diff <run_a> <run_b>   # what changed and by how much
-uv run triplum bench tail <run_id>          # progress of a running benchmark
+uv run triplum bench report                      # summary table over stored runs
+uv run triplum bench inspect <run_id>            # per-question answers, passages, model calls
+uv run triplum bench diff <run_a> <run_b>        # what changed and by how much
+uv run marimo edit notebooks/runs.py             # browse runs in a notebook
 ```
 
-## CLI discovery and test feedback
+The full command table, what each step does and which module does it are in
+[`docs/flow.md`](docs/flow.md).
 
-Forgiving discovery is a priority throughout the CLI. Use full names or unique prefixes:
-`triplum ben insp 43a` resolves the command and run ID. Omit the run ID to choose a stored
-run. Single substring or typo matches also resolve automatically; multiple matches offer numbered terminal choices;
-`q`, EOF or Ctrl-C cancels. Dataset, pipeline, reader/judge and adapter-kind choices follow
-the same policy. An omitted `--question` still shows all questions; a supplied question ID
-is resolved within the selected run. Omitted required pipeline/dataset options offer choices.
+## Documentation
 
-Scripts accept exact names and single prefix/substring/typo matches but never prompt; use full names for stable
-automation as new commands or runs can make prefixes ambiguous. `--no-input` explicitly
-disables prompts at the root, group or prompting command. Diagnostics and prompts go to
-stderr, including with `inspect --json`. Option spelling errors retain Typer's suggestions;
-paths, URLs, model IDs and JSON configuration stay exact. Only the kind before `:` is
-resolved in an adapter spec. The [selection contract](docs/specs/2026-09-16-cli-selection.md)
-applies to new commands too.
+- [`docs/flow.md`](docs/flow.md): a run step by step; implemented versus planned.
+- [`docs/api/index.md`](docs/api/index.md): module map, cross-module contracts, composition
+  by hand; the per-package pages are generated from the source.
+- [`docs/benchmarking.md`](docs/benchmarking.md): run identity, caching, replay, resume.
+- [`docs/research/design.md`](docs/research/design.md): the decision record with rejected
+  alternatives; [`docs/research/`](docs/research/README.md) holds the research notes behind it.
+- [`docs/licences.md`](docs/licences.md): every third-party dataset, model and dependency.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): checks, tests, fixtures, docs rules, pre-commit.
 
-Tests report their slowest cases. `uv run pytest -m "not model"` runs without loading real
-models; `uv run pytest` also exercises optional model adapters when installed (weights may
-download). For branch coverage, run `uv run pytest -m "not model" --cov
---cov-report=term-missing:skip-covered` on one line; CI measures coverage explicitly.
-Coverage stays opt-in locally to keep single-test feedback quick. Match/selection behavior
-lives in one focused module and tests exercise CLI workflows over temporary SQLite stores.
-
-Type checking is required in CI. The default check supports the lean environment;
-`uv run --extra local ty check` additionally checks against installed model-library types.
-Fix type errors at their contracts rather than suppressing whole modules.
-
-The versioned `.githooks/pre-commit` runs `cargo check`, `uvx ty check`, `ruff check`
-and `ruff format --check` against an
-isolated export of the Git index. Partial staging is respected; unstaged and untracked
-files never enter the check and are not moved or stashed. Run `uv sync` first so the
-project interpreter and dependencies are available. The hook reuses `.venv` and the
-Cargo build cache. On machines with the global hook dispatcher it is discovered
-automatically; otherwise install it with
-`ln -s ../../.githooks/pre-commit "$(git rev-parse --git-common-dir)/hooks/pre-commit"`
-from the primary checkout (preserve an existing hook rather than overwriting it).
-The requested `uvx` hook uses uv's tool version; CI uses the version locked in `uv.lock`.
-
-What a run does step by step, which module does it, and what is implemented versus planned is
-in [`docs/flow.md`](docs/flow.md). Runs are identified by the hash of their exact configuration and
-looked up before they are computed; expensive stages are cached and reused. The contract is in
-[`docs/benchmarking.md`](docs/benchmarking.md).
-
-Readers and judges are `--reader openai --reader-model <id>` with `OPENAI_API_KEY` (or any
-OpenAI-compatible `--base-url`), or `--reader claude-cli`. The first concrete task has three threads
-on this harness and one corpus set (HotpotQA, MuSiQue, 2WikiMultiHopQA):
-
-- **Retrieval pipelines**: the baselines above, then best-practice GraphRAG per Liao et al.
-  (SEMANTiCS 2026) and personalised PageRank over the KG (HippoRAG 2 style), with a
-  graph-disabled ablation.
-- **KG-construction variants**: open IE vs schema-based vs ontology-aware extraction, with and
-  without atomic-fact decomposition, several entity-resolution strategies; measured intrinsically
-  and by downstream QA delta.
-- **Store comparison**: the same graph in SQLite and Neo4j, to find where a graph database starts
-  to pay off for basic GraphRAG usage.
-- **Embedding sweep**: `triplum bench sweep --embedders specs.json` reruns the dense baseline per
-  embedding spec; the winner is pinned for the graph pipelines.
-
-## Design in one screen
-
-- **Data layer:** eight canonical tables (documents, document_grants, chunks, chunk_embeddings,
-  entities, facts, fact_support, mentions) defined once as Arrow schemas in the Rust core crate.
-  Entity names, types, aliases and resolution merges are facts, so they carry time and provenance.
-  Python sees Polars DataFrames, zero-copy across PyO3. Thin row dataclasses exist for notebook
-  ergonomics only.
-- **Composition:** a stage is a plain callable, typed frames in and out. A pipeline is a plain
-  function. Configs are frozen dataclasses whose hash goes into every run record. No DAG framework,
-  no YAML.
-- **LLM layer:** one protocol (messages + optional JSON schema in; text, parsed object, usage, cache
-  hit out), adapters for OpenAI-compatible APIs, Anthropic, and CLI harnesses as subprocesses. A disk
-  cache keyed on the full effective request makes benchmark reruns free and replay exact.
-- **Stores:** one store protocol taking a `Viewer` (principals, as-of valid time, as-of recorded
-  time). Permission filters run inside the indexes, before ranking; graph kernels run on the viewer's
-  visible projection; no community summaries until they can be principal-scoped. Backend one is
-  SQLite (FTS5 for BM25, sqlite-vec for vectors, recursive CTEs for bounded traversal, in-memory CSR
-  for PageRank).
-  RDF (Oxigraph) and property-graph (LadybugDB) arms follow so the same benchmark can compare them.
-  DuckDB is an optional analytical arm and can read the SQLite file directly.
-- **Evaluation:** EM/F1 and supporting-passage recall where gold exists; BenchmarkQED-style pairwise
-  LLM judge where it does not; triple precision/recall, ontology conformance and SHACL for KG
-  construction; cost and latency always. Run records live in one SQLite run store, reports are
-  Polars frames.
-- **Rust:** `triplum-core` (schemas, visibility logic), `triplum-index` (tantivy, usearch, PPR and
-  traversal), `triplum-serialize` (GraphML, Turtle, JSON, text), `triplum-py` (PyO3 bindings). Rust
-  is added where a Python implementation is the measured bottleneck or where a better crate exists.
-- **Notebooks:** marimo (plain `.py`, git-diffable) over the same package; also works in Jupyter.
-
-The full record with alternatives considered is in [`docs/research/design.md`](docs/research/design.md).
-
-## Layout (planned)
-
-```
-crates/            Cargo workspace: triplum-core, triplum-index, triplum-serialize, triplum-py
-python/triplum/    data, llm, ingest, extract, store, retrieve, generate, eval, bench
-notebooks/         marimo notebooks
-docs/research/     research foundation: landscape, benchmarks, stack, decisions, paper ledger
-research/          SOTA monitor scripts, weekly digests, per-paper notes (planned)
-```
+Serve the site with `uv run mkdocs serve`.
 
 ## Reference papers
 
@@ -159,10 +108,9 @@ research/          SOTA monitor scripts, weekly digests, per-paper notes (planne
   Industrial KG Construction.* SGKi workshop at SEMANTiCS 2026. The V&V structure the evaluation
   module maps onto.
 
-See [`docs/research/papers.md`](docs/research/papers.md) for the ledger.
+The ledger with status per paper is [`docs/research/papers.md`](docs/research/papers.md).
 
 ## License
 
-Apache-2.0 for this repository. It is public and research-only, so non-commercial datasets and
-models are used where they are the right tool; [`docs/licences.md`](docs/licences.md) maps every
-third-party component's terms so a piece can be reused elsewhere with eyes open.
+Apache-2.0 for this repository. Third-party datasets and models keep their own terms, mapped in
+[`docs/licences.md`](docs/licences.md).
