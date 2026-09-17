@@ -46,6 +46,12 @@ def identity(value: Any) -> Any:
         return {"type": t, "fingerprint": value.fingerprint()}
     if isinstance(value, pl.DataFrame):
         return {"type": t, "frame": FrameDataset(value).fingerprint()}
+    if (
+        isinstance(value, dict)
+        and value
+        and all(isinstance(v, pl.DataFrame) for v in value.values())
+    ):
+        return {"frames": {k: FrameDataset(v).fingerprint() for k, v in value.items()}}
     if isinstance(value, BaseModel):
         return {"type": t, "model": value.model_dump(mode="json")}
     if is_dataclass(value) and not isinstance(value, type):

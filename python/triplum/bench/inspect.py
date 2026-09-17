@@ -10,7 +10,7 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.bench.runstore import RunStore
+from triplum.bench.runstore import IDENTITY_FIELDS, RunStore
 from triplum.data.viewer import Viewer
 
 METRICS = [
@@ -102,24 +102,7 @@ def diff_runs(rs: RunStore, run_a: str, run_b: str) -> dict:
     config_diff = {
         k: (fa.get(k), fb.get(k)) for k in sorted(set(fa) | set(fb)) if fa.get(k) != fb.get(k)
     }
-    id_fields = [
-        "dataset",
-        "pipeline",
-        "config_hash",
-        "code_hash",
-        "code_version",
-        "dirty",
-        "corpus_hash",
-        "questions_hash",
-        "n",
-        "embedding_spec",
-        "reranker_spec",
-        "reader_model",
-        "judge_model",
-        "seed",
-        "reader_prompt_hash",
-        "judge_prompt_hash",
-    ]
+    id_fields = [*IDENTITY_FIELDS, "code_hash", "code_version", "dirty", "n"]
     identity_diff = {k: (a[k], b[k]) for k in id_fields if a[k] != b[k]}
     qa, qb = rs.questions(run_a), rs.questions(run_b)
     joined = qa.join(qb, on="question_id", how="full", suffix="_b", coalesce=True)

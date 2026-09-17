@@ -5,7 +5,7 @@ stages whose code or inputs changed. Spec: `docs/specs/2026-09-17-stages.md`."""
 from .artifacts import Artifact, Stream
 from .fingerprint import Manifest
 from .identity import derive
-from .run import Run, active, current
+from .run import Run, active, current, stage_seed
 from .stage import LiveStream, Stage, stage
 
 __all__ = [
@@ -19,4 +19,5 @@ __all__ = [
     "current",
     "derive",
     "stage",
+    "stage_seed",
 ]

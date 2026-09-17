@@ -11,38 +11,38 @@ the design record still plans. The caching and identity rules it relies on are i
 ```mermaid
 flowchart LR
   DS[("dataset files<br/>pinned by sha256")] --> LOAD["lazy sources<br/><code>datasets/registry.py</code>"]
-  LOAD --> PREP["explicit materialization<br/><code>bench/inputs.py</code>"]
-  PREP --> ID["run identity<br/><code>bench/runstore.py</code> + <code>bench/fingerprint.py</code>"]
-  ID -- "identical run exists" --> RS
-  ID -- "new / --force / --resume" --> DOCS["ensure_documents<br/><code>bench/index.py</code>"]
-  DOCS --> EMB["ensure_embeddings<br/>one vec0 table per EmbeddingSpec"]
+  LOAD --> ID["run identity from fingerprints<br/><code>bench/runstore.py</code>"]
+  ID -- "identical run, manifests validate" --> RS
+  ID -- "new / --force / --resume" --> FR["corpus_frames, questions<br/><code>bench/stages.py</code>"]
+  FR --> DOCS["ingest (store effect)"]
+  DOCS --> EMB["embed<br/>one vec0 table per EmbeddingSpec"]
   DOCS --> RET
   EMB --> RET["retrieve<br/><code>retrieve/stages.py</code>"]
-  RET --> READ["read<br/><code>generate/reader.py</code>"]
-  READ --> JUDGE["judge (optional)<br/><code>eval/judge.py</code>"]
-  READ --> MET["metrics<br/><code>eval/metrics.py</code>"]
-  JUDGE --> MET
-  MET --> RS[("run store<br/>runs, run_questions, events, prices, artifacts")]
+  RET --> ANS["answer: read, judge, metrics<br/><code>generate/reader.py</code>, <code>eval/</code>"]
+  ANS --> RS[("run store<br/>runs, run_questions, events, artifacts, invocations, manifests")]
   RS --> OUT["report / show / inspect / diff / tail"]
 ```
 
-Everything below `load` runs inside `bench/runner.py: run_benchmark`, which is the only place
-that composes stages. Stages themselves are plain functions taking Polars frames and returning
-Polars frames; the store enforces visibility, so every stage passes a `Viewer` through.
+Everything below `load` runs inside `bench/runner.py: run_experiment`, which is the only place
+that composes stages. A stage is a plain function in `bench/stages.py` wrapped by
+`triplum.stage.stage`: under the run it gets a data key from its arguments, records the code it
+executed as a manifest, publishes its output as an artifact and writes an invocation row, and on
+the next run it is fetched when the key matches and its manifest and its inputs' manifests still
+validate ([`specs/2026-09-17-stages.md`](specs/2026-09-17-stages.md)). The store enforces
+visibility, so every stage passes a `Viewer` through.
 
 ## Step by step
 
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
-| 1 | load dataset | `datasets/registry.py`, `datasets/base.py`, one module per source, `bench/inputs.py` | Builds a `Benchmark` of lazy sources (corpus, questions, gold triples), or the committed fixture. Nothing is read to construct it; a source fetches and verifies its pinned files on first iteration. `--n` selects questions with `Take` and never truncates the corpus. Custom compositions pass as `data=` without registration. The runner then materializes the sources into canonical frames through loaders and collators and runs the cross-source checks (unique document ids, every gold chunk in the corpus). QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | Corpus and evaluation identities are the sources' fingerprints (pinned digests, parser version, record contract), so an identity lookup never parses a dataset. Chunk ids are `chunk_id(document_id, ordinal)`, stable between fixture and full corpus. |
+| 1 | load dataset | `datasets/registry.py`, `datasets/base.py`, one module per source | Builds a `Benchmark` of lazy sources (corpus, questions, gold triples), or the committed fixture. Nothing is read to construct it; a source fetches and verifies its pinned files on first iteration. `--n` selects questions with `Take` and never truncates the corpus. Custom compositions pass as `data=` without registration. QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | Corpus and evaluation identities are the sources' fingerprints (pinned digests, parser version, record contract), so an identity lookup never parses a dataset. Chunk ids are `chunk_id(document_id, ordinal)`, stable between fixture and full corpus. |
 | 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/cache/`. |
-| 3 | run identity | `bench/runstore.py`, `bench/fingerprint.py` | Hashes dataset, pipeline, config, the source of every module the pipeline executes (not the git sha), corpus and question hashes, `n`, embedding and reranker spec, reader and judge model, seed, viewer, and both prompt hashes. An identical completed run is returned without doing anything. `--force` starts a fresh run; `--resume` continues a running or failed run with the same identity from its last committed question. | `runs` row with all identity fields plus git sha, dirty flag and host; `prices` snapshot for the models used. |
-| 4 | index documents | `bench/index.py: ensure_documents` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | Event `index.documents`. Skipped when the store already holds the corpus. |
-| 5 | index embeddings | `bench/index.py: ensure_embeddings` | Dense and hybrid only. Finds the chunks that have no vector for this `EmbeddingSpec`, embeds them in batches through the cached embedder, and writes them to a sqlite-vec `vec0` table named after the spec hash and partitioned by ACL hash. | Event `index.embed` with token counts. Vectors persist in the store; the call cache makes a second machine-local run free. |
-| 6 | retrieve | `retrieve/stages.py` | One call over all questions, returning `(question_id, chunk_id, rank, score)`. Filtering by viewer happens inside the store's FTS and vector queries, before the top-k cut. | Event `retrieve` with reranker call counts. |
-| 7 | read | `generate/reader.py` | Per question: the top-k passages and the question go into one prompt with a JSON answer schema; the reader is cached, so a rerun with the same request pays nothing. | Event `read` with tokens, cost and cache flag. |
-| 8 | judge | `eval/judge.py` | Optional. Asks the judge model whether the answer matches any gold alias. | Event `judge`. |
-| 9 | metrics | `eval/metrics.py` | EM and token F1 with HotpotQA normalisation, max over aliases; Contain-Acc; Judge-Acc; R@2 and R@5 on gold passages; tokens, USD, latency, passage count. | One `run_questions` row per question, committed in its own transaction, so a crash loses at most one question. |
+| 3 | run identity | `bench/runstore.py`, `bench/runner.py: run_valid` | Hashes dataset, pipeline, config, corpus and question fingerprints, embedding and reranker spec, reader and judge model, seed, replicate, viewer, and both prompt hashes, before anything is read. A completed run with that identity is returned when the manifests of every stage it ran still validate; a code edit anywhere those stages executed means the pipeline runs again and each stage fetches or recomputes on its own. `--force` starts a fresh run whose stages still fetch; `--resume` continues a running or failed run with the same identity, its finished questions served from the call cache. `--replicates N` runs N replicates under derived seeds. | `runs` row with the identity fields, `experiment_id`, `replicate`, git sha, dirty flag, host and, at the end, `code_hash` over the stage manifests; `prices` snapshot for the models used. |
+| 4 | corpus and questions | `bench/stages.py: corpus_frames, questions` | The corpus read once through loaders and collators into the canonical frames, and the questions frame with the cross-source checks (unique document ids, every gold chunk in the corpus). | Artifacts `frames` and `frame`, fetched by every later run over the same sources. |
+| 5 | ingest | `bench/stages.py: ingest` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | A store effect: the store's `effects` table answers the next run. Event `index.documents`. |
+| 6 | embed | `bench/stages.py: embed` | Dense and hybrid only. Finds the chunks that have no vector for this `EmbeddingSpec`, embeds them in batches through the cached embedder, and writes them to a sqlite-vec `vec0` table named after the spec hash and partitioned by ACL hash. | A store effect. Event `index.embed`. Vectors persist in the store; the call cache makes a second machine-local run free. |
+| 7 | retrieve | `bench/stages.py: retrieve` over `retrieve/stages.py` | One call over all questions, returning `(question_id, chunk_id, rank, score)`. Filtering by viewer happens inside the store's FTS and vector queries, before the top-k cut. | Artifact `frame`. Event `retrieve` with reranker call counts. |
+| 8 | answer | `bench/stages.py: answer` over `generate/reader.py`, `eval/judge.py`, `eval/metrics.py` | Per question: the top-k passages and the question go into one prompt with a JSON answer schema; the optional judge asks whether the answer matches any gold alias; EM and token F1 with HotpotQA normalisation, max over aliases; Contain-Acc; Judge-Acc; R@2 and R@5 on gold passages; tokens, USD, latency, passage count. Seeded through the reader and judge adapters. | One `run_questions` row per question, committed in its own transaction with its `read` and `judge` events, so a crash loses at most one question. Artifact `frame` of the content columns; a replicate with a seed-sensitive reader recomputes it, one with a deterministic reader fetches it. |
 | 10 | finish | `bench/runner.py` | Records the store file as an artifact with its hash, sets the run status to `ok` or `failed`, and stores wall time and cache hit and miss counts. | `run_artifacts`, `runs.status`. |
 
 ## Pipelines
@@ -72,10 +72,10 @@ graph for a dataset with a non-LLM extractor and scores it against the gold trip
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
 | 1 | load | as above | Any dataset with a corpus, questions or not; `triples` is the gold where the source has it. `questions_hash` covers questions and triples. | |
-| 2 | identities | `bench/index.py: graph_identity`, `bench/fingerprint.py` | The **graph identity** is (corpus hash, extractor spec hash, resolver spec hash, code hash of the `extract` and store modules). The **run identity** adds the gold hash and the scorer's code hash, with `kind = extract` in the one `runs` envelope. An identical completed run is returned. | `runs` row; `extractor_spec`, `resolver_spec`, `graph_identity` columns |
-| 3 | extract | `extract/stages.py: extract` over `extract/rules.py` or `extract/small_model.py` | The extractor returns spans and claims per chunk (cached per chunk on the spec hash and the text); the stage grounds accepted claims into entities (id = hash of document and normalised surface), mentions, `label` and `type` facts, and one fact with one single-chunk support group per claim. Rejected claims stay in the `claims` frame with their status. `small_model` takes its entity and relation vocabularies from the config, or from the dataset's metadata and gold predicates. | Event `extract`, `cached` when every chunk hit the cache |
-| 4 | resolve | `extract/stages.py: resolve` | `none`, `exact` or `fuzzy`: one `same_as` fact per linked pair of entities from different documents, supported by a group holding a mention chunk of each side; `canonical_id` filled by union for reporting. Steps 3 and 4 are one call, `extract/stages.py: build`, so the composition is inside the graph's code fingerprint. | Part of the `extract` event |
-| 5 | index graph | `bench/index.py: ensure_graph` | Written once per graph identity into the corpus's store; a store holding another graph identity is refused. | Event `index.graph`; `graph_written` on the run |
+| 2 | identity | `bench/runstore.py`, `bench/runner.py: run_valid` | The **run identity** is corpus and gold fingerprints, extractor and resolver spec hashes, viewer, with `kind = extract` in the one `runs` envelope; a completed run is returned when its stage manifests validate. The **graph identity** is the content hash of the resolved graph frames, known once they exist. | `runs` row; `extractor_spec`, `resolver_spec`, `graph_identity` columns |
+| 3 | claims and ground | `bench/stages.py: claims, ground` over `extract/rules.py` or `extract/small_model.py` and `extract/stages.py: ground` | The extractor returns spans and claims per chunk (cached per chunk on the spec hash and the text); grounding turns accepted claims into entities (id = hash of document and normalised surface), mentions, `label` and `type` facts, and one fact with one single-chunk support group per claim. Rejected claims stay in the `claims` frame with their status. `small_model` takes its entity and relation vocabularies from the config, or from the dataset's metadata and gold predicates. | Artifacts `frames` (spans and claims; the five graph frames). Event `extract`, `cached` when every chunk hit the cache. Grounding runs once per identity. |
+| 4 | resolve | `bench/stages.py: resolve` over `extract/stages.py: resolve` | `none`, `exact` or `fuzzy`: one `same_as` fact per linked pair of entities from different documents, supported by a group holding a mention chunk of each side; `canonical_id` filled by union for reporting. | Artifact `frames`; runs once per identity. |
+| 5 | index graph | `bench/stages.py: graph` | Written once per graph identity into the corpus's store; a store holding another graph identity is refused. | A store effect. Event `index.graph`; `graph_written` on the run |
 | 6 | score | `eval/triples.py` | Surface triples from the facts, matched one-to-one against the gold per document (per question for 2Wiki evidences, recall only): `exact` and `partial`; span P/R/F1 where the dataset lists entities; counts and claims by status. | `extraction_runs` row |
 
 Typed relation scores for CoNLL04 and SciERC are meaningful for `small_model`, whose relation

@@ -27,7 +27,7 @@ def runs(tmp_path):
     rs = RunStore(path)
     # Predictable IDs expose prefix collisions without random test failures.
     rs.conn.execute("PRAGMA foreign_keys = OFF")
-    for table in ("runs", "run_questions", "events", "run_artifacts", "run_prices"):
+    for table in ("runs", "run_questions", "events", "run_artifacts", "run_prices", "invocations"):
         rs.conn.execute(f"UPDATE {table} SET run_id = ? WHERE run_id = ?", ("43a111111111", rid))
     row = rs.run("43a111111111")
     assert row is not None

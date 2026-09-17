@@ -64,6 +64,14 @@ ForceOpt = Annotated[
 ResumeOpt = Annotated[
     bool, typer.Option("--resume", help="Continue a crashed run with this identity.")
 ]
+ReplicatesOpt = Annotated[
+    int,
+    typer.Option(
+        "--replicates",
+        help="Run the whole pipeline this many times under derived seeds and report which"
+        " stages add variance; replicate 0 is the run.",
+    ),
+]
 CacheRootOpt = Annotated[
     Path | None, typer.Option(help="Cache root (default $TRIPLUM_CACHE or ~/.cache/triplum).")
 ]
@@ -132,6 +140,7 @@ def build_run_config(
     resume: bool,
     cache_root: Path | None,
     runstore: Path | None,
+    replicates: int = 1,
 ) -> RunConfig:
     rr = (
         RerankerConfig(kind="fake")
@@ -154,6 +163,7 @@ def build_run_config(
         judge=_llm(judge, judge_model, base_url) if judge else None,
         force=force,
         resume=resume,
+        replicates=replicates,
         cache_root=str(cache_root) if cache_root else None,
         runstore_path=str(runstore) if runstore else None,
     )
@@ -163,6 +173,14 @@ def _print_summary(df) -> None:
     from triplum.bench.bench_view import print_summary
 
     print_summary(df)
+
+
+def _print_variance(rs, run_id: str) -> None:
+    from triplum.bench.bench_view import print_variance
+    from triplum.bench.report import variance
+
+    row = rs.run(run_id)
+    print_variance(*variance(rs, row["experiment_id"]))
 
 
 def _runstore(path: Path | None):
@@ -289,12 +307,13 @@ def run(
     candidates: CandidatesOpt = 20,
     force: ForceOpt = False,
     resume: ResumeOpt = False,
+    replicates: ReplicatesOpt = 1,
     cache_root: CacheRootOpt = None,
     runstore: RunstoreOpt = None,
 ) -> None:
     """Run one pipeline; an identical configuration returns the stored run."""
     from triplum.bench.report import summary
-    from triplum.bench.runner import run_benchmark, runstore_path
+    from triplum.bench.runner import run_experiment, runstore_path
 
     pipeline = resolve(pipeline, pipelines.NAMES, "pipeline", ctx=ctx)
     if dataset is None or not is_folder(dataset):
@@ -322,9 +341,13 @@ def run(
         resume=resume,
         cache_root=cache_root,
         runstore=runstore,
+        replicates=replicates,
     )
-    rid = run_benchmark(cfg)
-    _print_summary(summary(_runstore(runstore_path(cfg)), [rid]))
+    ids = run_experiment(cfg)
+    with _runstore(runstore_path(cfg)) as rs:
+        _print_summary(summary(rs, ids[:1]))
+        if len(ids) > 1:
+            _print_variance(rs, ids[0])
 
 
 @bench_app.command()
@@ -504,12 +527,13 @@ def rerun(
     run_id: RunIdArg = None,
     force: ForceOpt = False,
     resume: ResumeOpt = False,
+    replicates: ReplicatesOpt = 1,
     runstore: RunstoreOpt = None,
     no_input: NoInputOpt = False,
 ) -> None:
     """Run a stored configuration again (lookup unless --force); QA or extraction by kind."""
     from triplum.bench.report import extraction_summary, summary
-    from triplum.bench.runner import run_benchmark, run_extraction
+    from triplum.bench.runner import run_experiment, run_extraction
 
     rs = _existing_runstore(runstore)
     with rs:
@@ -525,11 +549,33 @@ def rerun(
             return
         cfg = RunConfig.from_json(row["config_json"])
         cfg = cfg.model_copy(
-            update={"force": force, "resume": resume, "runstore_path": str(rs.path)}
+            update={
+                "force": force,
+                "resume": resume,
+                "replicates": replicates,
+                "runstore_path": str(rs.path),
+            }
         )
-        rid = run_benchmark(cfg)
+        ids = run_experiment(cfg)
+        rid = ids[0]
         print("reused" if rid == run_id else "new", rid)
         _print_summary(summary(rs, [rid]))
+        if len(ids) > 1:
+            _print_variance(rs, rid)
+
+
+@bench_app.command()
+def variance(
+    ctx: typer.Context,
+    run_id: RunIdArg = None,
+    runstore: RunstoreOpt = None,
+    no_input: NoInputOpt = False,
+) -> None:
+    """Which stages added or absorbed variance across the replicates of a run's experiment."""
+    rs = _existing_runstore(runstore)
+    with rs:
+        run_id = _run_id(rs, run_id, ctx)
+        _print_variance(rs, run_id)
 
 
 @bench_app.command()

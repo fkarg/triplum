@@ -89,11 +89,17 @@ def test_cli_extract_and_report(tmp_path, capsys):
         assert extraction_summary(rs).height == 1
 
 
-def test_graph_identity_covers_the_composition():
-    from triplum.bench import fingerprint
-
-    assert "triplum.extract.stages" in fingerprint.GRAPH
-    assert "triplum.bench.runner" not in fingerprint.GRAPH  # orchestration lives in stages.build
+def test_graph_stages_record_the_code_they_ran(tmp_path):
+    rid = run_extraction(_cfg(tmp_path, "carb", resolver=ResolverSpec("exact")))
+    with RunStore(tmp_path / "runs.db") as rs:
+        inv = rs.invocations(rid)
+        by_stage = {r["stage"].rsplit(":", 1)[-1]: r for r in inv.iter_rows(named=True)}
+        ground = rs.manifest(by_stage["ground"]["code"])
+        resolve = rs.manifest(by_stage["resolve"]["code"])
+    assert ground is not None and resolve is not None
+    assert "triplum.extract.stages:ground" in ground.functions
+    assert "triplum.extract.stages:resolve" in resolve.functions
+    assert not any(k.startswith("triplum.bench.runner:") for k in ground.functions)
 
 
 def test_cli_rerun_replays_an_extraction_run(tmp_path, capsys):

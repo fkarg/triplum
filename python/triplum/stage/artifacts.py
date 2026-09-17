@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict
 from triplum.cache import content_key
 from triplum.utils.data import IterableDataset
 
-Kind = Literal["frame", "records", "stream", "store"]
+Kind = Literal["frame", "frames", "records", "stream", "store"]
 COMPLETE = "complete.json"
 
 
@@ -85,11 +85,20 @@ class Writer:
         self.rows = 0
         self.files: list[Path] = []
         self.record_type: str | None = None
+        self.names: list[str] = []
 
     def frame(self, df: pl.DataFrame) -> None:
         self.kind = "frame"
         self.rows = df.height
         self._write_frame(self.tmp / "data.parquet", df)
+
+    def frames(self, named: dict[str, pl.DataFrame]) -> None:
+        """Several frames under one key, one parquet file per name; rows is their sum."""
+        self.kind = "frames"
+        self.names = list(named)
+        for name, df in named.items():
+            self.rows += df.height
+            self._write_frame(self.tmp / f"{name}.parquet", df)
 
     def records(self, records: Sequence[BaseModel]) -> None:
         self.kind = "records"
@@ -141,6 +150,7 @@ class Writer:
             "rows": self.rows,
             "files": {p.name: p.stat().st_size for p in self.files},
             "record_type": self.record_type,
+            "names": self.names,
         }
         (self.tmp / COMPLETE).write_text(json.dumps(record, sort_keys=True))
         try:
@@ -181,6 +191,10 @@ def complete(root: Path, stage: str, key: str, code: str) -> Artifact | None:
         bytes=sum(sizes.values()),
         record_type=rec.get("record_type"),
     )
+
+
+class Frames(dict[str, pl.DataFrame]):
+    """Named frames a stage produced or fetched; a plain dict that can be weakly referenced."""
 
 
 class Records[T: BaseModel](list[T]):
@@ -226,6 +240,9 @@ def read(root: Path, artifact: Artifact) -> Any:
     d = root / artifact.path
     if artifact.kind == "frame":
         return pl.read_parquet(d / "data.parquet")
+    if artifact.kind == "frames":
+        names = json.loads((d / COMPLETE).read_text())["names"]
+        return Frames((name, pl.read_parquet(d / f"{name}.parquet")) for name in names)
     if artifact.kind == "records":
         df = pl.read_parquet(d / "data.parquet")
         if df.height == 0:

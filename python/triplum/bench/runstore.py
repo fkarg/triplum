@@ -118,22 +118,23 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
     + PROVENANCE_DDL
 )
 
-# code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
-# recorded for bookkeeping only, so edits outside the pipeline do not orphan finished runs.
+# The one list of identity fields (benchmarking.md, `diff`). Code is not in it: a stored run
+# matches when the manifests of the stages it ran still validate (`runner.run_valid`); its
+# `code_hash` summarises them afterwards, and `code_version` and `dirty` are bookkeeping. `n`
+# is not in it either: the questions' fingerprint already names the selection.
 IDENTITY_FIELDS = (
     "kind",
     "dataset",
     "pipeline",
     "config_hash",
-    "code_hash",
     "corpus_hash",
     "questions_hash",
-    "n",
     "embedding_spec",
     "reranker_spec",
     "reader_model",
     "judge_model",
     "seed",
+    "replicate",
     "viewer_json",
     "reader_prompt_hash",
     "judge_prompt_hash",
@@ -297,6 +298,31 @@ class RunStore:
     def identity_hash(meta: dict) -> str:
         return content_key("run", {k: meta.get(k) for k in IDENTITY_FIELDS})
 
+    def find_runs(self, identity_hash: str, status: str = "ok") -> list[str]:
+        """Every run with this identity and status, newest first."""
+        return [
+            r[0]
+            for r in self.conn.execute(
+                "SELECT run_id FROM runs WHERE identity_hash = ? AND status = ?"
+                " ORDER BY created_at DESC",
+                (identity_hash, status),
+            )
+        ]
+
+    def update_run(self, run_id: str, **columns: object) -> None:
+        sets = ", ".join(f"{k} = ?" for k in columns)
+        self.conn.execute(f"UPDATE runs SET {sets} WHERE run_id = ?", (*columns.values(), run_id))
+
+    def cache_totals(self, run_id: str) -> tuple[int, int]:
+        """Cache hits and misses over the run's events: a hit is a cached event, a miss an
+        uncached one that used tokens."""
+        row = self.conn.execute(
+            "SELECT COALESCE(SUM(cached), 0), COALESCE(SUM(cached = 0 AND"
+            " (input_tokens > 0 OR output_tokens > 0)), 0) FROM events WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+        return int(row[0]), int(row[1])
+
     def find_run(self, identity_hash: str, status: str = "ok") -> str | None:
         row = self.conn.execute(
             "SELECT run_id FROM runs WHERE identity_hash = ? AND status = ?"
@@ -339,12 +365,19 @@ class RunStore:
         self.conn.execute("UPDATE runs SET status = 'running' WHERE run_id = ?", (run_id,))
 
     def finish_run(
-        self, run_id: str, *, status: str, wall_s: float, cache_hits: int, cache_misses: int
+        self,
+        run_id: str,
+        *,
+        status: str,
+        wall_s: float,
+        cache_hits: int,
+        cache_misses: int,
+        code_hash: str | None = None,
     ) -> None:
         self.conn.execute(
-            "UPDATE runs SET status = ?, wall_s = ?, cache_hits = ?, cache_misses = ?"
-            " WHERE run_id = ?",
-            (status, wall_s, cache_hits, cache_misses, run_id),
+            "UPDATE runs SET status = ?, wall_s = ?, cache_hits = ?, cache_misses = ?,"
+            " code_hash = COALESCE(?, code_hash) WHERE run_id = ?",
+            (status, wall_s, cache_hits, cache_misses, code_hash, run_id),
         )
 
     def add_question(self, run_id: str, row: dict) -> None:

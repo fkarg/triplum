@@ -60,15 +60,26 @@ def _fact_row(
 def extract(
     chunks: pl.DataFrame, documents: pl.DataFrame, extractor: Extractor, recorded_at: int
 ) -> Extraction:
-    """Run the extractor and ground its output. Every entity span becomes a mention and a
-    `label` fact (plus a `type` fact when the extractor typed it); every accepted claim whose
-    subject is an entity span and whose object is any span becomes one fact with one
-    single-chunk support group. Claims that cannot be grounded are kept with status
-    `ungrounded`. `valid_from` is the document's `observed_at`; `valid_to` is open."""
+    """Run the extractor and ground its output: `ground` over what `extractor.run` returns."""
     spans, claims = extractor.run(chunks)
+    return ground(chunks, documents, spans, claims, extractor.spec.hash(), recorded_at)
+
+
+def ground(
+    chunks: pl.DataFrame,
+    documents: pl.DataFrame,
+    spans: pl.DataFrame,
+    claims: pl.DataFrame,
+    xh: str,
+    recorded_at: int,
+) -> Extraction:
+    """Ground an extractor's spans and claims (`xh` is its spec hash). Every entity span
+    becomes a mention and a `label` fact (plus a `type` fact when the extractor typed it);
+    every accepted claim whose subject is an entity span and whose object is any span becomes
+    one fact with one single-chunk support group. Claims that cannot be grounded are kept with
+    status `ungrounded`. `valid_from` is the document's `observed_at`; `valid_to` is open."""
     doc_of = dict(zip(chunks["id"].to_list(), chunks["document_id"].to_list()))
     observed = dict(zip(documents["id"].to_list(), documents["observed_at"].to_list()))
-    xh = extractor.spec.hash()
     span_at: dict[tuple[int, int, int], dict] = {}
     entities: dict[str, None] = {}
     mentions: dict[tuple[str, int, int], tuple] = {}

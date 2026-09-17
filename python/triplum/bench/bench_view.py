@@ -181,3 +181,49 @@ def print_tail(progress: Mapping[str, Any], *, console: Console | None = None) -
         f"  {_value(progress['last_stage'])} @ {_value(progress['last_question'])}", style="dim"
     )
     console.print(line)
+
+
+VERDICT_STYLES = {
+    "deterministic": "green",
+    "adds variance": "bold red",
+    "absorbs variance": "cyan",
+    "passes variance": "yellow",
+}
+
+
+def print_variance(
+    stages: pl.DataFrame, metrics: pl.DataFrame, *, console: Console | None = None
+) -> None:
+    """The per-stage verdicts of a replicated experiment, then the metric spread."""
+    console = console or Console(markup=False, highlight=False)
+    if stages.is_empty():
+        console.print("No replicates recorded for this experiment.")
+        return
+    table = Table(title="Stages across replicates", show_lines=False)
+    for column in ("stage", "replicates", "executed", "inputs", "outputs"):
+        table.add_column(column)
+    table.add_column("verdict", no_wrap=True)
+    for row in stages.iter_rows(named=True):
+        verdict = row["verdict"]
+        table.add_row(
+            row["stage"],
+            str(row["replicates"]),
+            str(row["executed"]),
+            "agree" if row["inputs_agree"] else "differ",
+            "agree" if row["outputs_agree"] else "differ",
+            Text(verdict, style=VERDICT_STYLES.get(verdict, "")),
+        )
+    console.print(table)
+    spread = Table(title="Metrics over replicates")
+    for column in ("metric", "replicates", "mean", "std", "min", "max"):
+        spread.add_column(column)
+    for row in metrics.iter_rows(named=True):
+        spread.add_row(
+            row["metric"],
+            str(row["replicates"]),
+            _value(row["mean"]),
+            _value(row["std"]),
+            _value(row["min"]),
+            _value(row["max"]),
+        )
+    console.print(spread)

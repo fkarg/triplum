@@ -11,23 +11,25 @@ A run's identity is the hash of these fields (see `IDENTITY_FIELDS` in
 
 | field | what it pins |
 |---|---|
-| dataset, corpus_hash, questions_hash, n | which data: the sources' fingerprints (pinned file digests, parser version, record contract, selection), computed without reading a file, so a parser version bump is a new identity even when the source bytes did not change; how many questions |
+| dataset, corpus_hash, questions_hash | which data: the sources' fingerprints (pinned file digests, parser version, record contract, selection), computed without reading a file, so a parser version bump is a new identity even when the source bytes did not change; the selection (`n`) is inside the questions' fingerprint |
 | pipeline, config_hash | the pipeline name and the hash of the full `PipelineConfig` (top-k, candidates, embedder config, reranker config, reader config) |
 | embedding_spec, reranker_spec | hashes of the model specs actually instantiated (model, revision, dims, prefixes, quantisation, runtime) |
 | reader_model, judge_model, reader_prompt_hash, judge_prompt_hash | which models answered and judged, and the exact prompt text and output schema |
-| seed | passed to the reader and judge requests, so it is part of the call-cache key too |
+| seed, replicate | the root seed and the replicate index; each replicate's stages draw from a seed derived from both, which reaches seed-sensitive adapters' requests and cache keys |
 | viewer_json | the principals the run was executed as |
-| code_hash | sha256 of the source files the pipeline executes (`python/triplum/bench/fingerprint.py` lists them per pipeline, plus `migrations.sql` and the Rust schema). Editing the CLI, the report or the docs does not change it; editing a stage does. The git sha and dirty flag are recorded on the run but do not identify it. |
+| (code, validated) | code is not a hashed field. Every stage a run executed recorded a manifest of the first-party functions it ran, the constants they read and the distributions involved; a stored run matches only when every one of those manifests still hashes the same in the current process (`runner.run_valid`). Editing the CLI, the report or the docs changes nothing; editing a helper a stage calls, or a prompt constant, invalidates exactly the runs and artifacts that executed it. `code_hash` on the run summarises the manifests afterwards; the git sha and dirty flag are bookkeeping. |
 
 Two runs with the same identity are the same experiment. `run_benchmark` looks the identity up
-first and returns the existing run id unless `force` is set. Changing anything in the table above,
-including editing a prompt string or a stage's source, produces a new identity.
+first and returns the existing run id unless `force` is set. Changing anything in the table above
+produces a new identity; editing a prompt string or a stage's source keeps the identity and fails
+the manifest validation, which is the same outcome: the pipeline runs, and each stage fetches its
+artifact when its own code and inputs are unchanged and recomputes otherwise
+([`specs/2026-09-17-stages.md`](specs/2026-09-17-stages.md)).
 
 Things deliberately *outside* the identity: host name and wall time (recorded, not identifying),
-the git sha and dirty flag (recorded; the code hash above is what matters), cache state (recorded
-as hits and misses), and prices (snapshotted per run, see below). A resumed run keeps its identity
-only while the pipeline's code hash is unchanged; fixing a bug in a stage and resuming produces a
-new run, which is the honest outcome.
+the git sha and dirty flag (recorded; the manifests are what matters), cache state (recorded as
+hits and misses), and prices (snapshotted per run, see below). A resumed run keeps its id; the
+stages whose code changed since the crash recompute, the others fetch.
 
 ## Cache levels
 
@@ -37,10 +39,14 @@ new run, which is the honest outcome.
    replay and is recorded as `cached` on the event and on the question row. Cost is still computed
    for cached calls (nominal cost); the report shows `usd_total` (nominal) next to `usd_spent`
    (calls that actually ran).
-2. **Artifact cache**: a store file is bound to one corpus hash (`meta.corpus_hash`); documents and
-   chunks are ingested once; embeddings are stored per embedding spec and only missing chunks are
-   embedded. Switching embedders is a full embed of the new spec, never a re-embed of an existing one.
-3. **Run lookup**: identical identity returns the stored run.
+2. **Artifacts**: every stage output under `artifacts/<stage>/<key>/<code>/`, addressed by a data
+   key over the stage's inputs and validated by the manifest of the code that produced it and
+   its inputs; the corpus frames, the questions, the retrieval hits, the answers, the claims and
+   the graph frames. Store effects (documents, embeddings per spec, the graph) live in the store
+   file, which is bound to one corpus hash (`meta.corpus_hash`) and records each effect in its
+   `effects` table. Switching embedders is a full embed of the new spec, never a re-embed of an
+   existing one.
+3. **Run lookup**: identical identity with validating manifests returns the stored run.
 
 Caches are per machine. Runs from different machines are not compared.
 
@@ -53,7 +59,10 @@ triplum bench rerun <run_id> --force   # recompute; call-cache hits still apply,
 triplum bench run ... --force          # same for a fresh command line
 ```
 
-`--force` creates a new run id and a new set of events; it does not clear caches.
+`--force` creates a new run id and a new set of events; it does not clear caches, so its stages
+fetch what they can. `--replicates N` runs the pipeline N times under derived seeds (replicate 0
+is the run), then prints which stages added or absorbed variance and the metric spread;
+`triplum bench variance <run_id>` shows it again.
 
 ## Crash and resume
 

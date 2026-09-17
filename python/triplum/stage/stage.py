@@ -20,8 +20,8 @@ from pydantic import BaseModel
 
 from triplum.cache import canonical_json, content_key
 from triplum.stage import artifacts, fingerprint, identity
-from triplum.stage.artifacts import Artifact, Records, Writer
-from triplum.stage.run import Run, current
+from triplum.stage.artifacts import Artifact, Frames, Records, Writer
+from triplum.stage.run import Run, current, seeded
 from triplum.stage.trace import Recording
 from triplum.utils.data import Dataset, IterableDataset
 
@@ -163,7 +163,8 @@ class _Call:
         inv = self.start()
         rec = Recording().start()
         try:
-            result = self.stage.fn(*self.bound.args, **self.bound.kwargs)
+            with seeded(self.seed):
+                result = self.stage.fn(*self.bound.args, **self.bound.kwargs)
         except BaseException as e:
             rec.stop()
             self.run.store.finish_invocation(
@@ -179,13 +180,18 @@ class _Call:
         try:
             if isinstance(result, pl.DataFrame):
                 writer.frame(result)
+            elif isinstance(result, dict) and all(
+                isinstance(v, pl.DataFrame) for v in result.values()
+            ):
+                result = Frames(result)
+                writer.frames(result)
             elif isinstance(result, list) and all(isinstance(r, BaseModel) for r in result):
                 result = Records(result)
                 writer.records(result)
             else:
                 raise TypeError(
                     f"stage {self.stage.name} returned {type(result).__name__}; a stage returns a"
-                    " frame, a list of records, a stream, or None for a store effect"
+                    " frame, a dict of frames, a list of records, a stream, or None for a store effect"
                 )
         except BaseException as e:
             writer.abort()
@@ -221,7 +227,8 @@ class _Call:
         store.begin_effect(self.key, self.stage.name)
         rec = Recording().start()
         try:
-            self.stage.fn(*self.bound.args, **self.bound.kwargs)
+            with seeded(self.seed):
+                self.stage.fn(*self.bound.args, **self.bound.kwargs)
         except BaseException as e:
             rec.stop()
             self.run.store.finish_invocation(

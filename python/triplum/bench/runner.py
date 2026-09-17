@@ -1,4 +1,7 @@
-"""Compose stages from a RunConfig or an ExtractConfig, record everything, return the run id."""
+"""Compose the stages from a RunConfig or an ExtractConfig under a `Run`, record everything,
+return the run ids. Identity is computed from the sources' fingerprints and the config before
+anything is read; a stored run with that identity is returned when the manifests of every
+stage it ran still validate, else the pipeline runs and each stage fetches or recomputes."""
 
 from __future__ import annotations
 
@@ -8,40 +11,28 @@ import subprocess
 import time
 from pathlib import Path
 
-import polars as pl
-
-from triplum.bench import factories, fingerprint
+from triplum.bench import factories
+from triplum.bench import stages as st
 from triplum.bench.config import ExtractConfig, RunConfig
-from triplum.bench.index import ensure_documents, ensure_embeddings, ensure_graph, graph_identity
-from triplum.bench.inputs import Benchmark, PreparedBenchmark, materialize
-from triplum.bench.runstore import RunStore
-from triplum.cache import default_root
-from triplum.data.schema import now_us
+from triplum.bench.inputs import Benchmark, identities
+from triplum.bench.runstore import IDENTITY_FIELDS, RunStore
+from triplum.cache import content_key, default_root
 from triplum.data.viewer import Viewer
-from triplum.datasets import collate, files
+from triplum.datasets import collate
 from triplum.datasets import registry as datasets
-from triplum.embed.protocol import Embedder
 from triplum.eval import judge as judge_mod
-from triplum.eval import metrics, triples
-from triplum.extract import stages as extract_stages
+from triplum.eval import triples
 from triplum.generate import reader as reader_mod
-from triplum.generate.reader import read
-from triplum.rerank.protocol import Reranker
-from triplum.retrieve import pipelines, stages
-from triplum.store.protocol import Store
+from triplum.retrieve import pipelines
+from triplum.stage import Run, active, derive
+from triplum.stage.fingerprint import validate
 from triplum.store.sqlite.store import SqliteStore
+from triplum.utils.data import Dataset, Take
 
 
 def code_version() -> tuple[str, int]:
-    """Return the current checkout's git SHA and dirty flag for provenance only.
-
-    Neither value identifies a cached run. Run identity uses the pipeline configuration
-    hash and ``fingerprint.code_hash`` alongside dataset, model and evaluation metadata.
-    The code fingerprint reads source files; it does not inspect runtime replacements
-    of functions. Outside a git checkout, return ``("unknown", 1)``.
-    """
-    # TODO: include runtime-replaced functions and the full effective configuration
-    # (including judge settings) in run identity; git provenance cannot capture them.
+    """The checkout's git SHA and dirty flag, for provenance only: neither identifies a run.
+    Outside a git checkout, ``("unknown", 1)``."""
     try:
         sha = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
@@ -54,35 +45,6 @@ def code_version() -> tuple[str, int]:
         return "unknown", 1
 
 
-def _retrieve(
-    cfg: RunConfig,
-    questions: pl.DataFrame,
-    store: Store,
-    embedder: Embedder | None,
-    reranker: Reranker | None,
-    viewer: Viewer,
-) -> pl.DataFrame:
-    """Run the pipeline's retrieval stage; the result has exactly `stages.SCHEMA`."""
-    p = cfg.pipeline
-    pipe = pipelines.get(p.name)
-    if pipe.needs_embedder and embedder is None:
-        raise ValueError(f"pipeline {p.name} needs an embedder")
-    if pipe.needs_reranker and reranker is None:
-        raise ValueError(f"pipeline {p.name} needs a reranker")
-    out = pipe.run(
-        questions,
-        store,
-        viewer,
-        k=p.top_k,
-        candidates=p.candidates,
-        embedder=embedder,
-        reranker=reranker,
-    )
-    if dict(out.schema) != stages.SCHEMA:
-        raise TypeError(f"retrieval stage {p.name} returned {out.schema}, expected {stages.SCHEMA}")
-    return out
-
-
 def cache_root(cfg: RunConfig | ExtractConfig) -> Path:
     return Path(cfg.cache_root) if cfg.cache_root else default_root()
 
@@ -91,61 +53,103 @@ def runstore_path(cfg: RunConfig | ExtractConfig) -> Path:
     return Path(cfg.runstore_path) if cfg.runstore_path else cache_root(cfg) / "runs.db"
 
 
-def store_path(cfg: RunConfig | ExtractConfig, ds: PreparedBenchmark) -> Path:
+def store_path(cfg: RunConfig | ExtractConfig, name: str, corpus_hash: str) -> Path:
     """One SQLite file per corpus, shared by QA and extraction runs over the same dataset."""
     path = (
         Path(cfg.store_path)
         if cfg.store_path
-        else cache_root(cfg) / "stores" / f"{ds.name}-{ds.corpus_hash[:8]}.sqlite"
+        else cache_root(cfg) / "stores" / f"{name}-{corpus_hash[:8]}.sqlite"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def _load(cfg: RunConfig | ExtractConfig, data: Benchmark | None = None) -> PreparedBenchmark:
-    """Materialize the sources; `n` selects questions and never truncates a corpus."""
-    source = (
-        data
-        if data is not None
-        else (
-            datasets.load_fixture(cfg.dataset, cfg.n)
-            if cfg.fixture
-            else datasets.load(cfg.dataset, cfg.n)
-        )
+def _benchmark(cfg: RunConfig | ExtractConfig, data: Benchmark | None) -> Benchmark:
+    """The composition to run; `n` selects questions and never truncates a corpus."""
+    if data is not None:
+        return data
+    return (
+        datasets.load_fixture(cfg.dataset, cfg.n)
+        if cfg.fixture
+        else datasets.load(cfg.dataset, cfg.n)
     )
-    return materialize(source)
+
+
+def _count(source) -> int:
+    """How many records a source has, when that is known without reading it; else 0, and the
+    run's `n` is set once the questions stage has run."""
+    if isinstance(source, Dataset) or (
+        isinstance(source, Take) and isinstance(source.source, Dataset)
+    ):
+        return len(source)
+    return 0
+
+
+def run_valid(rs: RunStore, run_id: str) -> bool:
+    """Whether every stage the run executed would run the same code now: each invocation's
+    manifest still validates. A run without invocations predates stages and never matches."""
+    inv = rs.invocations(run_id)
+    if inv.height == 0:
+        return False
+    for code in inv["code"].to_list():
+        if code is None:
+            return False
+        manifest = rs.manifest(code)
+        if manifest is None or not validate(manifest):
+            return False
+    return True
+
+
+def _find(rs: RunStore, identity: str) -> str | None:
+    for run_id in rs.find_runs(identity):
+        if run_valid(rs, run_id):
+            return run_id
+    return None
+
+
+def _code_hash(rs: RunStore, run_id: str) -> str:
+    codes = sorted({c for c in rs.invocations(run_id)["code"].to_list() if c})
+    return content_key("code", codes)[:16]
+
+
+def experiment_id(meta: dict) -> str:
+    return content_key("experiment", {k: meta.get(k) for k in IDENTITY_FIELDS if k != "replicate"})[
+        :16
+    ]
+
+
+# ---- question answering ---------------------------------------------------------------------
 
 
 def run_benchmark(cfg: RunConfig, *, data: Benchmark | None = None) -> str:
-    """Run a configured question-answering benchmark and return its persisted run ID.
+    """Run a configured question-answering benchmark and return its run id: the first replicate
+    of `run_experiment`."""
+    return run_experiment(cfg, data=data)[0]
 
-    Load the dataset and construct model adapters, then look up the run identity.
-    Unless ``cfg.force`` is set, reuse a successful run; with ``cfg.resume``, continue
-    a matching interrupted run and skip its completed questions. Force creates a new
-    run but still reuses model-call caches and corpus artifacts.
 
-    For work that remains, prepare the corpus and optional embeddings in SQLite,
-    retrieve ranked chunk IDs, and generate and score answers question by question.
-    Store reads use ``cfg.principals`` through a Viewer. Each completed question's
-    answer, scores and events commit together. Persist run status and artifact paths;
-    exceptions during execution mark the run failed and propagate to the caller.
-    """
-    t_start = time.perf_counter()
-    root = cache_root(cfg)
-    ds = _load(cfg, data)
+def run_experiment(cfg: RunConfig, *, data: Benchmark | None = None) -> list[str]:
+    """Run `cfg.replicates` replicates of the configuration, each under the seed derived from
+    the root seed and its index, and return their run ids, replicate 0 first. A stored run with
+    the same identity whose stage manifests still validate is returned instead of rerunning,
+    unless ``cfg.force``; with ``cfg.resume`` an interrupted run of that identity is continued.
+    Every replicate is a run in the run store, grouped by an experiment id."""
+    benchmark = _benchmark(cfg, data)
     p = cfg.pipeline
-    questions = ds.qa
-    if questions is None or questions.height == 0:
-        raise ValueError(f"dataset {ds.name} has no questions (extraction-only); it cannot be run")
-    if ds.needs:
-        raise ValueError(f"dataset {ds.name} cannot be run yet: it needs {ds.needs}")
-    if ds.corpus.chunks.height == 0 and p.name != "closed_book":
+    if benchmark.qa is None:
         raise ValueError(
-            f"dataset {ds.name} ships no corpus; only the closed_book pipeline applies"
+            f"dataset {benchmark.name} has no questions (extraction-only); it cannot be run"
+        )
+    if benchmark.needs:
+        raise ValueError(f"dataset {benchmark.name} cannot be run yet: it needs {benchmark.needs}")
+    if benchmark.corpus is None and p.name != "closed_book":
+        raise ValueError(
+            f"dataset {benchmark.name} ships no corpus; only the closed_book pipeline applies"
         )
     pipe = pipelines.get(p.name)
-    needs_embed = pipe.needs_embedder
-    embedder = factories.make_embedder(p.embedder, root) if needs_embed and p.embedder else None
+    root = cache_root(cfg)
+    embedder = (
+        factories.make_embedder(p.embedder, root) if pipe.needs_embedder and p.embedder else None
+    )
     real_models = cfg.judge is not None and cfg.judge.kind != "fake" and p.reader.kind != "fake"
     if real_models and factories.model_family(cfg.judge.model) == factories.model_family(
         p.reader.model
@@ -157,153 +161,121 @@ def run_benchmark(cfg: RunConfig, *, data: Benchmark | None = None) -> str:
     reader = factories.make_llm(p.reader, root)
     judge = factories.make_llm(cfg.judge, root) if cfg.judge else None
     viewer = Viewer(principals=frozenset(cfg.principals))
+    corpus_hash, evaluation_hash = identities(benchmark)
     sha, dirty = code_version()
+    meta = {
+        "kind": "qa",
+        "dataset": benchmark.name,
+        "pipeline": p.name,
+        "config_hash": p.hash(),
+        "config_json": cfg.to_json(),
+        "code_version": sha,
+        "dirty": dirty,
+        "code_hash": "",
+        "corpus_hash": corpus_hash,
+        "questions_hash": evaluation_hash,
+        "n": _count(benchmark.qa),
+        "embedding_spec": embedder.spec.hash() if embedder else None,
+        "reranker_spec": reranker.spec.hash() if reranker else None,
+        "reader_model": p.reader.model,
+        "judge_model": cfg.judge.model if cfg.judge else None,
+        "seed": cfg.seed,
+        "replicate": 0,
+        "viewer_json": json.dumps(sorted(viewer.principals)),
+        "host": platform.node(),
+        "reader_prompt_hash": reader_mod.PROMPT_HASH,
+        "judge_prompt_hash": judge_mod.PROMPT_HASH if cfg.judge else None,
+    }
+    meta["experiment_id"] = experiment_id(meta)
+    ids = []
     with RunStore(runstore_path(cfg)) as rs:
-        meta = {
-            "kind": "qa",
-            "dataset": ds.name,
-            "pipeline": p.name,
-            "config_hash": p.hash(),
-            "config_json": cfg.to_json(),
-            "code_version": sha,
-            "dirty": dirty,
-            "code_hash": fingerprint.code_hash(p.name),
-            "corpus_hash": ds.corpus_hash,
-            "questions_hash": ds.evaluation_hash,
-            "n": questions.height,
-            "embedding_spec": embedder.spec.hash() if embedder else None,
-            "reranker_spec": reranker.spec.hash() if reranker else None,
-            "reader_model": p.reader.model,
-            "judge_model": cfg.judge.model if cfg.judge else None,
-            "seed": cfg.seed,
-            "viewer_json": json.dumps(sorted(viewer.principals)),
-            "host": platform.node(),
-            "reader_prompt_hash": reader_mod.PROMPT_HASH,
-            "judge_prompt_hash": judge_mod.PROMPT_HASH if cfg.judge else None,
-        }
-        identity = rs.identity_hash(meta)
-        done: set[str] = set()
-        run_id = None
-        if not cfg.force:
-            existing = rs.find_run(identity)
-            if existing:
-                return existing
-            if cfg.resume:
+        for r in range(cfg.replicates):
+            meta_r = {**meta, "replicate": r}
+            identity = rs.identity_hash(meta_r)
+            run_id = None if cfg.force else _find(rs, identity)
+            if run_id is not None:
+                ids.append(run_id)
+                continue
+            if cfg.resume and not cfg.force:
                 run_id = rs.find_run(identity, status="running") or rs.find_run(
                     identity, status="failed"
                 )
                 if run_id:
-                    done = rs.completed_questions(run_id)
                     rs.resume_run(run_id)
-        if run_id is None:
-            run_id = rs.start_run(meta)
-            rs.snapshot_prices(
-                run_id,
-                [
-                    model
-                    for model in (
-                        p.reader.model,
-                        cfg.judge.model if cfg.judge else None,
-                        embedder.spec.model if embedder else None,
+            if run_id is None:
+                run_id = rs.start_run(meta_r)
+                rs.snapshot_prices(
+                    run_id,
+                    [
+                        m
+                        for m in (
+                            p.reader.model,
+                            cfg.judge.model if cfg.judge else None,
+                            embedder.spec.model if embedder else None,
+                        )
+                        if m is not None
+                    ],
+                )
+            path = store_path(cfg, benchmark.name, corpus_hash)
+            store = SqliteStore(path)
+            status = "failed"
+            t_start = time.perf_counter()
+            try:
+                with active(
+                    Run(store=rs, root=root, run_id=run_id, seed=derive(cfg.seed, r), replicate=r)
+                ):
+                    corpus = (
+                        st.corpus_frames(benchmark.corpus)
+                        if benchmark.corpus is not None
+                        else st.empty_corpus()
                     )
-                    if model is not None
-                ],
-            )
-        rec = rs.recorder(run_id)
-        path = store_path(cfg, ds)
-        store = SqliteStore(path)
-        status = "failed"
-        try:
-            ensure_documents(store, ds, rec)
-            if embedder is not None:
-                ensure_embeddings(store, ds, embedder, rec)
-            with rec.stage(
-                "retrieve",
-                model=reranker.spec.model if reranker else None,
-                provider=reranker.spec.runtime if reranker else None,
-            ) as ev:
-                retrieved = _retrieve(cfg, questions, store, embedder, reranker, viewer)
-                if reranker is not None:
-                    ev.usage(reranker.calls, 0, cached=reranker.calls == 0)
-            todo = questions.filter(~pl.col("id").is_in(list(done))) if done else questions
-            params = factories.gen_params(p.reader, cfg.seed)
-            for q in todo.iter_rows(named=True):
-                with rs.question_unit():
-                    one = todo.filter(pl.col("id") == q["id"])
-                    a = read(one, retrieved, store, reader, viewer, params).row(0, named=True)
-                    with rec.stage(
-                        "read", question_id=q["id"], provider=p.reader.kind, model=p.reader.model
-                    ) as ev:
-                        ev.usage(a["input_tokens"], a["output_tokens"], cached=a["cached"])
-                    ids = (
-                        retrieved.filter(pl.col("question_id") == q["id"])
-                        .sort("rank")["chunk_id"]
-                        .to_list()
-                    )
-                    jud = None
-                    if judge is not None:
-                        assert cfg.judge is not None  # The adapter is built from this config above.
+                    if corpus["chunks"].height == 0 and p.name != "closed_book":
+                        raise ValueError(
+                            f"dataset {benchmark.name} ships no corpus; only the closed_book pipeline applies"
+                        )
+                    qa = st.questions(benchmark.qa, corpus)
+                    rs.update_run(run_id, n=qa.height)
+                    rec = rs.recorder(run_id)
+                    with rec.stage("index.documents"):
+                        st.ingest(store, corpus, benchmark.name, corpus_hash)
+                    if embedder is not None:
                         with rec.stage(
-                            "judge",
-                            question_id=q["id"],
-                            provider=cfg.judge.kind,
-                            model=cfg.judge.model,
-                        ) as ev:
-                            ok, jc = judge_mod.judge_correct(
-                                judge,
-                                q["question"],
-                                q["aliases"],
-                                a["answer"],
-                                factories.gen_params(cfg.judge, cfg.seed),
-                            )
-                            ev.usage(
-                                jc.usage.input_tokens,
-                                jc.usage.output_tokens,
-                                jc.usage.cached_input_tokens,
-                                jc.cached,
-                            )
-                            jud = float(ok)
-                    rs.add_question(
-                        run_id,
-                        {
-                            "question_id": q["id"],
-                            "retrieved_json": json.dumps(ids),
-                            "answer": a["answer"],
-                            "em": metrics.exact_match(a["answer"], q["aliases"]),
-                            "f1": metrics.f1(a["answer"], q["aliases"]),
-                            "contain": metrics.contain(a["answer"], q["aliases"]),
-                            "judge": jud,
-                            "r2": metrics.recall_at_k(q["gold_chunk_ids"], ids, 2)
-                            if q["gold_chunk_ids"]
-                            else None,
-                            "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5)
-                            if q["gold_chunk_ids"]
-                            else None,
-                            "input_tokens": a["input_tokens"],
-                            "output_tokens": a["output_tokens"],
-                            "usd": rec.cost(
-                                p.reader.model, a["input_tokens"], a["output_tokens"], 0
-                            ),
-                            "cached": int(a["cached"]),
-                            "latency_s": a["latency_s"],
-                            "n_chunks": a["n_chunks"],
-                        },
-                    )
-            rs.add_artifact(run_id, "store", str(path), files.sha256_file(path))
-            status = "ok"
-        finally:
-            store.close()
-            rs.finish_run(
-                run_id,
-                status=status,
-                wall_s=time.perf_counter() - t_start,
-                cache_hits=rec.cache_hits,
-                cache_misses=rec.cache_misses,
-            )
-        return run_id
+                            "index.embed", model=embedder.spec.model, provider=embedder.spec.runtime
+                        ):
+                            st.embed(store, corpus, embedder)
+                    with rec.stage(
+                        "retrieve",
+                        model=reranker.spec.model if reranker else None,
+                        provider=reranker.spec.runtime if reranker else None,
+                    ) as ev:
+                        hits = st.retrieve(qa, store, p, embedder, reranker, viewer)
+                        if reranker is not None:
+                            ev.usage(reranker.calls, 0, cached=reranker.calls == 0)
+                    rows = st.answer(qa, hits, store, reader, p.reader, judge, cfg.judge, viewer)
+                # a fetched answer stage called nothing: its rows cost nothing and took no time
+                for row in rows.iter_rows(named=True):
+                    rs.add_question(run_id, {**row, "usd": None, "cached": 1, "latency_s": 0.0})
+                rs.add_artifact(run_id, "store", str(path), store.identity())
+                status = "ok"
+            finally:
+                store.close()
+                hits_n, misses_n = rs.cache_totals(run_id)
+                rs.finish_run(
+                    run_id,
+                    status=status,
+                    wall_s=time.perf_counter() - t_start,
+                    cache_hits=hits_n,
+                    cache_misses=misses_n,
+                    code_hash=_code_hash(rs, run_id),
+                )
+            ids.append(run_id)
+    return ids
 
 
-def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig:
+# ---- extraction -----------------------------------------------------------------------------
+
+
+def _with_vocabulary(cfg: ExtractConfig, corpus: dict, gold) -> ExtractConfig:
     """`small_model` classifies over closed vocabularies. When the config leaves them empty,
     take the entity types the dataset lists in its document metadata and the predicates of its
     gold triples, and record them in the config so the run identity names them."""
@@ -314,7 +286,7 @@ def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig
         sorted(
             {
                 e["type"]
-                for m in ds.corpus.documents["metadata"].to_list()
+                for m in corpus["documents"]["metadata"].to_list()
                 if m
                 for e in json.loads(m).get("entities", [])
                 if isinstance(e, dict) and "type" in e
@@ -322,13 +294,11 @@ def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig
         )
     )
     relations = x.relation_types or (
-        tuple(sorted(set(ds.extraction["predicate"].to_list())))
-        if ds.extraction is not None
-        else ()
+        tuple(sorted(set(gold["predicate"].to_list()))) if gold is not None else ()
     )
     if not types or not relations:
         raise ValueError(
-            f"dataset {ds.name} gives no entity types or relation vocabulary; pass"
+            f"dataset {cfg.dataset} gives no entity types or relation vocabulary; pass"
             " --entity-types and --relation-types for small_model"
         )
     extractor = x.model_copy(update={"entity_types": types, "relation_types": relations})
@@ -338,101 +308,140 @@ def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig
 def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
     """Build the graph for a dataset with one extractor and resolver, write it to the store
     once per graph identity, score it against the gold triples, and record the run. An
-    identical configuration returns the stored run; `--force` recomputes."""
+    identical configuration whose stage manifests still validate returns the stored run;
+    `--force` records a new run (its stages fetch what they can)."""
     t_start = time.perf_counter()
+    benchmark = _benchmark(cfg, data)
+    if benchmark.corpus is None:
+        raise ValueError(f"dataset {benchmark.name} ships no corpus; nothing to extract from")
     root = cache_root(cfg)
-    ds = _load(cfg, data)
-    if ds.corpus.chunks.height == 0:
-        raise ValueError(f"dataset {ds.name} ships no corpus; nothing to extract from")
-    cfg = _with_vocabulary(cfg, ds)
-    extractor = factories.make_extractor(cfg.extractor, root)
-    identity = graph_identity(ds, extractor.spec, cfg.resolver, fingerprint.code_hash("graph"))
+    corpus_hash, evaluation_hash = identities(benchmark)
     viewer = Viewer(principals=frozenset(cfg.principals))
     sha, dirty = code_version()
+    if _needs_vocabulary(cfg):
+        # The vocabulary comes from the corpus and the gold, so the identity of this run is not
+        # known until they are read; this one read is bare (no run to record it under).
+        corpus0 = st.corpus_frames.fn(benchmark.corpus)
+        qa0 = st.questions.fn(benchmark.qa, corpus0) if benchmark.qa is not None else None
+        gold0 = (
+            st.gold_triples.fn(benchmark.extraction, qa0)
+            if benchmark.extraction is not None
+            else None
+        )
+        cfg = _with_vocabulary(cfg, corpus0, gold0)
+    extractor = factories.make_extractor(cfg.extractor, root)
     with RunStore(runstore_path(cfg)) as rs:
         meta = {
             "kind": "extract",
-            "dataset": ds.name,
+            "dataset": benchmark.name,
             "pipeline": None,
             "config_hash": cfg.hash(),
             "config_json": cfg.to_json(),
             "code_version": sha,
             "dirty": dirty,
-            "code_hash": fingerprint.code_hash("extract"),
-            "corpus_hash": ds.corpus_hash,
-            "questions_hash": ds.evaluation_hash,
-            "n": ds.corpus.chunks.height,
+            "code_hash": "",
+            "corpus_hash": corpus_hash,
+            "questions_hash": evaluation_hash,
+            "n": 0,
             "embedding_spec": None,
             "reranker_spec": None,
             "reader_model": None,
             "judge_model": None,
             "seed": 0,
+            "replicate": 0,
             "viewer_json": json.dumps(sorted(viewer.principals)),
             "host": platform.node(),
             "reader_prompt_hash": None,
             "judge_prompt_hash": None,
             "extractor_spec": extractor.spec.hash(),
             "resolver_spec": cfg.resolver.hash(),
-            "graph_identity": identity,
+            "graph_identity": None,
         }
+        meta["experiment_id"] = experiment_id(meta)
         if not cfg.force:
-            existing = rs.find_run(rs.identity_hash(meta))
+            existing = _find(rs, rs.identity_hash(meta))
             if existing:
                 return existing
         run_id = rs.start_run(meta)
-        rec = rs.recorder(run_id)
-        path = store_path(cfg, ds)
+        path = store_path(cfg, benchmark.name, corpus_hash)
         store = SqliteStore(path)
         status = "failed"
         try:
-            ensure_documents(store, ds, rec)
-            recorded_at = now_us()
-            with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
-                t0 = time.perf_counter()
-                graph = extract_stages.build(
-                    ds.corpus.chunks, ds.corpus.documents, extractor, cfg.resolver, recorded_at
+            with active(Run(store=rs, root=root, run_id=run_id, seed=0, replicate=0)):
+                corpus = st.corpus_frames(benchmark.corpus)
+                if corpus["chunks"].height == 0:
+                    raise ValueError(
+                        f"dataset {benchmark.name} ships no corpus; nothing to extract from"
+                    )
+                rs.update_run(run_id, n=corpus["chunks"].height)
+                qa = st.questions(benchmark.qa, corpus) if benchmark.qa is not None else None
+                gold = (
+                    st.gold_triples(benchmark.extraction, qa)
+                    if benchmark.extraction is not None
+                    else None
                 )
-                extract_s = time.perf_counter() - t0
-                ev.usage(0, 0, cached=extractor.misses == 0)
-            written = ensure_graph(store, identity, graph, rec)
-            with rec.stage("score"):
-                pred = triples.predicted(graph, ds.corpus.chunks)
-                scores = triples.score(
-                    pred,
-                    ds.extraction if ds.extraction is not None else collate.triples_frame([]),
-                    ds.corpus.chunks,
-                    ds.qa if ds.qa is not None else collate.questions_frame([]),
-                )
-                gold_spans = triples.gold_spans(ds.corpus.documents)
-                span = (
-                    triples.span_score(triples.predicted_spans(graph, ds.corpus.chunks), gold_spans)
-                    if gold_spans
-                    else (None, None, None)
-                )
+                rec = rs.recorder(run_id)
+                with rec.stage("index.documents"):
+                    st.ingest(store, corpus, benchmark.name, corpus_hash)
+                with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
+                    misses_before = extractor.misses
+                    raw, extract_s = st.timed(st.claims, corpus["chunks"], extractor)
+                    ev.usage(0, 0, cached=extractor.misses == misses_before)
+                grounded = st.ground(raw, corpus, extractor.spec.hash())
+                resolved = st.resolve(grounded, corpus, cfg.resolver)
+                extraction = st.extraction_of(resolved)
+                identity = extraction.hash()
+                rs.update_run(run_id, graph_identity=identity)
+                before = store.get_meta("graph_identity")
+                with rec.stage("index.graph"):
+                    st.graph(store, resolved)
+                written = before != identity
+                with rec.stage("score"):
+                    chunks = corpus["chunks"]
+                    pred = triples.predicted(extraction, chunks)
+                    scores = triples.score(
+                        pred,
+                        gold if gold is not None else collate.triples_frame([]),
+                        chunks,
+                        qa if qa is not None else collate.questions_frame([]),
+                    )
+                    gold_spans = triples.gold_spans(corpus["documents"])
+                    span = (
+                        triples.span_score(triples.predicted_spans(extraction, chunks), gold_spans)
+                        if gold_spans
+                        else (None, None, None)
+                    )
             rs.add_extraction(
                 run_id,
                 {
-                    **graph.counts(),
+                    **extraction.counts(),
                     **scores,
                     "span_precision": span[0],
                     "span_recall": span[1],
                     "span_f1": span[2],
                     # a throughput measured on cache hits is the cache's, not the extractor's
                     "chunks_per_s": None
-                    if extractor.misses == 0
-                    else ds.corpus.chunks.height / extract_s,
+                    if extractor.misses == misses_before
+                    else chunks.height / extract_s,
                     "graph_written": int(written),
                 },
             )
-            rs.add_artifact(run_id, "store", str(path), files.sha256_file(path))
+            rs.add_artifact(run_id, "store", str(path), store.identity())
             status = "ok"
         finally:
             store.close()
+            hits_n, misses_n = rs.cache_totals(run_id)
             rs.finish_run(
                 run_id,
                 status=status,
                 wall_s=time.perf_counter() - t_start,
-                cache_hits=rec.cache_hits,
-                cache_misses=rec.cache_misses,
+                cache_hits=hits_n,
+                cache_misses=misses_n,
+                code_hash=_code_hash(rs, run_id),
             )
         return run_id
+
+
+def _needs_vocabulary(cfg: ExtractConfig) -> bool:
+    x = cfg.extractor
+    return x.kind == "small_model" and not (x.entity_types and x.relation_types)

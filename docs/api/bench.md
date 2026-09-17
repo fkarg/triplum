@@ -6,9 +6,7 @@
 
 ::: triplum.bench.factories
 
-::: triplum.bench.fingerprint
-
-::: triplum.bench.index
+::: triplum.bench.stages
 
 ::: triplum.bench.runner
 

@@ -38,10 +38,27 @@ class Run:
 
 
 _current: ContextVar[Run | None] = ContextVar("triplum_run", default=None)
+_seed: ContextVar[int | None] = ContextVar("triplum_stage_seed", default=None)
 
 
 def current() -> Run | None:
     return _current.get()
+
+
+def stage_seed() -> int:
+    """The derived seed of the stage being executed, for a stage seeded through an adapter
+    argument rather than a `seed` parameter; 0 outside a seeded stage."""
+    seed = _seed.get()
+    return 0 if seed is None else seed
+
+
+@contextmanager
+def seeded(seed: int | None) -> Iterator[None]:
+    token = _seed.set(seed)
+    try:
+        yield
+    finally:
+        _seed.reset(token)
 
 
 @contextmanager

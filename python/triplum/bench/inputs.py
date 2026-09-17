@@ -77,6 +77,26 @@ def check(corpus: CorpusBatch, qa: pl.DataFrame | None) -> None:
             raise GoldMappingError(f"question {qid}: gold chunks not in corpus: {missing[:5]}")
 
 
+def identities(benchmark: Benchmark) -> tuple[str, str]:
+    """The corpus identity and the evaluation identity of a benchmark, from the sources'
+    fingerprints and without reading anything."""
+    corpus_hash = (
+        benchmark.corpus.fingerprint()
+        if benchmark.corpus is not None
+        else content_key("corpus", None)
+    )
+    evaluation_hash = content_key(
+        "evaluation",
+        {
+            "qa": benchmark.qa.fingerprint() if benchmark.qa is not None else None,
+            "extraction": benchmark.extraction.fingerprint()
+            if benchmark.extraction is not None
+            else None,
+        },
+    )
+    return corpus_hash, evaluation_hash
+
+
 def materialize(benchmark: Benchmark) -> PreparedBenchmark:
     """Consume each source once into the frames required by today's benchmark algorithms.
 
@@ -113,22 +133,7 @@ def materialize(benchmark: Benchmark) -> PreparedBenchmark:
             pl.col("question_id").is_null() | pl.col("question_id").is_in(qa["id"].implode())
         )
     check(corpus, qa)
+    corpus_hash, evaluation_hash = identities(benchmark)
     return PreparedBenchmark(
-        benchmark.name,
-        corpus,
-        qa,
-        extraction,
-        benchmark.corpus.fingerprint()
-        if benchmark.corpus is not None
-        else content_key("corpus", None),
-        content_key(
-            "evaluation",
-            {
-                "qa": benchmark.qa.fingerprint() if benchmark.qa is not None else None,
-                "extraction": benchmark.extraction.fingerprint()
-                if benchmark.extraction is not None
-                else None,
-            },
-        ),
-        benchmark.needs,
+        benchmark.name, corpus, qa, extraction, corpus_hash, evaluation_hash, benchmark.needs
     )
