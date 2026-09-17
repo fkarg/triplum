@@ -375,6 +375,34 @@ falsification attempts. Outcome per finding:
 Unverified by the peer and still open: peak memory of two independent scans, and QASPER's
 unmatched-evidence count on the full file. Both are measured when the fixtures regenerate.
 
+Cross-model diff review of the implementation, 2026-09-17, `peer-review --mode diff-review`,
+peer served by the GPT family through the codex CLI (caller Claude). Verdict: challenges,
+nine executed falsification attempts (the offline suite and `ty` were run by the peer; probes
+were executed against the code). **Found unique defects, all fixed with regression tests:**
+
+- `materialize` skipped the gold check when the corpus was empty, so a question-only benchmark
+  with gold ids passed; now any gold without a corpus is an error.
+- `FolderQuestions.fingerprint()` hashed only `questions.jsonl` although gold ids depend on how
+  the named files segment; the identity now includes every document file's bytes.
+- The question parts of Tempo, BrowseComp-Plus, ECT-QA, GateMem, MetaQA and the HippoRAG sets
+  bound their whole manifest, so a first question access would have fetched the corpus (2.3 GB
+  for Tempo, 4.5 GB for BrowseComp-Plus); every part now pins only the files it reads. On the
+  way, BrowseComp-Plus's corpus shards turned out to be distinguishable only by URL, not by
+  pinned name; the old parser matched on the name and would have treated every shard as a query
+  file.
+- `fixtures.subset` could keep a child segment without its parent and bypassed validation
+  through `model_copy`; kept segments now include their ancestors and the document revalidates.
+- `fixtures.write` consumed one-shot sources twice (once to check, once to dump) and could
+  write an empty fixture; it now reads each part once.
+- `load_fixture(name, -1)` sliced instead of using `Take`; fixtures select with `Take` and
+  reject negative `n` like the registry.
+- Nit accepted: an unused `settings` parameter on the folder builder.
+
+**No decision impact:** the architecture and the per-source key rules were not challenged.
+Unverified by the peer: full `data verify` on Tempo, BrowseComp-Plus and QASPER (QASPER was
+verified when its fixture regenerated); Tempo and the BrowseComp-Plus corpus are streamed in
+full by a separate check recorded in the commit message.
+
 ## Acceptance
 
 - Constructing any built-in dataset does no I/O; `fingerprint()` on a fetched or unfetched

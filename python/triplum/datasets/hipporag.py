@@ -54,12 +54,10 @@ _LICENCE = {
 NAMES = tuple(_FILES)
 
 
-def pinned(name: str) -> tuple[File, ...]:
-    (qfile, qhash), (cfile, chash) = _FILES[name]
-    return (
-        File(url=RAW_BASE + qfile, name=f"hipporag/{qfile}", sha256=qhash),
-        File(url=RAW_BASE + cfile, name=f"hipporag/{cfile}", sha256=chash),
-    )
+def pinned(name: str, part: int) -> tuple[File, ...]:
+    """The questions file (0) or the corpus file (1), so a part fetches only what it reads."""
+    fname, fhash = _FILES[name][part]
+    return (File(url=RAW_BASE + fname, name=f"hipporag/{fname}", sha256=fhash),)
 
 
 def document_id(name: str, title: str, text: str = "") -> str:
@@ -74,7 +72,7 @@ class HippoRAGCorpus(ListSource[dict, Document]):
         self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
         self.name = name
-        super().__init__(files or pinned(name), settings, {"name": name})
+        super().__init__(files or pinned(name, 1), settings, {"name": name})
 
     def read(self, paths: dict[str, Path]) -> list[dict]:
         return read_json(self.path(_FILES[self.name][1][0]))
@@ -96,7 +94,7 @@ class HippoRAGQuestions(ListSource[dict, Question]):
         self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
         self.name = name
-        super().__init__(files or pinned(name), settings, {"name": name})
+        super().__init__(files or pinned(name, 0), settings, {"name": name})
 
     def read(self, paths: dict[str, Path]) -> list[dict]:
         return read_json(self.path(_FILES[self.name][0][0]))
@@ -142,7 +140,7 @@ class TwoWikiTriples(ListSource[tuple, Triple]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or pinned("twowiki"), settings)
+        super().__init__(files or pinned("twowiki", 0), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple]:
         questions = read_json(self.path(_FILES["twowiki"][0][0]))

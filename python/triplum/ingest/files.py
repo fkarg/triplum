@@ -25,7 +25,6 @@ from triplum.data.corpus import RECORD_VERSION, Document, Segment
 from triplum.datasets.base import Entry
 from triplum.datasets.files import sha256_file
 from triplum.eval.inputs import GoldMappingError, Question
-from triplum.settings import Settings
 from triplum.utils.data import Dataset, IterableDataset
 
 SUFFIXES = {".pdf", ".docx", ".md", ".markdown", ".txt", ".text"}
@@ -121,6 +120,11 @@ def scan(root: Path) -> list[tuple[str, Path]]:
     ]
 
 
+def file_hashes(root: Path) -> list[tuple[str, str]]:
+    """`(relative path, sha256)` of every document file under `root`; bytes only, no parsing."""
+    return [(name, sha256_file(p)) for name, p in scan(root) if name != QUESTIONS_FILE]
+
+
 class FolderCorpus(IterableDataset[Document]):
     """The supported files under a folder, one document each, read on iteration."""
 
@@ -137,11 +141,7 @@ class FolderCorpus(IterableDataset[Document]):
     def fingerprint(self) -> str:
         return content_key(
             "folder",
-            {
-                "version": VERSION,
-                "contract": RECORD_VERSION,
-                "files": [(name, sha256_file(p)) for name, p in self.files()],
-            },
+            {"version": VERSION, "contract": RECORD_VERSION, "files": file_hashes(self.root)},
         )
 
 
@@ -185,6 +185,7 @@ class FolderQuestions(Dataset[Question]):
         )
 
     def fingerprint(self) -> str:
+        """Gold ids depend on how the named files segment, so their bytes are in the identity."""
         path = self.root / QUESTIONS_FILE
         return content_key(
             "folder-questions",
@@ -192,11 +193,12 @@ class FolderQuestions(Dataset[Question]):
                 "version": VERSION,
                 "contract": RECORD_VERSION,
                 "sha256": sha256_file(path) if path.exists() else None,
+                "files": file_hashes(self.root),
             },
         )
 
 
-def benchmark(root: Path, settings: Settings | None = None) -> Benchmark:
+def benchmark(root: Path) -> Benchmark:
     root = root.expanduser().resolve()
     has_questions = (root / QUESTIONS_FILE).is_file()
     return Benchmark(
@@ -214,5 +216,5 @@ def entry(root: Path) -> Entry:
         family=SOURCE,
         licence="local",
         fixture=False,
-        build=lambda s: benchmark(root, s),
+        build=lambda _settings: benchmark(root),
     )

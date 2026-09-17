@@ -26,13 +26,20 @@ def document_id(filename: str) -> str:
     return f"ectqa:{filename}"
 
 
+def pinned(transcripts: bool) -> tuple[File, ...]:
+    """The 480 transcript files, or the two local-question files (global questions ship no
+    gold and are not read), so a part fetches only what it reads."""
+    wanted = "/data/" if transcripts else "local_questions"
+    return tuple(f for f in manifest_files("ectqa") if wanted in f.name)
+
+
 class Corpus(ListSource[tuple[str, Path], Document]):
     """One transcript file per record, decoded on access."""
 
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("ectqa"), settings)
+        super().__init__(files or pinned(transcripts=True), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[str, Path]]:
         return sorted((name, p) for name, p in paths.items() if "/data/" in name)
@@ -51,7 +58,7 @@ class Questions(ListSource[tuple[str, dict], Question]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("ectqa"), settings)
+        super().__init__(files or pinned(transcripts=False), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[str, dict]]:
         rows = []

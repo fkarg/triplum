@@ -38,6 +38,11 @@ TEMPLATES = {
 HOPS = ("1hop", "2hop", "3hop")
 
 
+def pinned(*suffixes: str) -> tuple[File, ...]:
+    """The KB or the hop files, so a part fetches only what it reads."""
+    return tuple(f for f in manifest_files("metaqa") if f.name.endswith(suffixes))
+
+
 def document_id(entity: str) -> str:
     return f"metaqa:{entity}"
 
@@ -52,7 +57,7 @@ class Corpus(ListSource[tuple[str, str], Document]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("metaqa"), settings)
+        super().__init__(files or pinned("kb.txt"), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[str, str]]:
         sentences: dict[str, list[str]] = defaultdict(list)
@@ -72,7 +77,7 @@ class Triples(ListSource[list[str], Triple]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("metaqa"), settings)
+        super().__init__(files or pinned("kb.txt"), settings)
 
     def read(self, paths: dict[str, Path]) -> list[list[str]]:
         return _kb(self.path("kb.txt"))
@@ -88,7 +93,7 @@ class Questions(ListSource[tuple[str, int, list[str]], Question]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("metaqa"), settings)
+        super().__init__(files or pinned(*(f"{hop}_qa_test.txt" for hop in HOPS)), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[str, int, list[str]]]:
         per_hop = [

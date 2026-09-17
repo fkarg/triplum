@@ -42,18 +42,25 @@ def document_id(docid: str) -> str:
     return f"browsecomp_plus:{docid}"
 
 
-def _corpus_files(paths: dict[str, Path]) -> list[Path]:
-    return sorted(p for k, p in paths.items() if "browsecomp-plus-corpus" in k or "/corpus/" in k)
+def is_corpus(file: File) -> bool:
+    """The corpus shards come from the `browsecomp-plus-corpus` repo; only the URL says so, the
+    pinned names are `data/train-*` (corpus) and `data/test-*` (queries)."""
+    return "browsecomp-plus-corpus" in file.url
+
+
+def pinned(corpus: bool) -> tuple[File, ...]:
+    """The corpus shards or the query shards, so a part fetches only what it reads."""
+    return tuple(f for f in manifest_files("browsecomp_plus") if is_corpus(f) == corpus)
 
 
 class Corpus(Pinned, IterableDataset[Document]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("browsecomp_plus"), settings)
+        super().__init__(files or pinned(corpus=True), settings)
 
     def __iter__(self) -> Iterator[Document]:
-        for path in _corpus_files(self.paths()):
+        for path in sorted(self.paths().values()):
             for row in base.parquet_rows(path, ["docid", "text", "url"]):
                 yield passage(
                     document_id(row["docid"]),
@@ -69,10 +76,9 @@ class Questions(ListSource[dict, Question]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("browsecomp_plus"), settings)
+        super().__init__(files or pinned(corpus=False), settings)
 
     def read(self, paths: dict[str, Path]) -> list[dict]:
-        corpus = set(_corpus_files(paths))
         ids = pl.element().struct.field("docid")
         return (
             pl.concat(
@@ -85,7 +91,7 @@ class Questions(ListSource[dict, Question]):
                         pl.col("evidence_docs").list.eval(ids).alias("evidence"),
                         pl.col("negative_docs").list.eval(ids).alias("negatives"),
                     )
-                    for path in sorted(p for p in paths.values() if p not in corpus)
+                    for path in sorted(paths.values())
                 ]
             )
             .collect()

@@ -103,3 +103,9 @@ def test_custom_benchmark_runs_without_a_registry_entry(tmp_path):
     run_id = run_benchmark(cfg, data=source)
     with RunStore(tmp_path / "runs.db") as runs:
         assert runs.questions(run_id)["question_id"].to_list() == ["q"]
+
+
+def test_gold_without_a_corpus_is_an_error():
+    bad = RecordDataset([Question(id="q", question="?", answer="x", gold=(1,))])
+    with pytest.raises(GoldMappingError, match="not in corpus"):
+        materialize(Benchmark(qa=bad))

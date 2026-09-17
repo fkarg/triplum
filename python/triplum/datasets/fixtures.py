@@ -13,7 +13,7 @@ from pathlib import Path
 from triplum.bench.inputs import Benchmark, materialize
 from triplum.data.corpus import Document, chunk_id
 from triplum.eval.inputs import Question, Triple
-from triplum.utils.data import RecordDataset
+from triplum.utils.data import RecordDataset, Take
 
 FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 FIXTURE_N = 20
@@ -23,32 +23,45 @@ def path(name: str) -> Path:
     return FIXTURE_DIR / f"{name}.json"
 
 
+def _records(benchmark: Benchmark) -> Benchmark:
+    """Every part read once into memory, so one-shot sources are consumed exactly once."""
+    return Benchmark(
+        name=benchmark.name,
+        corpus=RecordDataset(list(benchmark.corpus)) if benchmark.corpus is not None else None,
+        qa=RecordDataset(list(benchmark.qa)) if benchmark.qa is not None else None,
+        extraction=RecordDataset(list(benchmark.extraction))
+        if benchmark.extraction is not None
+        else None,
+        needs=benchmark.needs,
+    )
+
+
 def write(name: str, benchmark: Benchmark, target: Path | None = None) -> Path:
     """Serialise every part's records; runs the integrity checks first."""
-    materialize(benchmark)
+    held = _records(benchmark)
+    materialize(held)
     payload: dict[str, list] = {}
-    if benchmark.corpus is not None:
-        payload["documents"] = [d.model_dump(mode="json") for d in benchmark.corpus]
-    if benchmark.qa is not None:
-        payload["questions"] = [q.model_dump(mode="json") for q in benchmark.qa]
-    if benchmark.extraction is not None:
-        payload["triples"] = [t.model_dump(mode="json") for t in benchmark.extraction]
+    if held.corpus is not None:
+        payload["documents"] = [d.model_dump(mode="json") for d in held.corpus]
+    if held.qa is not None:
+        payload["questions"] = [q.model_dump(mode="json") for q in held.qa]
+    if held.extraction is not None:
+        payload["triples"] = [t.model_dump(mode="json") for t in held.extraction]
     target = target or path(name)
     target.write_text(json.dumps(payload, ensure_ascii=False))
     return target
 
 
 def read(name: str, n: int | None = None, source: Path | None = None) -> Benchmark:
+    """The fixture as in-memory parts; `n` selects questions with `Take`, as the registry does."""
     payload = json.loads((source or path(name)).read_text())
-    questions = [Question.model_validate(q) for q in payload.get("questions", [])]
+    questions = RecordDataset([Question.model_validate(q) for q in payload.get("questions", [])])
     return Benchmark(
         name=name,
         corpus=RecordDataset([Document.model_validate(d) for d in payload["documents"]])
         if "documents" in payload
         else None,
-        qa=RecordDataset(questions[:n] if n is not None else questions)
-        if "questions" in payload
-        else None,
+        qa=(Take(questions, n) if n is not None else questions) if "questions" in payload else None,
         extraction=RecordDataset([Triple.model_validate(t) for t in payload["triples"]])
         if "triples" in payload
         else None,
@@ -77,9 +90,16 @@ def subset(
         keep.update(random.Random(seed).sample(rest, min(distractors, len(rest))))
     kept_docs = []
     for d in documents:
-        segments = tuple(s for s in d.segments if chunk_id(d.id, s.ordinal) in keep)
+        by_ordinal = {s.ordinal: s for s in d.segments}
+        wanted = {s.ordinal for s in d.segments if chunk_id(d.id, s.ordinal) in keep}
+        for ordinal in list(wanted):  # a kept segment keeps its ancestors, so parents resolve
+            parent = by_ordinal[ordinal].parent
+            while parent is not None and parent not in wanted:
+                wanted.add(parent)
+                parent = by_ordinal[parent].parent
+        segments = tuple(s for s in d.segments if s.ordinal in wanted)
         if segments:
-            kept_docs.append(d.model_copy(update={"segments": segments}))
+            kept_docs.append(Document.model_validate({**d.model_dump(), "segments": segments}))
     doc_ids = {d.id for d in kept_docs}
     qids = {q.id for q in questions}
     triples = (

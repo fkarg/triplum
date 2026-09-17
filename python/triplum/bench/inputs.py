@@ -68,9 +68,9 @@ def check(corpus: CorpusBatch, qa: pl.DataFrame | None) -> None:
     dup = corpus.documents.filter(pl.col("id").is_duplicated())["id"].unique().to_list()
     if dup:
         raise GoldMappingError(f"duplicate document ids: {dup[:5]}")
-    if qa is None or corpus.chunks.height == 0:
+    if qa is None:
         return
-    ids = set(corpus.chunks["id"].to_list())
+    ids = set(corpus.chunks["id"].to_list())  # empty corpus: any gold is an error
     for gold, qid in zip(qa["gold_chunk_ids"].to_list(), qa["id"].to_list()):
         missing = sorted(set(gold) - ids)
         if missing:

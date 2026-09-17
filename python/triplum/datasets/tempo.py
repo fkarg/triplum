@@ -30,13 +30,18 @@ def document_id(doc_id: str) -> str:
     return f"tempo:{doc_id}"
 
 
+def pinned(kinds: tuple[str, ...]) -> tuple[File, ...]:
+    """The manifest files of the given kinds, so a part fetches only what it reads."""
+    return tuple(f for f in manifest_files("tempo") if f.name.split("/")[1] in kinds)
+
+
 class Corpus(Pinned, IterableDataset[Document]):
     """Streams every domain's documents parquet by row group."""
 
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("tempo"), settings)
+        super().__init__(files or pinned(("documents",)), settings)
 
     def __iter__(self) -> Iterator[Document]:
         for domain in DOMAINS:
@@ -48,10 +53,12 @@ class Corpus(Pinned, IterableDataset[Document]):
 
 
 class Questions(ListSource[tuple[str, dict, dict], Question]):
+    """Examples and steps only; the 2.3 GB of documents are not this part's files."""
+
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("tempo"), settings)
+        super().__init__(files or pinned(("examples", "steps")), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[str, dict, dict]]:
         rows = []

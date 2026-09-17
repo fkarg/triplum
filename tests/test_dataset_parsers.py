@@ -521,13 +521,12 @@ def test_browsecomp_plus_decodes_queries_and_docids(settings, pin, write):
         {"query_id": ["769"], "query": [_encode("Which university?")], "answer": [_encode("Queen Arwa University")],
          "gold_docs": [[doc("5412")]], "evidence_docs": [[doc("5412")]], "negative_docs": [[doc("26215")]]}
     ).write_parquet(query)  # fmt: skip
-    files = pin(
-        "browsecomp_plus/data/test-0.parquet", "browsecomp_plus/corpus/data/train-0.parquet"
-    )
     fr = materialize(
         Benchmark(
-            corpus=browsecomp_plus.Corpus(settings, files),
-            qa=browsecomp_plus.Questions(settings, files),
+            corpus=browsecomp_plus.Corpus(
+                settings, pin("browsecomp_plus/corpus/data/train-0.parquet")
+            ),
+            qa=browsecomp_plus.Questions(settings, pin("browsecomp_plus/data/test-0.parquet")),
         )
     )
     assert fr.qa is not None

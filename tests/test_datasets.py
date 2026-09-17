@@ -240,3 +240,79 @@ def test_verify_reads_and_checks_a_dataset(monkeypatch, settings, pin, write):
     monkeypatch.setattr(registry, "build", lambda name, s=None: benchmark)
     ds = registry.verify("hotpotqa")
     assert ds.corpus.documents.height == 4 and ds.qa is not None and ds.qa.height == 2
+
+
+def test_each_part_pins_only_the_files_it_reads():
+    from triplum.datasets import browsecomp_plus, ectqa, gatemem, metaqa, tempo
+
+    def names(part) -> list[str]:
+        return [f.name for f in part.files.files]
+
+    assert all("/documents/" in n for n in names(tempo.Corpus()))
+    assert all("/examples/" in n or "/steps/" in n for n in names(tempo.Questions()))
+    assert all(browsecomp_plus.is_corpus(f) for f in browsecomp_plus.Corpus().files.files)
+    assert not any(browsecomp_plus.is_corpus(f) for f in browsecomp_plus.Questions().files.files)
+    assert len(browsecomp_plus.Corpus().files.files) == 7  # the train shards are the corpus
+    assert all("/data/" in n for n in names(ectqa.Corpus()))
+    assert all("local_questions" in n for n in names(ectqa.Questions()))
+    assert all(n.endswith("episodes.jsonl") for n in names(gatemem.Corpus()))
+    assert all(n.endswith("checkpoints.jsonl") for n in names(gatemem.Questions()))
+    assert names(metaqa.Corpus()) == names(metaqa.Triples()) != names(metaqa.Questions())
+    assert names(hr.HippoRAGCorpus("hotpotqa")) != names(hr.HippoRAGQuestions("hotpotqa"))
+    for name in registry.ENTRIES:  # the union still covers everything the benchmark reads
+        assert registry.pinned(name).files, name
+
+
+def test_subset_keeps_ancestors_of_selected_segments():
+    from triplum.data.corpus import Document, Segment
+    from triplum.eval.inputs import Question
+    from triplum.utils.data import RecordDataset
+
+    text = "section\n\nchild"
+    doc = Document(
+        id="d",
+        source="t",
+        text=text,
+        segments=(
+            Segment(ordinal=0, start=0, end=len(text)),
+            Segment(ordinal=1, start=9, end=len(text), parent=0, level=1),
+        ),
+    )
+    question = Question(id="q", question="?", answer="child", gold=(chunk_id("d", 1),))
+    selected = fixtures.subset(
+        Benchmark(corpus=RecordDataset([doc]), qa=RecordDataset([question])), n=1, distractors=0
+    )
+    assert selected.corpus is not None
+    (kept,) = list(selected.corpus)
+    assert [s.ordinal for s in kept.segments] == [0, 1]
+    chunks = materialize(selected).corpus.chunks
+    assert set(chunks["parent_id"].drop_nulls()) <= set(chunks["id"])
+
+
+def test_fixture_write_consumes_a_one_shot_source_once(tmp_path):
+    from collections.abc import Iterator
+
+    from triplum.data.corpus import Document
+    from triplum.utils.data import IterableDataset
+
+    class OneShot(IterableDataset[Document]):
+        def __init__(self) -> None:
+            self.it = iter([Document(id="d", source="t", text="once")])
+
+        def __iter__(self) -> Iterator[Document]:
+            return self.it
+
+        def fingerprint(self) -> str:
+            return "one-shot"
+
+    path = fixtures.write("once", Benchmark(corpus=OneShot()), tmp_path / "once.json")
+    assert materialize(fixtures.read("once", source=path)).corpus.documents.height == 1
+
+
+def test_negative_selection_is_rejected_for_fixtures_too():
+    with pytest.raises(ValueError, match="non-negative"):
+        registry.load_fixture("hotpotqa", -1)
+    with pytest.raises(ValueError, match="non-negative"):
+        registry.load("hotpotqa", -1)
+    none = materialize(registry.load_fixture("hotpotqa", 0)).qa
+    assert none is not None and none.height == 0

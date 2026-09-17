@@ -23,6 +23,11 @@ from triplum.settings import Settings
 NEEDS = "a viewer per question (the asker) and an as-of turn cut per question"
 
 
+def pinned(kind: str) -> tuple[File, ...]:
+    """The per-domain episode or checkpoint files, so a part fetches only what it reads."""
+    return tuple(f for f in manifest_files("gatemem") if f.name.endswith(f"{kind}.jsonl"))
+
+
 def document_id(episode_id: str, turn_id: str) -> str:
     return f"gatemem:{episode_id}/{turn_id}"
 
@@ -33,7 +38,7 @@ class Corpus(ListSource[tuple[dict, dict], Document]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("gatemem"), settings)
+        super().__init__(files or pinned("episodes"), settings)
 
     def read(self, paths: dict[str, Path]) -> list[tuple[dict, dict]]:
         return [
@@ -68,7 +73,7 @@ class Questions(ListSource[dict, Question]):
     def __init__(
         self, settings: Settings | None = None, files: tuple[File, ...] | None = None
     ) -> None:
-        super().__init__(files or manifest_files("gatemem"), settings)
+        super().__init__(files or pinned("checkpoints"), settings)
 
     def read(self, paths: dict[str, Path]) -> list[dict]:
         return [

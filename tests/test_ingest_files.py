@@ -112,3 +112,16 @@ def test_folder_without_questions_is_extraction_only(tmp_path):
     assert ds.qa is None and ds.corpus.chunks.height == 1
     assert registry.get(str(tmp_path)).fixture is False
     assert registry.pinned(str(tmp_path)).status() == "not downloaded"  # nothing pinned
+
+
+def test_question_identity_follows_the_files_it_parses(tmp_path):
+    (tmp_path / "a.txt").write_text("one paragraph", encoding="utf-8")
+    (tmp_path / "questions.jsonl").write_text(
+        json.dumps({"question": "q", "answer": "a", "gold": ["a.txt"]}), encoding="utf-8"
+    )
+    before = files.FolderQuestions(tmp_path)
+    one = before.fingerprint()
+    assert len(before[0].gold) == 1
+    (tmp_path / "a.txt").write_text("\n\n".join(["p" * 1000] * 4), encoding="utf-8")
+    after = files.FolderQuestions(tmp_path)
+    assert len(after[0].gold) == 4 and after.fingerprint() != one

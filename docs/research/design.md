@@ -391,6 +391,16 @@ Each sub-project gets its own spec and plan before code.
   subtype claim. **Added verification** on the cost of two independent reads. **No decision
   impact**: the peer's counterproposal kept the architecture. Full record in the spec.
 
+- 2026-09-17, `peer-review --mode diff-review` on the built-in datasets implementation, peer:
+  Codex (GPT family). Verdict "challenges", nine executed probes. **Found unique defects, all
+  fixed with regression tests**: the gold check was skipped for an empty corpus; the folder
+  question identity omitted the files it parses; question parts bound whole manifests so a
+  question access would fetch a multi-GB corpus (and BrowseComp-Plus's corpus shards are only
+  distinguishable by URL, which the old parser got wrong); fixture subsetting could drop a
+  segment's parent and skipped validation; fixture writing consumed one-shot sources twice;
+  negative fixture selection sliced instead of failing. **No decision impact** on the
+  architecture. Full list in the spec's review record.
+
 - 2026-09-17, dataset identity follow-up: owner requires dataset-owned `fingerprint()`, not an
   optional hook or Python `__hash__`. A later cross-model call returned no model answer because
   its OAuth credentials expired. Fresh-context GPT-family fallback review **found unique
