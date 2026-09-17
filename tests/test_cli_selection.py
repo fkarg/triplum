@@ -4,6 +4,7 @@ import json
 import sys
 
 import pytest
+from rich.text import Text
 from triplum.bench.cli import app
 from triplum.bench.config import LLMConfig, PipelineConfig, RunConfig
 from triplum.bench.runner import run_benchmark
@@ -90,7 +91,7 @@ def test_no_input_disables_terminal_prompt(runs, monkeypatch):
 def test_diff_resolves_both_ids(runs):
     result = invoke(["diff", "43a1", "43a2"], runs)
     assert result.exit_code == 0, result.output
-    assert '"reader_model": ["fake-1", "other-reader"]' in result.stdout
+    assert all(value in result.stdout for value in ("reader_model", "fake-1", "other-reader"))
 
 
 def test_unknown_question_is_error(runs):
@@ -397,4 +398,4 @@ def test_multiple_typo_matches_still_require_a_choice(tmp_path, monkeypatch):
     chosen = CliRunner().invoke(app, args, input="1\n")
     assert chosen.exit_code == 0, chosen.output
     assert "Select a number" in chosen.stderr
-    assert "pipeline=closed_book" in chosen.stdout
+    assert "pipeline=closed_book" in Text.from_ansi(chosen.stdout).plain

@@ -4,7 +4,6 @@ The command surface is documented in docs/flow.md; `main(argv)` runs it in-proce
 """
 
 import json
-import shutil
 import sqlite3
 import sys
 import time
@@ -166,17 +165,10 @@ def build_run_config(
     )
 
 
-def _print(df) -> None:
-    import polars as pl
-
-    with pl.Config(tbl_cols=-1, tbl_width_chars=220, tbl_rows=100):
-        print(df)
-
-
 def _print_summary(df) -> None:
-    from triplum.bench.report import format_summary
+    from triplum.bench.bench_view import print_summary
 
-    print(format_summary(df, width=shutil.get_terminal_size().columns))
+    print_summary(df)
 
 
 def _runstore(path: Path | None):
@@ -240,8 +232,6 @@ def bench(
     from triplum.cache import default_root
 
     path = runstore or default_root() / "runs.db"
-    print(f"run store: {path}")
-    print("Pipelines: " + ", ".join(Pipeline))
     rows = []
     if path.exists():
         # RunStore initialization creates tables and migrates; an overview only reads.
@@ -250,19 +240,9 @@ def bench(
                 "SELECT run_id, dataset, pipeline, n, status FROM runs"
                 " ORDER BY created_at DESC, run_id DESC LIMIT 10"
             ).fetchall()
-    if rows:
-        print("Recent local runs (up to 10, newest first):")
-        for run_id, dataset, pipeline, n, status in rows:
-            print(f"{run_id}: {dataset}/{pipeline}  n={n}  status={status}")
-    else:
-        print("No local benchmark runs recorded.")
-    print("States: ok = completed; failed = ended with an error;")
-    print("        running = no completion recorded, possibly interrupted.")
-    print("run: executes a benchmark or reuses identical completed runs.")
-    print("report: reads saved metrics; rerun: reuses a run's configuration,")
-    print("        --resume continues unfinished work, --force recomputes it.")
-    print()
-    print(ctx.get_help())
+    from triplum.bench.bench_view import print_overview
+
+    print_overview(rows, path, list(Pipeline))
 
 
 @bench_app.command()
@@ -482,28 +462,9 @@ def inspect(
         if json_:
             print(json.dumps(view, indent=2, default=str))
             return
-        i = view["identity"]
-        print(
-            f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
-            f"  reader={i['reader_model']}  judge={i['judge_model']}"
-        )
-        if not view["store_available"]:
-            print("(store artifact not available: passages shown as ids only)")
-        for q in view["questions"]:
-            m = q["metrics"]
-            print(
-                f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
-                f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
-                f" latency={m['latency_s']:.3f}s usd={m['usd']}"
-            )
-            for r in q["retrieved"]:
-                text = (r["text"] or "").replace("\n", " ")[:160]
-                print(f"    #{r['chunk_id']}: {text}")
-            for e in q["events"]:
-                print(
-                    f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
-                    f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s"
-                )
+        from triplum.bench.bench_view import print_inspect
+
+        print_inspect(view)
 
 
 @bench_app.command()
@@ -524,12 +485,6 @@ def diff(
         run_a = _run_id(rs, run_a, ctx, "first run")
         run_b = _run_id(rs, run_b, ctx, "second run")
         d = diff_runs(rs, run_a, run_b)
-        print("identity:", json.dumps(d["identity_diff"], default=str))
-        print("config:", json.dumps(d["config_diff"], default=str))
-        for m, (va, vb) in d["means"].items():
-            print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
-        if d["only_in_a"] or d["only_in_b"]:
-            print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
         changed = (
             (pl.col("d_em") != 0)
             | (pl.col("d_f1") != 0)
@@ -537,7 +492,9 @@ def diff(
             | pl.col("answer_changed")
             | pl.col("retrieval_changed")
         )
-        _print(d["per_question"].filter(changed))
+        from triplum.bench.bench_view import print_diff
+
+        print_diff(d, d["per_question"].filter(changed))
 
 
 @bench_app.command()
@@ -557,9 +514,9 @@ def tail(
         run_id = _run_id(rs, run_id, ctx)
         while True:
             t = tail_run(rs, run_id)
-            print(
-                f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}"
-            )
+            from triplum.bench.bench_view import print_tail
+
+            print_tail(t)
             if once or t["status"] != "running":
                 return
             time.sleep(interval)

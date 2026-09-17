@@ -65,10 +65,10 @@ fails to load.
 |---|---|
 | `triplum data` | lists every registered dataset with family, default and large flags, and whether its cached files are absent, partial, verified, or invalid; does not download anything |
 | `triplum data fetch [--dataset <name>\|default\|all]` | step 1 only: download and verify files; bare `fetch` is the default protocol, `all` skips large datasets, which download only when named |
-| `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with state/action explanations and generated command help; does not create or migrate a database |
+| `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with a status table and compact action hints; full help via `--help`; does not create or migrate a database |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |
-| `triplum bench report` | every run as a compact block of field/value pairs wrapped to terminal width; all metrics retained, missing values shown as `n/a`, floats at six significant digits |
+| `triplum bench report` | every run as grouped identity, quality and cost field/value pairs wrapped to terminal width; all metrics retained, missing values shown as `n/a`, floats at six significant digits |
 | `triplum bench show <run>` | identity fields and the full config JSON of one run |
 | `triplum bench rerun <run> [--force] [--resume]` | replays a stored config through step 3 onwards |
 | `triplum bench inspect <run> [--question <id>] [--json]` | answers, metrics, retrieved passages and model calls per question |
@@ -146,3 +146,8 @@ input or stderr also prohibits prompting; errors list canonical candidates. Prom
 resolution notices use stderr so JSON stdout stays parseable. Model suffixes, paths, URLs,
 JSON configs and library identifiers remain exact; unknown option names use Typer's
 built-in suggestions. See the [selection contract](specs/2026-09-16-cli-selection.md).
+
+Benchmark text views use terminal-aware colors and wrap complete identifiers and values.
+`inspect` groups answers, metrics, passage previews and model calls; `diff` compares A/B
+values and lists changed questions; `tail` shows status and progress. `show` and
+`inspect --json` remain plain JSON.

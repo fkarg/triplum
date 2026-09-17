@@ -1,5 +1,6 @@
 import polars as pl
 import pytest
+from rich.text import Text
 from triplum.bench import report
 from triplum.bench.cli import app
 from triplum.bench.runstore import RunStore
@@ -63,4 +64,16 @@ def test_report_cli_uses_terminal_width(tmp_path, monkeypatch):
     monkeypatch.setenv("COLUMNS", "40")
     result = CliRunner().invoke(app, ["bench", "report", "--runstore", str(path)])
     assert result.exit_code == 0, result.output
-    assert result.output == report.format_summary(frame, width=40) + "\n"
+    assert all(len(line) <= 40 for line in Text.from_ansi(result.output).plain.splitlines())
+    compact = "".join(Text.from_ansi(result.output).plain.split())
+    assert frame["run_id"][0] in compact
+    for key, value in frame.row(0, named=True).items():
+        if key != "run_id":
+            rendered = (
+                "n/a"
+                if value is None
+                else f"{value:.6g}"
+                if isinstance(value, float)
+                else str(value)
+            )
+            assert f"{key}={rendered}" in compact

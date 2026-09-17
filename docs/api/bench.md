@@ -22,3 +22,5 @@
 ::: triplum.bench.selection
 
 ::: triplum.bench.data_view
+
+::: triplum.bench.bench_view

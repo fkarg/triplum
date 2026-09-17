@@ -22,6 +22,7 @@ signature is still shown.
 | `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
 | `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
+| `triplum.bench.bench_view` | done | `print_overview`, `print_summary`, `print_inspect`, `print_diff`, `print_tail` | width-aware benchmark projections, literal values and terminal-aware colors; no data access |
 | `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |
 | `triplum.ingest` | planned (2a) | chunking | hierarchical chunking for the graph pipelines |
 | `triplum.extract` | planned (2a, 2b) | entity and fact extraction | fills `entities`, `facts`, `fact_support`, `mentions` |
