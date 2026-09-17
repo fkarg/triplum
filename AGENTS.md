@@ -17,6 +17,8 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   snapshot date; versions and statuses are as-of that date.
 - `docs/specs/`: one spec per sub-project, written and reviewed before code. `docs/plans/`: the
   implementation plan derived from a spec.
+  Keep both out of the MkDocs navigation; retain them as development records and link to them
+  from other docs where the context is useful.
 - `python/triplum/`: the Python package (`data`, `llm`, `ingest`, `extract`, `store`, `retrieve`,
   `generate`, `eval`, `bench`). `crates/`: the Cargo workspace. `notebooks/`: marimo notebooks.
   `research/`: SOTA monitor, digests, per-paper notes (planned).
