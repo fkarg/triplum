@@ -65,6 +65,13 @@ extractors of 2b plug into.
 
 Recorded here as they happen.
 
+- Step 2: `resolve` takes the chunks frame as well (`resolve(extraction, chunks, resolver,
+  recorded_at)`), because an entity's document is only reachable through its mention chunks
+  and the spec's signature had no way to tell two documents apart.
+- Step 5: the partial matcher compares tokens up to inflection (prefix with at least four
+  shared characters, at most three extra) instead of stemming, and the predicate slot must
+  exceed 0.5 while the argument slots need at least 0.5; with three-way "at least 0.5" the
+  peer's `work for` / `work against` pair matched. `exact` normalises strings only.
 - Step 5: one-to-one assignment is greedy by descending slot score, not optimal. Exact
   matching is unaffected (ties are exact duplicates, which count once); partial can differ
   from the Hungarian optimum by at most the assignments a greedy choice forecloses.
