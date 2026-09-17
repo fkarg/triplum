@@ -18,18 +18,15 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 
-def _no_corpus(rows: list[tuple]) -> Frames:
-    return Frames(
-        base.questions_frame(rows),
-        base.empty(base.DOC_SCHEMA),
-        base.empty(base.GRANT_SCHEMA),
-        base.empty(base.CHUNK_SCHEMA),
-        base.empty(base.TRIPLE_SCHEMA),
-    )
+def _no_corpus(rows: list[tuple]) -> Benchmark:
+    return Benchmark(qa=QAEvaluation(FrameDataset(base.questions_frame(rows))))
 
 
 def _parquet(paths: dict[str, Path], n: int | None) -> pl.DataFrame:
@@ -38,7 +35,7 @@ def _parquet(paths: dict[str, Path], n: int | None) -> pl.DataFrame:
     return frame.head(n) if n is not None else frame
 
 
-def parse_popqa(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_popqa(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     rows = []
     with path.open(encoding="utf-8", newline="") as f:
@@ -69,7 +66,7 @@ def parse_popqa(paths: dict[str, Path], n: int | None) -> Frames:
     return _no_corpus(rows)
 
 
-def parse_entityquestions(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_entityquestions(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     rows = []
     with zipfile.ZipFile(path) as zf:
@@ -90,7 +87,7 @@ def parse_entityquestions(paths: dict[str, Path], n: int | None) -> Frames:
     return _no_corpus(rows)
 
 
-def parse_nq_open(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_nq_open(paths: dict[str, Path], n: int | None) -> Benchmark:
     rows = [
         base.question_row(f"nq_open:{i}", q["question"], q["answer"][0], q["answer"][1:], [])
         for i, q in enumerate(_parquet(paths, n).iter_rows(named=True))
@@ -98,7 +95,7 @@ def parse_nq_open(paths: dict[str, Path], n: int | None) -> Frames:
     return _no_corpus(rows)
 
 
-def parse_ambigqa(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_ambigqa(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     with zipfile.ZipFile(path) as zf:
         records = json.loads(zf.read("dev_light.json").decode("utf-8"))
@@ -132,7 +129,7 @@ def parse_ambigqa(paths: dict[str, Path], n: int | None) -> Frames:
     return _no_corpus(rows)
 
 
-def parse_bamboogle(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_bamboogle(paths: dict[str, Path], n: int | None) -> Benchmark:
     rows = [
         base.question_row(f"bamboogle:{i}", q["Question"], q["Answer"], [], [], "multihop")
         for i, q in enumerate(_parquet(paths, n).iter_rows(named=True))
@@ -143,7 +140,7 @@ def parse_bamboogle(paths: dict[str, Path], n: int | None) -> Frames:
 FRESHQA_PREAMBLE = 2  # rows above the header in the published sheet
 
 
-def parse_freshqa(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_freshqa(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     lines = path.read_text(encoding="utf-8").splitlines()[FRESHQA_PREAMBLE:]
     rows = []
@@ -174,7 +171,7 @@ def parse_freshqa(paths: dict[str, Path], n: int | None) -> Frames:
     return _no_corpus(rows)
 
 
-def parse_arc(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_arc(paths: dict[str, Path], n: int | None) -> Benchmark:
     rows = []
     for q in _parquet(paths, n).iter_rows(named=True):
         choices = dict(zip(q["choices"]["label"], q["choices"]["text"]))

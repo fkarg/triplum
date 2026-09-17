@@ -174,13 +174,13 @@ def _runstore(path: Path | None):
 
 
 def dataset_names() -> list[str]:
-    from triplum.eval.datasets import registry
+    from triplum.datasets import registry
 
     return registry.names()
 
 
 def is_folder(dataset: str) -> bool:
-    from triplum.eval.datasets import registry
+    from triplum.datasets import registry
 
     return registry.is_folder(dataset)
 
@@ -191,7 +191,7 @@ def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
     if ctx.invoked_subcommand is not None:
         return
     from triplum.bench.data_view import print_overview
-    from triplum.eval.datasets import base, registry
+    from triplum.datasets import base, registry
 
     rows = [(spec, registry.status(spec.name).state) for spec in registry.SPECS.values()]
     print_overview(rows, base.data_root())
@@ -204,7 +204,7 @@ def fetch(
     dataset: Annotated[str, typer.Option(help="dataset name | default | all")] = "default",
 ) -> None:
     """Download a dataset's files and verify their sha256."""
-    from triplum.eval.datasets import registry
+    from triplum.datasets import registry
 
     dataset = resolve(dataset, [*registry.names(), "default", "all"], "dataset", ctx=ctx)
     if dataset == "default":

@@ -11,7 +11,8 @@ from __future__ import annotations
 import sys
 
 import polars as pl
-from triplum.eval.datasets import base, registry
+from triplum.bench.inputs import materialize
+from triplum.datasets import base, registry
 
 
 def main(names: list[str]) -> None:
@@ -23,14 +24,23 @@ def main(names: list[str]) -> None:
             continue
         ds = registry.load(name)
         # Long-document sets (transcripts, articles) get fewer fillers to keep the fixture small.
-        mean_chars = ds.chunks.select(pl.col("text").str.len_chars().mean()).item() or 0
+        inputs = materialize(ds)
+        mean_chars = inputs.corpus.chunks.select(pl.col("text").str.len_chars().mean()).item() or 0
         distractors = 5 if mean_chars > 5000 else 40
         frames = base.subset(
-            base.Frames(ds.questions, ds.documents, ds.grants, ds.chunks, ds.triples),
+            ds,
             distractors=distractors,
         )
         path = base.write_fixture(name, frames)
-        print(name, frames.questions.height, "questions", frames.chunks.height, "chunks", path.name)
+        selected = materialize(frames)
+        print(
+            name,
+            selected.qa.height if selected.qa is not None else 0,
+            "questions",
+            selected.corpus.chunks.height,
+            "chunks",
+            path.name,
+        )
 
 
 if __name__ == "__main__":

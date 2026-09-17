@@ -5,9 +5,12 @@ from dataclasses import replace
 import polars as pl
 import pytest
 from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig
+from triplum.bench.inputs import Benchmark
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
-from triplum.eval.datasets import base, registry
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base, registry
+from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
 
 
 def _frames(with_corpus=True, with_questions=True):
@@ -27,7 +30,11 @@ def _frames(with_corpus=True, with_questions=True):
             base.empty(s) for s in (base.DOC_SCHEMA, base.GRANT_SCHEMA, base.CHUNK_SCHEMA)
         )
     triples = base.triples_frame([(None, "d1", "Alice", "met", "Bob")])
-    return base.Frames(questions, documents, grants, chunks, triples)
+    return Benchmark(
+        corpus=[CorpusBatch(documents, grants, chunks)],
+        qa=QAEvaluation([questions]) if with_questions else None,
+        extraction=ExtractionEvaluation([triples]),
+    )
 
 
 @pytest.fixture

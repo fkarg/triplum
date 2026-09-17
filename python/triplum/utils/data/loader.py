@@ -69,8 +69,8 @@ class DataLoader[T, B]:
             for start in range(0, len(self.dataset), self.batch_size):
                 indices = list(range(start, min(start + self.batch_size, len(self.dataset))))
                 items = self.dataset.__getitems__(indices)
-                yield self.collate_fn(items) if self.collate_fn else cast(B, items)
+                yield self.collate_fn(items) if self.collate_fn is not None else cast(B, items)
         else:
             source = iter(self.dataset)
             while items := list(islice(source, self.batch_size)):
-                yield self.collate_fn(items) if self.collate_fn else cast(B, items)
+                yield self.collate_fn(items) if self.collate_fn is not None else cast(B, items)

@@ -4,10 +4,11 @@ from pathlib import Path
 import pytest
 from rich.console import Console
 from triplum.bench.data_view import print_overview
-from triplum.eval.datasets.base import File, Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.datasets.base import File, Spec
 
 
-def unused_parser(paths: dict[str, Path], n: int | None) -> Frames:
+def unused_parser(paths: dict[str, Path], n: int | None) -> Benchmark:
     raise AssertionError("Rendering must not parse or fetch datasets")
 
 

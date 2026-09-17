@@ -6,7 +6,9 @@ work and commit on local main. There are no compatibility consumers.
 ## Contract
 
 `Dataset[T]` provides indexed access (`__getitem__`, `__len__`). `IterableDataset[T]`
-provides `__iter__` without requiring length, random access, identity, or replay. Both are
+provides `__iter__` without requiring length, random access, or replay. Both require a
+dataset-owned `fingerprint() -> str` for persistent logical identity; computing it must not
+consume iteration. Both are
 small overridable classes in `triplum.utils.data`. Records belong to the dataset author.
 Built-in sources move from `triplum.eval.datasets` to `triplum.datasets`.
 
@@ -31,8 +33,12 @@ Custom sources and the generic loader must work incrementally without the regist
 
 Registry metadata (files, licences, parser) belongs to the built-in benchmark catalog, not the
 dataset base. A benchmark can be supplied directly to the runner without a registry entry.
-Corpus identity and task identity are computed by the materializing benchmark boundary, not
-required from custom sources. Identity is based on content and independent of loader batch sizes.
+Dataset subclasses must supply a fingerprint: a revision/manifest or deterministic generation
+specification can identify a stream without reading it. `FrameDataset` owns frame content hashing;
+`CorpusDataset` composes its frame fingerprints. Identity includes schema and ordered values,
+independent of loading batches and physical frame chunks. Python `__hash__` is not this contract.
+For now the eager benchmark boundary fingerprints its materialized content, including ordinary
+iterables; consulting source identity before reading belongs to the later caching redesign.
 Source-native ordering is retained. Corpus truncation and evaluation selection are distinct.
 
 No workers, prefetching, automatic function serialization, generic table registry, or framework

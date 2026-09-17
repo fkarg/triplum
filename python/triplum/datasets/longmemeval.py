@@ -11,14 +11,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 DATE_FMT = "%Y/%m/%d (%a) %H:%M"
 NEEDS = "a corpus scoped per question (each question has its own haystack)"
 
 
-def parse(paths: dict[str, Path], n: int | None) -> Frames:
+def parse(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     records = json.loads(path.read_text(encoding="utf-8"))
     if n is not None:
@@ -64,10 +69,9 @@ def parse(paths: dict[str, Path], n: int | None) -> Frames:
                 },
             )
         )
-    return Frames(
-        base.questions_frame(rows),
-        *base.corpus_frames("longmemeval_s", passages),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*base.corpus_frames("longmemeval_s", passages))),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 DOMAINS = (
     "bitcoin", "cardano", "economics", "genealogy", "history", "hsm", "iota", "law", "monero", "politics",
@@ -18,7 +23,7 @@ DOMAINS = (
 )  # fmt: skip
 
 
-def parse(paths, n: int | None) -> Frames:
+def parse(paths, n: int | None) -> Benchmark:
     def path(kind: str, domain: str):
         return paths[f"tempo/{kind}/{domain}.parquet"]
 
@@ -51,10 +56,9 @@ def parse(paths, n: int | None) -> Frames:
             )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows),
-        *base.corpus_frames("tempo", passages),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*base.corpus_frames("tempo", passages))),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

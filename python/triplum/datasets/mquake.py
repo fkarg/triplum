@@ -11,13 +11,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
 
 NEEDS = "fact invalidation: ingest the labelled edit, then re-ask and score the post-edit answer"
 
 
-def _parse(name: str, paths: dict[str, Path], n: int | None) -> Frames:
+def _parse(name: str, paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     cases = json.loads(path.read_text(encoding="utf-8"))
     if n is not None:
@@ -46,12 +49,9 @@ def _parse(name: str, paths: dict[str, Path], n: int | None) -> Frames:
             )
         )
         triples.extend((qid, None, s, p, o) for s, p, o in c["orig"]["triples_labeled"])
-    return Frames(
-        base.questions_frame(rows),
-        base.empty(base.DOC_SCHEMA),
-        base.empty(base.GRANT_SCHEMA),
-        base.empty(base.CHUNK_SCHEMA),
-        base.triples_frame(triples),
+    return Benchmark(
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+        extraction=ExtractionEvaluation(FrameDataset(base.triples_frame(triples))),
     )
 
 

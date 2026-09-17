@@ -12,47 +12,30 @@ import json
 import os
 import urllib.request
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import NamedTuple
 
 import polars as pl
 
-from triplum.data import schema as canonical
+from triplum.bench.inputs import Benchmark, materialize
+from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA, GRANT_SCHEMA, CorpusBatch
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import (
+    QUESTION_SCHEMA,
+    TRIPLE_SCHEMA,
+    ExtractionEvaluation,
+    QAEvaluation,
+)
 
-FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests" / "fixtures"
+FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 FIXTURE_N = 20
 LARGE_BYTES = 300 << 20  # a dataset above this total download size only fetches when named
 
-QUESTION_SCHEMA = {
-    "id": pl.Utf8,
-    "question": pl.Utf8,
-    "answer": pl.Utf8,
-    "aliases": pl.List(pl.Utf8),
-    "gold_chunk_ids": pl.List(pl.Int64),
-    "qtype": pl.Utf8,
-    "answerable": pl.Boolean,
-    "as_of": pl.Int64,
-    "metadata": pl.Utf8,
-}
-# Documents, grants and chunks are the D2 tables owned by the Rust core; questions and triples
-# are evaluation-only frames defined here.
-DOC_SCHEMA = canonical.polars_schema(canonical.DOCUMENTS)
-GRANT_SCHEMA = canonical.polars_schema(canonical.DOCUMENT_GRANTS)
-CHUNK_SCHEMA = canonical.polars_schema(canonical.CHUNKS)
-TRIPLE_SCHEMA = {
-    "question_id": pl.Utf8,
-    "document_id": pl.Utf8,
-    "subject": pl.Utf8,
-    "predicate": pl.Utf8,
-    "object": pl.Utf8,
-}
-SCHEMAS = {
-    "questions": QUESTION_SCHEMA,
+CORPUS_SCHEMAS = {
     "documents": DOC_SCHEMA,
     "grants": GRANT_SCHEMA,
     "chunks": CHUNK_SCHEMA,
-    "triples": TRIPLE_SCHEMA,
 }
 
 
@@ -63,14 +46,6 @@ class HashMismatch(RuntimeError):
 class GoldMappingError(ValueError):
     """A gold chunk is missing from the corpus or a corpus key is ambiguous. Silently dropping
     it would score an empty gold list as perfect recall, so the load fails instead."""
-
-
-class Frames(NamedTuple):
-    questions: pl.DataFrame
-    documents: pl.DataFrame
-    grants: pl.DataFrame
-    chunks: pl.DataFrame
-    triples: pl.DataFrame
 
 
 @dataclass(frozen=True)
@@ -87,7 +62,7 @@ class Spec:
     family: str
     files: tuple[File, ...]
     licence: str
-    parse: Callable[[dict[str, Path], int | None], Frames]
+    parse: Callable[[dict[str, Path], int | None], Benchmark]
     default: bool = False
     fixture: bool = True
     needs: str | None = None  # a runner capability this dataset needs and the runner lacks
@@ -99,18 +74,6 @@ class Spec:
     @property
     def large(self) -> bool:
         return self.bytes > LARGE_BYTES
-
-
-@dataclass(frozen=True)
-class Dataset:
-    name: str
-    questions: pl.DataFrame
-    documents: pl.DataFrame
-    grants: pl.DataFrame
-    chunks: pl.DataFrame
-    triples: pl.DataFrame
-    corpus_hash: str
-    questions_hash: str
 
 
 @dataclass(frozen=True)
@@ -139,16 +102,6 @@ def sha256_file(p: Path) -> str:
     with p.open("rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):
             h.update(block)
-    return h.hexdigest()
-
-
-def frames_hash(*frames: pl.DataFrame) -> str:
-    """Identity of parsed content, so a parser change invalidates stores and runs even when the
-    source bytes did not change. Row order is part of the identity."""
-    h = hashlib.sha256()
-    for frame in frames:
-        h.update(json.dumps(frame.to_dicts(), sort_keys=True, ensure_ascii=False).encode())
-        h.update(b"\0")
     return h.hexdigest()
 
 
@@ -195,20 +148,11 @@ def fetch(spec: Spec, root: Path | None = None) -> dict[str, Path]:
     return local
 
 
-def dataset(name: str, frames: Frames) -> Dataset:
-    return Dataset(
-        name,
-        *frames,
-        corpus_hash=frames_hash(frames.documents, frames.grants, frames.chunks),
-        questions_hash=frames_hash(frames.questions, frames.triples),
-    )
+def load_files(spec: Spec, local: dict[str, Path], n: int | None = None) -> Benchmark:
+    return replace(spec.parse(local, n), name=spec.name, needs=spec.needs)
 
 
-def load_files(spec: Spec, local: dict[str, Path], n: int | None = None) -> Dataset:
-    return dataset(spec.name, spec.parse(local, n))
-
-
-def load(spec: Spec, n: int | None = None, root: Path | None = None) -> Dataset:
+def load(spec: Spec, n: int | None = None, root: Path | None = None) -> Benchmark:
     return load_files(spec, fetch(spec, root), n)
 
 
@@ -353,31 +297,54 @@ def fixture_path(name: str) -> Path:
     return FIXTURE_DIR / f"{name}.json"
 
 
-def write_fixture(name: str, frames: Frames, path: Path | None = None) -> Path:
+def write_fixture(name: str, benchmark: Benchmark, path: Path | None = None) -> Path:
     path = path or fixture_path(name)
-    payload = {key: getattr(frames, key).to_dicts() for key in SCHEMAS}
+    inputs = materialize(benchmark)
+    payload = {
+        "corpus": {key: getattr(inputs.corpus, key).to_dicts() for key in CORPUS_SCHEMAS},
+    }
+    if inputs.qa is not None:
+        payload["qa"] = inputs.qa.to_dicts()
+    if inputs.extraction is not None:
+        payload["extraction"] = inputs.extraction.to_dicts()
     path.write_text(json.dumps(payload, ensure_ascii=False))
     return path
 
 
-def read_fixture(name: str, n: int | None = None, path: Path | None = None) -> Dataset:
+def read_fixture(name: str, n: int | None = None, path: Path | None = None) -> Benchmark:
     path = path or fixture_path(name)
     payload = json.loads(path.read_text())
-    frames = Frames(
-        **{key: pl.DataFrame(payload[key], schema=schema) for key, schema in SCHEMAS.items()}
+    corpus = CorpusBatch(
+        **{
+            key: pl.DataFrame(payload["corpus"][key], schema=schema)
+            for key, schema in CORPUS_SCHEMAS.items()
+        }
     )
-    if n is not None:
-        frames = frames._replace(questions=frames.questions.head(n))
-    return dataset(name, frames)
+    qa = None
+    if "qa" in payload:
+        questions = pl.DataFrame(payload["qa"], schema=QUESTION_SCHEMA)
+        qa = QAEvaluation(FrameDataset(questions.head(n) if n is not None else questions))
+    extraction = (
+        ExtractionEvaluation(
+            FrameDataset(pl.DataFrame(payload["extraction"], schema=TRIPLE_SCHEMA))
+        )
+        if "extraction" in payload
+        else None
+    )
+    return Benchmark(name=name, corpus=CorpusDataset(corpus), qa=qa, extraction=extraction)
 
 
-def subset(frames: Frames, n: int = FIXTURE_N, distractors: int = 40, seed: int = 0) -> Frames:
+def subset(
+    benchmark: Benchmark, n: int = FIXTURE_N, distractors: int = 40, seed: int = 0
+) -> Benchmark:
     """The first `n` questions, every chunk they need (gold, and candidate ids from `metadata`),
     and up to `distractors` further chunks chosen with a fixed seed; without questions, the first
     `distractors` chunks. Triples of the kept documents and questions come along."""
     import random
 
-    questions = frames.questions.head(n)
+    inputs = materialize(benchmark)
+    frames = inputs.corpus
+    questions = inputs.qa.head(n) if inputs.qa is not None else questions_frame([])
     keep: set[int] = set()
     for q in questions.iter_rows(named=True):
         keep.update(q["gold_chunk_ids"])
@@ -392,7 +359,17 @@ def subset(frames: Frames, n: int = FIXTURE_N, distractors: int = 40, seed: int 
     documents = frames.documents.filter(pl.col("id").is_in(doc_ids))
     grants = frames.grants.filter(pl.col("document_id").is_in(doc_ids))
     qids = questions["id"]
-    triples = frames.triples.filter(
-        pl.col("document_id").is_in(doc_ids) | pl.col("question_id").is_in(qids)
+    triples = (
+        inputs.extraction.filter(
+            pl.col("document_id").is_in(doc_ids) | pl.col("question_id").is_in(qids)
+        )
+        if inputs.extraction is not None
+        else None
     )
-    return Frames(questions, documents, grants, chunks, triples)
+    return Benchmark(
+        name=benchmark.name,
+        corpus=CorpusDataset(CorpusBatch(documents, grants, chunks)),
+        qa=QAEvaluation(FrameDataset(questions)) if inputs.qa is not None else None,
+        extraction=ExtractionEvaluation(FrameDataset(triples)) if triples is not None else None,
+        needs=benchmark.needs,
+    )

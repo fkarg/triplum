@@ -13,8 +13,13 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
 
 # Twins share MuSiQue's id; the unanswerable one gets this suffix and this abstain string.
 UNANSWERABLE = "unanswerable"
@@ -41,7 +46,7 @@ def _resolve(name: str, qid: str, titles: list[str], by_title: dict[str, int]) -
     return sorted({by_title[t] for t in titles})
 
 
-def parse_hotpotqa_full(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_hotpotqa_full(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     frame = pl.read_parquet(path)
     if n is not None:
@@ -66,14 +71,17 @@ def parse_hotpotqa_full(paths: dict[str, Path], n: int | None) -> Frames:
                 q["id"], q["question"], q["answer"], [], gold, q["type"], metadata=meta
             )
         )
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
 def _loads(value):
     return json.loads(value) if isinstance(value, str) else value
 
 
-def parse_twowiki_full(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_twowiki_full(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     frame = pl.read_parquet(path)
     if n is not None:
@@ -93,10 +101,14 @@ def parse_twowiki_full(paths: dict[str, Path], n: int | None) -> Frames:
             )
         )
         triples.extend((q["_id"], None, s, p, o) for s, p, o in evidences)
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.triples_frame(triples))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+        extraction=ExtractionEvaluation(FrameDataset(base.triples_frame(triples))),
+    )
 
 
-def parse_musique_full(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_musique_full(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     records = base.read_jsonl(path)
     if n is not None:
@@ -143,10 +155,13 @@ def parse_musique_full(paths: dict[str, Path], n: int | None) -> Frames:
                     metadata=meta,
                 )
             )
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
-def parse_morehopqa(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_morehopqa(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     records = json.loads(path.read_text(encoding="utf-8"))
     if n is not None:
@@ -180,7 +195,10 @@ def parse_morehopqa(paths: dict[str, Path], n: int | None) -> Frames:
                 metadata=meta,
             )
         )
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
 SPECS = (

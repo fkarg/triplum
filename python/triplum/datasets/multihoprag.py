@@ -8,13 +8,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 ABSTAIN = "Insufficient information."
 
 
-def parse(paths: dict[str, Path], n: int | None) -> Frames:
+def parse(paths: dict[str, Path], n: int | None) -> Benchmark:
     questions_path = next(p for name, p in paths.items() if name.endswith("MultiHopRAG.json"))
     corpus_path = next(p for name, p in paths.items() if name.endswith("corpus.json"))
     articles = json.loads(corpus_path.read_text(encoding="utf-8"))
@@ -57,8 +62,9 @@ def parse(paths: dict[str, Path], n: int | None) -> Frames:
                 qid, q["query"], q["answer"], [], gold, q["question_type"], metadata=meta
             )
         )
-    return Frames(
-        base.questions_frame(rows), documents, grants, chunks, base.empty(base.TRIPLE_SCHEMA)
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(documents, grants, chunks)),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

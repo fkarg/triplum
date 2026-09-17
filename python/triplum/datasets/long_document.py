@@ -15,15 +15,20 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 UNANSWERABLE = "unanswerable"
 QUALITY_MEMBER = "QuALITY.v1.0.1.htmlstripped.dev"
 QASPER_MEMBER = "qasper-test-v0.3.json"
 
 
-def parse_quality(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_quality(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     with zipfile.ZipFile(path) as zf:
         articles = [json.loads(line) for line in zf.read(QUALITY_MEMBER).decode().splitlines()]
@@ -49,7 +54,10 @@ def parse_quality(paths: dict[str, Path], n: int | None) -> Frames:
             )
     if n is not None:
         rows = rows[:n]
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
 def _qasper_answer(answer: dict) -> str:
@@ -60,7 +68,7 @@ def _qasper_answer(answer: dict) -> str:
     return answer["free_form_answer"].strip()
 
 
-def parse_qasper(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_qasper(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     with tarfile.open(path) as tf:
         member = tf.extractfile(QASPER_MEMBER)
@@ -113,10 +121,9 @@ def parse_qasper(paths: dict[str, Path], n: int | None) -> Frames:
                 )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows),
-        *base.document_frames("qasper", docs),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*base.document_frames("qasper", docs))),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

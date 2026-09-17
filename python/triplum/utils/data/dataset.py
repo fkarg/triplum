@@ -8,7 +8,7 @@ class Dataset[T](ABC):
     """An indexed source. Implement length and item access; bulk access is overridable.
 
     Constructing a dataset need not load its records. No schema, registry, download,
-    cache identity or storage format is required by this class.
+    storage format is required by this class. Identity is supplied by the concrete source.
     """
 
     @abstractmethod
@@ -16,6 +16,15 @@ class Dataset[T](ABC):
 
     @abstractmethod
     def __getitem__(self, index: int) -> T: ...
+
+    @abstractmethod
+    def fingerprint(self) -> str:
+        """Stable identity of logical output, including source revision and transformations.
+
+        Equal identities promise equal ordered records. Names and mutable URLs are insufficient.
+        Computing identity must not consume iteration state. Physical batch size is not content.
+        """
+        ...
 
     def __getitems__(self, indices: list[int]) -> list[T]:
         """Fetch records in index order; override for efficient bulk reads."""
@@ -35,3 +44,13 @@ class IterableDataset[T](ABC):
 
     @abstractmethod
     def __iter__(self) -> Iterator[T]: ...
+
+    @abstractmethod
+    def fingerprint(self) -> str:
+        """Identify the logical stream without consuming it; equal identities promise replay.
+
+        Live sources must pin a revision or captured segment before claiming such an identity.
+        Deterministically generated infinite sequences may identify their generating parameters.
+        Replay means equal logical data, not that a one-shot iterator can be rewound.
+        """
+        ...

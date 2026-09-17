@@ -15,13 +15,18 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 NEEDS = "a viewer per question (the asker) and an as-of turn cut per question"
 
 
-def parse(paths: dict[str, Path], n: int | None) -> Frames:
+def parse(paths: dict[str, Path], n: int | None) -> Benchmark:
     doc_rows, grant_rows, chunk_rows, rows = [], [], [], []
     turn_ids: dict[tuple[str, str], int] = {}
     for name in sorted(k for k in paths if k.endswith("episodes.jsonl")):
@@ -84,12 +89,15 @@ def parse(paths: dict[str, Path], n: int | None) -> Frames:
             )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows),
-        pl.DataFrame(doc_rows, schema=base.DOC_SCHEMA, orient="row"),
-        pl.DataFrame(grant_rows, schema=base.GRANT_SCHEMA, orient="row"),
-        pl.DataFrame(chunk_rows, schema=base.CHUNK_SCHEMA, orient="row"),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(
+            CorpusBatch(
+                pl.DataFrame(doc_rows, schema=base.DOC_SCHEMA, orient="row"),
+                pl.DataFrame(grant_rows, schema=base.GRANT_SCHEMA, orient="row"),
+                pl.DataFrame(chunk_rows, schema=base.CHUNK_SCHEMA, orient="row"),
+            )
+        ),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

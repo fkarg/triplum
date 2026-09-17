@@ -9,8 +9,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import File, Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import File, Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
 
 RAW_BASE = "https://raw.githubusercontent.com/OSU-NLP-Group/HippoRAG/main/reproduce/dataset/"
 
@@ -50,7 +55,7 @@ def gold_key(name: str, title: str, text: str) -> tuple:
     return (title,) if name in ("hotpotqa", "twowiki") else (title, text)
 
 
-def parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -> Frames:
+def parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -> Benchmark:
     if n is not None:
         questions = questions[:n]
     key_to_chunk: dict[tuple, int] = {}
@@ -92,10 +97,16 @@ def parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -
         triples = base.triples_frame(
             [(q["_id"], None, s, p, o) for q in questions for s, p, o in q["evidences"]]
         )
-    return Frames(base.questions_frame(rows), documents, grants, chunks, triples)
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(documents, grants, chunks)),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+        extraction=ExtractionEvaluation(FrameDataset(triples)) if not triples.is_empty() else None,
+    )
 
 
-def load_files(name: str, questions_path: Path, corpus_path: Path, n: int | None = None) -> Frames:
+def load_files(
+    name: str, questions_path: Path, corpus_path: Path, n: int | None = None
+) -> Benchmark:
     questions = json.loads(Path(questions_path).read_text())
     corpus = json.loads(Path(corpus_path).read_text())
     return parse(name, questions, corpus, n)

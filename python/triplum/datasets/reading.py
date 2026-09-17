@@ -12,13 +12,18 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 UNANSWERABLE = "unanswerable"
 
 
-def _squad(name: str, paths: dict[str, Path], n: int | None) -> Frames:
+def _squad(name: str, paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     frame = pl.read_parquet(path)
     if n is not None:
@@ -48,18 +53,21 @@ def _squad(name: str, paths: dict[str, Path], n: int | None) -> Frames:
                     metadata=meta,
                 )
             )
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
-def parse_squad(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_squad(paths: dict[str, Path], n: int | None) -> Benchmark:
     return _squad("squad", paths, n)
 
 
-def parse_squad_v2(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_squad_v2(paths: dict[str, Path], n: int | None) -> Benchmark:
     return _squad("squad_v2", paths, n)
 
 
-def parse_boolq(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_boolq(paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     frame = pl.read_parquet(path)
     if n is not None:
@@ -79,7 +87,10 @@ def parse_boolq(paths: dict[str, Path], n: int | None) -> Frames:
                 metadata={"candidate_chunk_ids": [cid]},
             )
         )
-    return Frames(base.questions_frame(rows), *corpus.frames(), base.empty(base.TRIPLE_SCHEMA))
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*corpus.frames())),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
+    )
 
 
 SPECS = (

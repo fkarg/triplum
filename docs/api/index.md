@@ -10,6 +10,9 @@ signature is still shown.
 | module | status | key symbols | role |
 |---|---|---|---|
 | `triplum.utils.data` | done | `Dataset`, `IterableDataset`, `DataLoader` | author-defined records, indexed or streaming access, lazy batching and custom collation |
+| `triplum.datasets` | done | `FrameDataset`, `CorpusDataset`, `registry.load`, `base.Spec` | concrete fingerprinted sources and built-in benchmark catalog with pinned files and fixtures |
+| `triplum.data.corpus` | done | `CorpusBatch` | canonical document/grant/chunk batch at the ingestion boundary |
+| `triplum.bench.inputs` | done | `Benchmark`, `PreparedBenchmark`, `materialize` | compose independent sources; explicit eager bridge for existing algorithms |
 | `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
 | `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
 | `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |
@@ -20,7 +23,7 @@ signature is still shown.
 | `triplum.retrieve.pipelines` | done | `PIPELINES`, `NAMES`, `get`, `closed_book`, `bm25`, `dense`, `rrf`, `hybrid`, `oracle` | named compositions of the stages with defaults; the one pipeline list the runner, CLI and fingerprint read |
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `fusion`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
-| `triplum.eval` | done | `metrics.*`, `triples.score`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
+| `triplum.eval` | done | `QAEvaluation`, `ExtractionEvaluation`, `metrics.*`, `triples.score`, `judge.judge_correct` | task-specific sources, QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge |
 | `triplum.bench` | done | `RunConfig`, `run_benchmark`, `ExtractConfig`, `run_extraction`, `RunStore`, `summary`, `extraction_summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
 | `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, `bench extract`, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
@@ -35,7 +38,8 @@ signature is still shown.
 The contracts that hold across modules:
 
 - **Frames in, frames out.** A stage takes Polars frames in the canonical column layout and
-  returns one; no module defines its own row model.
+  returns one. Generic datasets choose their own records; canonical schemas apply at processing
+  and store boundaries, not to every source.
 - **Viewer everywhere.** Any read that could leak data takes a `Viewer`; the store filters
   inside its indexes before ranking.
 - **Identity is a spec.** `EmbeddingSpec`, `RerankSpec`, `LLMConfig` and `PipelineConfig` are
@@ -57,31 +61,35 @@ fixture with the fake embedder and fake reader):
 import tempfile
 from pathlib import Path
 
+from triplum.bench.inputs import materialize
 from triplum.data.viewer import Viewer
 from triplum.embed.fake import FakeEmbedder
 from triplum.eval import metrics
-from triplum.eval.datasets import registry as datasets
+from triplum.datasets import registry as datasets
 from triplum.generate.reader import read
 from triplum.llm.fake import FakeLLM
 from triplum.llm.protocol import DEFAULT_PARAMS
 from triplum.retrieve import stages
 from triplum.store.sqlite.store import SqliteStore
 
-ds = datasets.load_fixture("musique", n=5)  # questions, documents, grants, chunks, triples frames
+ds = materialize(datasets.load_fixture("musique", n=5))
+assert ds.qa is not None
 store = SqliteStore(Path(tempfile.mkdtemp()) / "demo.sqlite")
-store.put_documents(ds.documents, ds.grants)
-store.put_chunks(ds.chunks)
+store.put_documents(ds.corpus.documents, ds.corpus.grants)
+store.put_chunks(ds.corpus.chunks)
 
 embedder = FakeEmbedder(dims=64)  # any Embedder; wrap a real one in CachedEmbedder
 store.put_embeddings(
-    embedder.spec, ds.chunks["id"].to_list(), embedder.embed_passages(ds.chunks["text"].to_list())
+    embedder.spec,
+    ds.corpus.chunks["id"].to_list(),
+    embedder.embed_passages(ds.corpus.chunks["text"].to_list()),
 )
 
 viewer = Viewer.of("public")  # every read is scoped to a viewer
-hits = stages.dense(ds.questions, store, embedder, k=5, viewer=viewer)
-answers = read(ds.questions, hits, store, FakeLLM(), viewer, DEFAULT_PARAMS)
+hits = stages.dense(ds.qa, store, embedder, k=5, viewer=viewer)
+answers = read(ds.qa, hits, store, FakeLLM(), viewer, DEFAULT_PARAMS)
 
-q = ds.questions.row(0, named=True)
+q = ds.qa.row(0, named=True)
 ids = hits.filter(hits["question_id"] == q["id"]).sort("rank")["chunk_id"].to_list()
 print(answers.columns)  # question_id, answer, tokens, cached, latency_s, n_chunks
 print(metrics.recall_at_k(q["gold_chunk_ids"], ids, 5))

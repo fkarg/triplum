@@ -49,6 +49,14 @@ Real models need `OPENAI_API_KEY` (or an OpenAI-compatible `--base-url`), or a l
 
 ## Use it as a library
 
+Data access is independent of the benchmark harness: subclass `Dataset[T]` for indexed data or
+`IterableDataset[T]` for streaming, and implement `fingerprint()` to identify its logical content.
+`DataLoader` lazily batches either shape (or ordinary iterables), supports custom collation, and
+preserves native batches with `batch_size=None`. See the [data loading example](docs/api/utils-data.md).
+Concrete frame/corpus sources and the catalog live in `triplum.datasets`; a `Benchmark` composes
+corpus and optional task-specific evaluation sources. Current benchmark algorithms still explicitly
+materialize those sources; the generic loading API does not.
+
 Experiments are Python. A run is a frozen configuration; identical configurations return the
 stored run instead of recomputing (the contract is [`docs/benchmarking.md`](docs/benchmarking.md)).
 
@@ -75,7 +83,7 @@ without the harness:
 ```python
 from triplum.retrieve import pipelines
 
-hits = pipelines.rrf(ds.questions, store, viewer, embedder=embedder, k=5, candidates=50)
+hits = pipelines.rrf(questions, store, viewer, embedder=embedder, k=5, candidates=50)
 ```
 
 Every stage is also usable on its own: load a dataset, put it in a store, embed, retrieve with

@@ -17,6 +17,12 @@ from triplum.retrieve import pipelines
 # reader, metrics, datasets, and the factories that assemble them. Dataset parsers are not listed
 # because a parser change alters corpus_hash and questions_hash, which are identity fields.
 BASE = [
+    "triplum.bench.inputs",
+    "triplum.data.corpus",
+    "triplum.datasets.frames",
+    "triplum.datasets.corpus",
+    "triplum.utils.data.dataset",
+    "triplum.eval.inputs",
     "triplum.data.schema",
     "triplum.data.viewer",
     "triplum.cache",
@@ -31,9 +37,9 @@ BASE = [
     "triplum.generate.reader",
     "triplum.eval.metrics",
     "triplum.eval.judge",
-    "triplum.eval.datasets.base",
-    "triplum.eval.datasets.registry",
-    "triplum.eval.datasets.hipporag",
+    "triplum.datasets.base",
+    "triplum.datasets.registry",
+    "triplum.datasets.hipporag",
     "triplum.retrieve.stages",
     "triplum.retrieve.pipelines",
     "triplum.bench.factories",
@@ -57,6 +63,12 @@ RERANK = [
 
 # The graph identity: everything whose change alters the graph written to the store.
 GRAPH = [
+    "triplum.bench.inputs",
+    "triplum.data.corpus",
+    "triplum.datasets.frames",
+    "triplum.datasets.corpus",
+    "triplum.utils.data.dataset",
+    "triplum.eval.inputs",
     "triplum.data.schema",
     "triplum.data.viewer",
     "triplum.cache",
@@ -69,7 +81,7 @@ GRAPH = [
     "triplum.extract.cached",
     "triplum.extract.rules",
     "triplum.extract.small_model",
-    "triplum.eval.datasets.base",
+    "triplum.datasets.base",
     "triplum.bench.index",
 ]
 # The extraction run identity adds the scorer and the runner.

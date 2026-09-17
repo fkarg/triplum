@@ -21,13 +21,19 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import ExtractionEvaluation
 
 
-def _frames(source: str, passages: list, triples: list) -> Frames:
-    return Frames(
-        base.questions_frame([]), *base.corpus_frames(source, passages), base.triples_frame(triples)
+def _frames(source: str, passages: list, triples: list) -> Benchmark:
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*base.corpus_frames(source, passages))),
+        extraction=ExtractionEvaluation(FrameDataset(base.triples_frame(triples))),
     )
 
 
@@ -38,7 +44,7 @@ def _triples_line(line: str) -> list:
         return ast.literal_eval(line)
 
 
-def parse_graphjudge(name: str, paths: dict[str, Path], n: int | None) -> Frames:
+def parse_graphjudge(name: str, paths: dict[str, Path], n: int | None) -> Benchmark:
     passages, triples = [], []
     for split in ("test", "train"):
         source = next(p for k, p in paths.items() if k.endswith(f"{split}.source"))
@@ -65,7 +71,7 @@ def _genwiki_records(zf: zipfile.ZipFile, members: list[str]):
         yield from json.loads(zf.read(member).decode("utf-8"))
 
 
-def parse_genwiki(name: str, prefix: str, paths: dict[str, Path], n: int | None) -> Frames:
+def parse_genwiki(name: str, prefix: str, paths: dict[str, Path], n: int | None) -> Benchmark:
     (path,) = paths.values()
     passages, triples = [], []
     with zipfile.ZipFile(path) as zf:
@@ -81,7 +87,7 @@ def parse_genwiki(name: str, prefix: str, paths: dict[str, Path], n: int | None)
     return _frames(name, passages, triples)
 
 
-def parse_carb(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_carb(paths: dict[str, Path], n: int | None) -> Benchmark:
     passages, triples = [], []
     seen: dict[tuple[str, str], str] = {}
     for split in ("dev", "test"):
@@ -133,7 +139,7 @@ def _spans(name: str, split: str, records, passages: list, triples: list) -> Non
         )
 
 
-def parse_conll04(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_conll04(paths: dict[str, Path], n: int | None) -> Benchmark:
     passages, triples = [], []
     for split in ("train", "validation", "test"):
         path = next(p for k, p in paths.items() if k.endswith(f"{split}-00000-of-00001.parquet"))
@@ -141,7 +147,7 @@ def parse_conll04(paths: dict[str, Path], n: int | None) -> Frames:
     return _frames("conll04", passages, triples)
 
 
-def parse_scierc(paths: dict[str, Path], n: int | None) -> Frames:
+def parse_scierc(paths: dict[str, Path], n: int | None) -> Benchmark:
     passages, triples = [], []
     for split in ("train", "dev", "test"):
         path = next(p for k, p in paths.items() if k.endswith(f"scierc_{split}.json"))

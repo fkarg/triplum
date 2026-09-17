@@ -8,10 +8,11 @@ from triplum.bench.config import (
     RerankerConfig,
     RunConfig,
 )
+from triplum.bench.inputs import materialize
 from triplum.bench.report import summary
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
-from triplum.eval.datasets import base, registry
+from triplum.datasets import base, registry
 from triplum.retrieve import pipelines
 
 FAKE_READER = LLMConfig(kind="fake")
@@ -179,17 +180,18 @@ OTHER_FIXTURES = [
 def test_registered_fixtures_run(tmp_path, dataset):
     """Every runnable fixture goes through bm25 and oracle (closed_book when there is no corpus);
     extraction-only datasets are refused."""
-    ds = registry.load_fixture(dataset)
-    if ds.questions.height == 0:
+    ds = materialize(registry.load_fixture(dataset))
+    if ds.qa is None:
         with pytest.raises(ValueError, match="no questions"):
             run_benchmark(_cfg(tmp_path, "bm25", dataset))
         return
-    pipelines = ("closed_book",) if ds.chunks.height == 0 else ("bm25", "oracle")
+    pipelines = ("closed_book",) if ds.corpus.chunks.height == 0 else ("bm25", "oracle")
     for name in pipelines:
         run_benchmark(_cfg(tmp_path, name, dataset))
     by = {r["pipeline"]: r for r in summary(RunStore(tmp_path / "runs.db")).iter_rows(named=True)}
     assert set(by) == set(pipelines)
-    if "oracle" in by and ds.questions["answerable"].any():
+    assert ds.qa is not None
+    if "oracle" in by and ds.qa["answerable"].any():
         assert (
             by["oracle"]["r5"] >= by["bm25"]["r5"] > 0
         )  # some questions have more than 5 gold chunks

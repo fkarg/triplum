@@ -2,6 +2,8 @@
 
 ::: triplum.bench.config
 
+::: triplum.bench.inputs
+
 ::: triplum.bench.factories
 
 ::: triplum.bench.fingerprint

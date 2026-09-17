@@ -13,8 +13,13 @@ import hashlib
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 CANARY = (
     "BENCHMARK DATA SHOULD NEVER APPEAR AS PLAIN TEXT ONLINE. "
@@ -29,7 +34,7 @@ def decode(ciphertext_b64: str) -> str:
     return bytes(a ^ b for a, b in zip(encrypted, key)).decode("utf-8")
 
 
-def parse(paths, n: int | None) -> Frames:
+def parse(paths, n: int | None) -> Benchmark:
     corpus_files = sorted(
         p for k, p in paths.items() if "browsecomp-plus-corpus" in k or "/corpus/" in k
     )
@@ -73,10 +78,9 @@ def parse(paths, n: int | None) -> Frames:
         )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows),
-        *base.corpus_frames("browsecomp_plus", passages),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(*base.corpus_frames("browsecomp_plus", passages))),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

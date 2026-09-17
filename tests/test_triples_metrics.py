@@ -1,6 +1,6 @@
 import polars as pl
+from triplum.datasets.base import CHUNK_SCHEMA, DOC_SCHEMA, QUESTION_SCHEMA, TRIPLE_SCHEMA
 from triplum.eval import triples
-from triplum.eval.datasets.base import CHUNK_SCHEMA, DOC_SCHEMA, QUESTION_SCHEMA, TRIPLE_SCHEMA
 from triplum.extract import extract
 from triplum.extract.fake import FakeExtractor
 

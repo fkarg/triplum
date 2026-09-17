@@ -8,7 +8,8 @@ import zipfile
 
 import polars as pl
 import pytest
-from triplum.eval.datasets import (
+from triplum.bench.inputs import materialize
+from triplum.datasets import (
     base,
     browsecomp_plus,
     ectqa,
@@ -37,7 +38,8 @@ def _write(tmp_path, name, content):
 
 
 def _meta(frames, i=0):
-    return json.loads(frames.questions["metadata"][i])
+    assert frames.qa is not None
+    return json.loads(frames.qa["metadata"][i])
 
 
 def test_hotpotqa_full_parquet_structs(tmp_path):
@@ -58,10 +60,11 @@ def test_hotpotqa_full_parquet_structs(tmp_path):
             ],
         }
     ).write_parquet(path)
-    fr = wiki_multihop.parse_hotpotqa_full({"x": path}, None)
-    q = fr.questions.row(0, named=True)
-    assert q["gold_chunk_ids"] == [1, 2] and fr.chunks.height == 3
-    assert fr.chunks["text"][0] == "A\nAlice met Bob."
+    fr = materialize(wiki_multihop.parse_hotpotqa_full({"x": path}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
+    assert q["gold_chunk_ids"] == [1, 2] and fr.corpus.chunks.height == 3
+    assert fr.corpus.chunks["text"][0] == "A\nAlice met Bob."
     assert _meta(fr)["candidate_chunk_ids"] == [1, 2, 3]
 
 
@@ -81,10 +84,12 @@ def test_twowiki_full_json_strings_and_evidence_triples(tmp_path):
             "evidences": [json.dumps([["A", "rel", "B"]]), json.dumps([])],
         }
     ).write_parquet(path)
-    fr = wiki_multihop.parse_twowiki_full({"x": path}, None)
-    assert fr.chunks.height == 3  # A shared across questions
-    assert fr.questions["gold_chunk_ids"].to_list() == [[1, 2], [3]]
-    assert fr.triples.to_dicts() == [
+    fr = materialize(wiki_multihop.parse_twowiki_full({"x": path}, None))
+    assert fr.corpus.chunks.height == 3  # A shared across questions
+    assert fr.qa is not None
+    assert fr.qa["gold_chunk_ids"].to_list() == [[1, 2], [3]]
+    assert fr.extraction is not None
+    assert fr.extraction.to_dicts() == [
         {
             "question_id": "w1",
             "document_id": None,
@@ -107,8 +112,9 @@ def test_musique_full_twins(tmp_path):
          "answer_aliases": [], "answerable": False},
     ]  # fmt: skip
     path = _write(tmp_path, "dev.jsonl", "\n".join(json.dumps(r) for r in records))
-    fr = wiki_multihop.parse_musique_full({"x": path}, None)
-    a, u = fr.questions.iter_rows(named=True)
+    fr = materialize(wiki_multihop.parse_musique_full({"x": path}, None))
+    assert fr.qa is not None
+    a, u = fr.qa.iter_rows(named=True)
     assert a["id"] == "2hop__1_2" and a["gold_chunk_ids"] == [1] and a["aliases"] == ["X", "Y"]
     assert (
         u["id"] == "2hop__1_2__unanswerable" and not u["answerable"] and u["gold_chunk_ids"] == []
@@ -127,8 +133,9 @@ def test_morehopqa_symbolic_steps_are_not_gold(tmp_path):
         "no_of_hops": 2, "reasoning_type": "count", "answer_type": "number",
     }  # fmt: skip
     path = _write(tmp_path, "v.json", [rec])
-    fr = wiki_multihop.parse_morehopqa({"x": path}, None)
-    q = fr.questions.row(0, named=True)
+    fr = materialize(wiki_multihop.parse_morehopqa({"x": path}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert q["answer"] == "4" and q["gold_chunk_ids"] == [1] and q["qtype"] == "count"
     assert len(_meta(fr)["decomposition"]) == 2
 
@@ -147,11 +154,12 @@ def test_multihoprag_null_query_and_published_at(tmp_path):
     ]  # fmt: skip
     paths = {"multihoprag/MultiHopRAG.json": _write(tmp_path, "MultiHopRAG.json", questions),
              "multihoprag/corpus.json": _write(tmp_path, "corpus.json", corpus)}  # fmt: skip
-    fr = multihoprag.parse(paths, None)
-    assert fr.questions["gold_chunk_ids"].to_list() == [[1, 2], []]
-    assert fr.questions["answerable"].to_list() == [True, False]
-    assert fr.documents["observed_at"][0] == base.utc_us("2023-09-28T12:00:00+00:00") > 0
-    assert fr.documents["uri"][1] == "http://b"
+    fr = materialize(multihoprag.parse(paths, None))
+    assert fr.qa is not None
+    assert fr.qa["gold_chunk_ids"].to_list() == [[1, 2], []]
+    assert fr.qa["answerable"].to_list() == [True, False]
+    assert fr.corpus.documents["observed_at"][0] == base.utc_us("2023-09-28T12:00:00+00:00") > 0
+    assert fr.corpus.documents["uri"][1] == "http://b"
 
 
 def test_ectqa_transcripts_and_unanswerable(tmp_path):
@@ -177,29 +185,31 @@ def test_ectqa_transcripts_and_unanswerable(tmp_path):
             tmp_path, "q/global_questions_old.json", [{}]
         ),
     }
-    fr = ectqa.parse(paths, None)
+    fr = materialize(ectqa.parse(paths, None))
     assert (
-        fr.documents["id"][0] == "ectqa:energy-ACM-2021-q4.json"
-        and fr.documents["observed_at"][0] == 0
+        fr.corpus.documents["id"][0] == "ectqa:energy-ACM-2021-q4.json"
+        and fr.corpus.documents["observed_at"][0] == 0
     )
-    assert json.loads(fr.documents["metadata"][0])["split"] == "old"
-    assert fr.questions["gold_chunk_ids"].to_list() == [[1], []]
-    assert fr.questions["answerable"].to_list() == [True, False]
-    assert fr.chunks["text"][0].startswith("ACME 2021 Q4 earnings call\n")
+    assert json.loads(fr.corpus.documents["metadata"][0])["split"] == "old"
+    assert fr.qa is not None
+    assert fr.qa["gold_chunk_ids"].to_list() == [[1], []]
+    assert fr.qa["answerable"].to_list() == [True, False]
+    assert fr.corpus.chunks["text"][0].startswith("ACME 2021 Q4 earnings call\n")
 
 
 def test_popqa_and_entityquestions_have_no_corpus(tmp_path):
     header = "id\tsubj\tprop\tobj\tsubj_id\tprop_id\tobj_id\ts_aliases\to_aliases\ts_uri\to_uri\ts_wiki_title\to_wiki_title\ts_pop\to_pop\tquestion\tpossible_answers"
     row = '7\tParis\tcountry\tFrance\t1\t2\t3\t[]\t[]\tu\tv\tParis\tFrance\t100\t200\tIn what country is Paris?\t["France", "French Republic"]'
     tsv = _write(tmp_path, "test.tsv", header + "\n" + row + "\n")
-    fr = question_only.parse_popqa({"x": tsv}, None)
-    q = fr.questions.row(0, named=True)
+    fr = materialize(question_only.parse_popqa({"x": tsv}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert (
         q["aliases"] == ["France", "French Republic"]
         and q["qtype"] == "country"
         and q["gold_chunk_ids"] == []
     )
-    assert fr.chunks.height == 0 and _meta(fr)["s_pop"] == "100"
+    assert fr.corpus.chunks.height == 0 and _meta(fr)["s_pop"] == "100"
     zpath = tmp_path / "dataset.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr(
@@ -209,8 +219,9 @@ def test_popqa_and_entityquestions_have_no_corpus(tmp_path):
         zf.writestr(
             "dataset/dev/P19.dev.json", json.dumps([{"question": "ignored", "answers": ["n"]}])
         )
-    fr = question_only.parse_entityquestions({"x": zpath}, None)
-    assert fr.questions["id"].to_list() == ["P19:0"] and fr.questions["aliases"][0].to_list() == [
+    fr = materialize(question_only.parse_entityquestions({"x": zpath}, None))
+    assert fr.qa is not None
+    assert fr.qa["id"].to_list() == ["P19:0"] and fr.qa["aliases"][0].to_list() == [
         "Y",
         "Z",
     ]
@@ -224,15 +235,17 @@ def test_mquake_pre_edit_triples_and_post_edit_metadata(tmp_path):
         "orig": {"triples_labeled": [["S", "P", "Old"]], "new_triples_labeled": [["S", "P", "New"]]},
     }  # fmt: skip
     path = _write(tmp_path, "MQuAKE-T.json", [case])
-    fr = mquake._parse("mquake_t", {"x": path}, None)
-    q = fr.questions.row(0, named=True)
+    fr = materialize(mquake._parse("mquake_t", {"x": path}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert (
         q["id"] == "mquake_t:1"
         and q["question"] == "Q a"
         and q["aliases"] == ["Old", "O"]
         and q["qtype"] == "2-hop"
     )
-    assert fr.triples["object"].to_list() == ["Old"] and _meta(fr)["new_answer"] == "New"
+    assert fr.extraction is not None
+    assert fr.extraction["object"].to_list() == ["Old"] and _meta(fr)["new_answer"] == "New"
     assert all(s.needs for s in mquake.SPECS)
 
 
@@ -255,11 +268,15 @@ def test_gatemem_turns_are_speaker_scoped_documents(tmp_path):
             tmp_path, "checkpoints.jsonl", json.dumps(checkpoint)
         ),
     }
-    fr = gatemem.parse(paths, None)
-    assert fr.grants["principal"].to_list() == ["alice", "bob", "bob"]
-    assert fr.documents["observed_at"][2] == 0
-    assert fr.documents["observed_at"][1] - fr.documents["observed_at"][0] == 3 * 60 * 1_000_000
-    q = fr.questions.row(0, named=True)
+    fr = materialize(gatemem.parse(paths, None))
+    assert fr.corpus.grants["principal"].to_list() == ["alice", "bob", "bob"]
+    assert fr.corpus.documents["observed_at"][2] == 0
+    assert (
+        fr.corpus.documents["observed_at"][1] - fr.corpus.documents["observed_at"][0]
+        == 3 * 60 * 1_000_000
+    )
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert not q["answerable"] and q["answer"] == "refuse" and _meta(fr)["as_of_chunk_id"] == 2
     assert _meta(fr)["leak_targets"] == []
     assert gatemem.SPECS[0].needs
@@ -281,14 +298,17 @@ def test_longmemeval_sessions_dates_and_abstention(tmp_path):
          "haystack_sessions": [[{"role": "user", "content": "puzzle"}]]},
     ]  # fmt: skip
     path = _write(tmp_path, "s.json", records)
-    fr = longmemeval.parse({"x": path}, None)
-    assert fr.chunks.height == 3 and fr.documents["id"][1] == "longmemeval_s:q1/1"
-    assert fr.questions["gold_chunk_ids"].to_list() == [[2], []]
-    assert fr.questions["answerable"].to_list() == [True, False]
+    fr = materialize(longmemeval.parse({"x": path}, None))
+    assert fr.corpus.chunks.height == 3 and fr.corpus.documents["id"][1] == "longmemeval_s:q1/1"
+    assert fr.qa is not None
+    assert fr.qa["gold_chunk_ids"].to_list() == [[2], []]
+    assert fr.qa["answerable"].to_list() == [True, False]
     assert (
-        fr.questions["as_of"][0] > fr.documents["observed_at"][1] > fr.documents["observed_at"][0]
+        fr.qa["as_of"][0]
+        > fr.corpus.documents["observed_at"][1]
+        > fr.corpus.documents["observed_at"][0]
     )
-    assert json.loads(fr.documents["metadata"][1])["answer_turns"] == [0]
+    assert json.loads(fr.corpus.documents["metadata"][1])["answer_turns"] == [0]
 
 
 def test_tempo_gold_ids_and_step_metadata(tmp_path):
@@ -309,9 +329,10 @@ def test_tempo_gold_ids_and_step_metadata(tmp_path):
                               "gold_passage_annotations": [[{"doc_id": f"{domain}/d1.txt"}]]})  # fmt: skip
         steps.write_parquet(tmp_path / f"s-{domain}.parquet")
         paths[f"tempo/steps/{domain}.parquet"] = tmp_path / f"s-{domain}.parquet"
-    fr = tempo.parse(paths, n=2)
-    assert fr.chunks.height == len(tempo.DOMAINS) and fr.questions.height == 2
-    assert fr.questions["gold_chunk_ids"].to_list() == [[1], [2]]
+    fr = materialize(tempo.parse(paths, n=2))
+    assert fr.qa is not None
+    assert fr.corpus.chunks.height == len(tempo.DOMAINS) and fr.qa.height == 2
+    assert fr.qa["gold_chunk_ids"].to_list() == [[1], [2]]
     assert _meta(fr)["query_guidance"]["is_temporal_query"] is True
     assert not tempo.SPECS[0].fixture and tempo.SPECS[0].large
 
@@ -323,16 +344,17 @@ def test_graphjudge_lines_json_or_python_literal(tmp_path):
         "g/train.source": _write(tmp_path, "train.source", "[['C', 'r', 'D'], ['C', 'q', 'E']]\n"),
         "g/train.target": _write(tmp_path, "train.target", "C r D and q E.\n"),
     }
-    fr = extraction.parse_graphjudge("graphjudge_x", paths, None)
-    assert fr.questions.height == 0 and fr.documents.height == 2 and fr.triples.height == 3
-    assert fr.triples["document_id"].to_list() == [
+    fr = materialize(extraction.parse_graphjudge("graphjudge_x", paths, None))
+    assert fr.extraction is not None
+    assert fr.qa is None and fr.corpus.documents.height == 2 and fr.extraction.height == 3
+    assert fr.extraction["document_id"].to_list() == [
         "graphjudge_x:test:0",
         "graphjudge_x:train:0",
         "graphjudge_x:train:0",
     ]
     with pytest.raises(base.GoldMappingError):
         paths["g/train.target"] = _write(tmp_path, "bad.target", "one\ntwo\n")
-        extraction.parse_graphjudge("graphjudge_x", paths, None)
+        materialize(extraction.parse_graphjudge("graphjudge_x", paths, None))
 
 
 def test_genwiki_unmasks_entities(tmp_path):
@@ -343,15 +365,18 @@ def test_genwiki_unmasks_entities(tmp_path):
     with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr("genwiki/test/test.json", json.dumps([rec]))
         zf.writestr("genwiki/train/fine/part_1.json", json.dumps([rec, rec]))
-    fr = extraction.parse_genwiki("genwiki", "genwiki/test/", {"x": zpath}, None)
+    fr = materialize(extraction.parse_genwiki("genwiki", "genwiki/test/", {"x": zpath}, None))
+    assert fr.extraction is not None
     assert (
-        fr.chunks["text"][0] == "White Coppice\nWhite Coppice is a hamlet ."
-        and fr.triples.height == 1
+        fr.corpus.chunks["text"][0] == "White Coppice\nWhite Coppice is a hamlet ."
+        and fr.extraction.height == 1
     )
-    fine = extraction.parse_genwiki("genwiki_fine", "genwiki/train/fine/", {"x": zpath}, None)
+    fine = materialize(
+        extraction.parse_genwiki("genwiki_fine", "genwiki/train/fine/", {"x": zpath}, None)
+    )
     assert (
-        fine.documents.height == 2
-        and json.loads(fine.documents["metadata"][0])["masked_text"] == rec["text"]
+        fine.corpus.documents.height == 2
+        and json.loads(fine.corpus.documents["metadata"][0])["masked_text"] == rec["text"]
     )
 
 
@@ -361,10 +386,11 @@ def test_carb_groups_tuples_by_sentence(tmp_path):
         "carb/data/gold/dev.tsv": _write(tmp_path, "dev.tsv", dev),
         "carb/data/gold/test.tsv": _write(tmp_path, "test.tsv", ""),
     }
-    fr = extraction.parse_carb(paths, None)
-    assert fr.documents.height == 2 and fr.triples.height == 3
-    assert fr.triples.row(0) == (None, "carb:dev:0", "Bush", "made", "an offer this year")
-    assert fr.triples.row(2) == (None, "carb:dev:1", "X", "is", "")
+    fr = materialize(extraction.parse_carb(paths, None))
+    assert fr.extraction is not None
+    assert fr.corpus.documents.height == 2 and fr.extraction.height == 3
+    assert fr.extraction.row(0) == (None, "carb:dev:0", "Bush", "made", "an offer this year")
+    assert fr.extraction.row(2) == (None, "carb:dev:1", "X", "is", "")
 
 
 def test_conll04_and_scierc_spans(tmp_path):
@@ -376,14 +402,20 @@ def test_conll04_and_scierc_spans(tmp_path):
         p = tmp_path / f"{split}-00000-of-00001.parquet"
         pl.DataFrame([rec]).write_parquet(p)
         paths[f"conll04/data/{split}-00000-of-00001.parquet"] = p
-    fr = extraction.parse_conll04(paths, None)
-    assert fr.documents.height == 3 and fr.triples.row(0)[2:] == ("John Booth", "Kill", "Lincoln")
-    assert json.loads(fr.documents["metadata"][0])["entities"][0]["text"] == "John Booth"
+    fr = materialize(extraction.parse_conll04(paths, None))
+    assert fr.extraction is not None
+    assert fr.corpus.documents.height == 3 and fr.extraction.row(0)[2:] == (
+        "John Booth",
+        "Kill",
+        "Lincoln",
+    )
+    assert json.loads(fr.corpus.documents["metadata"][0])["entities"][0]["text"] == "John Booth"
     spaths = {
         f"scierc/spert/scierc_{s}.json": _write(tmp_path, f"scierc_{s}.json", [rec])
         for s in ("train", "dev", "test")
     }
-    assert extraction.parse_scierc(spaths, None).triples.height == 3
+    scierc = materialize(extraction.parse_scierc(spaths, None))
+    assert scierc.extraction is not None and scierc.extraction.height == 3
 
 
 def _encode(text: str) -> str:
@@ -408,8 +440,9 @@ def test_browsecomp_plus_decodes_queries_and_docids(tmp_path):
         "browsecomp_plus/data/test-0.parquet": query,
         "browsecomp_plus/corpus/data/train-0.parquet": corpus,
     }
-    fr = browsecomp_plus.parse(paths, None)
-    q = fr.questions.row(0, named=True)
+    fr = materialize(browsecomp_plus.parse(paths, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert q["question"] == "Which university?" and q["answer"] == "Queen Arwa University"
     assert q["gold_chunk_ids"] == [1] and _meta(fr)["candidate_chunk_ids"] == [1, 2]
     assert browsecomp_plus.decode(_encode("round trip")) == "round trip"
@@ -429,10 +462,12 @@ def test_document_frames_numbers_chunks_across_documents():
 def test_question_only_sets(tmp_path):
     pq = tmp_path / "b.parquet"
     pl.DataFrame({"Question": ["q?"], "Answer": ["a"]}).write_parquet(pq)
-    assert question_only.parse_bamboogle({"x": pq}, None).questions["qtype"][0] == "multihop"
+    fr = materialize(question_only.parse_bamboogle({"x": pq}, None))
+    assert fr.qa is not None and fr.qa["qtype"][0] == "multihop"
     pl.DataFrame({"question": ["q"], "answer": [["a1", "a2"]]}).write_parquet(pq)
-    fr = question_only.parse_nq_open({"x": pq}, None)
-    assert fr.questions["aliases"][0].to_list() == ["a1", "a2"] and fr.chunks.height == 0
+    fr = materialize(question_only.parse_nq_open({"x": pq}, None))
+    assert fr.qa is not None
+    assert fr.qa["aliases"][0].to_list() == ["a1", "a2"] and fr.corpus.chunks.height == 0
     pl.DataFrame(
         {
             "id": ["M_1"],
@@ -441,7 +476,9 @@ def test_question_only_sets(tmp_path):
             "answerKey": ["B"],
         }
     ).write_parquet(pq)
-    q = question_only.parse_arc({"x": pq}, None).questions.row(0, named=True)
+    fr = materialize(question_only.parse_arc({"x": pq}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert q["answer"] == "two" and q["aliases"] == ["two", "B"]
     zpath = tmp_path / "ambignq_light.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
@@ -465,7 +502,9 @@ def test_question_only_sets(tmp_path):
                 ]
             ),
         )
-    q = question_only.parse_ambigqa({"x": zpath}, None).questions.row(0, named=True)
+    fr = materialize(question_only.parse_ambigqa({"x": zpath}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert q["answer"] == "A" and q["aliases"] == ["A", "A2", "B"] and q["qtype"] == "multipleQAs"
     header = ",".join(
         ["id", "split", "question", "effective_year", "next_review", "false_premise", "num_hops"]
@@ -475,8 +514,9 @@ def test_question_only_sets(tmp_path):
     )
     csv_text = "Warning,,,\n,,,\n" + header + "\n"
     csv_text += "3,TEST,q?,2024,daily,TRUE,one-hop,fast-changing,http://s,x,y,,,,,,,,,n\n"
-    fr = question_only.parse_freshqa({"x": _write(tmp_path, "f.csv", csv_text)}, None)
-    q = fr.questions.row(0, named=True)
+    fr = materialize(question_only.parse_freshqa({"x": _write(tmp_path, "f.csv", csv_text)}, None))
+    assert fr.qa is not None
+    q = fr.qa.row(0, named=True)
     assert q["id"] == "freshqa:3" and q["aliases"] == ["x", "y"] and q["qtype"] == "fast-changing"
     assert _meta(fr)["false_premise"] is True
 
@@ -496,15 +536,17 @@ def test_reading_sets_use_the_passage_as_gold(tmp_path):
             ],
         }
     ).write_parquet(pq)
-    fr = reading.parse_squad_v2({"x": pq}, None)
-    assert fr.chunks.height == 2 and fr.chunks["text"][0] == "Super Bowl\nc1"
-    q1, q2, q3 = fr.questions.iter_rows(named=True)
+    fr = materialize(reading.parse_squad_v2({"x": pq}, None))
+    assert fr.corpus.chunks.height == 2 and fr.corpus.chunks["text"][0] == "Super Bowl\nc1"
+    assert fr.qa is not None
+    q1, q2, q3 = fr.qa.iter_rows(named=True)
     assert q1["aliases"] == ["a", "b"] and q1["gold_chunk_ids"] == [1]
     assert q2["answerable"] is False and q2["gold_chunk_ids"] == []
     assert _meta(fr, 1)["candidate_chunk_ids"] == [1] and q3["gold_chunk_ids"] == [2]
     pl.DataFrame({"question": ["is it"], "answer": [True], "passage": ["p"]}).write_parquet(pq)
-    fr = reading.parse_boolq({"x": pq}, None)
-    assert fr.questions["answer"][0] == "yes" and fr.chunks["text"][0] == "p"
+    fr = materialize(reading.parse_boolq({"x": pq}, None))
+    assert fr.qa is not None
+    assert fr.qa["answer"][0] == "yes" and fr.corpus.chunks["text"][0] == "p"
 
 
 def test_quality_scores_the_gold_option(tmp_path):
@@ -531,11 +573,12 @@ def test_quality_scores_the_gold_option(tmp_path):
     zpath = tmp_path / "q.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr(long_document.QUALITY_MEMBER, json.dumps(article) + "\n" + json.dumps(article))
-    fr = long_document.parse_quality({"x": zpath}, None)
-    assert fr.chunks.height == 1 and fr.questions.height == 2
-    q = fr.questions.row(0, named=True)
+    fr = materialize(long_document.parse_quality({"x": zpath}, None))
+    assert fr.qa is not None
+    assert fr.corpus.chunks.height == 1 and fr.qa.height == 2
+    q = fr.qa.row(0, named=True)
     assert q["answer"] == "y" and q["aliases"] == ["y", "3"] and q["qtype"] == "hard"
-    assert json.loads(fr.documents["metadata"][0])["license"] == "L"
+    assert json.loads(fr.corpus.documents["metadata"][0])["license"] == "L"
 
 
 def test_qasper_gold_is_the_evidence_paragraph(tmp_path):
@@ -577,15 +620,16 @@ def test_qasper_gold_is_the_evidence_paragraph(tmp_path):
         info = tarfile.TarInfo(long_document.QASPER_MEMBER)
         info.size = len(data)
         tf.addfile(info, io.BytesIO(data))
-    fr = long_document.parse_qasper({"x": tpath}, None)
-    assert fr.documents.height == 1 and fr.chunks["text"].to_list() == [
+    fr = materialize(long_document.parse_qasper({"x": tpath}, None))
+    assert fr.corpus.documents.height == 1 and fr.corpus.chunks["text"].to_list() == [
         "Paper\nAbs.",
         "Intro\np1",
         "Intro\np2",
         "Figure 1: cap",
     ]
-    assert fr.questions["id"].to_list() == ["q1", "q2"]  # q3 has no matching evidence
-    q1, q2 = fr.questions.iter_rows(named=True)
+    assert fr.qa is not None
+    assert fr.qa["id"].to_list() == ["q1", "q2"]  # q3 has no matching evidence
+    q1, q2 = fr.qa.iter_rows(named=True)
     assert q1["answer"] == "s1, s2" and q1["aliases"] == ["s1, s2", "ff", "s1", "s2"]
     assert q1["gold_chunk_ids"] == [3, 4] and q1["qtype"] == "free_form"
     assert q2["answerable"] is False and q2["answer"] == "unanswerable"
@@ -600,19 +644,24 @@ def test_metaqa_verbalises_the_kb_and_interleaves_hops(tmp_path):
         tmp_path, "2hop_qa_test.txt", "when were films by [William Dieterle] released\t1944\n"
     )
     h3 = _write(tmp_path, "3hop_qa_test.txt", "")
-    fr = metaqa.parse(
-        {"kb.txt": kb, "1hop_qa_test.txt": h1, "2hop_qa_test.txt": h2, "3hop_qa_test.txt": h3}, None
+    fr = materialize(
+        metaqa.parse(
+            {"kb.txt": kb, "1hop_qa_test.txt": h1, "2hop_qa_test.txt": h2, "3hop_qa_test.txt": h3},
+            None,
+        )
     )
-    assert fr.chunks["text"].to_list() == [
+    assert fr.corpus.chunks["text"].to_list() == [
         "Kismet\nKismet was directed by William Dieterle. Kismet was released in 1944.",
         "William Dieterle\nWilliam Dieterle directed Kismet.",
         "1944\nKismet was released in 1944.",
     ]
-    assert fr.triples.select("document_id", "predicate").rows() == [
+    assert fr.extraction is not None
+    assert fr.extraction.select("document_id", "predicate").rows() == [
         ("metaqa:Kismet", "directed_by"),
         ("metaqa:Kismet", "release_year"),
     ]
-    q1, q2 = fr.questions.iter_rows(named=True)
+    assert fr.qa is not None
+    q1, q2 = fr.qa.iter_rows(named=True)
     assert q1["id"] == "metaqa:1hop:0" and q2["id"] == "metaqa:2hop:0"
     assert q1["question"] == "who directed Kismet" and _meta(fr)["topic"] == "Kismet"
     assert q1["gold_chunk_ids"] == [1, 2] and q2["gold_chunk_ids"] == [2, 3]

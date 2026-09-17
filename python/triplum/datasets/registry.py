@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
-from triplum.eval.datasets import (
+from triplum.bench.inputs import Benchmark
+from triplum.datasets import (
     base,
     browsecomp_plus,
     ectqa,
@@ -22,7 +24,7 @@ from triplum.eval.datasets import (
     tempo,
     wiki_multihop,
 )
-from triplum.eval.datasets.base import Dataset, DatasetStatus, Spec
+from triplum.datasets.base import DatasetStatus, Spec
 from triplum.ingest import files
 
 SPECS: dict[str, Spec] = {}
@@ -70,9 +72,9 @@ def fetch(name: str, root: Path | None = None) -> dict[str, Path]:
     return base.fetch(get(name), root)
 
 
-def load(name: str, n: int | None = None, root: Path | None = None) -> Dataset:
+def load(name: str, n: int | None = None, root: Path | None = None) -> Benchmark:
     return base.load(get(name), n, root)
 
 
-def load_fixture(name: str, n: int | None = None) -> Dataset:
-    return base.read_fixture(name, n)
+def load_fixture(name: str, n: int | None = None) -> Benchmark:
+    return replace(base.read_fixture(name, n), needs=get(name).needs)

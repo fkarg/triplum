@@ -43,6 +43,12 @@ what makes the port painful; the Arrow decision below is the mitigation.
 
 ### D2. Arrow-native shared data layer
 
+Canonical frames govern store and processing-stage boundaries, not arbitrary dataset records.
+`utils.data` separates indexed/streaming access from lazy loading and collation; source authors
+choose their record types. Both dataset base classes require `fingerprint()` identifying ordered
+logical content without consuming iteration. Frame-backed datasets own content hashing; loading
+batch size and physical chunk layout do not affect identity. This is not Python `__hash__`.
+
 Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
 (integer microseconds); intervals are closed-open; an open end uses a max sentinel rather than NULL
 so range predicates stay simple.
@@ -91,8 +97,8 @@ Thin row dataclasses exist for notebook display and small manipulations only; th
 a second model. Arrow batches are the *bulk interchange* format; narrow query results (a ranked
 list of chunk ids, a neighbourhood) may use small typed results rather than a full frame.
 
-Every module accepts and returns these frames, which is what makes "use a module alone" cheap: a
-consumer produces a frame without importing the rest of the library.
+Store and bulk processing modules accept and return these frames, which makes using a module
+alone cheap. Dataset sources may use custom records, adapted to frames at those boundaries.
 
 *Alternative.* A pydantic object model mirrored by serde structs. Nicer to navigate in a notebook,
 but every Rust call converts object graphs and two definitions must stay in sync. Rejected.
@@ -249,7 +255,9 @@ Details in [`storage-sqlite.md`](storage-sqlite.md) and [`store-comparison.md`](
 
 ### D8. Benchmark-first
 
-The first sub-project is the harness, not a pipeline. It loads datasets into the canonical schema,
+The first sub-project is the harness, not a pipeline. A benchmark composes independent corpus,
+QA and extraction sources; gold triples are not a field on generic datasets or corpora. Built-in
+sources live in `triplum.datasets`, separate from evaluation. The harness loads these sources into the canonical schema,
 runs `(pipeline factory, dataset, evaluators, viewer)`, and writes one SQLite run store. A run record
 identifies everything that produced an answer: dataset and artifact ids (document revisions, chunking,
 extraction output, resolution decisions, index builds), code version, pipeline config hash, model ids
@@ -359,6 +367,17 @@ the extraction baseline, caching and run monitoring are functional end to end.
 Each sub-project gets its own spec and plan before code.
 
 ## Review record
+
+- 2026-09-17, dataset identity follow-up: owner requires dataset-owned `fingerprint()`, not an
+  optional hook or Python `__hash__`. A later cross-model call returned no model answer because
+  its OAuth credentials expired. Fresh-context GPT-family fallback review **found unique
+  defects**: falsy callable collators were ignored, and JSON row hashing rejected binary/temporal
+  values and lost nanoseconds. Regression tests cover these and physical-chunk independence;
+  frame hashing rebuilds Arrow buffers from precision-preserving scalars. Follow-up review
+  **found unique defects** in dictionary serialization (colliding category values and nested
+  struct reconstruction); decoding dictionary values before serialization fixes both, covered
+  by categorical, enum, list and struct tests. Early cache lookup from
+  source identity and task-selective materialization remain deferred boundary work.
 
 - 2026-09-17, dataset/loader redesign, owner-approved: generic indexed `Dataset[T]` and
   streaming `IterableDataset[T]`, with composable `DataLoader`, replace the universal five-frame

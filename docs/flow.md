@@ -10,8 +10,9 @@ the design record still plans. The caching and identity rules it relies on are i
 
 ```mermaid
 flowchart LR
-  DS[("dataset files<br/>pinned by sha256")] --> LOAD["load<br/><code>eval/datasets/registry.py</code>"]
-  LOAD --> ID["run identity<br/><code>bench/runstore.py</code> + <code>bench/fingerprint.py</code>"]
+  DS[("dataset files<br/>pinned by sha256")] --> LOAD["load<br/><code>datasets/registry.py</code>"]
+  LOAD --> PREP["explicit materialization<br/><code>bench/inputs.py</code>"]
+  PREP --> ID["run identity<br/><code>bench/runstore.py</code> + <code>bench/fingerprint.py</code>"]
   ID -- "identical run exists" --> RS
   ID -- "new / --force / --resume" --> DOCS["ensure_documents<br/><code>bench/index.py</code>"]
   DOCS --> EMB["ensure_embeddings<br/>one vec0 table per EmbeddingSpec"]
@@ -33,7 +34,7 @@ Polars frames; the store enforces visibility, so every stage passes a `Viewer` t
 
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
-| 1 | load dataset | `eval/datasets/registry.py`, `base.py`, one parser module per source | Looks the dataset up in the registry, fetches its pinned files into the data root, verifies sha256, and parses them into the canonical frames: one document and one chunk per passage, one public grant per document, questions with `gold_chunk_ids` resolved from the source's gold, `answerable`, `as_of` and a JSON `metadata` column for source extras, gold `triples` where the source has them. `--fixture` loads the committed canonical 20-question fixture instead; `--n` truncates. The runner refuses extraction-only datasets, datasets with a `needs` note (a runner capability still missing), and non-closed-book pipelines on corpus-less datasets. | `corpus_hash` and `questions_hash` are hashes of the parsed frames, not the source bytes, so a parser change invalidates stores and runs. A gold passage that cannot be mapped is an error, never a silent miss. |
+| 1 | load dataset | `datasets/registry.py`, `base.py`, source parsers, `bench/inputs.py` | Fetches pinned files and verifies sha256, or loads committed fixtures. Parsers return a `Benchmark` composition of corpus and optional QA/extraction sources, not a universal dataset. Custom compositions can be passed directly as `data=` without registration. The current runner explicitly materializes sources into canonical frames; `--n` selects questions. QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | `CorpusDataset` and `FrameDataset` own fingerprints; the eager bridge currently hashes materialized content. Loading batch size and physical chunk layout do not alter identity. Missing gold passage mappings remain errors. |
 | 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/cache/`. |
 | 3 | run identity | `bench/runstore.py`, `bench/fingerprint.py` | Hashes dataset, pipeline, config, the source of every module the pipeline executes (not the git sha), corpus and question hashes, `n`, embedding and reranker spec, reader and judge model, seed, viewer, and both prompt hashes. An identical completed run is returned without doing anything. `--force` starts a fresh run; `--resume` continues a running or failed run with the same identity from its last committed question. | `runs` row with all identity fields plus git sha, dirty flag and host; `prices` snapshot for the models used. |
 | 4 | index documents | `bench/index.py: ensure_documents` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | Event `index.documents`. Skipped when the store already holds the corpus. |
@@ -119,7 +120,11 @@ Implemented (sub-project 2, part 1; spec in
   as-of instants, and traversal follows visible `same_as` facts only.
 - **Protocols with disk cache**: `LLM` (OpenAI-compatible, CLI subprocess, fake), `Embedder`
   (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
-- **Datasets**: a registry (`eval/datasets/registry.py`) of 37 pinned, auto-fetched datasets with
+- **Data loading**: `utils.data.Dataset` and `IterableDataset` require source-owned fingerprints;
+  `DataLoader` lazily batches arbitrary records or passes native batches through. No length,
+  registry, task schema or replay is required for streaming. Current benchmark algorithms still
+  materialize finite sources; early cache lookup from source fingerprints is deferred.
+- **Datasets**: a registry (`datasets/registry.py`) of 37 pinned, auto-fetched datasets with
   one parser per source and canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA
   under the HippoRAG 1000-question protocol are the default set. The others cover multi-hop with
   gold chains (MoreHopQA, the full HotpotQA/2Wiki/MuSiQue dev sets, BrowseComp-Plus), abstention

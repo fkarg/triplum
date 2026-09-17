@@ -10,13 +10,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 UNANSWERABLE = "unanswerable"
 
 
-def parse(paths: dict[str, Path], n: int | None) -> Frames:
+def parse(paths: dict[str, Path], n: int | None) -> Benchmark:
     by_file: dict[str, int] = {}
     passages = []
     transcripts = sorted(name for name in paths if "/data/" in name)
@@ -67,8 +72,9 @@ def parse(paths: dict[str, Path], n: int | None) -> Frames:
             )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows), documents, grants, chunks, base.empty(base.TRIPLE_SCHEMA)
+    return Benchmark(
+        corpus=CorpusDataset(CorpusBatch(documents, grants, chunks)),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
     )
 
 

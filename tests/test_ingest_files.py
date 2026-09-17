@@ -4,7 +4,8 @@ sidecar questions.jsonl becomes questions with document-level gold."""
 import json
 
 import pytest
-from triplum.eval.datasets import base, registry
+from triplum.bench.inputs import materialize
+from triplum.datasets import base, registry
 from triplum.ingest import files
 
 
@@ -66,29 +67,36 @@ def test_folder_becomes_a_corpus_with_questions(tmp_path):
         + "\n",
         encoding="utf-8",
     )
-    ds = registry.load(str(tmp_path))
+    ds = materialize(registry.load(str(tmp_path)))
     assert ds.name == f"files:{tmp_path.name}"
-    assert ds.documents["id"].to_list() == ["memo.docx", "notes.md", "sub/paper.pdf"]
-    meta = json.loads(ds.documents.filter(ds.documents["id"] == "sub/paper.pdf")["metadata"][0])
+    assert ds.corpus.documents["id"].to_list() == ["memo.docx", "notes.md", "sub/paper.pdf"]
+    meta = json.loads(
+        ds.corpus.documents.filter(ds.corpus.documents["id"] == "sub/paper.pdf")["metadata"][0]
+    )
     assert meta["pages"] == 2 and meta["empty_pages"] == 1 and len(meta["sha256"]) == 64
-    assert json.loads(ds.documents["metadata"][0])["title"] == "A Word title"
-    texts = dict(zip(ds.chunks["document_id"], ds.chunks["text"]))
+    assert json.loads(ds.corpus.documents["metadata"][0])["title"] == "A Word title"
+    texts = dict(zip(ds.corpus.chunks["document_id"], ds.corpus.chunks["text"]))
     assert texts["sub/paper.pdf"].strip() == "Graphs help retrieval."
     assert texts["memo.docx"] == "Memo one.\n\nMemo two."
-    assert ds.documents["uri"].null_count() == 3 and ds.documents["observed_at"].to_list() == [
+    assert ds.corpus.documents["uri"].null_count() == 3 and ds.corpus.documents[
+        "observed_at"
+    ].to_list() == [
         0,
         0,
         0,
     ]
-    q = ds.questions.row(0, named=True)
-    gold = ds.chunks.filter(ds.chunks["document_id"] == "sub/paper.pdf")["id"].to_list()
+    assert ds.qa is not None
+    q = ds.qa.row(0, named=True)
+    gold = ds.corpus.chunks.filter(ds.corpus.chunks["document_id"] == "sub/paper.pdf")[
+        "id"
+    ].to_list()
     assert q["gold_chunk_ids"] == gold and q["id"] == "0"
     # identity is portable: a copy of the folder under another name hashes the same
     copy = tmp_path.parent / (tmp_path.name + "-copy")
     import shutil
 
     shutil.copytree(tmp_path, copy)
-    assert registry.load(str(copy)).corpus_hash == ds.corpus_hash
+    assert materialize(registry.load(str(copy))).corpus_hash == ds.corpus_hash
 
 
 def test_missing_gold_file_fails_loudly(tmp_path):
@@ -97,11 +105,11 @@ def test_missing_gold_file_fails_loudly(tmp_path):
         json.dumps({"question": "q", "answer": "a", "gold": ["b.txt"]}), encoding="utf-8"
     )
     with pytest.raises(base.GoldMappingError):
-        registry.load(str(tmp_path))
+        materialize(registry.load(str(tmp_path)))
 
 
 def test_folder_without_questions_is_extraction_only(tmp_path):
     (tmp_path / "a.txt").write_text("Only text.", encoding="utf-8")
-    ds = registry.load(str(tmp_path))
-    assert ds.questions.height == 0 and ds.chunks.height == 1
+    ds = materialize(registry.load(str(tmp_path)))
+    assert ds.qa is None and ds.corpus.chunks.height == 1
     assert registry.get(str(tmp_path)).fixture is False

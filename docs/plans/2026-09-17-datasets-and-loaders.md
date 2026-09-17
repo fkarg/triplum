@@ -15,30 +15,40 @@ algorithms consume explicit materialized task inputs in `bench/inputs.py`.
 
 ## 1. Generic access and loading
 
-- [ ] Add tests in `tests/test_data_loading.py` for indexed and streaming subclasses, generators,
+- [x] Add tests in `tests/test_data_loading.py` for indexed and streaming subclasses, generators,
   bounded consumption, final partial batch, custom collation, pass-through, invalid batch size.
   Example: `next(iter(DataLoader(count(), batch_size=3))) == [0, 1, 2]`.
-- [ ] Run `uv run --frozen pytest tests/test_data_loading.py` and observe missing API failure.
+- [x] Run `uv run --frozen pytest tests/test_data_loading.py` and observe missing API failure.
 - [x] Implement `Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`; export from `triplum.utils.data`.
-- [ ] Run focused tests and `uv run --frozen ty check`; update data API docs and commit.
+- [x] Run focused tests and `uv run --frozen ty check`; update data API docs and commit.
 
 ## 2. Replace built-in composition
 
-- [ ] Add corpus/QA/extraction composition tests, including a QA-only source with no corpus and a
+- [x] Add corpus/QA/extraction composition tests, including a QA-only source with no corpus and a
   corpus source with no evaluation targets. Use existing fixture tests as behavioral regression.
-- [ ] Introduce `CorpusBatch`, task-specific evaluation inputs and benchmark composition.
+- [x] Introduce `CorpusBatch`, task-specific evaluation inputs and benchmark composition.
   Replace `Frames(...)` parser construction with explicit corpus/QA/extraction construction in
   all `eval/datasets/*.py` parsers and `ingest/files.py`; remove old Dataset and Frames.
-- [ ] Update fixtures to task-owned structure and fixture helper/subset/script code.
-- [ ] Add `bench/inputs.py` explicit materialization and content hashing; update runner/index
+- [x] Update fixtures to task-owned structure and fixture helper/subset/script code.
+- [x] Add `bench/inputs.py` explicit materialization and content hashing; update runner/index
   consumers and tests. Allow direct benchmark input to run_benchmark/run_extraction.
-- [ ] Verify fixture identity, parser semantics, QA and extraction workflows. Commit.
+- [x] Verify fixture identity, parser semantics, QA and extraction workflows.
 
 ## 3. Documentation, review, final checks
 
-- [ ] Add a runnable custom streaming dataset + loader example, explain materialization boundaries,
+- [x] Add a runnable custom streaming dataset + loader example, explain materialization boundaries,
   and update README, design D2/D8, docs/flow.md, docs/api/index.md and data API references.
-- [ ] Run `uv run --frozen pytest -m 'not model' --cov --cov-branch`, `uv run --frozen ty check`,
+- [x] Run `uv run --frozen pytest -m 'not model' --cov --cov-branch`, `uv run --frozen ty check`,
   `cargo check`, Ruff checks, and `uv run --frozen mkdocs build --strict`.
-- [ ] Fresh-context review and cross-model diff review; fix verified in-scope defects, record
-  peer outcomes in design.md, rerun affected checks and commit. No push/PR requested.
+- [x] Fresh-context review; cross-model follow-up unavailable (expired OAuth), so use the
+  fresh-context fallback. Fix verified defects, record outcomes in design.md and rerun checks.
+  No push/PR requested.
+
+## Verification outcome
+
+294 offline tests passed, three real-model tests deselected; branch-inclusive coverage 93%.
+Typechecking, Ruff and strict MkDocs passed. Cargo passed with `PYO3_PYTHON` set to the project's
+Python (the shell default is too old). Existing SQLite resource/Polars deprecation warnings remain.
+Owner follow-up requires `fingerprint()` on both dataset base classes; frame hashing preserves
+nanoseconds and categorical values, independent of batching and physical chunks. Fresh-context
+fallback review independently verified those cases and ran 62 focused tests without failures.

@@ -246,9 +246,9 @@ def test_adapter_suffix_preserved_and_missing_model_rejected():
 
 
 def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
-    from triplum.eval.datasets import base, registry
+    from triplum.datasets import base, registry
 
-    def _never(paths, n) -> base.Frames:
+    def _never(paths, n) -> base.Benchmark:
         raise AssertionError("parser must not run")
 
     seen = []

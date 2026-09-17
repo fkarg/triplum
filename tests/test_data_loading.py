@@ -1,7 +1,8 @@
-"""Custom sources need only access methods; loading is lazy and task agnostic."""
+"""Sources own access and identity; loading is lazy and task agnostic."""
 
 from collections.abc import Iterator
 from itertools import count, islice
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -9,6 +10,9 @@ from triplum.utils.data import DataLoader, Dataset, IterableDataset
 
 
 class Words(Dataset[str]):
+    def fingerprint(self) -> str:
+        return "words:alpha-beta-gamma:v1"
+
     def __len__(self) -> int:
         return 3
 
@@ -17,8 +21,17 @@ class Words(Dataset[str]):
 
 
 class Numbers(IterableDataset[int]):
+    def fingerprint(self) -> str:
+        return "natural-numbers:start=0:step=1"
+
     def __iter__(self) -> Iterator[int]:
         yield from count()
+
+
+def test_documented_streaming_example():
+    page = (Path(__file__).parents[1] / "docs/api/utils-data.md").read_text()
+    example = page.split("```python\n", 1)[1].split("```", 1)[0]
+    exec(compile(example, "docs/api/utils-data.md", "exec"), {})  # noqa: S102 - repository-owned example
 
 
 def test_indexed_dataset_and_partial_last_batch():
@@ -86,3 +99,89 @@ def test_indexed_bulk_read_can_be_overridden():
             return [super(BulkWords, self).__getitem__(i).upper() for i in indices]
 
     assert list(DataLoader(BulkWords(), batch_size=2)) == [["ALPHA", "BETA"], ["GAMMA"]]
+
+
+def test_dataset_identity_is_required():
+    import inspect
+
+    class Unidentified(IterableDataset[int]):
+        def __iter__(self) -> Iterator[int]:
+            yield 1
+
+    assert inspect.isabstract(Unidentified)
+
+
+def test_frame_dataset_owns_identity_independent_of_batch_size():
+    from triplum.datasets.frames import FrameDataset
+
+    frame = pl.DataFrame({"text": ["A", "B", "C"]})
+    small = FrameDataset(frame, batch_size=1)
+    large = FrameDataset(frame, batch_size=3)
+    assert small.fingerprint() == large.fingerprint()
+    assert small.fingerprint() != FrameDataset(frame.reverse()).fingerprint()
+    assert (
+        small.fingerprint()
+        != FrameDataset(frame.with_columns(pl.lit("changed").alias("text"))).fingerprint()
+    )
+    assert pl.concat(list(small)).equals(frame)
+
+
+@pytest.mark.parametrize("indexed", [False, True])
+def test_falsy_callable_is_still_used_for_collation(indexed):
+    # The loader used truthiness to choose collation, silently returning the wrong batch type.
+    class Collate:
+        def __bool__(self) -> bool:
+            return False
+
+        def __call__(self, items: list[str]) -> str:
+            return "/".join(items)
+
+    source = Words() if indexed else iter(Words())
+    assert list(DataLoader(source, batch_size=2, collate_fn=Collate())) == ["alpha/beta", "gamma"]
+
+
+def test_frame_fingerprint_preserves_binary_temporal_nested_and_nanosecond_values():
+    # Python row conversion is lossy at nanosecond precision and JSON rejects native types.
+    from datetime import date, timedelta
+
+    from triplum.datasets.frames import FrameDataset
+
+    frame = pl.DataFrame(
+        {
+            "bytes": [b"a", b"b"],
+            "date": [date(2026, 1, 1), None],
+            "duration": [timedelta(seconds=1), timedelta(seconds=2)],
+            "nested": [[1, 2], [3]],
+        }
+    ).with_columns(pl.Series("time", [1, 2], dtype=pl.Datetime("ns")))
+    fingerprint = FrameDataset(frame).fingerprint()
+    assert fingerprint == FrameDataset(pl.concat([frame.head(1), frame.tail(1)])).fingerprint()
+    assert fingerprint == FrameDataset(pl.concat([frame, frame]).slice(2)).fingerprint()
+    changed = frame.with_columns(pl.Series("time", [1, 3], dtype=pl.Datetime("ns")))
+    assert fingerprint != FrameDataset(changed).fingerprint()
+
+
+@pytest.mark.parametrize("dtype", [pl.Categorical, pl.Enum(["a", "b", "c", "d"])])
+def test_frame_fingerprint_includes_dictionary_values(dtype):
+    from triplum.datasets.frames import FrameDataset
+
+    fingerprints = {
+        FrameDataset(pl.DataFrame({"x": pl.Series(values, dtype=dtype)})).fingerprint()
+        for values in [["a", "b"], ["c", "d"], ["b", "a"]]
+    }
+    assert len(fingerprints) == 3
+
+
+@pytest.mark.parametrize(
+    "dtype,values,changed",
+    [
+        (pl.List(pl.Categorical), [["a"], ["b"]], [["c"], ["d"]]),
+        (pl.Struct({"c": pl.Categorical}), [{"c": "a"}], [{"c": "b"}]),
+    ],
+)
+def test_frame_fingerprint_handles_nested_dictionaries(dtype, values, changed):
+    from triplum.datasets.frames import FrameDataset
+
+    frame = pl.DataFrame({"x": pl.Series(values, dtype=dtype)})
+    other = pl.DataFrame({"x": pl.Series(changed, dtype=dtype)})
+    assert FrameDataset(frame).fingerprint() != FrameDataset(other).fingerprint()

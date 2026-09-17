@@ -34,7 +34,7 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   implementation plan derived from a spec.
   Keep both out of the MkDocs navigation; retain them as development records and link to them
   from other docs where the context is useful.
-- `python/triplum/`: the Python package (`data`, `cache`, `llm`, `embed`, `rerank`, `store`,
+- `python/triplum/`: the Python package (`utils.data`, `datasets`, `data`, `cache`, `llm`, `embed`, `rerank`, `store`,
   `retrieve`, `generate`, `eval`, `bench`, `ingest`; `extract` is planned). `crates/`: the
   Cargo workspace (`triplum-core`, `triplum-py`). `notebooks/`: marimo notebooks. `scripts/`:
   fixture generation and the pre-commit helper. `research/` (SOTA monitor, digests) is planned.
@@ -44,8 +44,10 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - **Placing code**: touches an LLM or a dataset loader, it is Python. Touches the graph or an index
   and Python is the measured bottleneck, or a better crate exists, it is Rust. Never port
   speculatively.
-- **Data layer**: the canonical tables in `design.md` D2 are the interface between modules. A
-  module accepts and returns those frames; it does not define its own row model.
+- **Data layer**: canonical tables in `design.md` D2 govern store and processing-stage boundaries.
+  Generic `utils.data` datasets choose their record types and own a required `fingerprint()`;
+  loaders only control consumption. Built-in sources live in `datasets`, not `eval`. Benchmark
+  composition separates corpus from optional QA/extraction inputs; no universal task schema.
 - **Visibility**: every store read takes a `Viewer`. Filtering happens inside the index, before
   ranking. Graph kernels run on the viewer's projection. Derived content inherits the ACL of its
   inputs and may never widen it. No community or global summaries until they are principal-scoped.

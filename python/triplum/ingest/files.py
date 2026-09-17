@@ -18,8 +18,13 @@ from pathlib import Path
 
 import polars as pl
 
-from triplum.eval.datasets import base
-from triplum.eval.datasets.base import Frames, Spec
+from triplum.bench.inputs import Benchmark
+from triplum.data.corpus import CorpusBatch
+from triplum.datasets import base
+from triplum.datasets.base import Spec
+from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.frames import FrameDataset
+from triplum.eval.inputs import QAEvaluation
 
 SUFFIXES = {".pdf", ".docx", ".md", ".markdown", ".txt", ".text"}
 MAX_CHARS = 1500
@@ -89,7 +94,7 @@ def chunk(text: str, max_chars: int = MAX_CHARS) -> list[tuple[int, int]]:
 SOURCE = "files"  # constant, so the corpus hash depends on content only, not the folder name
 
 
-def frames(files: list[tuple[str, bytes]], n: int | None = None) -> Frames:
+def frames(files: list[tuple[str, bytes]], n: int | None = None) -> Benchmark:
     """Canonical frames from `(relative path, bytes)` pairs; `questions.jsonl` is the questions."""
     doc_rows, grant_rows, chunk_rows = [], [], []
     chunks_of: dict[str, list[int]] = {}
@@ -138,12 +143,17 @@ def frames(files: list[tuple[str, bytes]], n: int | None = None) -> Frames:
         )
     if n is not None:
         rows = rows[:n]
-    return Frames(
-        base.questions_frame(rows),
-        pl.DataFrame(doc_rows, schema=base.DOC_SCHEMA, orient="row"),
-        pl.DataFrame(grant_rows, schema=base.GRANT_SCHEMA, orient="row"),
-        pl.DataFrame(chunk_rows, schema=base.CHUNK_SCHEMA, orient="row"),
-        base.empty(base.TRIPLE_SCHEMA),
+    return Benchmark(
+        corpus=CorpusDataset(
+            CorpusBatch(
+                pl.DataFrame(doc_rows, schema=base.DOC_SCHEMA, orient="row"),
+                pl.DataFrame(grant_rows, schema=base.GRANT_SCHEMA, orient="row"),
+                pl.DataFrame(chunk_rows, schema=base.CHUNK_SCHEMA, orient="row"),
+            )
+        ),
+        qa=QAEvaluation(FrameDataset(base.questions_frame(rows)))
+        if questions is not None
+        else None,
     )
 
 

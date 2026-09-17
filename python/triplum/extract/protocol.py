@@ -19,7 +19,7 @@ import polars as pl
 
 from triplum.cache import content_key
 from triplum.data import schema as canonical
-from triplum.eval.datasets.base import frames_hash
+from triplum.datasets.frames import FrameDataset
 
 SPAN_SCHEMA = {
     "chunk_id": pl.Int64,
@@ -98,7 +98,19 @@ class Extraction:
     claims: pl.DataFrame
 
     def hash(self) -> str:
-        return frames_hash(self.entities, self.facts, self.fact_support, self.mentions, self.claims)
+        return content_key(
+            "extraction",
+            [
+                FrameDataset(frame).fingerprint()
+                for frame in (
+                    self.entities,
+                    self.facts,
+                    self.fact_support,
+                    self.mentions,
+                    self.claims,
+                )
+            ],
+        )
 
     def counts(self) -> dict[str, int]:
         status = dict(self.claims.group_by("status").len().iter_rows())

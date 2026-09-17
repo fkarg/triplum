@@ -2,7 +2,7 @@
 
 import polars as pl
 import pytest
-from triplum.eval.datasets.base import CHUNK_SCHEMA, DOC_SCHEMA
+from triplum.datasets.base import CHUNK_SCHEMA, DOC_SCHEMA
 from triplum.extract import extract
 from triplum.extract.protocol import normalise
 

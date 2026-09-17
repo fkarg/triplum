@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from triplum.eval.datasets.base import Spec
+from triplum.datasets.base import Spec
 
 STATE_STYLES = {
     "verified": "green",

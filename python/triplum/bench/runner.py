@@ -14,16 +14,16 @@ import polars as pl
 from triplum.bench import factories, fingerprint
 from triplum.bench.config import ExtractConfig, RunConfig
 from triplum.bench.index import ensure_documents, ensure_embeddings, ensure_graph, graph_identity
+from triplum.bench.inputs import Benchmark, PreparedBenchmark, materialize
 from triplum.bench.runstore import RunStore
 from triplum.cache import default_root
 from triplum.data.schema import now_us
 from triplum.data.viewer import Viewer
+from triplum.datasets import base
+from triplum.datasets import registry as datasets
 from triplum.embed.protocol import Embedder
 from triplum.eval import judge as judge_mod
 from triplum.eval import metrics, triples
-from triplum.eval.datasets import base
-from triplum.eval.datasets import registry as datasets
-from triplum.eval.datasets.base import Dataset
 from triplum.extract import stages as extract_stages
 from triplum.generate import reader as reader_mod
 from triplum.generate.reader import read
@@ -57,7 +57,7 @@ def code_version() -> tuple[str, int]:
 
 def _retrieve(
     cfg: RunConfig,
-    ds: Dataset,
+    questions: pl.DataFrame,
     store: Store,
     embedder: Embedder | None,
     reranker: Reranker | None,
@@ -71,7 +71,7 @@ def _retrieve(
     if pipe.needs_reranker and reranker is None:
         raise ValueError(f"pipeline {p.name} needs a reranker")
     out = pipe.run(
-        ds.questions,
+        questions,
         store,
         viewer,
         k=p.top_k,
@@ -92,7 +92,7 @@ def runstore_path(cfg: RunConfig | ExtractConfig) -> Path:
     return Path(cfg.runstore_path) if cfg.runstore_path else cache_root(cfg) / "runs.db"
 
 
-def store_path(cfg: RunConfig | ExtractConfig, ds: Dataset) -> Path:
+def store_path(cfg: RunConfig | ExtractConfig, ds: PreparedBenchmark) -> Path:
     """One SQLite file per corpus, shared by QA and extraction runs over the same dataset."""
     path = (
         Path(cfg.store_path)
@@ -103,15 +103,20 @@ def store_path(cfg: RunConfig | ExtractConfig, ds: Dataset) -> Path:
     return path
 
 
-def _load(cfg: RunConfig | ExtractConfig) -> Dataset:
-    return (
-        datasets.load_fixture(cfg.dataset, cfg.n)
-        if cfg.fixture
-        else datasets.load(cfg.dataset, cfg.n)
+def _load(cfg: RunConfig | ExtractConfig, data: Benchmark | None = None) -> PreparedBenchmark:
+    source = (
+        data
+        if data is not None
+        else (
+            datasets.load_fixture(cfg.dataset, cfg.n)
+            if cfg.fixture
+            else datasets.load(cfg.dataset, cfg.n)
+        )
     )
+    return materialize(source)
 
 
-def run_benchmark(cfg: RunConfig) -> str:
+def run_benchmark(cfg: RunConfig, *, data: Benchmark | None = None) -> str:
     """Run a configured question-answering benchmark and return its persisted run ID.
 
     Load the dataset and construct model adapters, then look up the run identity.
@@ -127,18 +132,16 @@ def run_benchmark(cfg: RunConfig) -> str:
     """
     t_start = time.perf_counter()
     root = cache_root(cfg)
-    spec = datasets.get(cfg.dataset)
-    ds = _load(cfg)
+    ds = _load(cfg, data)
     p = cfg.pipeline
-    if ds.questions.height == 0:
+    questions = ds.qa
+    if questions is None or questions.height == 0:
+        raise ValueError(f"dataset {ds.name} has no questions (extraction-only); it cannot be run")
+    if ds.needs:
+        raise ValueError(f"dataset {ds.name} cannot be run yet: it needs {ds.needs}")
+    if ds.corpus.chunks.height == 0 and p.name != "closed_book":
         raise ValueError(
-            f"dataset {spec.name} has no questions (extraction-only); it cannot be run"
-        )
-    if spec.needs:
-        raise ValueError(f"dataset {spec.name} cannot be run yet: it needs {spec.needs}")
-    if ds.chunks.height == 0 and p.name != "closed_book":
-        raise ValueError(
-            f"dataset {spec.name} ships no corpus; only the closed_book pipeline applies"
+            f"dataset {ds.name} ships no corpus; only the closed_book pipeline applies"
         )
     pipe = pipelines.get(p.name)
     needs_embed = pipe.needs_embedder
@@ -166,8 +169,8 @@ def run_benchmark(cfg: RunConfig) -> str:
             "dirty": dirty,
             "code_hash": fingerprint.code_hash(p.name),
             "corpus_hash": ds.corpus_hash,
-            "questions_hash": ds.questions_hash,
-            "n": ds.questions.height,
+            "questions_hash": ds.evaluation_hash,
+            "n": questions.height,
             "embedding_spec": embedder.spec.hash() if embedder else None,
             "reranker_spec": reranker.spec.hash() if reranker else None,
             "reader_model": p.reader.model,
@@ -219,10 +222,10 @@ def run_benchmark(cfg: RunConfig) -> str:
                 model=reranker.spec.model if reranker else None,
                 provider=reranker.spec.runtime if reranker else None,
             ) as ev:
-                retrieved = _retrieve(cfg, ds, store, embedder, reranker, viewer)
+                retrieved = _retrieve(cfg, questions, store, embedder, reranker, viewer)
                 if reranker is not None:
                     ev.usage(reranker.calls, 0, cached=reranker.calls == 0)
-            todo = ds.questions.filter(~pl.col("id").is_in(list(done))) if done else ds.questions
+            todo = questions.filter(~pl.col("id").is_in(list(done))) if done else questions
             params = factories.gen_params(p.reader, cfg.seed)
             for q in todo.iter_rows(named=True):
                 with rs.question_unit():
@@ -300,7 +303,7 @@ def run_benchmark(cfg: RunConfig) -> str:
         return run_id
 
 
-def _with_vocabulary(cfg: ExtractConfig, ds: Dataset) -> ExtractConfig:
+def _with_vocabulary(cfg: ExtractConfig, ds: PreparedBenchmark) -> ExtractConfig:
     """`small_model` classifies over closed vocabularies. When the config leaves them empty,
     take the entity types the dataset lists in its document metadata and the predicates of its
     gold triples, and record them in the config so the run identity names them."""
@@ -311,14 +314,18 @@ def _with_vocabulary(cfg: ExtractConfig, ds: Dataset) -> ExtractConfig:
         sorted(
             {
                 e["type"]
-                for m in ds.documents["metadata"].to_list()
+                for m in ds.corpus.documents["metadata"].to_list()
                 if m
                 for e in json.loads(m).get("entities", [])
                 if isinstance(e, dict) and "type" in e
             }
         )
     )
-    relations = x.relation_types or tuple(sorted(set(ds.triples["predicate"].to_list())))
+    relations = x.relation_types or (
+        tuple(sorted(set(ds.extraction["predicate"].to_list())))
+        if ds.extraction is not None
+        else ()
+    )
     if not types or not relations:
         raise ValueError(
             f"dataset {ds.name} gives no entity types or relation vocabulary; pass"
@@ -327,14 +334,14 @@ def _with_vocabulary(cfg: ExtractConfig, ds: Dataset) -> ExtractConfig:
     return replace(cfg, extractor=replace(x, entity_types=types, relation_types=relations))
 
 
-def run_extraction(cfg: ExtractConfig) -> str:
+def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
     """Build the graph for a dataset with one extractor and resolver, write it to the store
     once per graph identity, score it against the gold triples, and record the run. An
     identical configuration returns the stored run; `--force` recomputes."""
     t_start = time.perf_counter()
     root = cache_root(cfg)
-    ds = _load(cfg)
-    if ds.chunks.height == 0:
+    ds = _load(cfg, data)
+    if ds.corpus.chunks.height == 0:
         raise ValueError(f"dataset {ds.name} ships no corpus; nothing to extract from")
     cfg = _with_vocabulary(cfg, ds)
     extractor = factories.make_extractor(cfg.extractor, root)
@@ -352,8 +359,8 @@ def run_extraction(cfg: ExtractConfig) -> str:
             "dirty": dirty,
             "code_hash": fingerprint.code_hash("extract"),
             "corpus_hash": ds.corpus_hash,
-            "questions_hash": ds.questions_hash,
-            "n": ds.chunks.height,
+            "questions_hash": ds.evaluation_hash,
+            "n": ds.corpus.chunks.height,
             "embedding_spec": None,
             "reranker_spec": None,
             "reader_model": None,
@@ -382,17 +389,22 @@ def run_extraction(cfg: ExtractConfig) -> str:
             with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
                 t0 = time.perf_counter()
                 graph = extract_stages.build(
-                    ds.chunks, ds.documents, extractor, cfg.resolver, recorded_at
+                    ds.corpus.chunks, ds.corpus.documents, extractor, cfg.resolver, recorded_at
                 )
                 extract_s = time.perf_counter() - t0
                 ev.usage(0, 0, cached=extractor.misses == 0)
             written = ensure_graph(store, identity, graph, rec)
             with rec.stage("score"):
-                pred = triples.predicted(graph, ds.chunks)
-                scores = triples.score(pred, ds.triples, ds.chunks, ds.questions)
-                gold_spans = triples.gold_spans(ds.documents)
+                pred = triples.predicted(graph, ds.corpus.chunks)
+                scores = triples.score(
+                    pred,
+                    ds.extraction if ds.extraction is not None else base.triples_frame([]),
+                    ds.corpus.chunks,
+                    ds.qa if ds.qa is not None else base.questions_frame([]),
+                )
+                gold_spans = triples.gold_spans(ds.corpus.documents)
                 span = (
-                    triples.span_score(triples.predicted_spans(graph, ds.chunks), gold_spans)
+                    triples.span_score(triples.predicted_spans(graph, ds.corpus.chunks), gold_spans)
                     if gold_spans
                     else (None, None, None)
                 )
@@ -405,7 +417,9 @@ def run_extraction(cfg: ExtractConfig) -> str:
                     "span_recall": span[1],
                     "span_f1": span[2],
                     # a throughput measured on cache hits is the cache's, not the extractor's
-                    "chunks_per_s": None if extractor.misses == 0 else ds.chunks.height / extract_s,
+                    "chunks_per_s": None
+                    if extractor.misses == 0
+                    else ds.corpus.chunks.height / extract_s,
                     "graph_written": int(written),
                 },
             )
