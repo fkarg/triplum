@@ -75,7 +75,7 @@ pub fn facts() -> SchemaRef {
         f("recorded_at", ts(), false),
         f("invalidated_at", ts(), true),
         f("invalidated_by_fact_id", DataType::Int64, true),
-        f("confidence", DataType::Float32, false),
+        f("confidence", DataType::Float32, true),
     ]))
 }
 
@@ -95,7 +95,7 @@ pub fn mentions() -> SchemaRef {
         f("chunk_id", DataType::Int64, false),
         f("span_start", DataType::Int64, false),
         f("span_end", DataType::Int64, false),
-        f("confidence", DataType::Float32, false),
+        f("confidence", DataType::Float32, true),
     ]))
 }
 

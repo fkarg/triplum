@@ -110,3 +110,25 @@ def test_get_chunks_schema_matches_canonical(tmp_db, sample_corpus):
     expected = pl.DataFrame(pa.Table.from_pylist([], schema=schema.CHUNKS)).schema
     assert s.get_chunks([1], Viewer.of("public")).schema == expected
     assert s.get_chunks([], Viewer.of("public")).schema == expected
+
+
+def test_schema_1_store_is_migrated_to_nullable_confidence(tmp_path):
+    import sqlite3
+    from importlib.resources import files
+
+    from triplum.store.sqlite.store import SqliteStore
+
+    ddl = files("triplum.store.sqlite").joinpath("migrations.sql").read_text()
+    v1 = ddl.replace("confidence             REAL,", "confidence REAL NOT NULL DEFAULT 1.0,")
+    v1 = v1.replace("confidence REAL,", "confidence REAL NOT NULL DEFAULT 1.0,")
+    v1 = v1.replace("('schema_version', '2')", "('schema_version', '1')")
+    assert v1.count("NOT NULL DEFAULT 1.0") == 2
+    path = tmp_path / "old.sqlite"
+    with sqlite3.connect(path) as conn:
+        conn.executescript(v1)
+    store = SqliteStore(path)
+    assert store.get_meta("schema_version") == "2"
+    for table in ("facts", "mentions"):
+        notnull = {r[1]: r[3] for r in store.conn.execute(f"PRAGMA table_info({table})")}
+        assert notnull["confidence"] == 0
+    store.close()

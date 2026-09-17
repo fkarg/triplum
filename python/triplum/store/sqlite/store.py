@@ -68,9 +68,23 @@ class SqliteStore:
         self.conn.enable_load_extension(False)
         for p in PRAGMAS:
             self.conn.execute(p)
+        ddl = files("triplum.store.sqlite").joinpath("migrations.sql").read_text()
+        self.conn.executescript(ddl)
+        self._migrate(ddl)
+
+    def _migrate(self, ddl: str) -> None:
+        """Schema 1 had NOT NULL confidence on facts and mentions. Nothing wrote the graph
+        tables under schema 1, so they are dropped and recreated rather than rebuilt."""
+        if self.get_meta("schema_version") != "1":
+            return
+        n = self.conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
+        if n:
+            raise RuntimeError(f"store {self.path} is schema 1 with {n} facts; cannot migrate")
         self.conn.executescript(
-            files("triplum.store.sqlite").joinpath("migrations.sql").read_text()
+            "DROP TABLE mentions; DROP TABLE fact_support; DROP TABLE facts; DROP TABLE entities;"
         )
+        self.conn.executescript(ddl)
+        self.set_meta("schema_version", "2")
 
     def close(self) -> None:
         self.conn.close()

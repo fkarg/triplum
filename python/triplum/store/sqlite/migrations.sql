@@ -1,4 +1,4 @@
--- triplum SQLite store, schema v1. Times are INTEGER microseconds UTC.
+-- triplum SQLite store, schema v2 (v1 had NOT NULL confidence on facts and mentions). Times are INTEGER microseconds UTC.
 -- Open interval ends use the sentinel 9223372036854775807.
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
 
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS embedding_specs (
   dims      INTEGER NOT NULL
 ) STRICT;
 
--- Graph tables: created now (design D2), used from sub-project 2a on.
+-- Graph tables (design D2). confidence is null where the extractor has no calibrated probability.
 CREATE TABLE IF NOT EXISTS entities (
   id           TEXT PRIMARY KEY,
   canonical_id TEXT REFERENCES entities(id)
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS facts (
   recorded_at            INTEGER NOT NULL,
   invalidated_at         INTEGER,
   invalidated_by_fact_id INTEGER REFERENCES facts(id),
-  confidence             REAL NOT NULL DEFAULT 1.0,
+  confidence             REAL,
   CHECK ((object_id IS NULL) <> (object_literal IS NULL)),
   CHECK (valid_from < valid_to)
 ) STRICT;
@@ -99,8 +99,8 @@ CREATE TABLE IF NOT EXISTS mentions (
   chunk_id   INTEGER NOT NULL REFERENCES chunks(id) ON DELETE CASCADE,
   span_start INTEGER NOT NULL,
   span_end   INTEGER NOT NULL,
-  confidence REAL NOT NULL DEFAULT 1.0,
+  confidence REAL,
   PRIMARY KEY (chunk_id, span_start, entity_id)
 ) STRICT, WITHOUT ROWID;
 
-INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '1');
+INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '2');
