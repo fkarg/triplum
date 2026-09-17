@@ -73,7 +73,7 @@ graph for a dataset with a non-LLM extractor and scores it against the gold trip
 | 1 | load | as above | Any dataset with a corpus, questions or not; `triples` is the gold where the source has it. `questions_hash` covers questions and triples. | |
 | 2 | identities | `bench/index.py: graph_identity`, `bench/fingerprint.py` | The **graph identity** is (corpus hash, extractor spec hash, resolver spec hash, code hash of the `extract` and store modules). The **run identity** adds the gold hash and the scorer's code hash, with `kind = extract` in the one `runs` envelope. An identical completed run is returned. | `runs` row; `extractor_spec`, `resolver_spec`, `graph_identity` columns |
 | 3 | extract | `extract/stages.py: extract` over `extract/rules.py` or `extract/small_model.py` | The extractor returns spans and claims per chunk (cached per chunk on the spec hash and the text); the stage grounds accepted claims into entities (id = hash of document and normalised surface), mentions, `label` and `type` facts, and one fact with one single-chunk support group per claim. Rejected claims stay in the `claims` frame with their status. `small_model` takes its entity and relation vocabularies from the config, or from the dataset's metadata and gold predicates. | Event `extract`, `cached` when every chunk hit the cache |
-| 4 | resolve | `extract/stages.py: resolve` | `none`, `exact` or `fuzzy`: one `same_as` fact per linked pair of entities from different documents, supported by a group holding a mention chunk of each side; `canonical_id` filled by union for reporting. | Event `resolve` |
+| 4 | resolve | `extract/stages.py: resolve` | `none`, `exact` or `fuzzy`: one `same_as` fact per linked pair of entities from different documents, supported by a group holding a mention chunk of each side; `canonical_id` filled by union for reporting. Steps 3 and 4 are one call, `extract/stages.py: build`, so the composition is inside the graph's code fingerprint. | Part of the `extract` event |
 | 5 | index graph | `bench/index.py: ensure_graph` | Written once per graph identity into the corpus's store; a store holding another graph identity is refused. | Event `index.graph`; `graph_written` on the run |
 | 6 | score | `eval/triples.py` | Surface triples from the facts, matched one-to-one against the gold per document (per question for 2Wiki evidences, recall only): `exact` and `partial`; span P/R/F1 where the dataset lists entities; counts and claims by status. | `extraction_runs` row |
 
@@ -143,15 +143,15 @@ one-to-one CaRB-style match. `n` is chunks. Full-set runs replace these rows whe
 
 | dataset | n | entities | facts | claims accepted / subordinate / ungrounded | pred | gold | exact P / R / F1 | partial P / R / F1 | span F1 | chunks/s | `same_as` with `exact` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| carb | 40 | 190 | 305 | 41 / 21 / 25 | 41 | 151 | 0 / 0 / 0 | 0.146 / 0.040 / 0.063 | | 82 | 1 |
-| conll04 | 40 | 234 | 426 | 53 / 30 / 22 | 53 | 57 | 0 / 0 / 0 | 0.019 / 0.018 / 0.018 | 0.543 | 136 | 16 |
-| scierc | 40 | 221 | 265 | 20 / 28 / 26 | 19 | 71 | 0 / 0 / 0 | 0 / 0 / 0 | 0.446 | 138 | 44 |
-| genwiki | 40 | 193 | 432 | 88 / 10 / 25 | 86 | 180 | 0 / 0 / 0 | 0 / 0 / 0 | 0.588 | 163 | 77 |
-| graphjudge_genwiki | 40 | 205 | 412 | 64 / 10 / 41 | 64 | 160 | 0 / 0 / 0 | 0 / 0 / 0 | | 164 | 17 |
-| graphjudge_scierc | 40 | 995 | 1284 | 98 / 129 / 151 | 98 | 401 | 0 / 0 / 0 | 0 / 0 / 0 | | 37 | 416 |
-| graphjudge_rebel | 40 | 638 | 1256 | 178 / 58 / 154 | 176 | 114 | 0 / 0 / 0 | 0 / 0 / 0 | | 54 | 54 |
-| twowiki (evidences, recall only) | 219 | 3232 | 6669 | 955 / 262 / 973 | 936 | 50 | R 0 | R 0 | | 56 | 3325 |
-| metaqa (synthetic) | 170 | 16233 | 74987 | 15492 / 419 / 800 | 15420 | 524 | 0 / 0 / 0 | 0.143 / 0.200 / 0.167 | | 6.3 | 9843 |
+| carb | 40 | 190 | 305 | 41 / 22 / 24 | 41 | 151 | 0 / 0 / 0 | 0.195 / 0.053 / 0.083 | | 82 | 1 |
+| conll04 | 40 | 234 | 418 | 45 / 40 / 20 | 45 | 57 | 0 / 0 / 0 | 0.022 / 0.018 / 0.020 | 0.543 | 139 | 16 |
+| scierc | 40 | 221 | 263 | 17 / 31 / 26 | 17 | 71 | 0 / 0 / 0 | 0 / 0 / 0 | 0.446 | 141 | 44 |
+| genwiki | 40 | 193 | 430 | 86 / 12 / 25 | 84 | 180 | 0 / 0 / 0 | 0 / 0 / 0 | 0.588 | 164 | 77 |
+| graphjudge_genwiki | 40 | 205 | 409 | 61 / 17 / 37 | 61 | 160 | 0 / 0 / 0 | 0 / 0 / 0 | | 169 | 17 |
+| graphjudge_scierc | 40 | 995 | 1282 | 96 / 134 / 148 | 96 | 401 | 0 / 0 / 0 | 0 / 0 / 0 | | 37 | 416 |
+| graphjudge_rebel | 40 | 638 | 1235 | 157 / 90 / 143 | 155 | 114 | 0 / 0 / 0 | 0 / 0 / 0 | | 54 | 54 |
+| twowiki (evidences, recall only) | 219 | 3232 | 6582 | 868 / 381 / 941 | 849 | 50 | R 0 | R 0 | | 56 | 3325 |
+| metaqa (synthetic) | 170 | 16233 | 74985 | 15490 / 422 / 799 | 15418 | 524 | 0 / 0 / 0 | 0.022 / 0.206 / 0.039 | | 6.1 | 9843 |
 
 What the rows say. The rules extractor produces verb-lemma predicates (`found_in`, `be`), so
 against schema predicates (`OrgBased_In`, `country`, `mother`) exact is zero by construction
@@ -161,7 +161,8 @@ carries over to `small_model`, whose relation vocabulary is the dataset's. Subor
 ungrounded counts are the cost of the v1 restriction to independent clauses and grounded
 arguments. `same_as` counts grow quadratically with repeated names (MetaQA, 2Wiki) because the
 exact resolver links every pair, each with its own two-chunk evidence. MetaQA's duplicate rate
-of 0.50 is the forward-plus-inverse template, not the extractor. `small_model` rows are
+of 0.69 is the forward-plus-inverse template restating every relation under both entities,
+not the extractor. `small_model` rows are
 pending the weight download.
 
 Where the code differs from the spec's architecture sketch: there is no `ingest/chunking.py`

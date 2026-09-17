@@ -65,7 +65,10 @@ def ensure_graph(store: SqliteStore, identity: str, graph: Extraction, rec: Reco
     if bound == identity:
         return False
     if bound is not None:
-        raise GraphMismatch(f"store {store.path} holds graph {bound}, this run needs {identity}")
+        raise GraphMismatch(
+            f"store {store.path} holds graph {bound}, this run needs {identity}; delete the"
+            " store file or pass --store to build the new graph elsewhere"
+        )
     with rec.stage("index.graph"):
         store.put_graph(graph.entities, graph.facts, graph.fact_support, graph.mentions)
         store.set_meta("graph_identity", identity)

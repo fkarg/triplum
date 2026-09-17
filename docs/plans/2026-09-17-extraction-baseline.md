@@ -72,6 +72,12 @@ Recorded here as they happen.
   shared characters, at most three extra) instead of stemming, and the predicate slot must
   exceed 0.5 while the argument slots need at least 0.5; with three-way "at least 0.5" the
   peer's `work for` / `work against` pair matched. `exact` normalises strings only.
-- Step 5: one-to-one assignment is greedy by descending slot score, not optimal. Exact
+- Step 5: one-to-one assignment is greedy by descending slot score, not optimal.
+- Step 6: the exact and partial scores are computed for every extractor on every gold set;
+  the spec's "unavailable" typed score for `rules` on CoNLL04 and SciERC is a different
+  measure (schema-conformant relation F1) that nothing reports yet. The rules rows on those
+  sets are labelled a floor in `flow.md`.
+- Steps 3 and 4 are one fingerprinted call, `extract.stages.build`, after the diff review found
+  the composition outside the graph identity (review record in the spec). Exact
   matching is unaffected (ties are exact duplicates, which count once); partial can differ
   from the Hungarian optimum by at most the assignments a greedy choice forecloses.

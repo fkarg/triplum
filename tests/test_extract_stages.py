@@ -166,3 +166,31 @@ def test_cached_extractor_replays_per_chunk(tmp_path):
     )
     CachedExtractor(inner, Cache(tmp_path)).run(more)
     assert inner.calls == 2
+
+
+def test_resolving_twice_keeps_the_canonical_ids():
+    ex = extract(CHUNKS, DOCS, FakeExtractor(SPANS, CLAIMS), 1)
+    once = resolve(ex, CHUNKS, ResolverSpec("exact"), 1)
+    twice = resolve(once, CHUNKS, ResolverSpec("exact"), 2)
+    assert twice.facts.height == once.facts.height
+    assert twice.entities.sort("id").equals(once.entities.sort("id"))
+
+
+def test_build_is_extract_then_resolve():
+    from triplum.extract import build
+
+    a = build(CHUNKS, DOCS, FakeExtractor(SPANS, CLAIMS), ResolverSpec("exact"), 1)
+    b = resolve(
+        extract(CHUNKS, DOCS, FakeExtractor(SPANS, CLAIMS), 1), CHUNKS, ResolverSpec("exact"), 1
+    )
+    assert a.hash() == b.hash()
+
+
+def test_small_model_spec_serialises_vocabularies_unambiguously():
+    import json
+
+    from triplum.extract.protocol import ExtractorSpec
+
+    a = ExtractorSpec("small_model", "1", params=(("entity_types", json.dumps(["a,b", "c"])),))
+    b = ExtractorSpec("small_model", "1", params=(("entity_types", json.dumps(["a", "b,c"])),))
+    assert a.hash() != b.hash()

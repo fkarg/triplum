@@ -95,6 +95,17 @@ def _clause(verb) -> str:
     return "accepted" if t.dep_ == "ROOT" else "subordinate"
 
 
+def _enclosing_clause(tok) -> str:
+    """The clause status of the nearest verb above a noun: an apposition inside reported or
+    conditional speech is as subordinate as the clause around it."""
+    t = tok
+    while t.dep_ != "ROOT":
+        t = t.head
+        if t.pos_ in ("VERB", "AUX"):
+            return _clause(t)
+    return "accepted"
+
+
 def _negated_modal(verb) -> tuple[bool, bool]:
     neg = any(c.dep_ == "neg" for c in verb.children)
     modal = any(c.dep_ == "aux" and c.tag_ == "MD" for c in verb.children)
@@ -162,7 +173,7 @@ def _chunk(cid: int, doc) -> tuple[list[tuple], list[tuple]]:
             for app in tok.children:
                 if app.dep_ == "appos":
                     for o in _conjuncts(app):
-                        claim(sent, tok, "be", o, "accepted", "apposition")
+                        claim(sent, tok, "be", o, _enclosing_clause(tok), "apposition")
             if tok.pos_ not in ("VERB", "AUX"):
                 continue
             status = _clause(tok)

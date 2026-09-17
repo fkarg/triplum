@@ -6,6 +6,7 @@ GLiREL's weights are research-only (see docs/licences.md)."""
 
 from __future__ import annotations
 
+import json
 import re
 
 import polars as pl
@@ -55,8 +56,8 @@ class SmallModelExtractor:
             model=f"{gliner_model}+{glirel_model}",
             revision=f"{GLINER_REVISION[:8]}+{GLIREL_REVISION[:8]}" if pinned else "",
             params=(
-                ("entity_types", ",".join(self.entity_types)),
-                ("relation_types", ",".join(self.relation_types)),
+                ("entity_types", json.dumps(self.entity_types)),
+                ("relation_types", json.dumps(self.relation_types)),
                 ("span_threshold", str(span_threshold)),
                 ("relation_threshold", str(relation_threshold)),
             ),
@@ -78,10 +79,12 @@ class SmallModelExtractor:
             start_of = {m.start(): i for i, m in enumerate(tokens)}
             end_of = {m.end(): i for i, m in enumerate(tokens)}
             ner = []
-            by_key: dict[tuple[int, int], tuple[int, int]] = {}
+            by_key: dict[tuple[int, int], tuple[int, int]] = {}  # token span -> char span
+            seen: set[tuple[int, int]] = set()
             for e in sorted(ents, key=lambda e: (e["start"], e["end"])):
-                if (e["start"], e["end"]) in by_key:
+                if (e["start"], e["end"]) in seen:
                     continue
+                seen.add((e["start"], e["end"]))
                 spans.append(
                     (int(cid), e["start"], e["end"], e["text"], e["label"], "entity", None, None)
                 )

@@ -359,11 +359,11 @@ def run_extraction(cfg: ExtractConfig) -> str:
             recorded_at = now_us()
             with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
                 t0 = time.perf_counter()
-                graph = extract_stages.extract(ds.chunks, ds.documents, extractor, recorded_at)
+                graph = extract_stages.build(
+                    ds.chunks, ds.documents, extractor, cfg.resolver, recorded_at
+                )
                 extract_s = time.perf_counter() - t0
                 ev.usage(0, 0, cached=extractor.misses == 0)
-            with rec.stage("resolve", model=cfg.resolver.name):
-                graph = extract_stages.resolve(graph, ds.chunks, cfg.resolver, recorded_at)
             written = ensure_graph(store, identity, graph, rec)
             with rec.stage("score"):
                 pred = triples.predicted(graph, ds.chunks)

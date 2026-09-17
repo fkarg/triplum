@@ -168,3 +168,38 @@ verdict "challenges", nine attempted falsifications named. Outcomes:
 Owner's decision, 2026-09-17: this is a research project, so the GLiNER/GLiREL stack is a
 shipped second extractor rather than a deferred option; its non-commercial relation weights are
 recorded, not avoided. Intrinsic metrics first; graph retrieval is the next spec.
+
+## Diff review
+
+Cross-model review via `peer-review --mode diff-review` on 2026-09-17 of the implementation
+(commits 333c742 to dac7da3); the peer was GPT (codex CLI), verdict "challenges", eighteen
+attempted falsifications named, most executed against in-memory stores. Outcomes:
+
+- **Found unique defects, all fixed with regression tests** (eleven): `put_chunks` used
+  `INSERT OR REPLACE`, whose delete cascade removed a chunk's support rows and turned a
+  two-chunk merge into a public one-chunk group (now an upsert); support members recorded after
+  the viewer's `as_of_recorded` still completed a group (now every member must be recorded by
+  then); an invalidation by a privately supported fact hid a public fact from the public (now
+  invalidation applies only when the invalidating fact is visible, per D3); `mentions` filtered
+  by chunk visibility only (now needs a visible fact touching the entity); `put_graph` replaced
+  facts and cascaded away existing support (now `INSERT OR IGNORE`: first assertion wins,
+  support accumulates); the `runs` rebuild was not a transaction and dropped `runs_identity`
+  (now atomic, indexes recreated); predictions in gold-free documents escaped the precision
+  denominator; duplicate gold rows matched twice in `partial`; two pure copulas scored zero
+  after stopword removal; appositions ignored the enclosing clause's status; resolving an
+  already-resolved graph cleared `canonical_id`.
+- **Changed the decision** (one): the graph identity's module list did not cover the
+  extract-then-resolve composition in the runner, so a composition change could reuse a stale
+  graph; the composition is now `extract.stages.build`, inside the fingerprinted modules, and
+  the runner calls only that.
+- **Fixed without a decision change** (three): `small_model` serialised vocabularies with
+  commas (collision on entries containing commas; now JSON), deduplicated spans by the wrong
+  coordinate system, and `bench rerun` could not replay an extraction run (now dispatches on
+  `kind`).
+- **Rejected as a false positive** (one): "rules scores on typed sets violate the
+  unavailable-score policy". Exact and partial are string-level scores computed identically
+  for every extractor; what the spec calls unavailable is a schema-conformant typed relation
+  score, which no extractor reports yet. The rules rows on CoNLL04 and SciERC are labelled a
+  floor in `docs/flow.md`; recorded as a plan deviation.
+- **No decision impact** (five nits): four simplifications applied; the resolver default
+  factory kept because ruff's RUF009 rejects a call in a dataclass default.

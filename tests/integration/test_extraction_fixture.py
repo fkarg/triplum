@@ -40,7 +40,7 @@ def test_rules_extraction_scores_every_fixture(tmp_path, dataset):
     assert x["n_gold"] > 0 and x["facts"] > 0 and x["graph_written"] == 1
     assert x["partial_recall"] >= x["exact_recall"] >= 0
     assert x["chunks_per_s"] is not None and x["chunks_per_s"] > 0
-    assert {"index.documents", "extract", "resolve", "index.graph", "score"} <= stages
+    assert {"index.documents", "extract", "index.graph", "score"} <= stages
     if dataset in ("conll04", "scierc"):
         assert x["span_f1"] is not None
     if dataset == "twowiki":
@@ -89,3 +89,22 @@ def test_cli_extract_and_report(tmp_path, capsys):
     assert "resolver=exact" in capsys.readouterr().out
     with RunStore(tmp_path / "runs.db") as rs:
         assert extraction_summary(rs).height == 1
+
+
+def test_graph_identity_covers_the_composition():
+    from triplum.bench import fingerprint
+
+    assert "triplum.extract.stages" in fingerprint.GRAPH
+    assert "triplum.bench.runner" not in fingerprint.GRAPH  # orchestration lives in stages.build
+
+
+def test_cli_rerun_replays_an_extraction_run(tmp_path, capsys):
+    rs_path = str(tmp_path / "runs.db")
+    common = ["--fixture", "--runstore", rs_path, "--cache-root", str(tmp_path / "cache")]
+    assert main(["bench", "extract", "--dataset", "carb", *common]) == 0
+    with RunStore(tmp_path / "runs.db") as rs:
+        rid = rs.runs()["run_id"][0]
+    capsys.readouterr()
+    assert main(["bench", "rerun", rid, "--runstore", rs_path]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("reused") and "extractor=rules" in out

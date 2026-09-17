@@ -4,7 +4,7 @@ Two matchers. `exact` needs all three normalised strings equal. `partial` is CaR
 F1 per slot with tokens equal up to inflection, subject and object at least 0.5, predicate
 above 0.5 with auxiliaries and articles removed, so `work for` and `work against` do not match. Assignment is
 greedy by descending mean slot score, one gold per prediction and one prediction per gold;
-duplicate predictions count once. Scores are micro-averaged over groups (documents, or
+duplicate predictions and duplicate gold count once. Scores are micro-averaged over groups (documents, or
 questions where the gold is per question). See docs/research/benchmarks.md.
 """
 
@@ -56,17 +56,19 @@ def partial_score(pred: Triple, gold: Triple) -> float:
     """Mean slot F1 when every slot clears its threshold, else 0."""
     s = _token_f1(_tokens(pred[0]), _tokens(gold[0]))
     o = _token_f1(_tokens(pred[2]), _tokens(gold[2]))
-    p = _token_f1(_tokens(pred[1], PRED_STOP), _tokens(gold[1], PRED_STOP))
+    pp, pg = _tokens(pred[1], PRED_STOP), _tokens(gold[1], PRED_STOP)
+    # two pure copulas (`be`, `is a`) are the same predicate once auxiliaries are gone
+    p = 1.0 if not pp and not pg else _token_f1(pp, pg)
     if s < 0.5 or o < 0.5 or p <= 0.5:
         return 0.0
     return (s + p + o) / 3
 
 
 def match(pred: list[Triple], gold: list[Triple], mode: str) -> int:
-    """Number of one-to-one matches between distinct predictions and gold triples."""
-    pred = list(dict.fromkeys(pred))
+    """Number of one-to-one matches between distinct predictions and distinct gold triples."""
     if mode == "exact":
         return len(set(pred) & set(gold))
+    pred, gold = list(dict.fromkeys(pred)), list(dict.fromkeys(gold))
     scored = sorted(
         (
             (sc, i, j)
@@ -152,19 +154,23 @@ def score(
                 )
             groups[key][1].append(normalise_triple(r["subject"], r["predicate"], r["object"]))
     else:
+        # every document with a prediction is a group, so false positives in documents
+        # without gold still count against precision
+        for key, preds in pred_by_doc.items():
+            groups[key] = (preds, [])
         for r in gold.iter_rows(named=True):
             key = r["document_id"]
             if key not in groups:
-                groups[key] = (pred_by_doc.get(key, []), [])
+                groups[key] = ([], [])
             groups[key][1].append(normalise_triple(r["subject"], r["predicate"], r["object"]))
-    out: dict[str, float | int | None] = {"n_pred": pred.height, "n_gold": gold.height}
-    out["duplicate_rate"] = (
-        1 - sum(len(set(p)) for p, _ in groups.values()) / sum(len(p) for p, _ in groups.values())
-        if any(p for p, _ in groups.values())
-        else 0.0
-    )
+    n_raw = sum(len(p) for p, _ in groups.values())
     n_pred = sum(len(set(p)) for p, _ in groups.values())
-    n_gold = sum(len(g) for _, g in groups.values())
+    n_gold = sum(len(set(g)) for _, g in groups.values())
+    out: dict[str, float | int | None] = {
+        "n_pred": pred.height,
+        "n_gold": gold.height,
+        "duplicate_rate": 1 - n_pred / n_raw if n_raw else 0.0,
+    }
     for mode in ("exact", "partial"):
         tp = sum(match(p, g, mode) for p, g in groups.values())
         p, r, f = prf(tp, n_pred, n_gold)

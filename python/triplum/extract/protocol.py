@@ -101,12 +101,7 @@ class Extraction:
         return frames_hash(self.entities, self.facts, self.fact_support, self.mentions, self.claims)
 
     def counts(self) -> dict[str, int]:
-        by_status = self.claims.group_by("status").len() if self.claims.height else None
-        status = (
-            {r["status"]: int(r["len"]) for r in by_status.iter_rows(named=True)}
-            if by_status is not None
-            else {}
-        )
+        status = dict(self.claims.group_by("status").len().iter_rows())
         return {
             "entities": self.entities.height,
             "facts": self.facts.height,

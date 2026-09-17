@@ -119,3 +119,42 @@ def test_per_question_gold_scores_recall_only():
     s = triples.score(pred, gold, CHUNKS, questions)
     assert s["partial_recall"] == 0.5 and s["exact_recall"] == 0.0
     assert s["partial_precision"] is None and s["exact_f1"] is None
+
+
+def test_review_regressions_in_scoring():
+    # a false prediction in a document without gold counts against precision
+    pred = pl.DataFrame(
+        [("d1", "Alice", "founded", "Acme"), ("d9", "Bob", "founded", "Globex")],
+        schema={
+            "document_id": pl.Utf8,
+            "subject": pl.Utf8,
+            "predicate": pl.Utf8,
+            "object": pl.Utf8,
+        },
+        orient="row",
+    )
+    gold = pl.DataFrame(
+        [(None, "d1", "Alice", "founded", "Acme"), (None, "d1", "Alice", "founded", "Acme")],
+        schema=TRIPLE_SCHEMA,
+        orient="row",
+    )
+    s = triples.score(pred, gold, CHUNKS, pl.DataFrame(schema=QUESTION_SCHEMA))
+    assert s["exact_precision"] == 0.5 and s["partial_precision"] == 0.5
+    # duplicated gold counts once in both matchers
+    assert s["exact_recall"] == 1.0 and s["partial_recall"] == 1.0
+    assert (
+        triples.match(
+            [("alice", "like", "bob"), ("alice smith", "like", "bob")],
+            [("alice", "likes", "bob")] * 2,
+            "partial",
+        )
+        == 1
+    )
+    # two copulas are the same predicate
+    assert (
+        triples.match([("alice", "be", "chemist")], [("alice", "is a", "chemist")], "partial") == 1
+    )
+    assert (
+        triples.match([("alice", "be", "chemist")], [("alice", "founded", "chemist")], "partial")
+        == 0
+    )

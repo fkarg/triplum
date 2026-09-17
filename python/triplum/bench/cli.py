@@ -485,14 +485,21 @@ def rerun(
     runstore: RunstoreOpt = None,
     no_input: NoInputOpt = False,
 ) -> None:
-    """Run a stored configuration again (lookup unless --force)."""
-    from triplum.bench.report import summary
-    from triplum.bench.runner import run_benchmark
+    """Run a stored configuration again (lookup unless --force); QA or extraction by kind."""
+    from triplum.bench.report import extraction_summary, summary
+    from triplum.bench.runner import run_benchmark, run_extraction
 
     rs = _existing_runstore(runstore)
     with rs:
         run_id = _run_id(rs, run_id, ctx)
-        cfg = RunConfig.from_json(rs.run(run_id)["config_json"])
+        row = rs.run(run_id)
+        if row["kind"] == "extract":
+            xcfg = ExtractConfig.from_json(row["config_json"])
+            rid = run_extraction(replace(xcfg, force=force, runstore_path=str(rs.path)))
+            print("reused" if rid == run_id else "new", rid)
+            _print_summary(extraction_summary(rs, [rid]))
+            return
+        cfg = RunConfig.from_json(row["config_json"])
         cfg = replace(cfg, force=force, resume=resume, runstore_path=str(rs.path))
         rid = run_benchmark(cfg)
         print("reused" if rid == run_id else "new", rid)

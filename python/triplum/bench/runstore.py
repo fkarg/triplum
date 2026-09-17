@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS runs (
   extractor_spec TEXT, resolver_spec TEXT, graph_identity TEXT,
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
 ) STRICT;
+CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
 """
 
 EXTRACTION_RUNS_DDL = """
@@ -60,7 +61,6 @@ DDL = (
     + RUNS_DDL
     + EXTRACTION_RUNS_DDL
     + """
-CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
 CREATE TABLE IF NOT EXISTS events (
   run_id TEXT NOT NULL REFERENCES runs(run_id), stage TEXT NOT NULL, question_id TEXT, provider TEXT, model TEXT,
   started_at INTEGER NOT NULL, ended_at INTEGER NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0,
@@ -174,14 +174,33 @@ class RunStore:
         """Recreate a table from the current DDL, keeping every row. Foreign keys from other
         tables keep pointing at the table name (legacy rename), so the new table inherits them."""
         cols = ", ".join(r[1] for r in self.conn.execute(f"PRAGMA table_info({table})"))
-        self.conn.executescript(
-            "PRAGMA foreign_keys = OFF; PRAGMA legacy_alter_table = ON;"
-            f"ALTER TABLE {table} RENAME TO {table}_old;"
-            + ddl
-            + f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {table}_old;"
-            f"DROP TABLE {table}_old;"
-            "PRAGMA legacy_alter_table = OFF; PRAGMA foreign_keys = ON;"
-        )
+        # The rename takes the table's indexes with it; drop them so the DDL recreates them on
+        # the new table instead of finding them already present.
+        indexes = [
+            r[1]
+            for r in self.conn.execute(f"PRAGMA index_list({table})")
+            if not r[1].startswith("sqlite_autoindex")
+        ]
+        drops = "".join(f"DROP INDEX IF EXISTS {i};" for i in indexes)
+        # foreign_keys cannot change inside a transaction; everything else is one transaction,
+        # so an interrupted rebuild leaves the old table in place.
+        self.conn.execute("PRAGMA foreign_keys = OFF")
+        try:
+            self.conn.executescript(
+                "BEGIN; PRAGMA legacy_alter_table = ON;"
+                f"ALTER TABLE {table} RENAME TO {table}_old;"
+                + drops
+                + ddl
+                + f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {table}_old;"
+                f"DROP TABLE {table}_old;"
+                "PRAGMA legacy_alter_table = OFF; COMMIT;"
+            )
+        except BaseException:
+            if self.conn.in_transaction:
+                self.conn.execute("ROLLBACK")
+            raise
+        finally:
+            self.conn.execute("PRAGMA foreign_keys = ON")
 
     # ---- prices -----------------------------------------------------------------------------
 

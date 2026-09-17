@@ -10,7 +10,7 @@ from triplum.extract.protocol import (
     ExtractorSpec,
     ResolverSpec,
 )
-from triplum.extract.stages import extract, resolve
+from triplum.extract.stages import build, extract, resolve
 
 __all__ = [
     "CLAIM_SCHEMA",
@@ -19,6 +19,7 @@ __all__ = [
     "Extractor",
     "ExtractorSpec",
     "ResolverSpec",
+    "build",
     "extract",
     "resolve",
 ]

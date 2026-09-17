@@ -141,3 +141,10 @@ def test_trailing_punctuation_does_not_split_an_entity():
 def test_rules_spec_is_pinned(rules):
     assert rules.spec.name == "rules" and rules.spec.model == "en_core_web_sm"
     assert rules.spec.revision == "3.8.0"
+
+
+def test_appositions_inside_reported_speech_are_subordinate(rules):
+    assert run(rules, "Bob Jones said that Alice Smith, a chemist, founded Acme Corp.") == [
+        ("Alice Smith", "be", "a chemist", "subordinate", "apposition"),
+        ("Alice Smith", "found", "Acme Corp.", "subordinate", "active"),
+    ]

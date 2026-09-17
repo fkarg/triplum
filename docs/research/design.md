@@ -360,6 +360,16 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-17, `peer-review --mode diff-review` on the extraction baseline (store graph side,
+  extract package, metrics, run store), peer: Codex (GPT family). Verdict "challenges", with
+  executed probes. **Found unique defects, all fixed with regression tests**: four visibility
+  holes in the store's graph side (delete cascade through chunk replacement, unchecked support
+  recording time, viewer-blind invalidation, mentions without a visible fact), history
+  overwrite in `put_graph`, a non-atomic run-store rebuild, three scoring errors, an apposition
+  clause-status gap, resolver idempotence. **Changed a decision**: the graph identity now
+  contains the extract-then-resolve composition (`extract.stages.build`). One finding rejected
+  (typed-score policy; documented as a plan deviation). Full list in the spec.
+
 - 2026-09-16, `peer-review --mode diff-review` on the part-2 harness (datasets, metrics, stages,
   runner, run store, CLI), peer: Codex (GPT family). Verdict "challenges". **Found unique defects,
   all fixed with regression tests**: unmapped gold passages silently scored recall 1.0 (loader now

@@ -190,6 +190,14 @@ def resolve(
             x = parent[x]
         return x
 
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+
+    for f in facts:  # links already in the graph stay in the union
+        if f["predicate"] == "same_as":
+            union(f["subject_id"], f["object_id"])
     for a, b, chunk_a, chunk_b in pairs:
         prop = proposition_id(a, "same_as", b, None, None)
         fid = fact_id(xh, min(chunk_a, chunk_b), 0, 0, prop)
@@ -203,9 +211,7 @@ def resolve(
         )
         for cid in sorted({chunk_a, chunk_b}):
             support.append(dict(zip(SUPPORT_SCHEMA, (fid, 0, cid, xh, recorded_at))))
-        ra, rb = find(a), find(b)
-        if ra != rb:
-            parent[max(ra, rb)] = min(ra, rb)
+        union(a, b)
 
     entities = [(e, None if find(e) == e else find(e)) for e in parent]
     return Extraction(
@@ -214,4 +220,18 @@ def resolve(
         fact_support=pl.DataFrame(support, schema=SUPPORT_SCHEMA),
         mentions=extraction.mentions,
         claims=extraction.claims,
+    )
+
+
+def build(
+    chunks: pl.DataFrame,
+    documents: pl.DataFrame,
+    extractor: Extractor,
+    resolver: ResolverSpec,
+    recorded_at: int,
+) -> Extraction:
+    """The whole graph for a corpus: `extract`, then `resolve`. The bench calls this and
+    nothing else, so the composition is part of the graph's code fingerprint."""
+    return resolve(
+        extract(chunks, documents, extractor, recorded_at), chunks, resolver, recorded_at
     )

@@ -106,3 +106,69 @@ def test_put_graph_rejects_unsupported_and_malformed_facts(graph_store):
     assert store.conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0] == ex.facts.height
     canon = dict(store.conn.execute("SELECT id, canonical_id FROM entities"))
     assert canon[max(ACME1, ACME2)] == min(ACME1, ACME2)
+
+
+# ---- regressions from the 2026-09-17 diff review (Codex, GPT family) ---------------------
+
+
+def test_reinserting_a_private_chunk_does_not_expose_a_merge(graph_store, sample_corpus):
+    store, _ = graph_store
+    _, _, chunks = sample_corpus
+    public = Viewer.of("public")
+    assert "same_as" not in set(store.facts(public)["predicate"])
+    store.put_chunks(chunks.filter(pl.col("id") == 3))  # a rewrite of the private chunk
+    assert "same_as" not in set(store.facts(public)["predicate"])
+    assert store.conn.execute("SELECT COUNT(*) FROM fact_support").fetchone()[0] > 0
+
+
+def test_support_recorded_later_does_not_reveal_a_fact_earlier(graph_store):
+    store, ex = graph_store
+    fid = int(ex.facts.filter(pl.col("predicate") == "hire")["id"][0])
+    # a second, public support group for the private fact, recorded much later
+    store.conn.execute(
+        "INSERT INTO fact_support(fact_id, group_no, chunk_id, extractor, recorded_at)"
+        " VALUES (?, 1, 1, 'x', 5000)",
+        (fid,),
+    )
+    assert fid not in set(store.facts(Viewer.of("public", as_of_recorded=2000))["id"])
+    assert fid in set(store.facts(Viewer.of("public", as_of_recorded=5000))["id"])
+    assert fid not in set(
+        store.neighbours([BOB], 1, Viewer.of("public", as_of_recorded=2000))["id"]
+    )
+
+
+def test_private_invalidation_does_not_hide_a_public_fact_from_the_public(graph_store):
+    store, ex = graph_store
+    found = int(ex.facts.filter(pl.col("predicate") == "found")["id"][0])
+    hire = int(ex.facts.filter(pl.col("predicate") == "hire")["id"][0])
+    # the privately supported fact invalidates the public one
+    store.conn.execute(
+        "UPDATE facts SET invalidated_at = 3000, invalidated_by_fact_id = ? WHERE id = ?",
+        (hire, found),
+    )
+    assert found in set(store.facts(Viewer.of("public"))["id"])
+    assert found not in set(store.facts(Viewer.of("alice"))["id"])
+    assert found in set(store.facts(Viewer.of("alice", as_of_recorded=2999))["id"])
+
+
+def test_mentions_need_a_visible_fact(graph_store):
+    store, _ = graph_store
+    assert store.mentions([1], Viewer.of("public", as_of_recorded=999)).height == 0
+    assert store.mentions([1], Viewer.of("public", as_of_recorded=1000)).height == 2
+
+
+def test_put_graph_keeps_the_first_assertion_and_adds_support(graph_store, sample_corpus):
+    store, ex = graph_store
+    docs, _, chunks = sample_corpus
+    later = extract(chunks, docs, FakeExtractor(SPANS, CLAIMS), recorded_at=2000)
+    assert (
+        later.facts["id"].to_list()
+        == ex.facts.filter(pl.col("predicate") != "same_as")["id"].to_list()
+    )
+    store.put_graph(later.entities, later.facts, later.fact_support, later.mentions)
+    recorded = set(store.conn.execute("SELECT recorded_at FROM facts").fetchall())
+    assert recorded == {(1000,)}
+    assert (
+        store.conn.execute("SELECT COUNT(*) FROM fact_support").fetchone()[0]
+        == ex.fact_support.height
+    )

@@ -160,3 +160,49 @@ def test_runstore_context_manager_closes_its_connection(tmp_path):
         assert rs.runs().height == 0
     with pytest.raises(sqlite3.ProgrammingError):
         rs.runs()
+
+
+def test_runs_rebuild_is_atomic_and_keeps_the_identity_index(tmp_path):
+    import sqlite3
+
+    from triplum.bench import runstore
+
+    path = tmp_path / "old.db"
+    old_ddl = runstore.DDL.replace("reader_model TEXT,", "reader_model TEXT NOT NULL,")
+    with sqlite3.connect(path) as conn:
+        conn.executescript(old_ddl)
+        conn.execute(
+            "INSERT INTO runs (run_id, identity_hash, created_at, dataset, pipeline, config_hash,"
+            " config_json, code_version, dirty, code_hash, corpus_hash, questions_hash, n,"
+            " reader_model, seed, viewer_json, host, reader_prompt_hash) VALUES ('r', 'i', 0, 'd',"
+            " 'p', 'c', '{}', 'v', 0, 'h', 'c', 'q', 1, 'm', 0, '[]', 'h', 'p')"
+        )
+        conn.execute(
+            "INSERT INTO events (run_id, stage, started_at, ended_at) VALUES ('r', 's', 0, 1)"
+        )
+
+    # a failure while copying leaves the old table and its rows untouched
+    def deny_copy(action, arg1, arg2, db, source):
+        if action == sqlite3.SQLITE_INSERT and arg1 == "runs":
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+
+    conn = sqlite3.connect(path, isolation_level=None)
+    conn.set_authorizer(deny_copy)
+    rs = RunStore.__new__(RunStore)
+    rs.path, rs.conn = path, conn
+    with pytest.raises(sqlite3.DatabaseError):
+        rs._rebuild("runs", runstore.RUNS_DDL)
+    conn.set_authorizer(None)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "runs" in tables and "runs_old" not in tables
+    assert conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1
+    conn.close()
+
+    with RunStore(path) as rs:
+        notnull = {r[1]: r[3] for r in rs.conn.execute("PRAGMA table_info(runs)")}
+        assert notnull["reader_model"] == 0
+        assert rs.runs().height == 1 and rs.events("r").height == 1
+        assert rs.conn.execute("PRAGMA foreign_key_check").fetchall() == []
+        indexes = {r[1] for r in rs.conn.execute("PRAGMA index_list(runs)")}
+        assert "runs_identity" in indexes

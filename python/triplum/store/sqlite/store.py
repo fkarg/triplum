@@ -196,9 +196,15 @@ class SqliteStore:
         _require_cols(chunks, CHUNK_COLS, "chunks")
         toks = dict(self.conn.execute("SELECT id, acl_tokens FROM documents"))
         with self._tx():
+            # An upsert, not REPLACE: a replaced row cascades away the chunk's support and
+            # mention rows, which would turn a two-chunk support group into a one-chunk one.
             self.conn.executemany(
-                "INSERT OR REPLACE INTO chunks(id, document_id, parent_id, level, span_start,"
-                " span_end, text, acl_tokens) VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO chunks(id, document_id, parent_id, level, span_start,"
+                " span_end, text, acl_tokens) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE"
+                " SET document_id = excluded.document_id, parent_id = excluded.parent_id,"
+                " level = excluded.level, span_start = excluded.span_start,"
+                " span_end = excluded.span_end, text = excluded.text,"
+                " acl_tokens = excluded.acl_tokens",
                 [
                     (
                         int(r["id"]),
@@ -365,43 +371,42 @@ class SqliteStore:
                 "UPDATE entities SET canonical_id = ? WHERE id = ?",
                 [(c, e) for e, c in entities.select("id", "canonical_id").iter_rows()],
             )
+            # Rows are never overwritten (D3): a fact already asserted keeps its original
+            # recording time, and new support groups and mentions are added beside the old.
             self.conn.executemany(
-                f"INSERT OR REPLACE INTO facts({','.join(FACT_COLS)}) VALUES ({_q(len(FACT_COLS))})",
+                f"INSERT OR IGNORE INTO facts({','.join(FACT_COLS)}) VALUES ({_q(len(FACT_COLS))})",
                 facts.select(FACT_COLS).rows(),
             )
             self.conn.executemany(
-                "INSERT OR REPLACE INTO fact_support(fact_id, group_no, chunk_id, extractor,"
+                "INSERT OR IGNORE INTO fact_support(fact_id, group_no, chunk_id, extractor,"
                 " recorded_at) VALUES (?,?,?,?,?)",
                 fact_support.select(list(SUPPORT_SCHEMA)).rows(),
             )
             self.conn.executemany(
-                "INSERT OR REPLACE INTO mentions(entity_id, chunk_id, span_start, span_end,"
+                "INSERT OR IGNORE INTO mentions(entity_id, chunk_id, span_start, span_end,"
                 " confidence) VALUES (?,?,?,?,?)",
                 mentions.select(list(MENTION_SCHEMA)).rows(),
             )
 
     def _visible_facts_sql(self, viewer: Viewer) -> tuple[str, list]:
-        """A fact is visible iff one support group has every chunk visible (D4) and both of the
-        viewer's instants fall inside its validity and recording intervals (D3)."""
-        ps = viewer.sorted_principals()
-        vis_chunk = (
-            "SELECT c.id FROM chunks c WHERE EXISTS (SELECT 1 FROM document_grants g"
-            " WHERE g.document_id = c.document_id AND g.revoked_at IS NULL"
-            f" AND g.principal IN ({_q(len(ps))}))"
+        """A fact is visible iff one support group has every chunk visible and every member
+        recorded by `as_of_recorded` (D4), both of the viewer's instants fall inside its validity
+        and recording intervals (D3), and it was not invalidated by then by a fact the viewer
+        can see: a private correction does not remove a public fact for the public."""
+        chunk_vis, ps = self._visible_ids_sql(viewer)
+        vis_chunk = f"SELECT c.id FROM chunks c WHERE {chunk_vis}"
+        supported = (
+            f"SELECT s.fact_id FROM fact_support s GROUP BY s.fact_id, s.group_no"
+            f" HAVING SUM(s.chunk_id NOT IN ({vis_chunk}) OR s.recorded_at > ?) = 0"
         )
         sql = (
-            f"f.id IN (SELECT s.fact_id FROM fact_support s GROUP BY s.fact_id, s.group_no"
-            f" HAVING SUM(s.chunk_id NOT IN ({vis_chunk})) = 0)"
+            f"f.id IN ({supported})"
             " AND f.valid_from <= ? AND ? < f.valid_to AND f.recorded_at <= ?"
-            " AND (f.invalidated_at IS NULL OR f.invalidated_at > ?)"
+            " AND (f.invalidated_at IS NULL OR f.invalidated_at > ?"
+            f" OR f.invalidated_by_fact_id NOT IN ({supported}))"
         )
-        params = [
-            *ps,
-            viewer.as_of_valid,
-            viewer.as_of_valid,
-            viewer.as_of_recorded,
-            viewer.as_of_recorded,
-        ]
+        rec = viewer.as_of_recorded
+        params = [*ps, rec, viewer.as_of_valid, viewer.as_of_valid, rec, rec, *ps, rec]
         return sql, params
 
     def _facts(self, where: str, params: list) -> pl.DataFrame:
@@ -416,23 +421,26 @@ class SqliteStore:
         return self._facts(*self._visible_facts_sql(viewer))
 
     def mentions(self, chunk_ids: list[int], viewer: Viewer) -> pl.DataFrame:
+        """Mentions in the visible chunks among `chunk_ids`, of entities a visible fact
+        touches (D4: an entity is visible iff a visible fact is)."""
         if not chunk_ids:
             return pl.DataFrame(schema=MENTION_SCHEMA)
         visible = self.get_chunks(chunk_ids, viewer)["id"].to_list()
         if not visible:
             return pl.DataFrame(schema=MENTION_SCHEMA)
+        vis, params = self._visible_facts_sql(viewer)
         rows = self.conn.execute(
-            "SELECT entity_id, chunk_id, span_start, span_end, confidence FROM mentions"
-            f" WHERE chunk_id IN ({_q(len(visible))}) ORDER BY chunk_id, span_start, entity_id",
-            [int(i) for i in visible],
+            "SELECT m.entity_id, m.chunk_id, m.span_start, m.span_end, m.confidence FROM mentions m"
+            f" WHERE m.chunk_id IN ({_q(len(visible))}) AND EXISTS (SELECT 1 FROM facts f WHERE"
+            f" (f.subject_id = m.entity_id OR f.object_id = m.entity_id) AND {vis})"
+            " ORDER BY m.chunk_id, m.span_start, m.entity_id",
+            [*[int(i) for i in visible], *params],
         ).fetchall()
         return pl.DataFrame(rows, schema=MENTION_SCHEMA, orient="row")
 
     def neighbours(self, entity_ids: list[str], hops: int, viewer: Viewer) -> pl.DataFrame:
         vis, vparams = self._visible_facts_sql(viewer)
         seen: dict[int, tuple] = {}
-        frontier = set(entity_ids)
-        known = set(entity_ids)
 
         def touching(ids: set[str], predicate: str | None) -> pl.DataFrame:
             if not ids:
@@ -457,8 +465,8 @@ class SqliteStore:
                     return grown
                 grown |= new
 
-        frontier = close_identity(frontier)
-        known |= frontier
+        frontier = close_identity(set(entity_ids))
+        known = set(frontier)
         for _ in range(hops):
             found = touching(frontier, None)
             nxt: set[str] = set()
