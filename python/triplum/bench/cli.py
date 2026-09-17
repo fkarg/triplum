@@ -22,12 +22,17 @@ from triplum.bench.config import (
     RerankerConfig,
     RunConfig,
 )
+from triplum.bench.selection import SelectionGroup, adapter, no_input_callback, resolve
 
-app = typer.Typer(no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False)
-data_app = typer.Typer(
-    no_args_is_help=False, help="List, fetch and verify the benchmark datasets."
+app = typer.Typer(
+    cls=SelectionGroup, no_args_is_help=True, add_completion=False, pretty_exceptions_enable=False
 )
-bench_app = typer.Typer(no_args_is_help=False, help="Run, look up and inspect benchmarks.")
+data_app = typer.Typer(
+    cls=SelectionGroup, no_args_is_help=False, help="List, fetch and verify the benchmark datasets."
+)
+bench_app = typer.Typer(
+    cls=SelectionGroup, no_args_is_help=False, help="Run, look up and inspect benchmarks."
+)
 app.add_typer(data_app, name="data")
 app.add_typer(bench_app, name="bench")
 
@@ -49,7 +54,8 @@ class Dataset(StrEnum):
 
 
 # Options shared by `bench run` and `bench sweep`.
-DatasetOpt = Annotated[Dataset, typer.Option(help="Benchmark dataset.")]
+DatasetOpt = Annotated[str | None, typer.Option(help="Benchmark dataset: " + ", ".join(Dataset))]
+RunIdArg = Annotated[str | None, typer.Argument(help="Run id or unique prefix.")]
 NOpt = Annotated[int | None, typer.Option(help="Questions to run (default: the whole protocol).")]
 FixtureOpt = Annotated[
     bool, typer.Option("--fixture", help="Use the committed 20-question fixture.")
@@ -72,6 +78,22 @@ CacheRootOpt = Annotated[
     Path | None, typer.Option(help="Cache root (default $TRIPLUM_CACHE or ~/.cache/triplum).")
 ]
 RunstoreOpt = Annotated[Path | None, typer.Option(help="Run store (default <cache root>/runs.db).")]
+
+
+NoInputOpt = Annotated[
+    bool,
+    typer.Option(
+        "--no-input",
+        is_eager=True,
+        callback=no_input_callback,
+        help="Never prompt; unresolved choices are usage errors.",
+    ),
+]
+
+
+@app.callback()
+def root(no_input: NoInputOpt = False) -> None:
+    """Composable knowledge-graph benchmarks."""
 
 
 def _llm(kind: str, model: str | None, base_url: str | None) -> LLMConfig:
@@ -168,7 +190,7 @@ def _runstore(path: Path | None):
 
 
 @data_app.callback(invoke_without_command=True)
-def data(ctx: typer.Context) -> None:
+def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
     """List supported datasets and the state of their local protocol files."""
     if ctx.invoked_subcommand is not None:
         return
@@ -180,7 +202,9 @@ def data(ctx: typer.Context) -> None:
         print(f"{state.name}: {state.state}")
     print("States: verified = local files match pinned SHA-256; partial = one local file;")
     print("        not downloaded = no local files; invalid = one or both local hashes mismatch.")
-    print("Fetch: downloads missing files, then verifies both; it does not overwrite invalid files.")
+    print(
+        "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files."
+    )
     if any(state.state != "verified" for state in states):
         print("Run `triplum data fetch` to download missing datasets; remove invalid files first.")
     print()
@@ -189,11 +213,14 @@ def data(ctx: typer.Context) -> None:
 
 @data_app.command()
 def fetch(
+    ctx: typer.Context,
+    no_input: NoInputOpt = False,
     dataset: Annotated[str, typer.Option(help="hotpotqa | musique | twowiki | all")] = "all",
 ) -> None:
     """Download the HippoRAG protocol files and verify their sha256."""
     from triplum.eval.datasets import hipporag as hr
 
+    dataset = resolve(dataset, [*hr.FILES, "all"], "dataset", ctx=ctx)
     for name in hr.FILES if dataset == "all" else [dataset]:
         qp, cp = hr.fetch(name)
         print(f"{name}: {qp} {cp} (verified)")
@@ -202,6 +229,7 @@ def fetch(
 @bench_app.callback(invoke_without_command=True)
 def bench(
     ctx: typer.Context,
+    no_input: NoInputOpt = False,
     runstore: Annotated[Path | None, typer.Option(help="Run store for this overview only.")] = None,
 ) -> None:
     """Show recent local runs, explain their states, and list available commands."""
@@ -237,8 +265,12 @@ def bench(
 
 @bench_app.command()
 def run(
-    pipeline: Annotated[Pipeline, typer.Option(help="Retrieval pipeline.")],
-    dataset: DatasetOpt,
+    ctx: typer.Context,
+    pipeline: Annotated[
+        str | None, typer.Option(help="Retrieval pipeline: " + ", ".join(Pipeline))
+    ] = None,
+    dataset: DatasetOpt = None,
+    no_input: NoInputOpt = False,
     embedder: Annotated[str, typer.Option(help="fake | st:<model> | openai:<model>")] = "fake",
     n: NOpt = None,
     fixture: FixtureOpt = False,
@@ -259,6 +291,13 @@ def run(
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
 
+    pipeline = resolve(pipeline, Pipeline, "pipeline", ctx=ctx)
+    dataset = resolve(dataset, Dataset, "dataset", ctx=ctx)
+    reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
+    if judge is not None:
+        judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)
+    embedder = adapter(embedder, ["fake", "st", "openai"], "embedder", ctx)
+    reranker = adapter(reranker, ["fake", "cross_encoder"], "reranker", ctx)
     cfg = build_run_config(
         pipeline=pipeline,
         dataset=dataset,
@@ -284,8 +323,10 @@ def run(
 
 @bench_app.command()
 def sweep(
+    ctx: typer.Context,
     embedders: Annotated[Path, typer.Option(help="JSON file: list of EmbedderConfig dicts.")],
-    dataset: DatasetOpt,
+    dataset: DatasetOpt = None,
+    no_input: NoInputOpt = False,
     n: NOpt = None,
     fixture: FixtureOpt = False,
     reader: ReaderOpt = "fake",
@@ -305,6 +346,11 @@ def sweep(
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
 
+    dataset = resolve(dataset, Dataset, "dataset", ctx=ctx)
+    reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
+    if judge is not None:
+        judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)
+    reranker = adapter(reranker, ["fake", "cross_encoder"], "reranker", ctx)
     cfgs = [
         build_run_config(
             pipeline=Pipeline.dense,
@@ -343,49 +389,85 @@ def sweep(
 
 
 @bench_app.command()
-def report(runstore: RunstoreOpt = None) -> None:
+def report(runstore: RunstoreOpt = None, no_input: NoInputOpt = False) -> None:
     """Summary of every run, wrapped to fit the terminal."""
     from triplum.bench.report import summary
 
     _print_summary(summary(_runstore(runstore)))
 
 
-def _row(rs, run_id: str) -> dict:
-    row = rs.run(run_id)
-    if row is None:
-        raise typer.BadParameter(f"no run {run_id}")
-    return row
+def _existing_runstore(path: Path | None):
+    from triplum.cache import default_root
+
+    path = path or default_root() / "runs.db"
+    if not path.exists():
+        raise typer.BadParameter(f"No runs recorded at {path}. Run `triplum bench run` first.")
+    return _runstore(path)
+
+
+def _run_id(rs, value: str | None, ctx: typer.Context, label: str = "run") -> str:
+    rows = rs.conn.execute(
+        "SELECT run_id, dataset, pipeline, status, n, reader_model, embedding_spec "
+        "FROM runs ORDER BY created_at DESC, run_id"
+    ).fetchall()
+    return resolve(
+        value,
+        [r[0] for r in rows],
+        label,
+        ctx=ctx,
+        descriptions={
+            r[0]: f"{r[1]}/{r[2]}  {r[3]}  n={r[4]} reader={r[5]} embedding={r[6]}" for r in rows
+        },
+    )
 
 
 @bench_app.command()
-def show(run_id: str, runstore: RunstoreOpt = None) -> None:
+def show(
+    ctx: typer.Context,
+    run_id: RunIdArg = None,
+    runstore: RunstoreOpt = None,
+    no_input: NoInputOpt = False,
+) -> None:
     """Print a run's identity fields and its full configuration."""
-    row = _row(_runstore(runstore), run_id)
-    identity = {k: row[k] for k in row if k != "config_json"}
-    print(json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2))
+    rs = _existing_runstore(runstore)
+    with closing(rs.conn):
+        row = rs.run(_run_id(rs, run_id, ctx))
+        identity = {k: row[k] for k in row if k != "config_json"}
+        print(
+            json.dumps({"identity": identity, "config": json.loads(row["config_json"])}, indent=2)
+        )
 
 
 @bench_app.command()
 def rerun(
-    run_id: str, force: ForceOpt = False, resume: ResumeOpt = False, runstore: RunstoreOpt = None
+    ctx: typer.Context,
+    run_id: RunIdArg = None,
+    force: ForceOpt = False,
+    resume: ResumeOpt = False,
+    runstore: RunstoreOpt = None,
+    no_input: NoInputOpt = False,
 ) -> None:
     """Run a stored configuration again (lookup unless --force)."""
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark
 
-    rs = _runstore(runstore)
-    cfg = RunConfig.from_json(_row(rs, run_id)["config_json"])
-    cfg = RunConfig(
-        **{**cfg.__dict__, "force": force, "resume": resume, "runstore_path": str(rs.path)}
-    )
-    rid = run_benchmark(cfg)
-    print("reused" if rid == run_id else "new", rid)
-    _print_summary(summary(rs, [rid]))
+    rs = _existing_runstore(runstore)
+    with closing(rs.conn):
+        run_id = _run_id(rs, run_id, ctx)
+        cfg = RunConfig.from_json(rs.run(run_id)["config_json"])
+        cfg = RunConfig(
+            **{**cfg.__dict__, "force": force, "resume": resume, "runstore_path": str(rs.path)}
+        )
+        rid = run_benchmark(cfg)
+        print("reused" if rid == run_id else "new", rid)
+        _print_summary(summary(rs, [rid]))
 
 
 @bench_app.command()
 def inspect(
-    run_id: str,
+    ctx: typer.Context,
+    run_id: RunIdArg = None,
+    no_input: NoInputOpt = False,
     question: Annotated[str | None, typer.Option(help="Only this question id.")] = None,
     json_: Annotated[bool, typer.Option("--json", help="Print the raw view as JSON.")] = False,
     runstore: RunstoreOpt = None,
@@ -393,61 +475,85 @@ def inspect(
     """Per-question drill-down: answer, metrics, retrieved passages, model calls."""
     from triplum.bench.inspect import inspect_run
 
-    view = inspect_run(_runstore(runstore), run_id, question)
-    if json_:
-        print(json.dumps(view, indent=2, default=str))
-        return
-    i = view["identity"]
-    print(
-        f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
-        f"  reader={i['reader_model']}  judge={i['judge_model']}"
-    )
-    if not view["store_available"]:
-        print("(store artifact not available: passages shown as ids only)")
-    for q in view["questions"]:
-        m = q["metrics"]
+    rs = _existing_runstore(runstore)
+    with closing(rs.conn):
+        run_id = _run_id(rs, run_id, ctx)
+        if question is not None:
+            ids = [
+                r[0]
+                for r in rs.conn.execute(
+                    "SELECT question_id FROM run_questions WHERE run_id = ? ORDER BY question_id",
+                    (run_id,),
+                )
+            ]
+            question = resolve(question, ids, "question", ctx=ctx)
+        view = inspect_run(rs, run_id, question)
+        if json_:
+            print(json.dumps(view, indent=2, default=str))
+            return
+        i = view["identity"]
         print(
-            f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
-            f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
-            f" latency={m['latency_s']:.3f}s usd={m['usd']}"
+            f"run {i['run_id']}  {i['dataset']}/{i['pipeline']}  status={i['status']}  n={i['n']}"
+            f"  reader={i['reader_model']}  judge={i['judge_model']}"
         )
-        for r in q["retrieved"]:
-            text = (r["text"] or "").replace("\n", " ")[:160]
-            print(f"    #{r['chunk_id']}: {text}")
-        for e in q["events"]:
+        if not view["store_available"]:
+            print("(store artifact not available: passages shown as ids only)")
+        for q in view["questions"]:
+            m = q["metrics"]
             print(
-                f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
-                f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s"
+                f"\n[{q['question_id']}] answer={q['answer']!r}  em={m['em']} f1={m['f1']:.2f}"
+                f" contain={m['contain']} judge={m['judge']} r2={m['r2']:.2f} r5={m['r5']:.2f}"
+                f" latency={m['latency_s']:.3f}s usd={m['usd']}"
             )
+            for r in q["retrieved"]:
+                text = (r["text"] or "").replace("\n", " ")[:160]
+                print(f"    #{r['chunk_id']}: {text}")
+            for e in q["events"]:
+                print(
+                    f"    {e['stage']}: {e['model']} in={e['input_tokens']} out={e['output_tokens']}"
+                    f" cached={e['cached']} {(e['ended_at'] - e['started_at']) / 1e6:.3f}s"
+                )
 
 
 @bench_app.command()
-def diff(run_a: str, run_b: str, runstore: RunstoreOpt = None) -> None:
+def diff(
+    ctx: typer.Context,
+    run_a: RunIdArg = None,
+    run_b: RunIdArg = None,
+    runstore: RunstoreOpt = None,
+    no_input: NoInputOpt = False,
+) -> None:
     """Identity and config fields that differ, metric means, per-question deltas."""
     import polars as pl
 
     from triplum.bench.inspect import diff_runs
 
-    d = diff_runs(_runstore(runstore), run_a, run_b)
-    print("identity:", json.dumps(d["identity_diff"], default=str))
-    print("config:", json.dumps(d["config_diff"], default=str))
-    for m, (va, vb) in d["means"].items():
-        print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
-    if d["only_in_a"] or d["only_in_b"]:
-        print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
-    changed = (
-        (pl.col("d_em") != 0)
-        | (pl.col("d_f1") != 0)
-        | (pl.col("d_r5") != 0)
-        | pl.col("answer_changed")
-        | pl.col("retrieval_changed")
-    )
-    _print(d["per_question"].filter(changed))
+    rs = _existing_runstore(runstore)
+    with closing(rs.conn):
+        run_a = _run_id(rs, run_a, ctx, "first run")
+        run_b = _run_id(rs, run_b, ctx, "second run")
+        d = diff_runs(rs, run_a, run_b)
+        print("identity:", json.dumps(d["identity_diff"], default=str))
+        print("config:", json.dumps(d["config_diff"], default=str))
+        for m, (va, vb) in d["means"].items():
+            print(f"  {m:8s} {va!s:>10} -> {vb!s:>10}")
+        if d["only_in_a"] or d["only_in_b"]:
+            print(f"only in a: {len(d['only_in_a'])}  only in b: {len(d['only_in_b'])}")
+        changed = (
+            (pl.col("d_em") != 0)
+            | (pl.col("d_f1") != 0)
+            | (pl.col("d_r5") != 0)
+            | pl.col("answer_changed")
+            | pl.col("retrieval_changed")
+        )
+        _print(d["per_question"].filter(changed))
 
 
 @bench_app.command()
 def tail(
-    run_id: str,
+    ctx: typer.Context,
+    run_id: RunIdArg = None,
+    no_input: NoInputOpt = False,
     once: Annotated[bool, typer.Option("--once", help="Print once instead of following.")] = False,
     interval: Annotated[float, typer.Option(help="Seconds between updates.")] = 1.0,
     runstore: RunstoreOpt = None,
@@ -455,15 +561,17 @@ def tail(
     """Progress of a running benchmark: done/total and the latest stage."""
     from triplum.bench.inspect import tail_run
 
-    rs = _runstore(runstore)
-    while True:
-        t = tail_run(rs, run_id)
-        print(
-            f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}"
-        )
-        if once or t["status"] != "running":
-            return
-        time.sleep(interval)
+    rs = _existing_runstore(runstore)
+    with closing(rs.conn):
+        run_id = _run_id(rs, run_id, ctx)
+        while True:
+            t = tail_run(rs, run_id)
+            print(
+                f"{t['run_id']} {t['status']} {t['done']}/{t['total']} last={t['last_stage']}@{t['last_question']}"
+            )
+            if once or t["status"] != "running":
+                return
+            time.sleep(interval)
 
 
 def main(argv: list[str] | None = None) -> int:

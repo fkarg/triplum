@@ -30,7 +30,8 @@ run store that records identity, cost and timing for every run. Nothing graph-sh
 
 ```
 uv sync --all-extras                        # builds the Rust extension via maturin
-uv run pytest                               # 84 tests, all on fixtures and fakes
+uv run pytest -m "not model"                 # fast, offline fixtures and fakes
+uv run pytest                               # includes installed optional real-model adapters
 uv run triplum data                         # local state of each supported dataset
 uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
 uv run triplum bench                        # recent local runs, states and available commands
@@ -46,6 +47,30 @@ uv run triplum bench inspect <run_id>       # per-question answers, passages, mo
 uv run triplum bench diff <run_a> <run_b>   # what changed and by how much
 uv run triplum bench tail <run_id>          # progress of a running benchmark
 ```
+
+## CLI discovery and test feedback
+
+Forgiving discovery is a priority throughout the CLI. Use full names or unique prefixes:
+`triplum ben insp 43a` resolves the command and run ID. Omit the run ID to choose a stored
+run. Single substring or typo matches also resolve automatically; multiple matches offer numbered terminal choices;
+`q`, EOF or Ctrl-C cancels. Dataset, pipeline, reader/judge and adapter-kind choices follow
+the same policy. An omitted `--question` still shows all questions; a supplied question ID
+is resolved within the selected run. Omitted required pipeline/dataset options offer choices.
+
+Scripts accept exact names and single prefix/substring/typo matches but never prompt; use full names for stable
+automation as new commands or runs can make prefixes ambiguous. `--no-input` explicitly
+disables prompts at the root, group or prompting command. Diagnostics and prompts go to
+stderr, including with `inspect --json`. Option spelling errors retain Typer's suggestions;
+paths, URLs, model IDs and JSON configuration stay exact. Only the kind before `:` is
+resolved in an adapter spec. The [selection contract](docs/specs/2026-09-16-cli-selection.md)
+applies to new commands too.
+
+Tests report their slowest cases. `uv run pytest -m "not model"` runs without loading real
+models; `uv run pytest` also exercises optional model adapters when installed (weights may
+download). For branch coverage, run `uv run pytest -m "not model" --cov
+--cov-report=term-missing:skip-covered` on one line; CI measures coverage explicitly.
+Coverage stays opt-in locally to keep single-test feedback quick. Match/selection behavior
+lives in one focused module and tests exercise CLI workflows over temporary SQLite stores.
 
 What a run does step by step, which module does it, and what is implemented versus planned is
 in [`docs/flow.md`](docs/flow.md). Runs are identified by the hash of their exact configuration and

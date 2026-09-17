@@ -119,3 +119,19 @@ Planned, in the order of the design record:
    the winner gets pinned for 2a to 2c.
 6. Further backends (Oxigraph, LadybugDB), the temporal and ACL synthetic benchmark, KG
    construction V&V, private benchmarks.
+
+
+## Forgiving CLI input
+
+Snapshot 2026-09-17. The CLI resolves finite human choices before calling exact library
+APIs: commands, runs, question IDs, datasets, pipelines, reader/judge kinds and adapter
+prefixes. Exact matches win, then case-insensitive exact/unique prefixes. Single substring/typo matches also resolve with a stderr notice; missing or ambiguous
+selectors offer terminal choices with no default. Omitted
+question filters still mean all questions. Missing stores and unknown selectors give usage
+errors instead of tracebacks; run selection does not create an absent store.
+
+Use `--no-input` at the root, group or prompting command to prohibit prompts. Nonterminal
+input or stderr also prohibits prompting; errors list canonical candidates. Prompts and
+resolution notices use stderr so JSON stdout stays parseable. Model suffixes, paths, URLs,
+JSON configs and library identifiers remain exact; unknown option names use Typer's
+built-in suggestions. See the [selection contract](specs/2026-09-16-cli-selection.md).

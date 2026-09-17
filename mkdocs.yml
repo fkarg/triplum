@@ -84,7 +84,9 @@ nav:
       - Naming: research/naming.md
       - Fact check 2026-09-16: research/fact-check-2026-09-16.md
   - Specs:
+      - CLI selection: specs/2026-09-16-cli-selection.md
       - Harness and baselines: specs/2026-09-16-harness-and-baselines.md
   - Plans:
+      - CLI selection: plans/2026-09-16-cli-selection.md
       - Harness part 1, foundation: plans/2026-09-16-harness-part1-foundation.md
       - Harness part 2, pipelines: plans/2026-09-16-harness-part2-pipelines.md

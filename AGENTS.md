@@ -50,6 +50,20 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
   trains on traffic.
 - **Secrets**: API keys come from the environment; never read, print or commit them.
 
+## Human-facing tools and tests
+
+- **Forgiving discovery is a priority on every user-facing surface.** Reuse the CLI selection
+  policy: exact matches first, unique prefix/substring/typo matches accepted, multiple matches offered as
+  choices. Missing required finite selectors should guide the user. Never expose a lookup
+  traceback for an unknown name. Keep opaque paths/model IDs and library identities exact.
+- Prompt only on a terminal, support `--no-input`, and keep prompts/diagnostics on stderr so
+  structured stdout stays usable. New commands must follow `docs/specs/2026-09-16-cli-selection.md`.
+- Keep matching decisions locally testable and separate from command execution; split modules
+  by responsibility rather than adding interfaces or single-use wrappers.
+- Measure branch coverage and test durations. Test workflows with real temporary stores and
+  deterministic fakes; mark real-model tests `model` so `pytest -m "not model"` stays fast.
+  Do not hide missing coverage by excluding CLI modules, or add parallelism without measuring.
+
 ## Workflow
 
 - Spec, then plan, then code. Tests for behaviour that crosses a module boundary; the 20-question

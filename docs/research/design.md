@@ -265,6 +265,15 @@ crate, separate bindings crate). Python under `python/triplum/`, maturin mixed l
 notebooks (plain `.py`, git-diffable) over the same package; Rust exploration stays in cargo examples
 and tests. pytest and cargo test; one integration test per pipeline on a 20-question fixture.
 
+Human-facing CLI discovery is a priority: exact matches first, unique prefixes accepted,
+single fuzzy matches accepted with a notice; ambiguous/missing finite choices offered
+interactively on terminals. All interaction
+uses stderr; unresolved selectors with --no-input or nonterminal use yield actionable
+usage errors. Library identities
+and opaque values stay exact. Contract: `docs/specs/2026-09-16-cli-selection.md`.
+Tests use focused helpers and real workflow fixtures. Report durations by default and branch
+coverage explicitly in CI/on demand; mark real-model tests so the offline suite remains fast.
+
 ### D10. Name
 
 `triplum`. Free on PyPI and crates.io as of 2026-09-16. See [`naming.md`](naming.md).
@@ -347,3 +356,25 @@ Each sub-project gets its own spec and plan before code.
   peer itself rejected it for lack of measurements; D7 now says to profile first). **Survived**:
   timeless entity ids (rename attack), binary role facts for n-ary events (grouping attack),
   Python-first composition, SQLite-first, the run store, marimo and maturin layout.
+
+- 2026-09-17, `peer-review --mode design` on CLI selection, peer **Claude Opus 5**.
+  Verdict challenges; thirteen named falsification attempts. **Changed decision:** opt-in
+  local coverage (explicit in CI) and --no-input on groups/commands as well as root.
+  **Added verification:** no database creation on missing-run lookup, data-fetch choices,
+  missing diff operand, distinct diff inputs, canonical rerun identity and opaque suffixes.
+  **Rejected with reason:** dropping interactive menus, fuzzy IDs and command prefixes
+  conflicts with the user's explicit requirement; multiple matches require a choice and scripts should use full names. The user later
+  explicitly chose automatic acceptance of a single plausible fuzzy match. Question selection remains single-valued. Full rationale
+  in the selection spec. The peer also confirmed the vendored-Click type incompatibility;
+  implementation uses Typer callbacks and its own group class, not standalone Click types.
+
+- 2026-09-17, fresh-context GPT-family subagent review of CLI selection: **added
+  verification** for unknown IDs in populated stores, truly empty stores, omitted question
+  filters returning every question and canonical sweep choices. No blocking defect found;
+  made report accept --no-input consistently with the other commands.
+
+- 2026-09-17, final `peer-review --mode diff-review` attempted with Claude Opus 5: no
+  review result (OAuth token expired, HTTP 401). **No decision impact; untested by that
+  peer.** Fresh-context GPT-family review completed instead: no blocking code defect;
+  **added verification** above, and corrected stale docs after the user explicitly chose
+  automatic acceptance of a single plausible fuzzy match. Its 40 CLI tests passed.

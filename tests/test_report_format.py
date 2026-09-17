@@ -1,10 +1,9 @@
 import polars as pl
 import pytest
-from typer.testing import CliRunner
-
 from triplum.bench import report
 from triplum.bench.cli import app
 from triplum.bench.runstore import RunStore
+from typer.testing import CliRunner
 
 
 @pytest.mark.parametrize("width", [40, 80, 120])
