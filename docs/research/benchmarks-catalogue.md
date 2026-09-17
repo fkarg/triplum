@@ -16,11 +16,13 @@ API and dataset card, GitHub raw files, arXiv abstract) and fetching sample file
 Eleven of the load-bearing licence and gating claims were re-checked against the Hugging Face API
 by hand afterwards and all held. Rows marked *could not verify* were not fetched.
 
-**Coverage gap.** Entity resolution and entity linking (ZESHEL, AIDA-CoNLL, Mewsli-9, TempEL,
-ReVerb45K, OPIEC, WDC, Magellan) and KGQA over an existing KG (WebQSP, CWQ, GrailQA, KQA Pro,
-LC-QuAD 2.0, Mintaka, MetaQA, QALD-10, CronQuestions, and whether Freebase-based sets are still
-obtainable) were **not researched**: those two passes died in an API outage before reporting.
-Treat them as open, not as empty.
+**Coverage.** Entity linking, KGQA over an existing KG and the standard open-domain and
+reading-comprehension sets (NQ, TriviaQA, SQuAD, BoolQ, DROP, MS MARCO, KILT, BEIR, the shared
+Wikipedia corpora and KG snapshots) are in a separate note,
+[`benchmarks-standard.md`](benchmarks-standard.md): 114 configurations across seven families
+with HTTP-verified URLs, sizes and licence declarations, and five adoption tiers. Entity
+*resolution* on tables (Magellan, WDC) and open-IE canonicalisation (ReVerb45K, OPIEC) remain
+unresearched.
 
 ---
 
@@ -265,7 +267,9 @@ Consequences for the loader, derived from the rows above rather than from any si
 
 ## Open questions
 
-- Entity resolution and KGQA-over-KG families: not researched (see the coverage gap above).
+- Entity resolution on tables and open-IE canonicalisation: not researched. Entity linking and
+  KGQA-over-KG are covered in [`benchmarks-standard.md`](benchmarks-standard.md); none of those
+  sets is registered yet, and the KG-backed ones need a KG ingestion path first.
 - MuSiQue-Full paragraph coverage against the HippoRAG corpus: unmeasured.
 - TEMPO's per-domain sizes and whether `gold_answers` can be scored without a judge: not inspected.
 - Loong: ModelScope unreachable, nothing verified.

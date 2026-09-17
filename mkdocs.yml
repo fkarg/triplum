@@ -72,6 +72,7 @@ nav:
       - Landscape: research/landscape.md
       - Multi-hop QA benchmarks: research/benchmarks-multihop-qa.md
       - Benchmark catalogue: research/benchmarks-catalogue.md
+      - Standard benchmarks: research/benchmarks-standard.md
       - Embeddings: research/embeddings.md
       - KG construction: research/kg-construction.md
       - Store comparison: research/store-comparison.md
