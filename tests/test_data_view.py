@@ -49,10 +49,14 @@ def test_overview_preserves_names_states_flags_without_color(width):
     assert "Remove invalid files" in out
 
 
-def test_overview_verified_only_has_no_recovery_warning():
+def test_redirected_overview_verified_only_has_no_recovery_warning():
     stream = StringIO()
     spec = Spec("ready", "multihop", (), "MIT", unused_parser)
-    print_overview([(spec, "verified")], Path("/tmp/data"), console=Console(file=stream, width=80))
+    print_overview(
+        [(spec, "verified")],
+        Path("/tmp/data"),
+        console=Console(file=stream, width=80, force_terminal=False),
+    )
     out = stream.getvalue()
     assert "\x1b" not in out
     assert "1 dataset" in out and "1 verified" in out
