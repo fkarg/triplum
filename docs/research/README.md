@@ -14,6 +14,8 @@ pass and not checked against a primary source.
 | [embeddings.md](embeddings.md) | Embedding models 2026, API vs local on Apple Silicon, rerankers, the sweep list |
 | [kg-construction.md](kg-construction.md) | Survey of LLM-based ontology and KG construction (2024–2026): approaches, benchmarks, what we implement as variants |
 | [kg-construction-nonllm.md](kg-construction-nonllm.md) | Non-LLM extraction stacks as of 2026-09-17 (NER, relations, coreference, resolution, linking, temporal, decomposition) with licences, sizes and speeds; the deterministic baseline the extraction spec adopts |
+| [llm-adapter-pydantic-ai.md](llm-adapter-pydantic-ai.md) | pydantic-ai 2.44 as of 2026-09-17: direct request API, message types, structured output, the `WrapperModel` cache seam, providers, churn; consequences for the adapter under the `LLM` protocol |
+| [ingestion-sources.md](ingestion-sources.md) | Owner corpora ingestion as of 2026-09-17: YouTube captions and audio, feeds, local transcription and diarisation, PDF structure extraction (GROBID), a transcript data model; licences per tool and the recommended stack |
 | [store-comparison.md](store-comparison.md) | Methodology for the SQLite vs Neo4j comparison: workloads, scales, what to measure |
 | [temporal-and-permissions.md](temporal-and-permissions.md) | Bi-temporal facts and provenance-derived permissions: literature, pitfalls, schema recommendation |
 | [storage-sqlite.md](storage-sqlite.md) | SQLite as first store: FTS5, sqlite-vec, recursive CTEs, temporal/ACL indexing, Arrow interop, proposed DDL |
