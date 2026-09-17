@@ -9,6 +9,7 @@ signature is still shown.
 
 | module | status | key symbols | role |
 |---|---|---|---|
+| `triplum.utils.data` | done | `Dataset`, `IterableDataset`, `DataLoader` | author-defined records, indexed or streaming access, lazy batching and custom collation |
 | `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
 | `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
 | `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |

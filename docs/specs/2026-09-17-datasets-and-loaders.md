@@ -7,7 +7,8 @@ work and commit on local main. There are no compatibility consumers.
 
 `Dataset[T]` provides indexed access (`__getitem__`, `__len__`). `IterableDataset[T]`
 provides `__iter__` without requiring length, random access, identity, or replay. Both are
-small overridable classes in `triplum.data`. Records belong to the dataset author.
+small overridable classes in `triplum.utils.data`. Records belong to the dataset author.
+Built-in sources move from `triplum.eval.datasets` to `triplum.datasets`.
 
 `DataLoader[T, B]` accepts these classes and ordinary Python iterables. It lazily batches
 records and applies a supplied collator; its default yields lists. Disabling batching passes

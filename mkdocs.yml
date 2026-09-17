@@ -54,6 +54,7 @@ nav:
   - Modules and interfaces:
       - Overview: api/index.md
       - data: api/data.md
+      - utils.data: api/utils-data.md
       - cache: api/cache.md
       - llm: api/llm.md
       - embed: api/embed.md

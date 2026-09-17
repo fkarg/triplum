@@ -6,7 +6,8 @@
 **Goal:** Replace the universal benchmark dataset with extensible typed datasets/loaders and
 separate corpus/evaluation sources.
 
-**Architecture:** Generic access and batching live in `data/dataset.py` and `data/loader.py`.
+**Architecture:** Generic access and batching live in `utils/data/dataset.py` and
+`utils/data/loader.py`. Built-in sources move from `eval/datasets` to `datasets`.
 Built-in parsers return a benchmark composition of corpus and task sources. Existing whole-frame
 algorithms consume explicit materialized task inputs in `bench/inputs.py`.
 
@@ -18,7 +19,7 @@ algorithms consume explicit materialized task inputs in `bench/inputs.py`.
   bounded consumption, final partial batch, custom collation, pass-through, invalid batch size.
   Example: `next(iter(DataLoader(count(), batch_size=3))) == [0, 1, 2]`.
 - [ ] Run `uv run --frozen pytest tests/test_data_loading.py` and observe missing API failure.
-- [ ] Implement `Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`; export from `triplum.data`.
+- [x] Implement `Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`; export from `triplum.utils.data`.
 - [ ] Run focused tests and `uv run --frozen ty check`; update data API docs and commit.
 
 ## 2. Replace built-in composition

@@ -104,6 +104,10 @@ the call cache, one store per corpus, and `runs.db`. `--cache-root` and `--runst
 
 ## Implemented and planned
 
+`triplum.utils.data` provides task-independent indexed and streaming dataset bases and a lazy
+loader with custom collation and native-batch pass-through. Existing benchmark materialization
+boundaries are being replaced separately; the loader alone does not make the runner streaming.
+
 Implemented (sub-project 2, part 1; spec in
 [specs/2026-09-16-harness-and-baselines.md](specs/2026-09-16-harness-and-baselines.md)):
 
