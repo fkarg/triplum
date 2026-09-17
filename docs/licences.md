@@ -45,6 +45,10 @@ Dates are when the licence was checked; re-check before relying on a row.
 | SciERC (SpERT release files) | none declared | check | 2026-09-17 | registered as `scierc` |
 | pypdf 6 | BSD-3-Clause | yes | 2026-09-17 | PDF text layer for local-file corpora |
 | python-docx 1.2 (lxml BSD-3-Clause) | MIT | yes | 2026-09-17 | Word documents for local-file corpora |
+| spaCy 3.8 | MIT | yes | 2026-09-17 | `rules` extractor: tokenisation, NER, dependency parse; extra `extract` |
+| spaCy `en_core_web_sm` 3.8.0 | MIT | yes | 2026-09-17 | pinned by wheel URL; trained on OntoNotes 5 (LDC terms cover the training data, not the released weights) |
+| RapidFuzz 3 | MIT | yes | 2026-09-17 | `fuzzy` entity resolver |
+| dateparser 1.4 | BSD-3-Clause | yes | 2026-09-17 | literal date parsing in the `rules` extractor, absolute dates only |
 | NQ-Open (`google-research-datasets/nq_open`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `nq_open`; validation split, no corpus |
 | AmbigQA light (UW) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `ambigqa`; dev split, no corpus |
 | Bamboogle (`chiayewken/bamboogle`, from ofirpress/self-ask) | MIT | yes | 2026-09-17 | registered as `bamboogle`; 125 questions, no corpus |

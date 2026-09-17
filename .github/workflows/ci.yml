@@ -22,8 +22,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - name: Sync (builds the Rust extension; optional extras stay out, their tests skip)
-        run: uv sync
+      - name: Sync (builds the Rust extension; the extract extra is small enough to test here, the model extras stay out and their tests skip)
+        run: uv sync --extra extract
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run cargo check

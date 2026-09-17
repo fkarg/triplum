@@ -38,6 +38,13 @@ triplum = "triplum.bench.cli:app"
 
 [project.optional-dependencies]
 local = ["sentence-transformers>=6", "fastembed>=0.8"]
+# The rules extractor: spaCy with the small English pipeline pinned by wheel URL (MIT).
+extract = [
+  "spacy>=3.8.16",
+  "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+  "rapidfuzz>=3.14",
+  "dateparser>=1.4",
+]
 
 [dependency-groups]
 dev = [
@@ -111,3 +118,13 @@ allowed-unresolved-imports = ["fastembed"]
 include = ["python/triplum/rerank/cross_encoder.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["sentence_transformers"]
+
+[[tool.ty.overrides]]
+include = ["python/triplum/extract/rules.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["spacy", "dateparser"]
+
+[[tool.ty.overrides]]
+include = ["python/triplum/extract/resolvers.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["rapidfuzz"]
