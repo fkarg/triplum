@@ -16,6 +16,7 @@ def test_fake_reranker_prefers_overlap():
     assert s.shape == (2,) and s[0] > s[1]
 
 
+@pytest.mark.model
 @pytest.mark.skipif(
     importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed"
 )

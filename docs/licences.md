@@ -61,6 +61,7 @@ Dates are when the licence was checked; re-check before relying on a row.
 
 | component | licence | commercial reuse | checked | notes |
 |---|---|---|---|---|
+| [pytest-cov](https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE) | MIT | yes | 2026-09-16 | development-only branch coverage reporting |
 | sqlite-vec | MIT / Apache-2.0 | yes | 2026-09-16 | pre-v1 |
 | Oxigraph, `pyoxigraph` | MIT / Apache-2.0 | yes | 2026-09-16 | |
 | LadybugDB (`lbug`, `ladybug`) | MIT | yes | 2026-09-16 | Kùzu successor |

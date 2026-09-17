@@ -68,6 +68,7 @@ import importlib.util
 import pytest
 
 
+@pytest.mark.model
 @pytest.mark.skipif(
     importlib.util.find_spec("sentence_transformers") is None, reason="extra not installed"
 )
@@ -84,6 +85,7 @@ def test_sentence_transformers_adapter_small_model():
     assert np.allclose(np.linalg.norm(v, axis=1), 1.0, atol=1e-4)
 
 
+@pytest.mark.model
 @pytest.mark.skipif(importlib.util.find_spec("fastembed") is None, reason="extra not installed")
 def test_fastembed_adapter_small_model():
     from triplum.embed.fastembed import FastEmbedEmbedder

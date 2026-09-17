@@ -32,7 +32,13 @@ triplum = "triplum.bench.cli:app"
 local = ["sentence-transformers>=6", "fastembed>=0.8"]
 
 [dependency-groups]
-dev = ["pytest>=9", "ruff>=0.14", "maturin>=1.15,<2", "marimo>=0.24"]
+dev = [
+    "pytest>=9",
+    "ruff>=0.14",
+    "maturin>=1.15,<2",
+    "marimo>=0.24",
+    "pytest-cov>=7.1.0",
+]
 docs = [
     "mkdocs-material>=9.7",
     "mkdocstrings[python]>=1.0",
@@ -59,6 +65,12 @@ cache-keys = [{ file = "pyproject.toml" }, { file = "Cargo.toml" }, { file = "cr
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--durations=10"
+markers = ["model: loads real optional models; may download weights"]
+
+[tool.coverage.run]
+source = ["python/triplum"]
+branch = true
 
 [tool.ruff]
 line-length = 100
