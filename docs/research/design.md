@@ -368,6 +368,20 @@ Each sub-project gets its own spec and plan before code.
 
 ## Review record
 
+- 2026-09-17, `peer-review --mode design` on the built-in datasets spec
+  (`../specs/2026-09-17-builtin-datasets.md`), peer: Codex (GPT family). Verdict "challenges",
+  ten executed falsification attempts. **Changed the decision** on eight findings: identity is
+  a versioned recipe (file digests, parser version, shared record and id contract version,
+  resolved parameters) and the claim that a fixture test catches a forgotten bump was refuted
+  and withdrawn; no universal content-id rule but a per-source key and gold-resolution table,
+  confirmed on the pinned files (2Wiki question-side text differs from its corpus text, so
+  2Wiki and HotpotQA key by title, MuSiQue by title and text); record-local checks stay at
+  parse time and cross-source checks run at `materialize` before scoring; per-source unit
+  table; `Take` semantics pinned and question-linked triples restricted at `materialize`;
+  segment invariants validated, fixture ordinals preserved; `Source[T]` is a union, not a
+  subtype claim. **Added verification** on the cost of two independent reads. **No decision
+  impact**: the peer's counterproposal kept the architecture. Full record in the spec.
+
 - 2026-09-17, dataset identity follow-up: owner requires dataset-owned `fingerprint()`, not an
   optional hook or Python `__hash__`. A later cross-model call returned no model answer because
   its OAuth credentials expired. Fresh-context GPT-family fallback review **found unique

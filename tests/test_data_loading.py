@@ -185,3 +185,77 @@ def test_frame_fingerprint_handles_nested_dictionaries(dtype, values, changed):
     frame = pl.DataFrame({"x": pl.Series(values, dtype=dtype)})
     other = pl.DataFrame({"x": pl.Series(changed, dtype=dtype)})
     assert FrameDataset(frame).fingerprint() != FrameDataset(other).fingerprint()
+
+
+def test_take_pulls_exactly_n_and_zero_never_opens_the_source():
+    from triplum.utils.data import Take
+
+    pulled = []
+
+    class Counting(IterableDataset[int]):
+        def fingerprint(self) -> str:
+            return "counting"
+
+        def __iter__(self) -> Iterator[int]:
+            for i in count():
+                pulled.append(i)
+                yield i
+
+    assert list(Take(Counting(), 3)) == [0, 1, 2]
+    assert pulled == [0, 1, 2]  # no n+1 pull
+    opened = []
+
+    class Opening(Dataset[int]):
+        def fingerprint(self) -> str:
+            return "opening"
+
+        def __len__(self) -> int:
+            opened.append("len")
+            return 5
+
+        def __getitem__(self, index: int) -> int:
+            return index
+
+    assert list(Take(Opening(), 0)) == [] and opened == []
+    assert len(Take(Opening(), 2)) == 2 and len(Take(Opening(), 9)) == 5
+    with pytest.raises(TypeError):
+        len(Take(Counting(), 2))
+    with pytest.raises(ValueError, match="non-negative"):
+        Take(Counting(), -1)
+    assert Take(Counting(), 2).fingerprint() != Take(Counting(), 3).fingerprint()
+    assert Take(Counting(), 2).fingerprint() == Take(Counting(), 2).fingerprint()
+
+
+def test_take_over_a_one_shot_source_adds_no_replay():
+    from triplum.utils.data import Take
+
+    class OneShot(IterableDataset[int]):
+        def __init__(self) -> None:
+            self.it = iter(range(4))
+
+        def fingerprint(self) -> str:
+            return "one-shot"
+
+        def __iter__(self) -> Iterator[int]:
+            return self.it
+
+    source = OneShot()
+    assert list(Take(source, 2)) == [0, 1]
+    assert list(Take(source, 2)) == [2, 3]
+
+
+def test_record_dataset_identity_is_ordered_content_recomputed_on_demand():
+    from pydantic import BaseModel
+    from triplum.utils.data import RecordDataset
+
+    class Note(BaseModel):
+        text: str
+        tags: dict[str, str] = {}
+
+    a, b = Note(text="a"), Note(text="b")
+    ds = RecordDataset([a, b])
+    assert len(ds) == 2 and ds[1] is b and list(DataLoader(ds, batch_size=5)) == [[a, b]]
+    assert ds.fingerprint() != RecordDataset([b, a]).fingerprint()
+    before = ds.fingerprint()
+    a.tags["k"] = "v"  # nested dicts are not frozen; identity follows the current content
+    assert ds.fingerprint() != before

@@ -27,7 +27,9 @@ def content_key(kind: str, payload: Any) -> str:
 
 
 def default_root() -> Path:
-    return Path(os.environ.get("TRIPLUM_CACHE", Path.home() / ".cache" / "triplum"))
+    from triplum.settings import Settings
+
+    return Settings().cache
 
 
 class Cache:

@@ -14,12 +14,16 @@ import urllib.request
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any, ClassVar
 
 import polars as pl
 
 from triplum.bench.inputs import Benchmark, materialize
-from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA, GRANT_SCHEMA, CorpusBatch
+from triplum.cache import content_key
+from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA, GRANT_SCHEMA, RECORD_VERSION, CorpusBatch
 from triplum.datasets.corpus import CorpusDataset
+from triplum.datasets.files import File as PinnedFile
+from triplum.datasets.files import Files
 from triplum.datasets.frames import FrameDataset
 from triplum.eval.inputs import (
     QUESTION_SCHEMA,
@@ -27,6 +31,7 @@ from triplum.eval.inputs import (
     ExtractionEvaluation,
     QAEvaluation,
 )
+from triplum.settings import Settings
 
 FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 FIXTURE_N = 20
@@ -76,6 +81,40 @@ class Spec:
         return self.bytes > LARGE_BYTES
 
 
+class Pinned:
+    """Mixin for a source over pinned files: fetch and verify on first `paths()`, identity as a
+    versioned recipe (class, `version`, the record contract, the pinned digests, the resolved
+    parameters that change the output) with no file read. Bump `version` when what the source
+    yields changes."""
+
+    version: ClassVar[int] = 1
+
+    def __init__(
+        self,
+        files: tuple[PinnedFile, ...],
+        settings: Settings | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> None:
+        self.files = Files(files, settings)
+        self.params = params or {}
+
+    def paths(self) -> dict[str, Path]:
+        return self.files.fetch()
+
+    def fingerprint(self) -> str:
+        cls = type(self)
+        return content_key(
+            "dataset",
+            {
+                "class": f"{cls.__module__}.{cls.__qualname__}",
+                "version": self.version,
+                "contract": RECORD_VERSION,
+                "files": self.files.fingerprint(),
+                "params": self.params,
+            },
+        )
+
+
 @dataclass(frozen=True)
 class DatasetStatus:
     name: str
@@ -94,7 +133,7 @@ def manifest_files(dataset: str) -> tuple[File, ...]:
 
 
 def data_root() -> Path:
-    return Path(os.environ.get("TRIPLUM_DATA", Path.home() / ".cache" / "triplum" / "data"))
+    return Settings().data
 
 
 def sha256_file(p: Path) -> str:

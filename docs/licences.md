@@ -107,6 +107,7 @@ Dates are when the licence was checked; re-check before relying on a row.
 | `neo4j` Python driver | Apache-2.0 AND Python-2.0 | yes | 2026-09-16 | |
 | `neo4j-graphrag` | Apache-2.0 | yes | 2026-09-16 | |
 | polars, pyarrow, PyO3, pyo3-arrow, maturin, arrow-rs | MIT / Apache-2.0 | yes | 2026-09-16 | |
+| pydantic, pydantic-settings | MIT | yes | 2026-09-17 | boundary records (documents, questions, triples) and settings |
 | sentence-transformers, fastembed | Apache-2.0 | yes | 2026-09-16 | |
 | BenchmarkQED | check repo | check | 2026-09-16 | judge protocol we adopt; cite the source code |
 | DIGIMON (JayLZhou/GraphRAG) | **no licence file** | **no** (read only) | 2026-09-16 | operator taxonomy read for ideas only |

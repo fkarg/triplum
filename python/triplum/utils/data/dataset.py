@@ -1,7 +1,14 @@
 """Small extension points for indexed and streaming sources, with author-defined records."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
+from itertools import islice
+
+from pydantic import BaseModel
+
+from triplum.cache import content_key
 
 
 class Dataset[T](ABC):
@@ -54,3 +61,60 @@ class IterableDataset[T](ABC):
         Replay means equal logical data, not that a one-shot iterator can be rewound.
         """
         ...
+
+
+type Source[T] = Dataset[T] | IterableDataset[T]
+"""Either base class: what a benchmark part or a selection accepts. The two are not subtypes."""
+
+
+class Take[T](IterableDataset[T]):
+    """The first ``n`` records of a source; the one selection primitive.
+
+    ``n`` is a non-negative integer. ``n == 0`` yields nothing without touching the source;
+    otherwise exactly ``n`` records are pulled and never the next one. The length is
+    ``min(n, len(source))`` when the source has one. A one-shot source stays one-shot.
+    """
+
+    def __init__(self, source: Source[T], n: int) -> None:
+        if isinstance(n, bool) or n < 0:
+            raise ValueError("n must be a non-negative integer")
+        self.source = source
+        self.n = n
+
+    def __iter__(self) -> Iterator[T]:
+        if self.n == 0:
+            return
+        yield from islice(self.source, self.n)
+
+    def __len__(self) -> int:
+        if self.n == 0:
+            return 0
+        if not isinstance(self.source, Dataset):
+            raise TypeError(f"{type(self.source).__name__} has no length")
+        return min(self.n, len(self.source))
+
+    def fingerprint(self) -> str:
+        return content_key("take", [self.source.fingerprint(), self.n])
+
+
+class RecordDataset[T: BaseModel](Dataset[T]):
+    """An in-memory sequence of pydantic records, the record analogue of `FrameDataset`.
+
+    Identity is the ordered content, recomputed on every call so an edit to a record's nested
+    metadata cannot reuse a stale digest. Records are treated as immutable by convention.
+    """
+
+    def __init__(self, records: Sequence[T]) -> None:
+        self.records = list(records)
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def __getitem__(self, index: int) -> T:
+        return self.records[index]
+
+    def __getitems__(self, indices: list[int]) -> list[T]:
+        return [self.records[i] for i in indices]
+
+    def fingerprint(self) -> str:
+        return content_key("records", [r.model_dump(mode="json") for r in self.records])
