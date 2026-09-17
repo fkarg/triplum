@@ -2,52 +2,48 @@
 
 from dataclasses import replace
 
-import polars as pl
 import pytest
 from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig
 from triplum.bench.inputs import Benchmark
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
-from triplum.data.corpus import CorpusBatch
-from triplum.datasets import base, registry
-from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
+from triplum.data.corpus import Document, chunk_id
+from triplum.datasets import base, fixtures, registry
+from triplum.eval.inputs import Question, Triple
+from triplum.utils.data import RecordDataset
 
 
-def _frames(with_corpus=True, with_questions=True):
-    documents, grants, chunks = base.corpus_frames(
-        "t", [("d1", "A", "Alice met Bob.", 0, None), ("d2", "B", "Bob is tall.", 0, None)]
-    )
-    rows = [
-        base.question_row("q1", "Who met Bob?", "Alice", [], [1]),
-        base.question_row("q2", "Who is Zed?", "unknown", [], [], answerable=False),
+def _benchmark(with_corpus=True, with_questions=True):
+    documents = [
+        Document(id="d1", source="t", text="A\nAlice met Bob."),
+        Document(id="d2", source="t", text="B\nBob is tall."),
     ]
-    questions = base.questions_frame(rows if with_questions else [])
+    questions = [
+        Question(id="q1", question="Who met Bob?", answer="Alice", gold=(chunk_id("d1", 0),)),
+        Question(id="q2", question="Who is Zed?", answer="unknown", answerable=False),
+    ]
     if not with_corpus:
-        questions = questions.with_columns(
-            pl.lit([]).cast(pl.List(pl.Int64)).alias("gold_chunk_ids")
-        )
-        documents, grants, chunks = (
-            base.empty(s) for s in (base.DOC_SCHEMA, base.GRANT_SCHEMA, base.CHUNK_SCHEMA)
-        )
-    triples = base.triples_frame([(None, "d1", "Alice", "met", "Bob")])
+        documents = []
+        questions = [q.model_copy(update={"gold": ()}) for q in questions]
+    triples = [Triple(subject="Alice", predicate="met", object="Bob", document_id="d1")]
     return Benchmark(
-        corpus=[CorpusBatch(documents, grants, chunks)],
-        qa=QAEvaluation([questions]) if with_questions else None,
-        extraction=ExtractionEvaluation([triples]),
+        corpus=RecordDataset(documents),
+        qa=RecordDataset(questions) if with_questions else None,
+        extraction=RecordDataset(triples),
     )
 
 
 @pytest.fixture
 def fake_registry(monkeypatch, tmp_path):
-    monkeypatch.setattr(base, "FIXTURE_DIR", tmp_path / "fixtures")
-    base.FIXTURE_DIR.mkdir()
+    monkeypatch.setattr(fixtures, "FIXTURE_DIR", tmp_path / "fixtures")
+    fixtures.FIXTURE_DIR.mkdir()
 
-    def register(name, frames, **kw):
-        spec = base.Spec(
-            name, "test", (base.File("u", name, "0" * 64, 1),), "none", lambda p, n: frames, **kw
+    def register(name, benchmark, **kw):
+        entry = base.Entry(
+            name=name, family="test", licence="none", build=lambda s: benchmark, **kw
         )
-        monkeypatch.setitem(registry.SPECS, name, spec)
-        base.write_fixture(name, frames)
+        monkeypatch.setitem(registry.ENTRIES, name, entry)
+        fixtures.write(name, benchmark)
 
     return register
 
@@ -70,7 +66,7 @@ def _cfg(tmp_path, dataset, pipeline="bm25"):
 
 
 def test_unanswerable_question_gets_null_recall_and_the_run_completes(tmp_path, fake_registry):
-    fake_registry("qa-test", _frames())
+    fake_registry("qa-test", _benchmark())
     run_id = run_benchmark(_cfg(tmp_path, "qa-test", "oracle"))
     q = RunStore(tmp_path / "runs.db").questions(run_id).sort("question_id")
     assert q["r5"].to_list() == [1.0, None]
@@ -78,19 +74,19 @@ def test_unanswerable_question_gets_null_recall_and_the_run_completes(tmp_path, 
 
 
 def test_extraction_only_dataset_is_refused(tmp_path, fake_registry):
-    fake_registry("triples-test", _frames(with_questions=False))
+    fake_registry("triples-test", _benchmark(with_questions=False))
     with pytest.raises(ValueError, match="no questions"):
         run_benchmark(_cfg(tmp_path, "triples-test"))
 
 
 def test_missing_capability_is_refused_before_running(tmp_path, fake_registry):
-    fake_registry("viewer-test", _frames(), needs="a viewer per question")
+    fake_registry("viewer-test", _benchmark(), needs="a viewer per question")
     with pytest.raises(ValueError, match="needs a viewer per question"):
         run_benchmark(_cfg(tmp_path, "viewer-test"))
 
 
 def test_corpus_less_dataset_only_runs_closed_book(tmp_path, fake_registry):
-    fake_registry("cb-test", _frames(with_corpus=False))
+    fake_registry("cb-test", _benchmark(with_corpus=False))
     with pytest.raises(ValueError, match="only the closed_book pipeline"):
         run_benchmark(_cfg(tmp_path, "cb-test", "bm25"))
     run_id = run_benchmark(_cfg(tmp_path, "cb-test", "closed_book"))
@@ -99,7 +95,7 @@ def test_corpus_less_dataset_only_runs_closed_book(tmp_path, fake_registry):
 
 
 def test_dense_without_an_embedder_is_refused_before_retrieval(tmp_path, fake_registry):
-    fake_registry("qa-test", _frames())
+    fake_registry("qa-test", _benchmark())
     cfg = _cfg(tmp_path, "qa-test", "dense")
     cfg = replace(cfg, pipeline=replace(cfg.pipeline, embedder=None))
     with pytest.raises(ValueError, match="dense needs an embedder"):

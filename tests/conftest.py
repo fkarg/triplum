@@ -63,3 +63,40 @@ def sample_corpus():
         },
     )
     return docs, grants, chunks
+
+
+@pytest.fixture
+def pin(tmp_path):
+    """`pin(*names)`: pinned `File`s for test files already written under `tmp_path`."""
+    from triplum.datasets.files import File, sha256_file
+
+    def _pin(*names):
+        return tuple(File(url="", name=n, sha256=sha256_file(tmp_path / n)) for n in names)
+
+    return _pin
+
+
+@pytest.fixture
+def write(tmp_path):
+    """`write(name, content)`: a test source file under `tmp_path` (JSON for dicts and lists)."""
+    import json
+
+    def _write(name, content):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(content, (dict, list)):
+            path.write_text(json.dumps(content, ensure_ascii=False), encoding="utf-8")
+        elif isinstance(content, bytes):
+            path.write_bytes(content)
+        else:
+            path.write_text(content, encoding="utf-8")
+        return path
+
+    return _write
+
+
+@pytest.fixture
+def settings(tmp_path):
+    from triplum.settings import Settings
+
+    return Settings(data=tmp_path)

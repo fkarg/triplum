@@ -1,33 +1,43 @@
 """MQuAKE (MIT): multi-hop questions whose answer changes after a labelled fact edit. CF-3k-v2 has
 3,000 counterfactual cases, T has 1,868 real temporal updates. Each case loads as one question
-(the first of its three paraphrases) with the pre-edit answer; the pre-edit labelled triples go
-into `triples`, and the edit, the post-edit answer and the post-edit triples into `metadata`.
-There is no corpus. The runner cannot yet ingest the edit and re-ask, so both are declared
-`needs` and refuse to run until it can.
+(the first of its three paraphrases) with the pre-edit answer; the pre-edit labelled triples are
+the gold triples, question-linked, and the edit, the post-edit answer and the post-edit triples
+sit in `metadata`. There is no corpus. The runner cannot yet ingest the edit and re-ask, so both
+are declared `needs` and refuse to run until it can.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from triplum.bench.inputs import Benchmark
 from triplum.datasets import base
-from triplum.datasets.base import Spec
-from triplum.datasets.frames import FrameDataset
-from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
+from triplum.datasets.base import Entry, ListSource
+from triplum.datasets.files import File, manifest_files
+from triplum.eval.inputs import Question, Triple
+from triplum.settings import Settings
 
 NEEDS = "fact invalidation: ingest the labelled edit, then re-ask and score the post-edit answer"
+FILENAMES = {"mquake_cf": "MQuAKE-CF-3k-v2.json", "mquake_t": "MQuAKE-T.json"}
 
 
-def _parse(name: str, paths: dict[str, Path], n: int | None) -> Benchmark:
-    (path,) = paths.values()
-    cases = json.loads(path.read_text(encoding="utf-8"))
-    if n is not None:
-        cases = cases[:n]
-    rows, triples = [], []
-    for c in cases:
-        qid = f"{name}:{c['case_id']}"
+def pinned(name: str) -> tuple[File, ...]:
+    return tuple(f for f in manifest_files("mquake") if f.name.endswith(FILENAMES[name]))
+
+
+class Questions(ListSource[dict, Question]):
+    def __init__(
+        self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        self.name = name
+        super().__init__(files or pinned(name), settings, {"name": name})
+
+    def read(self, paths: dict[str, Path]) -> list[dict]:
+        (path,) = paths.values()
+        return base.read_json(path)
+
+    def record(self, raw: dict, index: int) -> Question:
+        c = raw
         meta = {
             "paraphrases": c["questions"],
             "requested_rewrite": c["requested_rewrite"],
@@ -37,29 +47,44 @@ def _parse(name: str, paths: dict[str, Path], n: int | None) -> Benchmark:
             "single_hops": c["single_hops"],
             "new_single_hops": c["new_single_hops"],
         }
-        rows.append(
-            base.question_row(
-                qid,
-                c["questions"][0],
-                c["answer"],
-                c["answer_alias"],
-                [],
-                str(len(c["single_hops"])) + "-hop",
-                metadata=meta,
-            )
+        return Question(
+            id=f"{self.name}:{c['case_id']}",
+            question=c["questions"][0],
+            answer=c["answer"],
+            aliases=tuple(c["answer_alias"]),
+            qtype=str(len(c["single_hops"])) + "-hop",
+            metadata=meta,
         )
-        triples.extend((qid, None, s, p, o) for s, p, o in c["orig"]["triples_labeled"])
-    return Benchmark(
-        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
-        extraction=ExtractionEvaluation(FrameDataset(base.triples_frame(triples))),
+
+
+class Triples(ListSource[tuple, Triple]):
+    def __init__(
+        self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        self.name = name
+        super().__init__(files or pinned(name), settings, {"name": name})
+
+    def read(self, paths: dict[str, Path]) -> list[tuple]:
+        (path,) = paths.values()
+        return [
+            (f"{self.name}:{c['case_id']}", s, p, o)
+            for c in base.read_json(path)
+            for s, p, o in c["orig"]["triples_labeled"]
+        ]
+
+    def record(self, raw: tuple, index: int) -> Triple:
+        qid, s, p, o = raw
+        return Triple(subject=s, predicate=p, object=o, question_id=qid)
+
+
+def _entry(name: str) -> Entry:
+    return Entry(
+        name=name,
+        family="temporal",
+        licence="MIT",
+        needs=NEEDS,
+        build=lambda s: Benchmark(name=name, qa=Questions(name, s), extraction=Triples(name, s)),
     )
 
 
-def _spec(name: str, filename: str) -> Spec:
-    files = tuple(f for f in base.manifest_files("mquake") if f.name.endswith(filename))
-    return Spec(
-        name, "temporal", files, "MIT", lambda paths, n: _parse(name, paths, n), needs=NEEDS
-    )
-
-
-SPECS = (_spec("mquake_cf", "MQuAKE-CF-3k-v2.json"), _spec("mquake_t", "MQuAKE-T.json"))
+ENTRIES = (_entry("mquake_cf"), _entry("mquake_t"))

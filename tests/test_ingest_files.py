@@ -2,10 +2,12 @@
 sidecar questions.jsonl becomes questions with document-level gold."""
 
 import json
+import shutil
 
 import pytest
 from triplum.bench.inputs import materialize
-from triplum.datasets import base, registry
+from triplum.datasets import registry
+from triplum.eval.inputs import GoldMappingError
 from triplum.ingest import files
 
 
@@ -67,8 +69,11 @@ def test_folder_becomes_a_corpus_with_questions(tmp_path):
         + "\n",
         encoding="utf-8",
     )
-    ds = materialize(registry.load(str(tmp_path)))
-    assert ds.name == f"files:{tmp_path.name}"
+    benchmark = registry.load(str(tmp_path))
+    assert benchmark.corpus is not None and benchmark.qa is not None
+    identity = benchmark.corpus.fingerprint()  # no parse: the PDF reader is never imported here
+    ds = materialize(benchmark)
+    assert ds.name == f"files:{tmp_path.name}" and ds.corpus_hash == identity
     assert ds.corpus.documents["id"].to_list() == ["memo.docx", "notes.md", "sub/paper.pdf"]
     meta = json.loads(
         ds.corpus.documents.filter(ds.corpus.documents["id"] == "sub/paper.pdf")["metadata"][0]
@@ -78,13 +83,8 @@ def test_folder_becomes_a_corpus_with_questions(tmp_path):
     texts = dict(zip(ds.corpus.chunks["document_id"], ds.corpus.chunks["text"]))
     assert texts["sub/paper.pdf"].strip() == "Graphs help retrieval."
     assert texts["memo.docx"] == "Memo one.\n\nMemo two."
-    assert ds.corpus.documents["uri"].null_count() == 3 and ds.corpus.documents[
-        "observed_at"
-    ].to_list() == [
-        0,
-        0,
-        0,
-    ]
+    assert ds.corpus.documents["uri"].null_count() == 3
+    assert ds.corpus.documents["observed_at"].to_list() == [0, 0, 0]
     assert ds.qa is not None
     q = ds.qa.row(0, named=True)
     gold = ds.corpus.chunks.filter(ds.corpus.chunks["document_id"] == "sub/paper.pdf")[
@@ -93,8 +93,6 @@ def test_folder_becomes_a_corpus_with_questions(tmp_path):
     assert q["gold_chunk_ids"] == gold and q["id"] == "0"
     # identity is portable: a copy of the folder under another name hashes the same
     copy = tmp_path.parent / (tmp_path.name + "-copy")
-    import shutil
-
     shutil.copytree(tmp_path, copy)
     assert materialize(registry.load(str(copy))).corpus_hash == ds.corpus_hash
 
@@ -104,7 +102,7 @@ def test_missing_gold_file_fails_loudly(tmp_path):
     (tmp_path / "questions.jsonl").write_text(
         json.dumps({"question": "q", "answer": "a", "gold": ["b.txt"]}), encoding="utf-8"
     )
-    with pytest.raises(base.GoldMappingError):
+    with pytest.raises(GoldMappingError):
         materialize(registry.load(str(tmp_path)))
 
 
@@ -113,3 +111,4 @@ def test_folder_without_questions_is_extraction_only(tmp_path):
     ds = materialize(registry.load(str(tmp_path)))
     assert ds.qa is None and ds.corpus.chunks.height == 1
     assert registry.get(str(tmp_path)).fixture is False
+    assert registry.pinned(str(tmp_path)).status() == "not downloaded"  # nothing pinned

@@ -2,20 +2,23 @@
 
 Source of truth: `reproduce/dataset/*.json` in github.com/OSU-NLP-Group/HippoRAG (MIT), content
 under the upstream datasets' licences (HotpotQA CC BY-SA 4.0, MuSiQue CC BY 4.0, 2Wiki Apache-2.0).
+Both files are JSON lists, so the corpus and the questions are indexed and decode on first use.
+Document keys: titles are unique in the HotpotQA and 2Wiki corpora and 2Wiki's question-side
+paragraph text does not reproduce the corpus text, so those key by title; MuSiQue repeats titles
+and keys by title and text (measured on the pinned files, 2026-09-17).
 """
 
 from __future__ import annotations
 
-import json
+from functools import partial
 from pathlib import Path
 
 from triplum.bench.inputs import Benchmark
-from triplum.data.corpus import CorpusBatch
-from triplum.datasets import base
-from triplum.datasets.base import File, Spec
-from triplum.datasets.corpus import CorpusDataset
-from triplum.datasets.frames import FrameDataset
-from triplum.eval.inputs import ExtractionEvaluation, QAEvaluation
+from triplum.data.corpus import Document, chunk_id, content_id
+from triplum.datasets.base import Entry, ListSource, passage, read_json
+from triplum.datasets.files import File
+from triplum.eval.inputs import GoldMappingError, Question, Triple
+from triplum.settings import Settings
 
 RAW_BASE = "https://raw.githubusercontent.com/OSU-NLP-Group/HippoRAG/main/reproduce/dataset/"
 
@@ -48,27 +51,59 @@ _LICENCE = {
     "musique": "CC BY 4.0 (HippoRAG files MIT)",
     "twowiki": "Apache-2.0 (HippoRAG files MIT)",
 }
+NAMES = tuple(_FILES)
 
 
-def gold_key(name: str, title: str, text: str) -> tuple:
-    """Titles are unique in the HotpotQA and 2Wiki corpora; MuSiQue needs (title, text)."""
-    return (title,) if name in ("hotpotqa", "twowiki") else (title, text)
+def pinned(name: str) -> tuple[File, ...]:
+    (qfile, qhash), (cfile, chash) = _FILES[name]
+    return (
+        File(url=RAW_BASE + qfile, name=f"hipporag/{qfile}", sha256=qhash),
+        File(url=RAW_BASE + cfile, name=f"hipporag/{cfile}", sha256=chash),
+    )
 
 
-def parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -> Benchmark:
-    if n is not None:
-        questions = questions[:n]
-    key_to_chunk: dict[tuple, int] = {}
-    passages = []
-    for i, rec in enumerate(corpus):
-        key = gold_key(name, rec["title"], rec["text"])
-        if key in key_to_chunk:
-            raise base.GoldMappingError(f"{name}: duplicate corpus key {key[0]!r} at passage {i}")
-        key_to_chunk[key] = i + 1
-        passages.append((f"{name}:{i}", rec["title"], rec["text"], 0, None))
-    documents, grants, chunks = base.corpus_frames(f"hipporag/{name}", passages)
-    rows = []
-    for q in questions:
+def document_id(name: str, title: str, text: str = "") -> str:
+    """The per-set logical key (module docstring); `text` is ignored outside MuSiQue."""
+    return content_id(title, text) if name == "musique" else content_id(title)
+
+
+class HippoRAGCorpus(ListSource[dict, Document]):
+    """One passage per corpus entry, text `title\\ntext`."""
+
+    def __init__(
+        self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        self.name = name
+        super().__init__(files or pinned(name), settings, {"name": name})
+
+    def read(self, paths: dict[str, Path]) -> list[dict]:
+        return read_json(self.path(_FILES[self.name][1][0]))
+
+    def record(self, raw: dict, index: int) -> Document:
+        return passage(
+            document_id(self.name, raw["title"], raw["text"]),
+            f"hipporag/{self.name}",
+            raw["title"],
+            raw["text"],
+        )
+
+
+class HippoRAGQuestions(ListSource[dict, Question]):
+    """The protocol's questions; gold and candidate chunk ids come from the question's own
+    supporting facts and context, so no corpus pass is needed."""
+
+    def __init__(
+        self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        self.name = name
+        super().__init__(files or pinned(name), settings, {"name": name})
+
+    def read(self, paths: dict[str, Path]) -> list[dict]:
+        return read_json(self.path(_FILES[self.name][0][0]))
+
+    def record(self, raw: dict, index: int) -> Question:
+        q = raw
+        name = self.name
         if name == "musique":
             qid, answer = q["id"], q["answer"]
             aliases = q.get("answer_aliases", [])
@@ -77,55 +112,63 @@ def parse(name: str, questions: list[dict], corpus: list[dict], n: int | None) -
             ]
             candidates = [(p["title"], p["paragraph_text"]) for p in q["paragraphs"]]
             qtype = q["id"].split("__")[0]
-            meta = {"decomposition": q.get("question_decomposition", [])}
+            meta: dict = {"decomposition": q.get("question_decomposition", [])}
         else:
             qid, answer = q["_id"], q["answer"]
             aliases = []
-            gold = sorted({(t,) for t, _ in q["supporting_facts"]})
-            candidates = [(t,) for t, _ in q["context"]]
+            gold = sorted({(t, "") for t, _ in q["supporting_facts"]})
+            candidates = [(t, "") for t, _ in q["context"]]
             qtype = q.get("type", "")
             meta = {"evidences": q["evidences"]} if name == "twowiki" else {}
+        if not gold:
+            raise GoldMappingError(f"{name}: question {qid} has no supporting passage")
         meta["candidate_chunk_ids"] = sorted(
-            {key_to_chunk[c] for c in candidates if c in key_to_chunk}
+            {chunk_id(document_id(name, t, txt), 0) for t, txt in candidates}
         )
-        gold_ids = base.resolve_gold(name, qid, gold, key_to_chunk)
-        rows.append(
-            base.question_row(qid, q["question"], answer, aliases, gold_ids, qtype, metadata=meta)
+        return Question(
+            id=qid,
+            question=q["question"],
+            answer=answer,
+            aliases=tuple(aliases),
+            gold=tuple(chunk_id(document_id(name, t, txt), 0) for t, txt in gold),
+            qtype=qtype,
+            metadata=meta,
         )
-    triples = base.empty(base.TRIPLE_SCHEMA)
-    if name == "twowiki":
-        triples = base.triples_frame(
-            [(q["_id"], None, s, p, o) for q in questions for s, p, o in q["evidences"]]
-        )
+
+
+class TwoWikiTriples(ListSource[tuple, Triple]):
+    """2Wiki's gold `evidences`, one triple per question-linked evidence."""
+
+    def __init__(
+        self, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        super().__init__(files or pinned("twowiki"), settings)
+
+    def read(self, paths: dict[str, Path]) -> list[tuple]:
+        questions = read_json(self.path(_FILES["twowiki"][0][0]))
+        return [(q["_id"], s, p, o) for q in questions for s, p, o in q["evidences"]]
+
+    def record(self, raw: tuple, index: int) -> Triple:
+        qid, s, p, o = raw
+        return Triple(subject=s, predicate=p, object=o, question_id=qid)
+
+
+def benchmark(name: str, settings: Settings) -> Benchmark:
     return Benchmark(
-        corpus=CorpusDataset(CorpusBatch(documents, grants, chunks)),
-        qa=QAEvaluation(FrameDataset(base.questions_frame(rows))),
-        extraction=ExtractionEvaluation(FrameDataset(triples)) if not triples.is_empty() else None,
+        name=name,
+        corpus=HippoRAGCorpus(name, settings),
+        qa=HippoRAGQuestions(name, settings),
+        extraction=TwoWikiTriples(settings) if name == "twowiki" else None,
     )
 
 
-def load_files(
-    name: str, questions_path: Path, corpus_path: Path, n: int | None = None
-) -> Benchmark:
-    questions = json.loads(Path(questions_path).read_text())
-    corpus = json.loads(Path(corpus_path).read_text())
-    return parse(name, questions, corpus, n)
-
-
-def _spec(name: str) -> Spec:
-    (qfile, qhash), (cfile, chash) = _FILES[name]
-    files = (
-        File(RAW_BASE + qfile, f"hipporag/{qfile}", qhash),
-        File(RAW_BASE + cfile, f"hipporag/{cfile}", chash),
-    )
-    return Spec(
+ENTRIES = tuple(
+    Entry(
         name=name,
         family="multihop",
-        files=files,
         licence=_LICENCE[name],
-        parse=lambda paths, n: load_files(name, paths[files[0].name], paths[files[1].name], n),
         default=True,
+        build=partial(benchmark, name),
     )
-
-
-SPECS = tuple(_spec(name) for name in _FILES)
+    for name in NAMES
+)

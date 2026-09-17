@@ -2,11 +2,15 @@
 
 ::: triplum.datasets.frames
 
-::: triplum.datasets.corpus
-
 ::: triplum.datasets.base
 
+::: triplum.datasets.files
+
+::: triplum.datasets.collate
+
 ::: triplum.datasets.registry
+
+::: triplum.datasets.fixtures
 
 ::: triplum.datasets.hipporag
 

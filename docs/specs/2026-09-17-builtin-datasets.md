@@ -105,7 +105,7 @@ while MuSiQue has 647 repeated titles and its question-side text matches the cor
 | musique (HippoRAG), musique_full | passage | `content_id(title, text)` | supporting paragraphs' title and text |
 | hotpotqa_full, twowiki_full, morehopqa | passage | `content_id(title, text)` resolved inside the question's own context | titles within the question's context |
 | squad, squad_v2, boolq | passage | `content_id(title, context)` | the question's own passage |
-| quality | article | `content_id(article_id)` | the question's own article |
+| quality | article | `content_id(title, article)` | the question's own article |
 | qasper | paper; segments abstract, paragraphs, captions | `qasper:<paper id>` | evidence strings located by the paper's layout function |
 | multihoprag | article | `multihoprag:<url>` | evidence URLs |
 | ectqa | transcript | `ectqa:<file name>` | evidence file names |
@@ -245,8 +245,10 @@ source through a `DataLoader` with the matching collator and reports the fingerp
 time and stay: an answerable question with no gold, a LongMemEval answer session missing from
 its haystack, a duplicate upstream id, a QASPER question whose evidence matches no segment
 (not loaded, as today). Checks across sources happen at `materialize`, before anything is
-scored: every gold and candidate chunk id of the selected questions exists in the corpus, and
-document ids are unique. `registry.verify(name)` runs the same checks over a fetched dataset
+scored: every gold chunk id of the selected questions exists in the corpus, and document
+ids are unique. Candidate ids in question metadata are hints for fixture building and are not
+checked: one 2Wiki question's context names a paragraph the released corpus lacks (found by
+this check on the pinned files), which the old loader dropped silently. `registry.verify(name)` runs the same checks over a fetched dataset
 and `triplum data verify <name>` exposes it. The fixture builder runs both.
 
 **Selection.** `registry.load(name, n, settings)` builds the benchmark and applies
@@ -290,7 +292,8 @@ fixture's content, and `fixtures.subset(benchmark, n, distractors, seed)` keeps 
 rule (the first `n` questions, every chunk they need, a seeded fill of distractors) at chunk
 granularity: a selected document keeps its full text and only the selected segments, with
 their original ordinals. The fixture builder (`scripts/make_fixture.py`) runs the integrity
-checks above. All fixtures regenerate once for the new ids.
+checks above; candidate ids that the corpus lacks are ignored when selecting. All fixtures
+regenerate once for the new ids.
 
 ### Local folder
 

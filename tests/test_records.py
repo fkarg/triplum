@@ -100,3 +100,8 @@ def test_triples_frame():
     assert dict(frame.schema) == TRIPLE_SCHEMA
     assert frame.row(0) == (None, "d", "s", "p", "o")
     assert isinstance(frame, pl.DataFrame)
+
+
+def test_question_accepts_numeric_answers_as_text():
+    q = Question(id="q", question="how many?", answer=3, aliases=(3, "three"))  # ty: ignore[invalid-argument-type]
+    assert q.answer == "3" and q.aliases == ("3", "three")

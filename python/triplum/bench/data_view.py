@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from triplum.datasets.base import Spec
+from triplum.datasets.base import Entry
 
 STATE_STYLES = {
     "verified": "green",
@@ -20,11 +20,12 @@ STATE_STYLES = {
 
 
 def print_overview(
-    rows: Sequence[tuple[Spec, str]], root: Path, *, console: Console | None = None
+    rows: Sequence[tuple[Entry, bool, str]], root: Path, *, console: Console | None = None
 ) -> None:
-    """Print counts, complete dataset identifiers and next actions, respecting terminal color."""
+    """Print counts, complete dataset identifiers and next actions, respecting terminal color.
+    Rows are `(entry, large, state)`."""
     console = console or Console(markup=False, highlight=False)
-    counts = Counter(state for _, state in rows)
+    counts = Counter(state for _, _, state in rows)
     console.print(Text(f"{len(rows)} dataset{'s' if len(rows) != 1 else ''}", style="bold"))
     console.print(
         Columns(
@@ -42,11 +43,11 @@ def print_overview(
     table = Table(box=None, pad_edge=False, padding=(0, 2), header_style="bold")
     for column in ("Dataset", "State", "Family", "Flags"):
         table.add_column(column, overflow="fold")
-    for spec, state in rows:
+    for spec, large, state in rows:
         flags = Text()
         if spec.default:
             flags.append("default", style="cyan")
-        if spec.large:
+        if large:
             if flags:
                 flags.append(", ")
             flags.append("large", style="yellow")

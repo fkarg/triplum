@@ -1,7 +1,5 @@
 """Task-owned evaluation records and schemas, independent of any corpus source."""
 
-from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import Any
 
 import polars as pl
@@ -27,10 +25,16 @@ TRIPLE_SCHEMA = {
 }
 
 
+class GoldMappingError(ValueError):
+    """A gold reference cannot be resolved, or a gold chunk is missing from the corpus. Silently
+    dropping it would score an empty gold list as perfect recall, so loading fails instead."""
+
+
 class Question(BaseModel, frozen=True):
     """A question with its gold chunk ids. `aliases` always starts with `answer` and holds no
-    duplicates; `gold` is sorted and unique. An answerable question must have gold when the
-    benchmark ships a corpus; that cross-source rule is checked at materialization."""
+    duplicates; `gold` is sorted and unique. Sources that promise gold for answerable questions
+    raise `GoldMappingError` at parse time; that every gold id exists in the corpus is checked
+    at materialization."""
 
     id: str
     question: str
@@ -47,8 +51,11 @@ class Question(BaseModel, frozen=True):
     def _normalise(cls, data: Any) -> Any:
         if isinstance(data, dict):
             data = dict(data)
+            if isinstance(data.get("answer"), (int, float)):  # numeric answers occur upstream
+                data["answer"] = str(data["answer"])
             aliases = [data.get("answer", "")]
             for alias in data.get("aliases", ()):
+                alias = str(alias) if isinstance(alias, (int, float)) else alias
                 if alias not in aliases:
                     aliases.append(alias)
             data["aliases"] = tuple(aliases)
@@ -65,16 +72,14 @@ class Triple(BaseModel, frozen=True):
     question_id: str | None = None
     document_id: str | None = None
 
-
-@dataclass
-class QAEvaluation:
-    """Question batches for QA scoring; independent of the corpus source."""
-
-    questions: Iterable[pl.DataFrame]
-
-
-@dataclass
-class ExtractionEvaluation:
-    """Gold triple batches for extraction scoring; never a requirement on corpus data."""
-
-    triples: Iterable[pl.DataFrame]
+    @model_validator(mode="before")
+    @classmethod
+    def _text(cls, data: Any) -> Any:
+        if isinstance(data, dict):  # numeric slots occur upstream (years, counts)
+            data = {
+                k: str(v)
+                if k in ("subject", "predicate", "object") and isinstance(v, (int, float))
+                else v
+                for k, v in data.items()
+            }
+        return data

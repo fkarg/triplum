@@ -1,17 +1,18 @@
-"""Every registered dataset, by name; a directory path names a local-files corpus (see
-`triplum.ingest.files`). Add a source module and list its `SPECS` here."""
+"""Every built-in benchmark, by name; a directory path names a local-files corpus (see
+`triplum.ingest.files`). Add a source module and list its `ENTRIES` here. An entry is metadata
+plus a builder; the source classes it composes own their files, loading and identity."""
 
 from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
 
-from triplum.bench.inputs import Benchmark
+from triplum.bench.inputs import Benchmark, PreparedBenchmark, materialize
 from triplum.datasets import (
-    base,
     browsecomp_plus,
     ectqa,
     extraction,
+    fixtures,
     gatemem,
     hipporag,
     long_document,
@@ -24,10 +25,13 @@ from triplum.datasets import (
     tempo,
     wiki_multihop,
 )
-from triplum.datasets.base import DatasetStatus, Spec
+from triplum.datasets.base import Entry, Pinned
+from triplum.datasets.files import File, Files, State
 from triplum.ingest import files
+from triplum.settings import Settings
+from triplum.utils.data import Take
 
-SPECS: dict[str, Spec] = {}
+ENTRIES: dict[str, Entry] = {}
 for _module in (
     hipporag,
     wiki_multihop,
@@ -44,37 +48,63 @@ for _module in (
     extraction,
     browsecomp_plus,
 ):
-    for _spec in _module.SPECS:
-        if _spec.name in SPECS:
-            raise RuntimeError(f"duplicate dataset name {_spec.name}")
-        SPECS[_spec.name] = _spec
+    for _entry in _module.ENTRIES:
+        if _entry.name in ENTRIES:
+            raise RuntimeError(f"duplicate dataset name {_entry.name}")
+        ENTRIES[_entry.name] = _entry
 
 
 def names(default_only: bool = False) -> list[str]:
-    return [s.name for s in SPECS.values() if s.default or not default_only]
+    return [e.name for e in ENTRIES.values() if e.default or not default_only]
 
 
 def is_folder(name: str) -> bool:
-    return name not in SPECS and Path(name).expanduser().is_dir()
+    return name not in ENTRIES and Path(name).expanduser().is_dir()
 
 
-def get(name: str) -> Spec:
+def get(name: str) -> Entry:
     if is_folder(name):
-        return files.spec(Path(name))
-    return SPECS[name]
+        return files.entry(Path(name))
+    return ENTRIES[name]
 
 
-def status(name: str, root: Path | None = None) -> DatasetStatus:
-    return base.status(get(name), root)
+def build(name: str, settings: Settings | None = None) -> Benchmark:
+    """The benchmark composition, unread: every part is lazy."""
+    entry = get(name)
+    return replace(entry.build(settings or Settings()), name=entry.name, needs=entry.needs)
 
 
-def fetch(name: str, root: Path | None = None) -> dict[str, Path]:
-    return base.fetch(get(name), root)
+def pinned(name: str, settings: Settings | None = None) -> Files:
+    """The union of the pinned files behind a benchmark's parts (a folder has none)."""
+    seen: dict[str, File] = {}
+    for part in (b := build(name, settings)).corpus, b.qa, b.extraction:
+        if isinstance(part, Pinned):
+            for f in part.files.files:
+                seen.setdefault(f.name, f)
+    return Files(tuple(seen.values()), settings)
 
 
-def load(name: str, n: int | None = None, root: Path | None = None) -> Benchmark:
-    return base.load(get(name), n, root)
+def status(name: str, settings: Settings | None = None) -> State:
+    return pinned(name, settings).status()
+
+
+def fetch(name: str, settings: Settings | None = None) -> dict[str, Path]:
+    return pinned(name, settings).fetch()
+
+
+def load(name: str, n: int | None = None, settings: Settings | None = None) -> Benchmark:
+    """The benchmark with the first `n` questions selected; the corpus is never truncated."""
+    benchmark = build(name, settings)
+    if n is not None and benchmark.qa is not None:
+        benchmark = replace(benchmark, qa=Take(benchmark.qa, n))
+    return benchmark
 
 
 def load_fixture(name: str, n: int | None = None) -> Benchmark:
-    return replace(base.read_fixture(name, n), needs=get(name).needs)
+    return replace(fixtures.read(name, n), needs=get(name).needs)
+
+
+def verify(name: str, settings: Settings | None = None) -> PreparedBenchmark:
+    """Read the whole dataset and run every integrity check (`bench.inputs.check`); raises
+    `GoldMappingError` on the first failure."""
+    return materialize(load(name, settings=settings))

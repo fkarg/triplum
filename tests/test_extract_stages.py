@@ -3,8 +3,8 @@
 import polars as pl
 import pytest
 from triplum.cache import Cache
+from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA
 from triplum.data.schema import TS_MAX
-from triplum.datasets.base import CHUNK_SCHEMA, DOC_SCHEMA
 from triplum.extract import ResolverSpec, extract, resolve
 from triplum.extract.cached import CachedExtractor
 from triplum.extract.fake import FakeExtractor

@@ -246,26 +246,34 @@ def test_adapter_suffix_preserved_and_missing_model_rejected():
 
 
 def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
+    from triplum.bench.inputs import Benchmark
+    from triplum.data.corpus import Document
     from triplum.datasets import base, registry
+    from triplum.datasets.files import LARGE_BYTES, File
 
-    def _never(paths, n) -> base.Benchmark:
-        raise AssertionError("parser must not run")
+    class Big(base.ListSource[dict, Document]):
+        def read(self, paths):
+            raise AssertionError("parser must not run")
+
+        def record(self, raw, index):
+            raise AssertionError("parser must not run")
 
     seen = []
 
-    def fetch(name, root=None):
+    def fetch(name, settings=None):
         seen.append(name)
         return {"q": tmp_path / "questions"}
 
     monkeypatch.setattr(registry, "fetch", fetch)  # network boundary
-    big = base.Spec(
-        "big-test",
-        "test",
-        (base.File("u", "b", "0" * 64, base.LARGE_BYTES + 1),),
-        "none",
-        _never,
+    big = base.Entry(
+        name="big-test",
+        family="test",
+        licence="none",
+        build=lambda s: Benchmark(
+            corpus=Big((File(url="u", name="b", sha256="0" * 64, bytes=LARGE_BYTES + 1),), s)
+        ),
     )
-    monkeypatch.setitem(registry.SPECS, big.name, big)
+    monkeypatch.setitem(registry.ENTRIES, big.name, big)
     result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "moreh"])
     assert result.exit_code == 0, result.output
     assert seen == ["morehopqa"]
@@ -276,7 +284,7 @@ def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
     seen.clear()
     result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "ALL"])
     assert result.exit_code == 0, result.output
-    assert seen == [name for name in registry.names() if not registry.get(name).large]
+    assert seen == [name for name in registry.names() if not registry.pinned(name).large]
     assert "big-test: skipped" in result.output and "tempo: skipped" in result.output
 
 

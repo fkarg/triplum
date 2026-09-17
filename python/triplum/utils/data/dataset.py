@@ -41,6 +41,10 @@ class Dataset[T](ABC):
         for index in range(len(self)):
             yield self[index]
 
+    def __bool__(self) -> bool:
+        """Always true: truthiness must not consult the length, which may read the source."""
+        return True
+
 
 class IterableDataset[T](ABC):
     """A streaming source. Implement iteration without promising length or random access.
@@ -85,6 +89,9 @@ class Take[T](IterableDataset[T]):
         if self.n == 0:
             return
         yield from islice(self.source, self.n)
+
+    def __bool__(self) -> bool:
+        return True
 
     def __len__(self) -> int:
         if self.n == 0:

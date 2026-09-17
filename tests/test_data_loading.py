@@ -259,3 +259,19 @@ def test_record_dataset_identity_is_ordered_content_recomputed_on_demand():
     before = ds.fingerprint()
     a.tags["k"] = "v"  # nested dicts are not frozen; identity follows the current content
     assert ds.fingerprint() != before
+
+
+def test_truthiness_never_reads_the_source():
+    from triplum.utils.data import Take
+
+    class Opening(Dataset[int]):
+        def fingerprint(self) -> str:
+            return "opening"
+
+        def __len__(self) -> int:
+            raise AssertionError("truthiness must not compute the length")
+
+        def __getitem__(self, index: int) -> int:
+            return index
+
+    assert Opening() and Take(Opening(), 3)

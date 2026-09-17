@@ -191,10 +191,14 @@ def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
     if ctx.invoked_subcommand is not None:
         return
     from triplum.bench.data_view import print_overview
-    from triplum.datasets import base, registry
+    from triplum.datasets import registry
+    from triplum.settings import Settings
 
-    rows = [(spec, registry.status(spec.name).state) for spec in registry.SPECS.values()]
-    print_overview(rows, base.data_root())
+    rows = [
+        (entry, registry.pinned(name).large, registry.status(name))
+        for name, entry in registry.ENTRIES.items()
+    ]
+    print_overview(rows, Settings().data)
 
 
 @data_app.command()
@@ -210,15 +214,34 @@ def fetch(
     if dataset == "default":
         names = registry.names(default_only=True)
     elif dataset == "all":
-        names = [name for name in registry.names() if not registry.get(name).large]
+        names = [name for name in registry.names() if not registry.pinned(name).large]
         for name in registry.names():
-            if registry.get(name).large:
+            if registry.pinned(name).large:
                 print(f"{name}: skipped, large; fetch it by name", file=sys.stderr)
     else:
         names = [dataset]
     for name in names:
         local = registry.fetch(name)
         print(f"{name}: {' '.join(str(path) for path in local.values())} (verified)")
+
+
+@data_app.command()
+def verify(
+    ctx: typer.Context,
+    no_input: NoInputOpt = False,
+    dataset: DatasetOpt = None,
+) -> None:
+    """Read a whole dataset and check every gold chunk exists and document ids are unique."""
+    from triplum.datasets import registry
+
+    if dataset is None or not is_folder(dataset):
+        dataset = resolve(dataset, registry.names(), "dataset", ctx=ctx)
+    ds = registry.verify(dataset)
+    print(
+        f"{ds.name}: {ds.corpus.documents.height} documents, {ds.corpus.chunks.height} chunks,"
+        f" {ds.qa.height if ds.qa is not None else 0} questions,"
+        f" {ds.extraction.height if ds.extraction is not None else 0} triples (verified)"
+    )
 
 
 @bench_app.callback(invoke_without_command=True)

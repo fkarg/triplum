@@ -12,7 +12,7 @@ from triplum.bench.inputs import materialize
 from triplum.bench.report import summary
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
-from triplum.datasets import base, registry
+from triplum.datasets import fixtures, registry
 from triplum.retrieve import pipelines
 
 FAKE_READER = LLMConfig(kind="fake")
@@ -171,8 +171,8 @@ def test_inspect_diff_tail(tmp_path, capsys):
 
 OTHER_FIXTURES = [
     name
-    for name, spec in registry.SPECS.items()
-    if spec.fixture and not spec.default and not spec.needs and base.fixture_path(name).exists()
+    for name, entry in registry.ENTRIES.items()
+    if entry.fixture and not entry.default and not entry.needs and fixtures.path(name).exists()
 ]
 
 

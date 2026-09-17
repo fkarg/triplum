@@ -5,7 +5,8 @@ validation (3,610, CC BY-SA 3.0); AmbigQA dev (2,002, CC BY-SA 3.0) whose disamb
 answers are unioned into aliases and kept whole in `metadata`; Bamboogle (125 compositional
 questions, MIT); FreshQA (600 questions whose answers change over time, Apache-2.0; the sheet is
 live, so the pinned hash tracks one dated export); and the two AI2 ARC science exam test splits
-(CC BY-SA 4.0), scored on the gold option's text with its letter as an alias.
+(CC BY-SA 4.0), scored on the gold option's text with its letter as an alias. Every source is an
+indexed list decoded on first use.
 """
 
 from __future__ import annotations
@@ -14,60 +15,38 @@ import csv
 import io
 import json
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
-
-import polars as pl
 
 from triplum.bench.inputs import Benchmark
 from triplum.datasets import base
-from triplum.datasets.base import Spec
-from triplum.datasets.frames import FrameDataset
-from triplum.eval.inputs import QAEvaluation
+from triplum.datasets.base import Entry, ListSource
+from triplum.datasets.files import File, manifest_files
+from triplum.eval.inputs import Question
+from triplum.settings import Settings
+
+FRESHQA_PREAMBLE = 2  # rows above the header in the published sheet
+POPQA_META = ("subj", "prop", "obj", "subj_id", "prop_id", "obj_id", "s_uri", "o_uri", "s_pop", "o_pop")  # fmt: skip
 
 
-def _no_corpus(rows: list[tuple]) -> Benchmark:
-    return Benchmark(qa=QAEvaluation(FrameDataset(base.questions_frame(rows))))
-
-
-def _parquet(paths: dict[str, Path], n: int | None) -> pl.DataFrame:
-    (path,) = paths.values()
-    frame = pl.read_parquet(path)
-    return frame.head(n) if n is not None else frame
-
-
-def parse_popqa(paths: dict[str, Path], n: int | None) -> Benchmark:
-    (path,) = paths.values()
-    rows = []
+def _popqa(path: Path) -> list[dict]:
     with path.open(encoding="utf-8", newline="") as f:
-        for q in csv.DictReader(f, delimiter="\t"):
-            answers = json.loads(q["possible_answers"])
-            meta = {
-                k: q[k]
-                for k in (
-                    "subj",
-                    "prop",
-                    "obj",
-                    "subj_id",
-                    "prop_id",
-                    "obj_id",
-                    "s_uri",
-                    "o_uri",
-                    "s_pop",
-                    "o_pop",
-                )
-            }
-            rows.append(
-                base.question_row(
-                    q["id"], q["question"], answers[0], answers[1:], [], q["prop"], metadata=meta
-                )
-            )
-            if n is not None and len(rows) >= n:
-                break
-    return _no_corpus(rows)
+        return list(csv.DictReader(f, delimiter="\t"))
 
 
-def parse_entityquestions(paths: dict[str, Path], n: int | None) -> Benchmark:
-    (path,) = paths.values()
+def _popqa_q(q: dict, i: int) -> Question:
+    answers = json.loads(q["possible_answers"])
+    return Question(
+        id=q["id"],
+        question=q["question"],
+        answer=answers[0],
+        aliases=tuple(answers[1:]),
+        qtype=q["prop"],
+        metadata={k: q[k] for k in POPQA_META},
+    )
+
+
+def _entityquestions(path: Path) -> list[dict]:
     rows = []
     with zipfile.ZipFile(path) as zf:
         members = sorted(
@@ -76,144 +55,159 @@ def parse_entityquestions(paths: dict[str, Path], n: int | None) -> Benchmark:
         for member in members:
             relation = member.rsplit("/", 1)[1].split(".")[0]
             for i, q in enumerate(json.loads(zf.read(member).decode("utf-8"))):
-                answers = q["answers"]
-                rows.append(
-                    base.question_row(
-                        f"{relation}:{i}", q["question"], answers[0], answers[1:], [], relation
-                    )
-                )
-    if n is not None:
-        rows = rows[:n]
-    return _no_corpus(rows)
+                rows.append({**q, "id": f"{relation}:{i}", "relation": relation})
+    return rows
 
 
-def parse_nq_open(paths: dict[str, Path], n: int | None) -> Benchmark:
-    rows = [
-        base.question_row(f"nq_open:{i}", q["question"], q["answer"][0], q["answer"][1:], [])
-        for i, q in enumerate(_parquet(paths, n).iter_rows(named=True))
-    ]
-    return _no_corpus(rows)
+def _entityquestions_q(q: dict, i: int) -> Question:
+    answers = q["answers"]
+    return Question(
+        id=q["id"],
+        question=q["question"],
+        answer=answers[0],
+        aliases=tuple(answers[1:]),
+        qtype=q["relation"],
+    )
 
 
-def parse_ambigqa(paths: dict[str, Path], n: int | None) -> Benchmark:
-    (path,) = paths.values()
+def _parquet(path: Path) -> list[dict]:
+    return list(base.parquet_rows(path))
+
+
+def _nq_open_q(q: dict, i: int) -> Question:
+    return Question(
+        id=f"nq_open:{i}",
+        question=q["question"],
+        answer=q["answer"][0],
+        aliases=tuple(q["answer"][1:]),
+    )
+
+
+def _ambigqa(path: Path) -> list[dict]:
     with zipfile.ZipFile(path) as zf:
-        records = json.loads(zf.read("dev_light.json").decode("utf-8"))
-    if n is not None:
-        records = records[:n]
-    rows = []
-    for q in records:
-        answers: list[str] = []
-        for ann in q["annotations"]:
-            if ann["type"] == "singleAnswer":
-                answers.extend(ann["answer"])
-            else:
-                for pair in ann["qaPairs"]:
-                    answers.extend(pair["answer"])
-        qtype = (
-            "multipleQAs"
-            if any(a["type"] == "multipleQAs" for a in q["annotations"])
-            else ("singleAnswer")
-        )
-        rows.append(
-            base.question_row(
-                q["id"],
-                q["question"],
-                answers[0],
-                answers[1:],
-                [],
-                qtype,
-                metadata={"annotations": q["annotations"]},
-            )
-        )
-    return _no_corpus(rows)
+        return json.loads(zf.read("dev_light.json").decode("utf-8"))
 
 
-def parse_bamboogle(paths: dict[str, Path], n: int | None) -> Benchmark:
-    rows = [
-        base.question_row(f"bamboogle:{i}", q["Question"], q["Answer"], [], [], "multihop")
-        for i, q in enumerate(_parquet(paths, n).iter_rows(named=True))
-    ]
-    return _no_corpus(rows)
+def _ambigqa_q(q: dict, i: int) -> Question:
+    answers: list[str] = []
+    for ann in q["annotations"]:
+        if ann["type"] == "singleAnswer":
+            answers.extend(ann["answer"])
+        else:
+            for pair in ann["qaPairs"]:
+                answers.extend(pair["answer"])
+    qtype = (
+        "multipleQAs"
+        if any(a["type"] == "multipleQAs" for a in q["annotations"])
+        else "singleAnswer"
+    )
+    return Question(
+        id=q["id"],
+        question=q["question"],
+        answer=answers[0],
+        aliases=tuple(answers[1:]),
+        qtype=qtype,
+        metadata={"annotations": q["annotations"]},
+    )
 
 
-FRESHQA_PREAMBLE = 2  # rows above the header in the published sheet
+def _bamboogle_q(q: dict, i: int) -> Question:
+    return Question(
+        id=f"bamboogle:{i}", question=q["Question"], answer=q["Answer"], qtype="multihop"
+    )
 
 
-def parse_freshqa(paths: dict[str, Path], n: int | None) -> Benchmark:
-    (path,) = paths.values()
+def _freshqa(path: Path) -> list[dict]:
     lines = path.read_text(encoding="utf-8").splitlines()[FRESHQA_PREAMBLE:]
-    rows = []
-    for q in csv.DictReader(io.StringIO("\n".join(lines))):
-        answers = [q[f"answer_{i}"] for i in range(10) if q[f"answer_{i}"]]
-        meta = {
-            "split": q["split"],
-            "effective_year": q["effective_year"],
-            "next_review": q["next_review"],
-            "false_premise": q["false_premise"] == "TRUE",
-            "num_hops": q["num_hops"],
-            "source": q["source"],
-            "note": q["note"],
-        }
-        rows.append(
-            base.question_row(
-                f"freshqa:{q['id']}",
-                q["question"],
-                answers[0],
-                answers[1:],
-                [],
-                q["fact_type"],
-                metadata=meta,
-            )
-        )
-        if n is not None and len(rows) >= n:
-            break
-    return _no_corpus(rows)
+    return list(csv.DictReader(io.StringIO("\n".join(lines))))
 
 
-def parse_arc(paths: dict[str, Path], n: int | None) -> Benchmark:
-    rows = []
-    for q in _parquet(paths, n).iter_rows(named=True):
-        choices = dict(zip(q["choices"]["label"], q["choices"]["text"]))
-        rows.append(
-            base.question_row(
-                q["id"],
-                q["question"],
-                choices[q["answerKey"]],
-                [q["answerKey"]],
-                [],
-                "multiple_choice",
-                metadata={"choices": choices},
-            )
-        )
-    return _no_corpus(rows)
+def _freshqa_q(q: dict, i: int) -> Question:
+    answers = [q[f"answer_{i}"] for i in range(10) if q[f"answer_{i}"]]
+    meta = {
+        "split": q["split"],
+        "effective_year": q["effective_year"],
+        "next_review": q["next_review"],
+        "false_premise": q["false_premise"] == "TRUE",
+        "num_hops": q["num_hops"],
+        "source": q["source"],
+        "note": q["note"],
+    }
+    return Question(
+        id=f"freshqa:{q['id']}",
+        question=q["question"],
+        answer=answers[0],
+        aliases=tuple(answers[1:]),
+        qtype=q["fact_type"],
+        metadata=meta,
+    )
 
 
-SPECS = (
-    Spec("popqa", "control", base.manifest_files("popqa"), "none declared", parse_popqa),
-    Spec(
-        "entityquestions",
-        "control",
-        base.manifest_files("entityquestions"),
-        "MIT",
-        parse_entityquestions,
-    ),
-    Spec("nq_open", "control", base.manifest_files("nq_open"), "CC BY-SA 3.0", parse_nq_open),
-    Spec("ambigqa", "ambiguity", base.manifest_files("ambigqa"), "CC BY-SA 3.0", parse_ambigqa),
-    Spec("bamboogle", "multihop", base.manifest_files("bamboogle"), "MIT", parse_bamboogle),
-    Spec(
-        "freshqa",
-        "temporal",
-        base.manifest_files("freshqa"),
-        "Apache-2.0 (repository licence; sheet export of 2026-04-21)",
-        parse_freshqa,
-    ),
-    Spec("arc_easy", "control", base.manifest_files("arc_easy"), "CC BY-SA 4.0", parse_arc),
-    Spec(
-        "arc_challenge",
-        "control",
-        base.manifest_files("arc_challenge"),
-        "CC BY-SA 4.0",
-        parse_arc,
-    ),
+def _arc_q(q: dict, i: int) -> Question:
+    choices = dict(zip(q["choices"]["label"], q["choices"]["text"]))
+    return Question(
+        id=q["id"],
+        question=q["question"],
+        answer=choices[q["answerKey"]],
+        aliases=(q["answerKey"],),
+        qtype="multiple_choice",
+        metadata={"choices": choices},
+    )
+
+
+_READ: dict[str, Callable[[Path], list[dict]]] = {
+    "popqa": _popqa,
+    "entityquestions": _entityquestions,
+    "nq_open": _parquet,
+    "ambigqa": _ambigqa,
+    "bamboogle": _parquet,
+    "freshqa": _freshqa,
+    "arc_easy": _parquet,
+    "arc_challenge": _parquet,
+}
+_QUESTION: dict[str, Callable[[dict, int], Question]] = {
+    "popqa": _popqa_q,
+    "entityquestions": _entityquestions_q,
+    "nq_open": _nq_open_q,
+    "ambigqa": _ambigqa_q,
+    "bamboogle": _bamboogle_q,
+    "freshqa": _freshqa_q,
+    "arc_easy": _arc_q,
+    "arc_challenge": _arc_q,
+}
+
+
+class Questions(ListSource[dict, Question]):
+    def __init__(
+        self, name: str, settings: Settings | None = None, files: tuple[File, ...] | None = None
+    ) -> None:
+        self.name = name
+        super().__init__(files or manifest_files(name), settings, {"name": name})
+
+    def read(self, paths: dict[str, Path]) -> list[dict]:
+        (path,) = paths.values()
+        return _READ[self.name](path)
+
+    def record(self, raw: dict, index: int) -> Question:
+        return _QUESTION[self.name](raw, index)
+
+
+def _entry(name: str, family: str, licence: str) -> Entry:
+    return Entry(
+        name=name,
+        family=family,
+        licence=licence,
+        build=lambda s: Benchmark(name=name, qa=Questions(name, s)),
+    )
+
+
+ENTRIES = (
+    _entry("popqa", "control", "none declared"),
+    _entry("entityquestions", "control", "MIT"),
+    _entry("nq_open", "control", "CC BY-SA 3.0"),
+    _entry("ambigqa", "ambiguity", "CC BY-SA 3.0"),
+    _entry("bamboogle", "multihop", "MIT"),
+    _entry("freshqa", "temporal", "Apache-2.0 (repository licence; sheet export of 2026-04-21)"),
+    _entry("arc_easy", "control", "CC BY-SA 4.0"),
+    _entry("arc_challenge", "control", "CC BY-SA 4.0"),
 )

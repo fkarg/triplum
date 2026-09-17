@@ -19,7 +19,7 @@ from triplum.bench.runstore import RunStore
 from triplum.cache import default_root
 from triplum.data.schema import now_us
 from triplum.data.viewer import Viewer
-from triplum.datasets import base
+from triplum.datasets import collate, files
 from triplum.datasets import registry as datasets
 from triplum.embed.protocol import Embedder
 from triplum.eval import judge as judge_mod
@@ -104,6 +104,7 @@ def store_path(cfg: RunConfig | ExtractConfig, ds: PreparedBenchmark) -> Path:
 
 
 def _load(cfg: RunConfig | ExtractConfig, data: Benchmark | None = None) -> PreparedBenchmark:
+    """Materialize the sources; `n` selects questions and never truncates a corpus."""
     source = (
         data
         if data is not None
@@ -289,7 +290,7 @@ def run_benchmark(cfg: RunConfig, *, data: Benchmark | None = None) -> str:
                             "n_chunks": a["n_chunks"],
                         },
                     )
-            rs.add_artifact(run_id, "store", str(path), base.sha256_file(path))
+            rs.add_artifact(run_id, "store", str(path), files.sha256_file(path))
             status = "ok"
         finally:
             store.close()
@@ -398,9 +399,9 @@ def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
                 pred = triples.predicted(graph, ds.corpus.chunks)
                 scores = triples.score(
                     pred,
-                    ds.extraction if ds.extraction is not None else base.triples_frame([]),
+                    ds.extraction if ds.extraction is not None else collate.triples_frame([]),
                     ds.corpus.chunks,
-                    ds.qa if ds.qa is not None else base.questions_frame([]),
+                    ds.qa if ds.qa is not None else collate.questions_frame([]),
                 )
                 gold_spans = triples.gold_spans(ds.corpus.documents)
                 span = (
@@ -423,7 +424,7 @@ def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
                     "graph_written": int(written),
                 },
             )
-            rs.add_artifact(run_id, "store", str(path), base.sha256_file(path))
+            rs.add_artifact(run_id, "store", str(path), files.sha256_file(path))
             status = "ok"
         finally:
             store.close()

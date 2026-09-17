@@ -5,30 +5,25 @@ import pytest
 from rich.console import Console
 from triplum.bench.data_view import print_overview
 from triplum.bench.inputs import Benchmark
-from triplum.datasets.base import File, Spec
+from triplum.datasets.base import Entry
 
 
-def unused_parser(paths: dict[str, Path], n: int | None) -> Benchmark:
-    raise AssertionError("Rendering must not parse or fetch datasets")
+def unused_builder(settings) -> Benchmark:
+    raise AssertionError("Rendering must not build, parse or fetch datasets")
+
+
+def _entry(name: str, family: str, **kw) -> Entry:
+    return Entry(name=name, family=family, licence="MIT", build=unused_builder, **kw)
 
 
 @pytest.mark.parametrize("width", [48, 63, 64, 80, 120])
 def test_overview_preserves_names_states_flags_without_color(width):
     rows = [
-        (Spec("hotpotqa", "multihop", (), "MIT", unused_parser, default=True), "verified"),
-        (Spec("ectqa", "temporal", (), "MIT", unused_parser), "partial"),
-        (Spec("broken", "control", (), "MIT", unused_parser), "invalid"),
-        (Spec("graphjudge_genwiki", "extraction", (), "MIT", unused_parser), "not downloaded"),
-        (
-            Spec(
-                "browsecomp_plus",
-                "multihop",
-                (File("u", "f", "h", 400 << 20),),
-                "MIT",
-                unused_parser,
-            ),
-            "not downloaded",
-        ),
+        (_entry("hotpotqa", "multihop", default=True), False, "verified"),
+        (_entry("ectqa", "temporal"), False, "partial"),
+        (_entry("broken", "control"), False, "invalid"),
+        (_entry("graphjudge_genwiki", "extraction"), False, "not downloaded"),
+        (_entry("browsecomp_plus", "multihop"), True, "not downloaded"),
     ]
     stream = StringIO()
     print_overview(
@@ -39,9 +34,9 @@ def test_overview_preserves_names_states_flags_without_color(width):
     assert all(len(line) <= width for line in out.splitlines())
     # Text may wrap, but no identifier, state or flag may be elided.
     compact = "".join(out.split())
-    for spec, state in rows:
-        assert spec.name in compact and state.replace(" ", "") in compact
-        assert spec.family in compact
+    for entry, _, state in rows:
+        assert entry.name in compact and state.replace(" ", "") in compact
+        assert entry.family in compact
     assert "default" in out and "large" in out
     assert "5 datasets" in out
     assert "1 verified" in out and "1 partial" in out and "1 invalid" in out
@@ -52,9 +47,8 @@ def test_overview_preserves_names_states_flags_without_color(width):
 
 def test_redirected_overview_verified_only_has_no_recovery_warning():
     stream = StringIO()
-    spec = Spec("ready", "multihop", (), "MIT", unused_parser)
     print_overview(
-        [(spec, "verified")],
+        [(_entry("ready", "multihop"), False, "verified")],
         Path("/tmp/data"),
         console=Console(file=stream, width=80, force_terminal=False),
     )
@@ -71,7 +65,8 @@ def test_terminal_color_respects_no_color(monkeypatch, no_color):
     else:
         monkeypatch.delenv("NO_COLOR", raising=False)
     stream = StringIO()
-    spec = Spec("ready", "multihop", (), "MIT", unused_parser)
     console = Console(file=stream, width=80, force_terminal=True, color_system="standard")
-    print_overview([(spec, "verified")], Path("/tmp/data"), console=console)
+    print_overview(
+        [(_entry("ready", "multihop"), False, "verified")], Path("/tmp/data"), console=console
+    )
     assert ("\x1b[32m" in stream.getvalue()) == (not no_color)
