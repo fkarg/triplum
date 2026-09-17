@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import textwrap
 
 import polars as pl
@@ -40,7 +41,8 @@ def format_summary(frame: pl.DataFrame, width: int = 80) -> str:
 
 
 def summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
-    runs = rs.runs()
+    """One row per QA run; extraction runs are summarised by `extraction_summary`."""
+    runs = rs.runs().filter(pl.col("kind") == "qa")
     if run_ids:
         runs = runs.filter(pl.col("run_id").is_in(run_ids))
     rows = []
@@ -70,6 +72,29 @@ def summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
                 "indexing_s": float((idx["ended_at"] - idx["started_at"]).sum() or 0) / 1e6,
                 "cache_hits": r["cache_hits"],
                 "cache_misses": r["cache_misses"],
+                "wall_s": r["wall_s"],
+            }
+        )
+    return pl.DataFrame(rows)
+
+
+def extraction_summary(rs: RunStore, run_ids: list[str] | None = None) -> pl.DataFrame:
+    """One row per extraction run: identity, the intrinsic scores and the graph counts."""
+    runs = rs.runs().filter(pl.col("kind") == "extract")
+    if run_ids:
+        runs = runs.filter(pl.col("run_id").is_in(run_ids))
+    rows = []
+    for r in runs.iter_rows(named=True):
+        x = rs.extraction(r["run_id"]) or {}
+        cfg = json.loads(r["config_json"])
+        rows.append(
+            {
+                "run_id": r["run_id"],
+                "dataset": r["dataset"],
+                "extractor": cfg["extractor"]["kind"],
+                "resolver": cfg["resolver"]["name"],
+                "n_chunks": r["n"],
+                **{k: v for k, v in x.items() if k != "run_id"},
                 "wall_s": r["wall_s"],
             }
         )

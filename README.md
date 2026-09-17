@@ -28,10 +28,14 @@ Real today:
   end with EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost and timing, recorded in a run store
   keyed by the full run identity.
 
-Not yet: nothing graph-shaped. The entity, fact, support and mention tables exist in the schema
-and the SQLite migration but nothing writes to them; extraction, graph retrieval and the store
-comparison are the next sub-projects. [`docs/flow.md`](docs/flow.md) keeps the implemented
-versus planned list current.
+- The first graph: a non-LLM extraction baseline. Two extractors behind one protocol, `rules`
+  (spaCy dependency rules, permissive, fast) and `small_model` (GLiNER spans, GLiREL relations),
+  document-scoped entities with exact and fuzzy resolution as supported `same_as` facts, the
+  store's graph side under the same visibility rule as chunks, and intrinsic scoring against
+  the text-to-triple gold sets (`triplum bench extract`).
+
+Not yet: graph retrieval pipelines, LLM extractors, the store comparison. [`docs/flow.md`](docs/flow.md)
+keeps the implemented versus planned list current.
 
 ## Install
 

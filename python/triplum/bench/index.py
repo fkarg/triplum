@@ -1,15 +1,21 @@
-"""Make sure the dataset is in the store: documents, chunks, and embeddings for a spec.
-Everything is idempotent and skips what exists (design D6a)."""
+"""Make sure the dataset is in the store: documents, chunks, embeddings for a spec, and the
+graph for an extractor and resolver. Everything is idempotent and skips what exists (design D6a)."""
 
 from __future__ import annotations
 
 from triplum.bench.runstore import Recorder
+from triplum.cache import content_key
 from triplum.embed.protocol import Embedder
 from triplum.eval.datasets.base import Dataset
+from triplum.extract.protocol import Extraction, ExtractorSpec, ResolverSpec
 from triplum.store.sqlite.store import SqliteStore
 
 
 class CorpusMismatch(RuntimeError):
+    pass
+
+
+class GraphMismatch(RuntimeError):
     pass
 
 
@@ -44,3 +50,23 @@ def ensure_embeddings(
             vecs = embedder.embed_passages([texts[i] for i in idx])
             store.put_embeddings(embedder.spec, [ids[i] for i in idx], vecs)
             ev.usage(sum(len(texts[i].split()) for i in idx), 0)
+
+
+def graph_identity(ds: Dataset, extractor: ExtractorSpec, resolver: ResolverSpec, code: str) -> str:
+    """What the graph in a store depends on: the corpus, the extractor, the resolver and the
+    code that turns claims into facts. `recorded_at` is deliberately not part of it."""
+    return content_key("graph", [ds.corpus_hash, extractor.hash(), resolver.hash(), code])[:16]
+
+
+def ensure_graph(store: SqliteStore, identity: str, graph: Extraction, rec: Recorder) -> bool:
+    """Write the graph once per identity. A store holding a graph of another identity is a
+    refusal, never a silent mix. Returns whether anything was written."""
+    bound = store.get_meta("graph_identity")
+    if bound == identity:
+        return False
+    if bound is not None:
+        raise GraphMismatch(f"store {store.path} holds graph {bound}, this run needs {identity}")
+    with rec.stage("index.graph"):
+        store.put_graph(graph.entities, graph.facts, graph.fact_support, graph.mentions)
+        store.set_meta("graph_identity", identity)
+    return True

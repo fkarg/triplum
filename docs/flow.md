@@ -62,6 +62,25 @@ same for all.
 `bench sweep` runs `dense` once per embedding spec in a JSON file and continues past a spec that
 fails to load.
 
+## An extraction run
+
+`triplum bench extract` (library: `bench.runner.run_extraction(ExtractConfig)`) builds the
+graph for a dataset with a non-LLM extractor and scores it against the gold triples. Spec:
+[specs/2026-09-17-extraction-baseline.md](specs/2026-09-17-extraction-baseline.md).
+
+| # | step | module | what happens | recorded / cached |
+|---|---|---|---|---|
+| 1 | load | as above | Any dataset with a corpus, questions or not; `triples` is the gold where the source has it. `questions_hash` covers questions and triples. | |
+| 2 | identities | `bench/index.py: graph_identity`, `bench/fingerprint.py` | The **graph identity** is (corpus hash, extractor spec hash, resolver spec hash, code hash of the `extract` and store modules). The **run identity** adds the gold hash and the scorer's code hash, with `kind = extract` in the one `runs` envelope. An identical completed run is returned. | `runs` row; `extractor_spec`, `resolver_spec`, `graph_identity` columns |
+| 3 | extract | `extract/stages.py: extract` over `extract/rules.py` or `extract/small_model.py` | The extractor returns spans and claims per chunk (cached per chunk on the spec hash and the text); the stage grounds accepted claims into entities (id = hash of document and normalised surface), mentions, `label` and `type` facts, and one fact with one single-chunk support group per claim. Rejected claims stay in the `claims` frame with their status. `small_model` takes its entity and relation vocabularies from the config, or from the dataset's metadata and gold predicates. | Event `extract`, `cached` when every chunk hit the cache |
+| 4 | resolve | `extract/stages.py: resolve` | `none`, `exact` or `fuzzy`: one `same_as` fact per linked pair of entities from different documents, supported by a group holding a mention chunk of each side; `canonical_id` filled by union for reporting. | Event `resolve` |
+| 5 | index graph | `bench/index.py: ensure_graph` | Written once per graph identity into the corpus's store; a store holding another graph identity is refused. | Event `index.graph`; `graph_written` on the run |
+| 6 | score | `eval/triples.py` | Surface triples from the facts, matched one-to-one against the gold per document (per question for 2Wiki evidences, recall only): `exact` and `partial`; span P/R/F1 where the dataset lists entities; counts and claims by status. | `extraction_runs` row |
+
+Typed relation scores for CoNLL04 and SciERC are meaningful for `small_model`, whose relation
+vocabulary is the dataset's; for `rules` the predicate is the verb lemma, so its exact score on
+typed sets is a floor, not a comparison.
+
 ## Commands and the steps they touch
 
 | command | does |
@@ -71,7 +90,8 @@ fails to load.
 | `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with a status table and compact action hints; full help via `--help`; does not create or migrate a database |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |
-| `triplum bench report` | every run as grouped identity, quality and cost field/value pairs wrapped to terminal width; all metrics retained, missing values shown as `n/a`, floats at six significant digits |
+| `triplum bench extract --dataset <name> [--extractor rules\|small_model] [--resolver none\|exact\|fuzzy]` | the extraction run above; `--entity-types` and `--relation-types` set `small_model`'s vocabularies |
+| `triplum bench report` | every run as grouped identity, quality and cost field/value pairs wrapped to terminal width; QA runs first, then extraction runs; all metrics retained, missing values shown as `n/a`, floats at six significant digits |
 | `triplum bench show <run>` | identity fields and the full config JSON of one run |
 | `triplum bench rerun <run> [--force] [--resume]` | replays a stored config through step 3 onwards |
 | `triplum bench inspect <run> [--question <id>] [--json]` | answers, metrics, retrieved passages and model calls per question |
@@ -89,9 +109,10 @@ Implemented (sub-project 2, part 1; spec in
 
 - **Data layer**: the eight canonical Arrow schemas in `crates/triplum-core`, exposed through
   `triplum._core`; `Viewer` with principals and both as-of instants.
-- **Store**: SQLite, chunk side only: documents, system-versioned grants, chunks, FTS5 with ACL
-  tokens, sqlite-vec per embedding spec. The `entities`, `facts`, `fact_support` and `mentions`
-  tables are created by the migration and unused.
+- **Store**: SQLite: documents, system-versioned grants, chunks, FTS5 with ACL tokens,
+  sqlite-vec per embedding spec; and the graph side, `put_graph`, `facts`, `mentions`,
+  `neighbours`, where a fact is visible only through a fully visible support group and both
+  as-of instants, and traversal follows visible `same_as` facts only.
 - **Protocols with disk cache**: `LLM` (OpenAI-compatible, CLI subprocess, fake), `Embedder`
   (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
 - **Datasets**: a registry (`eval/datasets/registry.py`) of 37 pinned, auto-fetched datasets with
@@ -109,24 +130,59 @@ Implemented (sub-project 2, part 1; spec in
   latency, indexing time.
 - **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the
   commands in the table above.
+- **Extraction baseline** (spec in
+  [specs/2026-09-17-extraction-baseline.md](specs/2026-09-17-extraction-baseline.md)): the
+  `rules` and `small_model` extractors, resolvers, the graph identity, `bench extract` and the
+  intrinsic metrics; numbers below.
+
+### Extraction baseline numbers
+
+Rules extractor (`en_core_web_sm` 3.8.0, rule set v1) on the committed fixtures, 2026-09-17,
+Apple laptop, one process. Exact needs all three normalised strings equal; partial is the
+one-to-one CaRB-style match. `n` is chunks. Full-set runs replace these rows when made.
+
+| dataset | n | entities | facts | claims accepted / subordinate / ungrounded | pred | gold | exact P / R / F1 | partial P / R / F1 | span F1 | chunks/s | `same_as` with `exact` |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| carb | 40 | 190 | 305 | 41 / 21 / 25 | 41 | 151 | 0 / 0 / 0 | 0.146 / 0.040 / 0.063 | | 82 | 1 |
+| conll04 | 40 | 234 | 426 | 53 / 30 / 22 | 53 | 57 | 0 / 0 / 0 | 0.019 / 0.018 / 0.018 | 0.543 | 136 | 16 |
+| scierc | 40 | 221 | 265 | 20 / 28 / 26 | 19 | 71 | 0 / 0 / 0 | 0 / 0 / 0 | 0.446 | 138 | 44 |
+| genwiki | 40 | 193 | 432 | 88 / 10 / 25 | 86 | 180 | 0 / 0 / 0 | 0 / 0 / 0 | 0.588 | 163 | 77 |
+| graphjudge_genwiki | 40 | 205 | 412 | 64 / 10 / 41 | 64 | 160 | 0 / 0 / 0 | 0 / 0 / 0 | | 164 | 17 |
+| graphjudge_scierc | 40 | 995 | 1284 | 98 / 129 / 151 | 98 | 401 | 0 / 0 / 0 | 0 / 0 / 0 | | 37 | 416 |
+| graphjudge_rebel | 40 | 638 | 1256 | 178 / 58 / 154 | 176 | 114 | 0 / 0 / 0 | 0 / 0 / 0 | | 54 | 54 |
+| twowiki (evidences, recall only) | 219 | 3232 | 6669 | 955 / 262 / 973 | 936 | 50 | R 0 | R 0 | | 56 | 3325 |
+| metaqa (synthetic) | 170 | 16233 | 74987 | 15492 / 419 / 800 | 15420 | 524 | 0 / 0 / 0 | 0.143 / 0.200 / 0.167 | | 6.3 | 9843 |
+
+What the rows say. The rules extractor produces verb-lemma predicates (`found_in`, `be`), so
+against schema predicates (`OrgBased_In`, `country`, `mother`) exact is zero by construction
+and partial only matches where the gold predicate is verbal (CaRB, MetaQA's templates). Its
+span recall on the typed sets (CoNLL04 0.72, SciERC 0.57, GenWiki 0.58) is the number that
+carries over to `small_model`, whose relation vocabulary is the dataset's. Subordinate and
+ungrounded counts are the cost of the v1 restriction to independent clauses and grounded
+arguments. `same_as` counts grow quadratically with repeated names (MetaQA, 2Wiki) because the
+exact resolver links every pair, each with its own two-chunk evidence. MetaQA's duplicate rate
+of 0.50 is the forward-plus-inverse template, not the extractor. `small_model` rows are
+pending the weight download.
 
 Where the code differs from the spec's architecture sketch: there is no `ingest/chunking.py`
 (the protocol makes one passage one chunk, so the loader builds chunks directly; local files
 are packed by paragraph in `ingest/files.py`); the retrieval
 stages live in one file, `retrieve/stages.py`; one loader covers all three datasets; FTS and
 vector logic sit inside `store/sqlite/store.py`; there is no API reranker adapter and no
-`data/frames.py`.
+`data/frames.py`. The extraction plan's deviations from its spec are listed in
+[plans/2026-09-17-extraction-baseline.md](plans/2026-09-17-extraction-baseline.md).
 
 Planned, in the order of the design record:
 
 1. **Temporal and ACL contract fixtures** at toy scale, gating on zero retrieval-level leakage,
    before any graph ingestion.
-2. **2a, graph retrieval pipelines**: hierarchical chunking, entity and fact extraction into the
-   graph tables, Liao et al. best-practice GraphRAG, personalised PageRank over the KG, and a
-   graph-disabled ablation with the same evidence budget.
-3. **2b, KG-construction variants**: open IE versus schema-based versus ontology-aware
-   extraction, atomic-fact decomposition on and off, entity-resolution variants; intrinsic and
-   downstream measurement.
+2. **2a, graph retrieval pipelines**: hierarchical chunking, Liao et al. best-practice
+   GraphRAG, personalised PageRank over the KG, and a graph-disabled ablation with the same
+   evidence budget, over the graph the extraction baseline builds.
+3. **2b, KG-construction variants**: LLM extractors (open IE versus schema-based versus
+   ontology-aware) behind the same `Extractor` protocol, atomic-fact decomposition on and off,
+   coreference and embedding resolution; measured against the non-LLM baseline rows above and
+   downstream.
 4. **2c, SQLite versus Neo4j** behind the same `Store` protocol.
 5. **2d, embedding sweep**: the harness for it exists; the local-model runs are in progress and
    the winner gets pinned for 2a to 2c.

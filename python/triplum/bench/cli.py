@@ -1,4 +1,4 @@
-"""triplum CLI: data fetch | bench run, sweep, report, show, rerun, inspect, diff, tail.
+"""triplum CLI: data fetch | bench run, sweep, extract, report, show, rerun, inspect, diff, tail.
 
 The command surface is documented in docs/flow.md; `main(argv)` runs it in-process for tests.
 """
@@ -16,6 +16,8 @@ import typer
 
 from triplum.bench.config import (
     EmbedderConfig,
+    ExtractConfig,
+    ExtractorConfig,
     LLMConfig,
     PipelineConfig,
     RerankerConfig,
@@ -236,7 +238,7 @@ def bench(
         # RunStore initialization creates tables and migrates; an overview only reads.
         with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
             rows = conn.execute(
-                "SELECT run_id, dataset, pipeline, n, status FROM runs"
+                "SELECT run_id, dataset, COALESCE(pipeline, 'extract'), n, status FROM runs"
                 " ORDER BY created_at DESC, run_id DESC LIMIT 10"
             ).fetchall()
     from triplum.bench.bench_view import print_overview
@@ -372,12 +374,67 @@ def sweep(
         raise typer.Exit(1)
 
 
+EXTRACTORS = ["rules", "small_model"]
+
+
+@bench_app.command()
+def extract(
+    ctx: typer.Context,
+    dataset: DatasetOpt = None,
+    no_input: NoInputOpt = False,
+    extractor: Annotated[str, typer.Option(help="Extractor: " + ", ".join(EXTRACTORS))] = "rules",
+    resolver: Annotated[str, typer.Option(help="Entity resolver: none | exact | fuzzy.")] = "none",
+    threshold: Annotated[float, typer.Option(help="fuzzy resolver similarity, 0..1.")] = 0.9,
+    entity_types: Annotated[
+        str | None, typer.Option(help="small_model span vocabulary, comma-separated.")
+    ] = None,
+    relation_types: Annotated[
+        str | None, typer.Option(help="small_model relation vocabulary, comma-separated.")
+    ] = None,
+    n: NOpt = None,
+    fixture: FixtureOpt = False,
+    force: ForceOpt = False,
+    cache_root: CacheRootOpt = None,
+    runstore: RunstoreOpt = None,
+) -> None:
+    """Build a dataset's knowledge graph with a non-LLM extractor and score it against the
+    gold triples; an identical configuration returns the stored run."""
+    from triplum.bench.report import extraction_summary
+    from triplum.bench.runner import run_extraction, runstore_path
+    from triplum.extract import resolvers
+    from triplum.extract.protocol import ResolverSpec
+
+    if dataset is None or not is_folder(dataset):
+        dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
+    extractor = resolve(extractor, EXTRACTORS, "extractor", ctx=ctx)
+    resolver = resolve(resolver, list(resolvers.NAMES), "resolver", ctx=ctx)
+    split = lambda v: tuple(t.strip() for t in v.split(",") if t.strip()) if v else ()
+    cfg = ExtractConfig(
+        dataset=dataset,
+        extractor=ExtractorConfig(
+            kind=extractor, entity_types=split(entity_types), relation_types=split(relation_types)
+        ),
+        resolver=ResolverSpec(resolver, threshold),
+        n=n,
+        fixture=fixture,
+        force=force,
+        cache_root=str(cache_root) if cache_root else None,
+        runstore_path=str(runstore) if runstore else None,
+    )
+    rid = run_extraction(cfg)
+    _print_summary(extraction_summary(_runstore(runstore_path(cfg)), [rid]))
+
+
 @bench_app.command()
 def report(runstore: RunstoreOpt = None, no_input: NoInputOpt = False) -> None:
-    """Summary of every run, wrapped to fit the terminal."""
-    from triplum.bench.report import summary
+    """Summary of every run, wrapped to fit the terminal: QA runs, then extraction runs."""
+    from triplum.bench.report import extraction_summary, summary
 
-    _print_summary(summary(_runstore(runstore)))
+    with _runstore(runstore) as rs:
+        qa, ex = summary(rs), extraction_summary(rs)
+    _print_summary(qa)
+    if not ex.is_empty():
+        _print_summary(ex)
 
 
 def _existing_runstore(path: Path | None):

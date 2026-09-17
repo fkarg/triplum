@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 
 from triplum.cache import content_key
+from triplum.extract.protocol import ResolverSpec
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,42 @@ class PipelineConfig:
 
 
 @dataclass(frozen=True)
+class ExtractorConfig:
+    kind: str = "rules"  # rules | small_model
+    model: str = ""  # small_model: the GLiNER model id; rules: the spaCy pipeline
+    entity_types: tuple[str, ...] = ()  # small_model: the span vocabulary
+    relation_types: tuple[str, ...] = ()  # small_model: the relation vocabulary
+
+
+@dataclass(frozen=True)
+class ExtractConfig:
+    """One extraction run: build the graph for a dataset with an extractor and a resolver,
+    score it against the gold triples. `hash()` of the extractor and resolver parts is in the
+    run identity; everything that changes the graph is in the graph identity."""
+
+    dataset: str
+    extractor: ExtractorConfig = ExtractorConfig()
+    resolver: ResolverSpec = field(default_factory=lambda: ResolverSpec("none"))
+    n: int | None = None
+    fixture: bool = False
+    principals: tuple[str, ...] = ("public",)
+    force: bool = False
+    store_path: str | None = None
+    runstore_path: str | None = None
+    cache_root: str | None = None
+
+    def hash(self) -> str:
+        return content_key("extract", [asdict(self.extractor), asdict(self.resolver)])[:16]
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self), sort_keys=True)
+
+    @classmethod
+    def from_json(cls, s: str) -> ExtractConfig:
+        return _from_dict(cls, json.loads(s))
+
+
+@dataclass(frozen=True)
 class RunConfig:
     dataset: str
     pipeline: PipelineConfig
@@ -85,8 +122,10 @@ _NESTED = {
     "judge": LLMConfig,
     "embedder": EmbedderConfig,
     "reranker": RerankerConfig,
+    "extractor": ExtractorConfig,
+    "resolver": ResolverSpec,
 }
-_TUPLES = {"principals", "argv"}
+_TUPLES = {"principals", "argv", "entity_types", "relation_types"}
 
 
 def _from_dict(cls, d):

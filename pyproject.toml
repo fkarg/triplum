@@ -45,6 +45,8 @@ extract = [
   "rapidfuzz>=3.14",
   "dateparser>=1.4",
 ]
+# The small_model extractor: GLiNER spans and GLiREL relations (research-only weights).
+extract-models = ["gliner>=0.2.29", "glirel>=1.2.1"]
 
 [dependency-groups]
 dev = [
@@ -128,3 +130,8 @@ allowed-unresolved-imports = ["spacy", "dateparser"]
 include = ["python/triplum/extract/resolvers.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["rapidfuzz"]
+
+[[tool.ty.overrides]]
+include = ["python/triplum/extract/small_model.py"]
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["gliner", "glirel"]

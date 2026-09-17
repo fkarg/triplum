@@ -1,4 +1,4 @@
-"""Compose stages from a RunConfig, record everything, return the run id."""
+"""Compose stages from a RunConfig or an ExtractConfig, record everything, return the run id."""
 
 from __future__ import annotations
 
@@ -6,22 +6,25 @@ import json
 import platform
 import subprocess
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import polars as pl
 
 from triplum.bench import factories, fingerprint
-from triplum.bench.config import RunConfig
-from triplum.bench.index import ensure_documents, ensure_embeddings
+from triplum.bench.config import ExtractConfig, RunConfig
+from triplum.bench.index import ensure_documents, ensure_embeddings, ensure_graph, graph_identity
 from triplum.bench.runstore import RunStore
 from triplum.cache import default_root
+from triplum.data.schema import now_us
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import Embedder
 from triplum.eval import judge as judge_mod
-from triplum.eval import metrics
+from triplum.eval import metrics, triples
 from triplum.eval.datasets import base
 from triplum.eval.datasets import registry as datasets
 from triplum.eval.datasets.base import Dataset
+from triplum.extract import stages as extract_stages
 from triplum.generate import reader as reader_mod
 from triplum.generate.reader import read
 from triplum.rerank.protocol import Reranker
@@ -72,23 +75,38 @@ def _retrieve(
     return out
 
 
-def cache_root(cfg: RunConfig) -> Path:
+def cache_root(cfg: RunConfig | ExtractConfig) -> Path:
     return Path(cfg.cache_root) if cfg.cache_root else default_root()
 
 
-def runstore_path(cfg: RunConfig) -> Path:
+def runstore_path(cfg: RunConfig | ExtractConfig) -> Path:
     return Path(cfg.runstore_path) if cfg.runstore_path else cache_root(cfg) / "runs.db"
+
+
+def store_path(cfg: RunConfig | ExtractConfig, ds: Dataset) -> Path:
+    """One SQLite file per corpus, shared by QA and extraction runs over the same dataset."""
+    path = (
+        Path(cfg.store_path)
+        if cfg.store_path
+        else cache_root(cfg) / "stores" / f"{ds.name}-{ds.corpus_hash[:8]}.sqlite"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _load(cfg: RunConfig | ExtractConfig) -> Dataset:
+    return (
+        datasets.load_fixture(cfg.dataset, cfg.n)
+        if cfg.fixture
+        else datasets.load(cfg.dataset, cfg.n)
+    )
 
 
 def run_benchmark(cfg: RunConfig) -> str:
     t_start = time.perf_counter()
     root = cache_root(cfg)
     spec = datasets.get(cfg.dataset)
-    ds = (
-        datasets.load_fixture(cfg.dataset, cfg.n)
-        if cfg.fixture
-        else datasets.load(cfg.dataset, cfg.n)
-    )
+    ds = _load(cfg)
     p = cfg.pipeline
     if ds.questions.height == 0:
         raise ValueError(
@@ -117,6 +135,7 @@ def run_benchmark(cfg: RunConfig) -> str:
     sha, dirty = code_version()
     with RunStore(runstore_path(cfg)) as rs:
         meta = {
+            "kind": "qa",
             "dataset": ds.name,
             "pipeline": p.name,
             "config_hash": p.hash(),
@@ -166,13 +185,8 @@ def run_benchmark(cfg: RunConfig) -> str:
                 ],
             )
         rec = rs.recorder(run_id)
-        store_path = (
-            Path(cfg.store_path)
-            if cfg.store_path
-            else root / "stores" / f"{ds.name}-{ds.corpus_hash[:8]}.sqlite"
-        )
-        store_path.parent.mkdir(parents=True, exist_ok=True)
-        store = SqliteStore(store_path)
+        path = store_path(cfg, ds)
+        store = SqliteStore(path)
         status = "failed"
         try:
             ensure_documents(store, ds, rec)
@@ -250,7 +264,130 @@ def run_benchmark(cfg: RunConfig) -> str:
                             "n_chunks": a["n_chunks"],
                         },
                     )
-            rs.add_artifact(run_id, "store", str(store_path), base.sha256_file(store_path))
+            rs.add_artifact(run_id, "store", str(path), base.sha256_file(path))
+            status = "ok"
+        finally:
+            store.close()
+            rs.finish_run(
+                run_id,
+                status=status,
+                wall_s=time.perf_counter() - t_start,
+                cache_hits=rec.cache_hits,
+                cache_misses=rec.cache_misses,
+            )
+        return run_id
+
+
+def _with_vocabulary(cfg: ExtractConfig, ds: Dataset) -> ExtractConfig:
+    """`small_model` classifies over closed vocabularies. When the config leaves them empty,
+    take the entity types the dataset lists in its document metadata and the predicates of its
+    gold triples, and record them in the config so the run identity names them."""
+    x = cfg.extractor
+    if x.kind != "small_model" or (x.entity_types and x.relation_types):
+        return cfg
+    types = x.entity_types or tuple(
+        sorted(
+            {
+                e["type"]
+                for m in ds.documents["metadata"].to_list()
+                if m
+                for e in json.loads(m).get("entities", [])
+                if isinstance(e, dict) and "type" in e
+            }
+        )
+    )
+    relations = x.relation_types or tuple(sorted(set(ds.triples["predicate"].to_list())))
+    if not types or not relations:
+        raise ValueError(
+            f"dataset {ds.name} gives no entity types or relation vocabulary; pass"
+            " --entity-types and --relation-types for small_model"
+        )
+    return replace(cfg, extractor=replace(x, entity_types=types, relation_types=relations))
+
+
+def run_extraction(cfg: ExtractConfig) -> str:
+    """Build the graph for a dataset with one extractor and resolver, write it to the store
+    once per graph identity, score it against the gold triples, and record the run. An
+    identical configuration returns the stored run; `--force` recomputes."""
+    t_start = time.perf_counter()
+    root = cache_root(cfg)
+    ds = _load(cfg)
+    if ds.chunks.height == 0:
+        raise ValueError(f"dataset {ds.name} ships no corpus; nothing to extract from")
+    cfg = _with_vocabulary(cfg, ds)
+    extractor = factories.make_extractor(cfg.extractor, root)
+    identity = graph_identity(ds, extractor.spec, cfg.resolver, fingerprint.code_hash("graph"))
+    viewer = Viewer(principals=frozenset(cfg.principals))
+    sha, dirty = code_version()
+    with RunStore(runstore_path(cfg)) as rs:
+        meta = {
+            "kind": "extract",
+            "dataset": ds.name,
+            "pipeline": None,
+            "config_hash": cfg.hash(),
+            "config_json": cfg.to_json(),
+            "code_version": sha,
+            "dirty": dirty,
+            "code_hash": fingerprint.code_hash("extract"),
+            "corpus_hash": ds.corpus_hash,
+            "questions_hash": ds.questions_hash,
+            "n": ds.chunks.height,
+            "embedding_spec": None,
+            "reranker_spec": None,
+            "reader_model": None,
+            "judge_model": None,
+            "seed": 0,
+            "viewer_json": json.dumps(sorted(viewer.principals)),
+            "host": platform.node(),
+            "reader_prompt_hash": None,
+            "judge_prompt_hash": None,
+            "extractor_spec": extractor.spec.hash(),
+            "resolver_spec": cfg.resolver.hash(),
+            "graph_identity": identity,
+        }
+        if not cfg.force:
+            existing = rs.find_run(rs.identity_hash(meta))
+            if existing:
+                return existing
+        run_id = rs.start_run(meta)
+        rec = rs.recorder(run_id)
+        path = store_path(cfg, ds)
+        store = SqliteStore(path)
+        status = "failed"
+        try:
+            ensure_documents(store, ds, rec)
+            recorded_at = now_us()
+            with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
+                t0 = time.perf_counter()
+                graph = extract_stages.extract(ds.chunks, ds.documents, extractor, recorded_at)
+                extract_s = time.perf_counter() - t0
+                ev.usage(0, 0, cached=extractor.misses == 0)
+            with rec.stage("resolve", model=cfg.resolver.name):
+                graph = extract_stages.resolve(graph, ds.chunks, cfg.resolver, recorded_at)
+            written = ensure_graph(store, identity, graph, rec)
+            with rec.stage("score"):
+                pred = triples.predicted(graph, ds.chunks)
+                scores = triples.score(pred, ds.triples, ds.chunks, ds.questions)
+                gold_spans = triples.gold_spans(ds.documents)
+                span = (
+                    triples.span_score(triples.predicted_spans(graph, ds.chunks), gold_spans)
+                    if gold_spans
+                    else (None, None, None)
+                )
+            rs.add_extraction(
+                run_id,
+                {
+                    **graph.counts(),
+                    **scores,
+                    "span_precision": span[0],
+                    "span_recall": span[1],
+                    "span_f1": span[2],
+                    # a throughput measured on cache hits is the cache's, not the extractor's
+                    "chunks_per_s": None if extractor.misses == 0 else ds.chunks.height / extract_s,
+                    "graph_written": int(written),
+                },
+            )
+            rs.add_artifact(run_id, "store", str(path), base.sha256_file(path))
             status = "ok"
         finally:
             store.close()

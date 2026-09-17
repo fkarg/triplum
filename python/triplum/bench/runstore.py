@@ -24,19 +24,42 @@ CREATE TABLE IF NOT EXISTS run_questions (
 ) STRICT;
 """
 
-DDL = (
-    RUN_QUESTIONS_DDL
-    + """
+# One envelope for every kind of run (`qa`, `extract`), so events, prices and artifacts point at
+# one table; the columns only one kind fills are nullable.
+RUNS_DDL = """
 CREATE TABLE IF NOT EXISTS runs (
   run_id TEXT PRIMARY KEY, identity_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
-  dataset TEXT NOT NULL, pipeline TEXT NOT NULL, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'qa',
+  dataset TEXT NOT NULL, pipeline TEXT, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
   code_version TEXT NOT NULL, dirty INTEGER NOT NULL, code_hash TEXT NOT NULL,
   corpus_hash TEXT NOT NULL, questions_hash TEXT NOT NULL,
-  n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT NOT NULL, judge_model TEXT,
+  n INTEGER NOT NULL, embedding_spec TEXT, reranker_spec TEXT, reader_model TEXT, judge_model TEXT,
   seed INTEGER NOT NULL, viewer_json TEXT NOT NULL, host TEXT NOT NULL,
-  reader_prompt_hash TEXT NOT NULL, judge_prompt_hash TEXT,
+  reader_prompt_hash TEXT, judge_prompt_hash TEXT,
+  extractor_spec TEXT, resolver_spec TEXT, graph_identity TEXT,
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
 ) STRICT;
+"""
+
+EXTRACTION_RUNS_DDL = """
+CREATE TABLE IF NOT EXISTS extraction_runs (
+  run_id TEXT PRIMARY KEY REFERENCES runs(run_id),
+  entities INTEGER NOT NULL, facts INTEGER NOT NULL, mentions INTEGER NOT NULL,
+  claims_accepted INTEGER NOT NULL, claims_subordinate INTEGER NOT NULL, claims_negated INTEGER NOT NULL,
+  claims_modal INTEGER NOT NULL, claims_ungrounded INTEGER NOT NULL,
+  n_pred INTEGER NOT NULL, n_gold INTEGER NOT NULL, duplicate_rate REAL NOT NULL,
+  exact_precision REAL, exact_recall REAL NOT NULL, exact_f1 REAL,
+  partial_precision REAL, partial_recall REAL NOT NULL, partial_f1 REAL,
+  span_precision REAL, span_recall REAL, span_f1 REAL,
+  chunks_per_s REAL, graph_written INTEGER NOT NULL
+) STRICT;
+"""
+
+DDL = (
+    RUN_QUESTIONS_DDL
+    + RUNS_DDL
+    + EXTRACTION_RUNS_DDL
+    + """
 CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
 CREATE TABLE IF NOT EXISTS events (
   run_id TEXT NOT NULL REFERENCES runs(run_id), stage TEXT NOT NULL, question_id TEXT, provider TEXT, model TEXT,
@@ -66,6 +89,7 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
 # code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
 # recorded for bookkeeping only, so edits outside the pipeline do not orphan finished runs.
 IDENTITY_FIELDS = (
+    "kind",
     "dataset",
     "pipeline",
     "config_hash",
@@ -81,6 +105,9 @@ IDENTITY_FIELDS = (
     "viewer_json",
     "reader_prompt_hash",
     "judge_prompt_hash",
+    "extractor_spec",
+    "resolver_spec",
+    "graph_identity",
 )
 
 
@@ -114,6 +141,10 @@ class RunStore:
             ("code_hash", "TEXT NOT NULL DEFAULT ''"),
             ("reader_prompt_hash", "TEXT NOT NULL DEFAULT ''"),
             ("judge_prompt_hash", "TEXT"),
+            ("kind", "TEXT NOT NULL DEFAULT 'qa'"),
+            ("extractor_spec", "TEXT"),
+            ("resolver_spec", "TEXT"),
+            ("graph_identity", "TEXT"),
         ],
         "run_questions": [("cached", "INTEGER NOT NULL DEFAULT 0")],
     }
@@ -132,13 +163,25 @@ class RunStore:
         # NOT NULL, so stores created before that rebuild the table once.
         notnull = {r[1]: r[3] for r in self.conn.execute("PRAGMA table_info(run_questions)")}
         if notnull.get("r2"):
-            cols = ", ".join(notnull)
-            self.conn.executescript(
-                "ALTER TABLE run_questions RENAME TO run_questions_old;"
-                + RUN_QUESTIONS_DDL
-                + f"INSERT INTO run_questions ({cols}) SELECT {cols} FROM run_questions_old;"
-                "DROP TABLE run_questions_old;"
-            )
+            self._rebuild("run_questions", RUN_QUESTIONS_DDL)
+        # pipeline, reader_model and reader_prompt_hash became nullable when extraction runs
+        # joined the envelope (2026-09-17).
+        notnull = {r[1]: r[3] for r in self.conn.execute("PRAGMA table_info(runs)")}
+        if notnull.get("reader_model"):
+            self._rebuild("runs", RUNS_DDL)
+
+    def _rebuild(self, table: str, ddl: str) -> None:
+        """Recreate a table from the current DDL, keeping every row. Foreign keys from other
+        tables keep pointing at the table name (legacy rename), so the new table inherits them."""
+        cols = ", ".join(r[1] for r in self.conn.execute(f"PRAGMA table_info({table})"))
+        self.conn.executescript(
+            "PRAGMA foreign_keys = OFF; PRAGMA legacy_alter_table = ON;"
+            f"ALTER TABLE {table} RENAME TO {table}_old;"
+            + ddl
+            + f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {table}_old;"
+            f"DROP TABLE {table}_old;"
+            "PRAGMA legacy_alter_table = OFF; PRAGMA foreign_keys = ON;"
+        )
 
     # ---- prices -----------------------------------------------------------------------------
 
@@ -259,6 +302,19 @@ class RunStore:
             [run_id, *row.values()],
         )
 
+    def add_extraction(self, run_id: str, row: dict) -> None:
+        cols = ["run_id", *row.keys()]
+        self.conn.execute(
+            f"INSERT OR REPLACE INTO extraction_runs({','.join(cols)})"
+            f" VALUES ({','.join('?' * len(cols))})",
+            [run_id, *row.values()],
+        )
+
+    def extraction(self, run_id: str) -> dict | None:
+        cur = self.conn.execute("SELECT * FROM extraction_runs WHERE run_id = ?", (run_id,))
+        row = cur.fetchone()
+        return None if row is None else dict(zip([d[0] for d in cur.description], row))
+
     def add_artifact(self, run_id: str, kind: str, path: str, sha256: str) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256)
@@ -325,9 +381,11 @@ class RunStore:
         return self._frame("SELECT * FROM events WHERE run_id = ? ORDER BY started_at", (run_id,))
 
     def run_index(self) -> pl.DataFrame:
-        """Newest first: run_id, dataset, pipeline, status, n, reader_model, embedding_spec."""
+        """Newest first: run_id, dataset, pipeline, status, n, reader_model, embedding_spec.
+        An extraction run shows `extract` as its pipeline and its extractor as the model."""
         return self._frame(
-            "SELECT run_id, dataset, pipeline, status, n, reader_model, embedding_spec"
+            "SELECT run_id, dataset, COALESCE(pipeline, 'extract') AS pipeline, status, n,"
+            " COALESCE(reader_model, extractor_spec) AS reader_model, embedding_spec"
             " FROM runs ORDER BY created_at DESC, run_id"
         )
 

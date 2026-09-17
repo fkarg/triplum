@@ -2,6 +2,8 @@
 
 ::: triplum.eval.metrics
 
+::: triplum.eval.triples
+
 ::: triplum.eval.judge
 
 ::: triplum.eval.datasets.base

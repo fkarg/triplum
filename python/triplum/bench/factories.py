@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from triplum.bench.config import EmbedderConfig, LLMConfig, RerankerConfig
+from triplum.bench.config import EmbedderConfig, ExtractorConfig, LLMConfig, RerankerConfig
 from triplum.cache import Cache
 from triplum.embed.cached import CachedEmbedder
 from triplum.embed.fake import FakeEmbedder
 from triplum.embed.protocol import EmbeddingSpec, render_query_prefix
+from triplum.extract.cached import CachedExtractor
 from triplum.llm.cached import CachedLLM
 from triplum.llm.fake import FakeLLM
 from triplum.llm.protocol import GenParams
@@ -123,3 +124,23 @@ def model_family(model: str) -> str:
         if fam in m:
             return fam
     return m.split("/")[-1].split("-")[0]
+
+
+def make_extractor(cfg: ExtractorConfig, cache_root: Path | str | None) -> CachedExtractor:
+    cache = Cache(cache_root)
+    if cfg.kind == "rules":
+        from triplum.extract.rules import MODEL, RulesExtractor
+
+        return CachedExtractor(RulesExtractor(cfg.model or MODEL), cache)
+    if cfg.kind == "small_model":
+        from triplum.extract.small_model import SmallModelExtractor
+
+        return CachedExtractor(
+            SmallModelExtractor(
+                cfg.model or None,
+                entity_types=list(cfg.entity_types),
+                relation_types=list(cfg.relation_types),
+            ),
+            cache,
+        )
+    raise ValueError(f"unknown extractor kind {cfg.kind!r}")

@@ -200,7 +200,7 @@ def dataset(name: str, frames: Frames) -> Dataset:
         name,
         *frames,
         corpus_hash=frames_hash(frames.documents, frames.grants, frames.chunks),
-        questions_hash=frames_hash(frames.questions),
+        questions_hash=frames_hash(frames.questions, frames.triples),
     )
 
 

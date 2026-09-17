@@ -55,10 +55,30 @@ RERANK = [
     "triplum.rerank.fake",
 ]
 
+# The graph identity: everything whose change alters the graph written to the store.
+GRAPH = [
+    "triplum.data.schema",
+    "triplum.data.viewer",
+    "triplum.cache",
+    "triplum.store.protocol",
+    "triplum.store.sqlite.store",
+    "triplum.store.sqlite.acl",
+    "triplum.extract.protocol",
+    "triplum.extract.stages",
+    "triplum.extract.resolvers",
+    "triplum.extract.cached",
+    "triplum.extract.rules",
+    "triplum.extract.small_model",
+    "triplum.eval.datasets.base",
+    "triplum.bench.index",
+]
+# The extraction run identity adds the scorer and the runner.
+EXTRACT = GRAPH + ["triplum.eval.triples", "triplum.bench.factories", "triplum.bench.runner"]
+
 PIPELINE_MODULES = {
     p.name: BASE + (EMBED if p.needs_embedder else []) + (RERANK if p.needs_reranker else [])
     for p in pipelines.PIPELINES.values()
-}
+} | {"graph": GRAPH, "extract": EXTRACT}
 
 # Non-Python sources the data layer depends on, relative to the repository root.
 EXTRA_FILES = ["python/triplum/store/sqlite/migrations.sql", "crates/triplum-core/src/schema.rs"]
@@ -85,7 +105,8 @@ def source_paths(pipeline: str) -> list[Path]:
 
 
 def code_hash(pipeline: str) -> str:
-    """Hash of the *contents* of the pipeline's source files, in a fixed order."""
+    """Hash of the *contents* of the pipeline's source files, in a fixed order. `graph` and
+    `extract` name the module sets of the graph identity and the extraction run identity."""
     h = hashlib.sha256()
     for p in sorted(source_paths(pipeline)):
         h.update(p.name.encode())

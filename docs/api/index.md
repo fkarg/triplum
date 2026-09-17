@@ -15,20 +15,21 @@ signature is still shown.
 | `triplum.llm` | done | `LLM`, `Message`, `GenParams`, `Completion`, `CachedLLM`, `OpenAICompatLLM`, `CliLLM`, `FakeLLM` | one completion protocol; adapters, never provider SDKs, in pipeline code |
 | `triplum.embed` | done | `EmbeddingSpec`, `Embedder`, `CachedEmbedder`, sentence-transformers, fastembed, OpenAI-compatible and fake adapters | embedding identity and adapters |
 | `triplum.rerank` | done | `RerankSpec`, `Reranker`, `CachedReranker`, cross-encoder and fake adapters | pointwise reranking |
-| `triplum.store` | chunk side done | `Store`, `Capabilities`, `SqliteStore` | viewer-filtered BM25 and vector search over chunks; graph tables exist but are unused |
+| `triplum.store` | done | `Store`, `Capabilities`, `SqliteStore`; graph side `put_graph`, `facts`, `mentions`, `neighbours` | viewer-filtered BM25 and vector search over chunks; facts visible only through a fully visible support group and both as-of instants; k-hop over visible `same_as` |
 | `triplum.retrieve.pipelines` | done | `PIPELINES`, `NAMES`, `get`, `closed_book`, `bm25`, `dense`, `rrf`, `hybrid`, `oracle` | named compositions of the stages with defaults; the one pipeline list the runner, CLI and fingerprint read |
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `fusion`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
-| `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | metrics, judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
-| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
-| `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, finite-choice resolution and interactive drill-down |
+| `triplum.eval` | done | `metrics.*`, `triples.score`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
+| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `ExtractConfig`, `run_extraction`, `RunStore`, `summary`, `extraction_summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
+| `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, `bench extract`, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
 | `triplum.bench.bench_view` | done | `print_overview`, `print_summary`, `print_inspect`, `print_diff`, `print_tail` | width-aware benchmark projections, literal values and terminal-aware colors; no data access |
 | `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |
 | `triplum.ingest.files` | done | `frames`, `scan`, `spec`, `chunk` | a folder of PDF, Word, Markdown and text files as a corpus with portable identity, optional `questions.jsonl`; a directory path is accepted wherever a dataset name is |
+| `triplum.extract` | done (baseline) | `Extractor`, `ExtractorSpec`, `ResolverSpec`, `Extraction`, `extract`, `resolve`, `RulesExtractor`, `SmallModelExtractor`, `CachedExtractor` | an extractor returns spans and claims; `extract` grounds them into the four graph frames with document-scoped entity ids; `resolve` adds supported `same_as` facts; `rules` (spaCy) and `small_model` (GLiNER + GLiREL) behind one protocol |
 | `triplum.ingest` chunking | planned (2a) | hierarchical chunking | replaces paragraph packing for the graph pipelines |
-| `triplum.extract` | planned (2a, 2b) | entity and fact extraction | fills `entities`, `facts`, `fact_support`, `mentions` |
-| `triplum.store` graph side | planned (2a, 2c) | k-hop, PPR, pattern queries | graph kernels on the viewer's projection; Neo4j arm |
+| `triplum.store` graph kernels | planned (2a, 2c) | PPR, pattern queries | beyond k-hop; Neo4j arm |
+| `triplum.retrieve` graph pipelines | planned (2a) | graph-augmented retrieval | the next spec; `neighbours` exists so it can start |
 
 The contracts that hold across modules:
 
@@ -40,6 +41,9 @@ The contracts that hold across modules:
   frozen dataclasses whose hashes name cache entries, index tables and runs.
 - **Pipelines are functions.** A named pipeline in `retrieve.pipelines` is a composition of
   stages with defaults; the runner calls the same function a notebook would.
+- **Extractors produce claims, not facts.** An `Extractor` returns spans and every claim it
+  considered with a status; `extract.stages.extract` is the one place entity ids, facts and
+  support groups are made, so extractors never disagree on identity.
 - **Cache wrappers, not cache logic.** `CachedLLM`, `CachedEmbedder` and `CachedReranker` wrap
   any adapter; the key is the full effective request.
 

@@ -49,6 +49,8 @@ Dates are when the licence was checked; re-check before relying on a row.
 | spaCy `en_core_web_sm` 3.8.0 | MIT | yes | 2026-09-17 | pinned by wheel URL; trained on OntoNotes 5 (LDC terms cover the training data, not the released weights) |
 | RapidFuzz 3 | MIT | yes | 2026-09-17 | `fuzzy` entity resolver |
 | dateparser 1.4 | BSD-3-Clause | yes | 2026-09-17 | literal date parsing in the `rules` extractor, absolute dates only |
+| GLiNER 0.2 and `gliner-community/gliner_small-v2.5` | Apache-2.0 (library and v2.5 weights) | yes | 2026-09-17 | `small_model` extractor spans; extra `extract-models`; revision pinned in `extract/small_model.py` |
+| GLiREL 1.2 and `jackboyla/glirel-large-v0` | package Apache-2.0; weights declared CC BY-NC-SA 4.0 in the model prose | **no** for the weights | 2026-09-17 | `small_model` extractor relations; research-only here, recorded per the doctrine in AGENTS.md |
 | NQ-Open (`google-research-datasets/nq_open`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `nq_open`; validation split, no corpus |
 | AmbigQA light (UW) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `ambigqa`; dev split, no corpus |
 | Bamboogle (`chiayewken/bamboogle`, from ofirpress/self-ask) | MIT | yes | 2026-09-17 | registered as `bamboogle`; 125 questions, no corpus |

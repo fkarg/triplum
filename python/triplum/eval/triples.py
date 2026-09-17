@@ -181,7 +181,7 @@ def gold_spans(documents: pl.DataFrame) -> set[tuple[str, str]]:
     for d in documents.iter_rows(named=True):
         meta = json.loads(d["metadata"]) if d["metadata"] else {}
         for e in meta.get("entities", []):
-            out.add((d["id"], normalise(e["text"])))
+            out.add((d["id"], normalise(e if isinstance(e, str) else e["text"])))
     return out
 
 

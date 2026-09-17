@@ -108,6 +108,14 @@ def test_old_schema_is_migrated(tmp_path):
     assert row["code_hash"] == "c0de"
     cols = {r[1] for r in rs.conn.execute("PRAGMA table_info(run_questions)")}
     assert "cached" in cols
+    # the runs envelope was rebuilt with nullable QA columns and a kind; the old row survived
+    notnull = {r[1]: r[3] for r in rs.conn.execute("PRAGMA table_info(runs)")}
+    assert notnull["reader_model"] == 0 and notnull["kind"] == 1
+    assert row["kind"] == "qa"
+    rec = rs.recorder(rid)
+    with rec.stage("read", question_id="q1", provider="p", model="m1"):
+        pass
+    assert rs.events(rid).height == 1  # the events foreign key still points at runs
 
 
 def test_old_store_with_not_null_recall_is_rebuilt(tmp_path):
