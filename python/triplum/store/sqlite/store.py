@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from triplum.data.schema import CHUNKS, polars_schema
+from triplum.data.schema import CHUNKS, FACT_SUPPORT, FACTS, MENTIONS, polars_schema
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import EmbeddingSpec
 from triplum.store.protocol import Capabilities
@@ -34,8 +34,12 @@ PRAGMAS = [
 DOC_COLS = ["id", "source", "uri", "observed_at", "metadata"]
 GRANT_COLS = ["document_id", "principal", "granted_at", "revoked_at"]
 CHUNK_COLS = ["id", "document_id", "parent_id", "level", "span_start", "span_end", "text"]
-# The Polars view of the canonical Arrow schema: one definition, owned by the Rust core.
+# The Polars view of the canonical Arrow schemas: one definition, owned by the Rust core.
 CHUNK_SCHEMA = polars_schema(CHUNKS)
+FACT_SCHEMA = polars_schema(FACTS)
+SUPPORT_SCHEMA = polars_schema(FACT_SUPPORT)
+MENTION_SCHEMA = polars_schema(MENTIONS)
+FACT_COLS = list(FACT_SCHEMA)
 
 
 def _require_cols(df: pl.DataFrame, cols: list[str], what: str) -> None:
@@ -333,6 +337,142 @@ class SqliteStore:
         visible = set(self.get_chunks(ids, viewer)["id"].to_list()) if ids else set()
         rows = [(cid, 1.0 - dist) for cid, dist in cands if cid in visible][:k]
         return pl.DataFrame(rows, schema={"id": pl.Int64, "score": pl.Float64}, orient="row")
+
+    # ---- graph -----------------------------------------------------------------------------
+
+    def put_graph(
+        self,
+        entities: pl.DataFrame,
+        facts: pl.DataFrame,
+        fact_support: pl.DataFrame,
+        mentions: pl.DataFrame,
+    ) -> None:
+        _require_cols(facts, FACT_COLS, "facts")
+        _require_cols(fact_support, list(SUPPORT_SCHEMA), "fact_support")
+        _require_cols(mentions, list(MENTION_SCHEMA), "mentions")
+        unsupported = set(facts["id"].to_list()) - set(fact_support["fact_id"].to_list())
+        if unsupported:
+            raise ValueError(f"{len(unsupported)} facts have no support group")
+        bad = facts.filter(pl.col("object_id").is_null() == pl.col("object_literal").is_null())
+        if bad.height:
+            raise ValueError(f"{bad.height} facts have both or neither of object_id/object_literal")
+        with self._tx():
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO entities(id, canonical_id) VALUES (?, NULL)",
+                [(e,) for e in entities["id"].to_list()],
+            )
+            self.conn.executemany(
+                "UPDATE entities SET canonical_id = ? WHERE id = ?",
+                [(c, e) for e, c in entities.select("id", "canonical_id").iter_rows()],
+            )
+            self.conn.executemany(
+                f"INSERT OR REPLACE INTO facts({','.join(FACT_COLS)}) VALUES ({_q(len(FACT_COLS))})",
+                facts.select(FACT_COLS).rows(),
+            )
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO fact_support(fact_id, group_no, chunk_id, extractor,"
+                " recorded_at) VALUES (?,?,?,?,?)",
+                fact_support.select(list(SUPPORT_SCHEMA)).rows(),
+            )
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO mentions(entity_id, chunk_id, span_start, span_end,"
+                " confidence) VALUES (?,?,?,?,?)",
+                mentions.select(list(MENTION_SCHEMA)).rows(),
+            )
+
+    def _visible_facts_sql(self, viewer: Viewer) -> tuple[str, list]:
+        """A fact is visible iff one support group has every chunk visible (D4) and both of the
+        viewer's instants fall inside its validity and recording intervals (D3)."""
+        ps = viewer.sorted_principals()
+        vis_chunk = (
+            "SELECT c.id FROM chunks c WHERE EXISTS (SELECT 1 FROM document_grants g"
+            " WHERE g.document_id = c.document_id AND g.revoked_at IS NULL"
+            f" AND g.principal IN ({_q(len(ps))}))"
+        )
+        sql = (
+            f"f.id IN (SELECT s.fact_id FROM fact_support s GROUP BY s.fact_id, s.group_no"
+            f" HAVING SUM(s.chunk_id NOT IN ({vis_chunk})) = 0)"
+            " AND f.valid_from <= ? AND ? < f.valid_to AND f.recorded_at <= ?"
+            " AND (f.invalidated_at IS NULL OR f.invalidated_at > ?)"
+        )
+        params = [
+            *ps,
+            viewer.as_of_valid,
+            viewer.as_of_valid,
+            viewer.as_of_recorded,
+            viewer.as_of_recorded,
+        ]
+        return sql, params
+
+    def _facts(self, where: str, params: list) -> pl.DataFrame:
+        rows = self.conn.execute(
+            f"SELECT {','.join('f.' + c for c in FACT_COLS)} FROM facts f WHERE {where}"
+            " ORDER BY f.id",
+            params,
+        ).fetchall()
+        return pl.DataFrame(rows, schema=FACT_SCHEMA, orient="row")
+
+    def facts(self, viewer: Viewer) -> pl.DataFrame:
+        return self._facts(*self._visible_facts_sql(viewer))
+
+    def mentions(self, chunk_ids: list[int], viewer: Viewer) -> pl.DataFrame:
+        if not chunk_ids:
+            return pl.DataFrame(schema=MENTION_SCHEMA)
+        visible = self.get_chunks(chunk_ids, viewer)["id"].to_list()
+        if not visible:
+            return pl.DataFrame(schema=MENTION_SCHEMA)
+        rows = self.conn.execute(
+            "SELECT entity_id, chunk_id, span_start, span_end, confidence FROM mentions"
+            f" WHERE chunk_id IN ({_q(len(visible))}) ORDER BY chunk_id, span_start, entity_id",
+            [int(i) for i in visible],
+        ).fetchall()
+        return pl.DataFrame(rows, schema=MENTION_SCHEMA, orient="row")
+
+    def neighbours(self, entity_ids: list[str], hops: int, viewer: Viewer) -> pl.DataFrame:
+        vis, vparams = self._visible_facts_sql(viewer)
+        seen: dict[int, tuple] = {}
+        frontier = set(entity_ids)
+        known = set(entity_ids)
+
+        def touching(ids: set[str], predicate: str | None) -> pl.DataFrame:
+            if not ids:
+                return pl.DataFrame(schema=FACT_SCHEMA)
+            marks = _q(len(ids))
+            where = f"{vis} AND (f.subject_id IN ({marks}) OR f.object_id IN ({marks}))"
+            params = [*vparams, *ids, *ids]
+            if predicate is not None:
+                where += " AND f.predicate = ?"
+                params.append(predicate)
+            return self._facts(where, params)
+
+        def close_identity(ids: set[str]) -> set[str]:
+            """Union the ids with everything reachable over visible `same_as` facts."""
+            grown = set(ids)
+            while True:
+                same = touching(grown, "same_as")
+                new = (set(same["subject_id"]) | set(same["object_id"])) - grown
+                for r in same.rows():
+                    seen[r[0]] = r
+                if not new:
+                    return grown
+                grown |= new
+
+        frontier = close_identity(frontier)
+        known |= frontier
+        for _ in range(hops):
+            found = touching(frontier, None)
+            nxt: set[str] = set()
+            for r in found.rows():
+                seen[r[0]] = r
+                nxt.add(r[2])
+                if r[4] is not None:
+                    nxt.add(r[4])
+            nxt = close_identity(nxt - known) - known
+            if not nxt:
+                break
+            known |= nxt
+            frontier = nxt
+        return pl.DataFrame(sorted(seen.values()), schema=FACT_SCHEMA, orient="row")
 
     # ---- helpers ---------------------------------------------------------------------------
 

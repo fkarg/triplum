@@ -31,3 +31,29 @@ class Store(Protocol):
     ) -> pl.DataFrame: ...
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame: ...
     def capabilities(self) -> Capabilities: ...
+
+    # ---- graph side: the D2 fact tables under D4 visibility -------------------------------
+
+    def put_graph(
+        self,
+        entities: pl.DataFrame,
+        facts: pl.DataFrame,
+        fact_support: pl.DataFrame,
+        mentions: pl.DataFrame,
+    ) -> None:
+        """Write the four graph frames in one transaction. A fact without a support group, or
+        with both or neither of `object_id` and `object_literal`, is rejected."""
+        ...
+
+    def facts(self, viewer: Viewer) -> pl.DataFrame:
+        """Every fact visible to the viewer: one of its support groups is fully visible, its
+        validity interval contains `as_of_valid`, it was recorded by `as_of_recorded` and not
+        invalidated by then."""
+        ...
+
+    def mentions(self, chunk_ids: list[int], viewer: Viewer) -> pl.DataFrame: ...
+
+    def neighbours(self, entity_ids: list[str], hops: int, viewer: Viewer) -> pl.DataFrame:
+        """The visible facts within `hops` of the given entities, following `same_as` facts the
+        viewer can see as identity (zero cost) and every other fact as one hop."""
+        ...
