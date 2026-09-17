@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+import polars as pl
 import pyarrow as pa
 
 from triplum import _core
@@ -26,6 +27,20 @@ MENTIONS = _schema("mentions")
 
 def chunk_embeddings(dims: int) -> pa.Schema:
     return _schema("chunk_embeddings", dims)
+
+
+def polars_schema(arrow: pa.Schema) -> pl.Schema:
+    """The Polars view of a canonical schema for frames exchanged between modules. Column names,
+    order and non-time types come from the Arrow definition; timestamp columns are the integer
+    UTC microseconds D2 specifies for interchange (the physical Arrow representation), so frames
+    built from Python ints and SQLite rows need no conversion."""
+    view = pl.DataFrame(pa.Table.from_pylist([], schema=arrow)).schema
+    return pl.Schema(
+        {
+            name: pl.Int64 if isinstance(dtype, pl.Datetime) else dtype
+            for name, dtype in view.items()
+        }
+    )
 
 
 def now_us() -> int:

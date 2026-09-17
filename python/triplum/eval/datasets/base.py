@@ -18,6 +18,8 @@ from typing import NamedTuple
 
 import polars as pl
 
+from triplum.data import schema as canonical
+
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests" / "fixtures"
 FIXTURE_N = 20
 LARGE_BYTES = 300 << 20  # a dataset above this total download size only fetches when named
@@ -33,28 +35,11 @@ QUESTION_SCHEMA = {
     "as_of": pl.Int64,
     "metadata": pl.Utf8,
 }
-DOC_SCHEMA = {
-    "id": pl.Utf8,
-    "source": pl.Utf8,
-    "uri": pl.Utf8,
-    "observed_at": pl.Int64,
-    "metadata": pl.Utf8,
-}
-GRANT_SCHEMA = {
-    "document_id": pl.Utf8,
-    "principal": pl.Utf8,
-    "granted_at": pl.Int64,
-    "revoked_at": pl.Int64,
-}
-CHUNK_SCHEMA = {
-    "id": pl.Int64,
-    "document_id": pl.Utf8,
-    "parent_id": pl.Int64,
-    "level": pl.Int64,
-    "span_start": pl.Int64,
-    "span_end": pl.Int64,
-    "text": pl.Utf8,
-}
+# Documents, grants and chunks are the D2 tables owned by the Rust core; questions and triples
+# are evaluation-only frames defined here.
+DOC_SCHEMA = canonical.polars_schema(canonical.DOCUMENTS)
+GRANT_SCHEMA = canonical.polars_schema(canonical.DOCUMENT_GRANTS)
+CHUNK_SCHEMA = canonical.polars_schema(canonical.CHUNKS)
 TRIPLE_SCHEMA = {
     "question_id": pl.Utf8,
     "document_id": pl.Utf8,

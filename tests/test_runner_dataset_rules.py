@@ -1,5 +1,7 @@
 """The runner refuses what it cannot evaluate honestly and nulls recall where it is undefined."""
 
+from dataclasses import replace
+
 import polars as pl
 import pytest
 from triplum.bench.config import EmbedderConfig, LLMConfig, PipelineConfig, RunConfig
@@ -87,3 +89,11 @@ def test_corpus_less_dataset_only_runs_closed_book(tmp_path, fake_registry):
     run_id = run_benchmark(_cfg(tmp_path, "cb-test", "closed_book"))
     q = RunStore(tmp_path / "runs.db").questions(run_id)
     assert q.height == 2 and q["r2"].to_list() == [None, None]
+
+
+def test_dense_without_an_embedder_is_refused_before_retrieval(tmp_path, fake_registry):
+    fake_registry("qa-test", _frames())
+    cfg = _cfg(tmp_path, "qa-test", "dense")
+    cfg = replace(cfg, pipeline=replace(cfg.pipeline, embedder=None))
+    with pytest.raises(ValueError, match="dense needs an embedder"):
+        run_benchmark(cfg)

@@ -13,3 +13,19 @@ def test_every_listed_module_resolves_to_a_file():
         paths = fp.source_paths(name)
         assert all(p.exists() for p in paths) and len(paths) >= len(fp.BASE)
     assert any(p.name == "migrations.sql" for p in fp.source_paths("bm25"))
+
+
+def test_every_adapter_module_is_fingerprinted():
+    """A change to any LLM, embedder or reranker adapter (fake ones included) or to the factories
+    that assemble them can change answers, so it must change the hybrid pipeline's code hash."""
+    import pkgutil
+
+    import triplum.embed
+    import triplum.llm
+    import triplum.rerank
+
+    listed = set(fp.PIPELINE_MODULES["hybrid"])
+    for pkg in (triplum.llm, triplum.embed, triplum.rerank):
+        for info in pkgutil.iter_modules(pkg.__path__, pkg.__name__ + "."):
+            assert info.name in listed, info.name
+    assert "triplum.bench.factories" in set(fp.PIPELINE_MODULES["closed_book"])

@@ -41,7 +41,7 @@ def runs(tmp_path):
     question.pop("run_id")
     question["question_id"] = "other-question"
     rs.add_question("43a222222222", question)
-    rs.conn.close()
+    rs.close()
     return str(path)
 
 
@@ -134,7 +134,7 @@ def test_finite_choices_reach_canonical_config(tmp_path):
     rs = RunStore(tmp_path / "runs.db")
     row = rs.runs().row(0, named=True)
     assert (row["dataset"], row["pipeline"]) == ("musique", "closed_book")
-    rs.conn.close()
+    rs.close()
 
 
 def test_missing_store_and_unknown_id_are_usage_errors(tmp_path):
@@ -164,7 +164,7 @@ def test_exact_wins_over_prefix(monkeypatch):
 def test_question_prefix_stays_scoped(runs):
     rs = RunStore(runs)
     qid = rs.questions("43a111111111")["question_id"][0]
-    rs.conn.close()
+    rs.close()
     result = invoke(["inspect", "43a1", "--question", qid[:5], "--json"], runs)
     assert result.exit_code == 0, result.output
     assert [q["question_id"] for q in json.loads(result.stdout)["questions"]] == [qid]
@@ -196,7 +196,7 @@ def test_missing_required_choices_prompt(tmp_path, monkeypatch):
     rs = RunStore(tmp_path / "runs.db")
     row = rs.runs().row(0, named=True)
     assert (row["pipeline"], row["dataset"]) == ("closed_book", "musique")
-    rs.conn.close()
+    rs.close()
 
 
 def test_help_never_prompts(monkeypatch):
@@ -316,7 +316,7 @@ def test_unknown_id_in_populated_store(runs):
 
 def test_empty_store_has_no_choices(tmp_path):
     path = tmp_path / "runs.db"
-    RunStore(path).conn.close()
+    RunStore(path).close()
     result = invoke(["inspect"], str(path))
     assert result.exit_code == 2
     assert "No run choices available" in result.stderr
@@ -329,7 +329,7 @@ def test_omitted_question_shows_every_question(runs):
     row.pop("run_id")
     row["question_id"] = "second-question"
     rs.add_question("43a111111111", row)
-    rs.conn.close()
+    rs.close()
     result = invoke(["inspect", "43a1", "--json"], runs)
     assert result.exit_code == 0, result.output
     assert {q["question_id"] for q in json.loads(result.stdout)["questions"]} == {
@@ -366,7 +366,7 @@ def test_sweep_finite_choices_are_canonical(tmp_path):
     assert result.exit_code == 0, result.output
     rs = RunStore(tmp_path / "runs.db")
     row = rs.runs().row(0, named=True)
-    rs.conn.close()
+    rs.close()
     assert (row["dataset"], row["pipeline"], row["reader_model"]) == ("musique", "dense", "fake-1")
 
 

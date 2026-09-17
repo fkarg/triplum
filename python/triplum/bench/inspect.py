@@ -37,14 +37,12 @@ class QuestionView:
 
 
 def _store_for(rs: RunStore, run_id: str):
-    row = rs.conn.execute(
-        "SELECT path, sha256 FROM run_artifacts WHERE run_id = ? AND kind = 'store'", (run_id,)
-    ).fetchone()
-    if row is None or not Path(row[0]).exists():
+    artifact = rs.artifact(run_id, "store")
+    if artifact is None or not Path(artifact[0]).exists():
         return None
     from triplum.store.sqlite.store import SqliteStore
 
-    return SqliteStore(row[0])
+    return SqliteStore(artifact[0])
 
 
 def inspect_run(rs: RunStore, run_id: str, question_id: str | None = None) -> dict:
@@ -152,13 +150,7 @@ def tail_run(rs: RunStore, run_id: str) -> dict:
     run = rs.run(run_id)
     if run is None:
         raise KeyError(run_id)
-    done = rs.conn.execute(
-        "SELECT COUNT(*) FROM run_questions WHERE run_id = ?", (run_id,)
-    ).fetchone()[0]
-    last = rs.conn.execute(
-        "SELECT stage, question_id, ended_at FROM events WHERE run_id = ? ORDER BY ended_at DESC LIMIT 1",
-        (run_id,),
-    ).fetchone()
+    done, last = rs.progress(run_id)
     return {
         "run_id": run_id,
         "status": run["status"],

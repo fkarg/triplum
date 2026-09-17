@@ -11,7 +11,9 @@ import hashlib
 import importlib
 from pathlib import Path
 
-# Modules every pipeline depends on: data layer, store, cache, LLM protocol, reader, metrics.
+# Modules every pipeline depends on: data layer, store, cache, LLM adapters (real and fake),
+# reader, metrics, datasets, and the factories that assemble them. Dataset parsers are not listed
+# because a parser change alters corpus_hash and questions_hash, which are identity fields.
 BASE = [
     "triplum.data.schema",
     "triplum.data.viewer",
@@ -20,6 +22,7 @@ BASE = [
     "triplum.llm.cached",
     "triplum.llm.openai_compat",
     "triplum.llm.cli",
+    "triplum.llm.fake",
     "triplum.store.protocol",
     "triplum.store.sqlite.store",
     "triplum.store.sqlite.acl",
@@ -30,6 +33,7 @@ BASE = [
     "triplum.eval.datasets.registry",
     "triplum.eval.datasets.hipporag",
     "triplum.retrieve.stages",
+    "triplum.bench.factories",
     "triplum.bench.index",
     "triplum.bench.runner",
 ]
@@ -39,8 +43,14 @@ EMBED = [
     "triplum.embed.openai_compat",
     "triplum.embed.sentence_transformers",
     "triplum.embed.fastembed",
+    "triplum.embed.fake",
 ]
-RERANK = ["triplum.rerank.protocol", "triplum.rerank.cached", "triplum.rerank.cross_encoder"]
+RERANK = [
+    "triplum.rerank.protocol",
+    "triplum.rerank.cached",
+    "triplum.rerank.cross_encoder",
+    "triplum.rerank.fake",
+]
 
 PIPELINE_MODULES = {
     "closed_book": BASE,

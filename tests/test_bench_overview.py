@@ -22,7 +22,7 @@ def test_bench_overview_missing_store_does_not_create_cache(tmp_path, monkeypatc
 def test_bench_overview_empty_store(tmp_path):
     path = tmp_path / "runs.db"
     store = RunStore(path)
-    store.conn.close()
+    store.close()
     before = path.read_bytes()
     result = CliRunner().invoke(app, ["bench", "--runstore", str(path)])
     assert result.exit_code == 0, result.output

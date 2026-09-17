@@ -409,10 +409,7 @@ def _existing_runstore(path: Path | None):
 
 
 def _run_id(rs, value: str | None, ctx: typer.Context, label: str = "run") -> str:
-    rows = rs.conn.execute(
-        "SELECT run_id, dataset, pipeline, status, n, reader_model, embedding_spec "
-        "FROM runs ORDER BY created_at DESC, run_id"
-    ).fetchall()
+    rows = rs.run_index().rows()
     return resolve(
         value,
         [r[0] for r in rows],
@@ -433,7 +430,7 @@ def show(
 ) -> None:
     """Print a run's identity fields and its full configuration."""
     rs = _existing_runstore(runstore)
-    with closing(rs.conn):
+    with rs:
         row = rs.run(_run_id(rs, run_id, ctx))
         identity = {k: row[k] for k in row if k != "config_json"}
         print(
@@ -455,7 +452,7 @@ def rerun(
     from triplum.bench.runner import run_benchmark
 
     rs = _existing_runstore(runstore)
-    with closing(rs.conn):
+    with rs:
         run_id = _run_id(rs, run_id, ctx)
         cfg = RunConfig.from_json(rs.run(run_id)["config_json"])
         cfg = replace(cfg, force=force, resume=resume, runstore_path=str(rs.path))
@@ -477,17 +474,10 @@ def inspect(
     from triplum.bench.inspect import inspect_run
 
     rs = _existing_runstore(runstore)
-    with closing(rs.conn):
+    with rs:
         run_id = _run_id(rs, run_id, ctx)
         if question is not None:
-            ids = [
-                r[0]
-                for r in rs.conn.execute(
-                    "SELECT question_id FROM run_questions WHERE run_id = ? ORDER BY question_id",
-                    (run_id,),
-                )
-            ]
-            question = resolve(question, ids, "question", ctx=ctx)
+            question = resolve(question, rs.question_ids(run_id), "question", ctx=ctx)
         view = inspect_run(rs, run_id, question)
         if json_:
             print(json.dumps(view, indent=2, default=str))
@@ -530,7 +520,7 @@ def diff(
     from triplum.bench.inspect import diff_runs
 
     rs = _existing_runstore(runstore)
-    with closing(rs.conn):
+    with rs:
         run_a = _run_id(rs, run_a, ctx, "first run")
         run_b = _run_id(rs, run_b, ctx, "second run")
         d = diff_runs(rs, run_a, run_b)
@@ -563,7 +553,7 @@ def tail(
     from triplum.bench.inspect import tail_run
 
     rs = _existing_runstore(runstore)
-    with closing(rs.conn):
+    with rs:
         run_id = _run_id(rs, run_id, ctx)
         while True:
             t = tail_run(rs, run_id)

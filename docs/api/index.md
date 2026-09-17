@@ -19,7 +19,7 @@ signature is still shown.
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
 | `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | metrics, judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
-| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; terminal summaries wrap per run without dropping fields |
+| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; `RunStore` owns its connection (context manager) and every write; terminal summaries wrap per run without dropping fields |
 | `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
 | `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |

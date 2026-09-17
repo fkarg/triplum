@@ -59,7 +59,7 @@ def test_report_cli_uses_terminal_width(tmp_path, monkeypatch):
     )
     store = RunStore(path)
     frame = report.summary(store)
-    store.conn.close()
+    store.close()
     monkeypatch.setenv("COLUMNS", "40")
     result = CliRunner().invoke(app, ["bench", "report", "--runstore", str(path)])
     assert result.exit_code == 0, result.output

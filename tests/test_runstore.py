@@ -1,3 +1,4 @@
+import pytest
 from triplum.bench.runstore import RunStore
 
 META = {
@@ -139,3 +140,12 @@ def test_old_store_with_not_null_recall_is_rebuilt(tmp_path):
         " 0, 0, 0.1, 0)"
     )
     assert RunStore(path).questions("r").height == 2
+
+
+def test_runstore_context_manager_closes_its_connection(tmp_path):
+    import sqlite3
+
+    with RunStore(tmp_path / "runs.db") as rs:
+        assert rs.runs().height == 0
+    with pytest.raises(sqlite3.ProgrammingError):
+        rs.runs()

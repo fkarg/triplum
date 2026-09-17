@@ -7,7 +7,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
 import polars as pl
 
@@ -85,6 +85,10 @@ IDENTITY_FIELDS = (
 
 
 class RunStore:
+    """Owns one SQLite connection from construction to `close()`; use it as a context manager.
+    Autocommit, except inside `question_unit`. Every write goes through a named method; the read
+    methods return frames or dicts, and nothing outside this module touches the connection."""
+
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +97,15 @@ class RunStore:
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(DDL)
         self._migrate()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
     # Columns added after the first release, with the default an old row gets. STRICT tables
     # accept ADD COLUMN ... NOT NULL only with a default.
@@ -221,6 +234,10 @@ class RunStore:
         )
         return run_id
 
+    def resume_run(self, run_id: str) -> None:
+        """Mark a running or failed run as running again before continuing its questions."""
+        self.conn.execute("UPDATE runs SET status = 'running' WHERE run_id = ?", (run_id,))
+
     def finish_run(
         self, run_id: str, *, status: str, wall_s: float, cache_hits: int, cache_misses: int
     ) -> None:
@@ -241,6 +258,42 @@ class RunStore:
     def add_artifact(self, run_id: str, kind: str, path: str, sha256: str) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO run_artifacts VALUES (?,?,?,?)", (run_id, kind, path, sha256)
+        )
+
+    def add_event(
+        self,
+        run_id: str,
+        stage: str,
+        *,
+        question_id: str | None,
+        provider: str | None,
+        model: str | None,
+        started_at: int,
+        ended_at: int,
+        input_tokens: int,
+        output_tokens: int,
+        cached_input_tokens: int,
+        cached: bool,
+        usd: float | None,
+    ) -> None:
+        self.conn.execute(
+            "INSERT INTO events(run_id, stage, question_id, provider, model, started_at,"
+            " ended_at, input_tokens, output_tokens, cached_input_tokens, cached, usd)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                run_id,
+                stage,
+                question_id,
+                provider,
+                model,
+                started_at,
+                ended_at,
+                input_tokens,
+                output_tokens,
+                cached_input_tokens,
+                int(cached),
+                usd,
+            ),
         )
 
     def recorder(self, run_id: str) -> Recorder:
@@ -266,6 +319,41 @@ class RunStore:
 
     def events(self, run_id: str) -> pl.DataFrame:
         return self._frame("SELECT * FROM events WHERE run_id = ? ORDER BY started_at", (run_id,))
+
+    def run_index(self) -> pl.DataFrame:
+        """Newest first: run_id, dataset, pipeline, status, n, reader_model, embedding_spec."""
+        return self._frame(
+            "SELECT run_id, dataset, pipeline, status, n, reader_model, embedding_spec"
+            " FROM runs ORDER BY created_at DESC, run_id"
+        )
+
+    def question_ids(self, run_id: str) -> list[str]:
+        return [
+            r[0]
+            for r in self.conn.execute(
+                "SELECT question_id FROM run_questions WHERE run_id = ? ORDER BY question_id",
+                (run_id,),
+            )
+        ]
+
+    def artifact(self, run_id: str, kind: str) -> tuple[str, str] | None:
+        """(path, sha256) of a recorded artifact, or None."""
+        row = self.conn.execute(
+            "SELECT path, sha256 FROM run_artifacts WHERE run_id = ? AND kind = ?", (run_id, kind)
+        ).fetchone()
+        return None if row is None else (row[0], row[1])
+
+    def progress(self, run_id: str) -> tuple[int, tuple[str, str | None, int] | None]:
+        """Questions finished, and the latest event as (stage, question_id, ended_at)."""
+        done = self.conn.execute(
+            "SELECT COUNT(*) FROM run_questions WHERE run_id = ?", (run_id,)
+        ).fetchone()[0]
+        last = self.conn.execute(
+            "SELECT stage, question_id, ended_at FROM events WHERE run_id = ?"
+            " ORDER BY ended_at DESC LIMIT 1",
+            (run_id,),
+        ).fetchone()
+        return done, (None if last is None else (last[0], last[1], last[2]))
 
 
 class _Event:
@@ -322,22 +410,17 @@ class Recorder:
             elif ev.input_tokens or ev.output_tokens:
                 self.cache_misses += 1
             usd = self.cost(model, ev.input_tokens, ev.output_tokens, ev.cached_in)
-            self.store.conn.execute(
-                "INSERT INTO events(run_id, stage, question_id, provider, model, started_at,"
-                " ended_at, input_tokens, output_tokens, cached_input_tokens, cached, usd)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    self.run_id,
-                    stage,
-                    question_id,
-                    provider,
-                    model,
-                    t0,
-                    t1,
-                    ev.input_tokens,
-                    ev.output_tokens,
-                    ev.cached_in,
-                    int(ev.cached),
-                    usd,
-                ),
+            self.store.add_event(
+                self.run_id,
+                stage,
+                question_id=question_id,
+                provider=provider,
+                model=model,
+                started_at=t0,
+                ended_at=t1,
+                input_tokens=ev.input_tokens,
+                output_tokens=ev.output_tokens,
+                cached_input_tokens=ev.cached_in,
+                cached=ev.cached,
+                usd=usd,
             )
