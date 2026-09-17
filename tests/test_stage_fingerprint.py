@@ -103,8 +103,7 @@ def test_first_party_is_decided_by_path(module):
     assert fp.is_first_party(fp.__file__)  # the editable install of the package itself
     assert not fp.is_first_party(polars.__file__)
     assert not fp.is_first_party("<frozen importlib._bootstrap>")
-    assert fp.distribution("polars.dataframe") == ("polars", polars.__version__)
-    assert fp.distribution("json") is None
+    assert fp.distributions()["polars"] == polars.__version__
 
 
 def test_resolve_sees_through_descriptors_and_decorators(module):
@@ -114,7 +113,6 @@ def test_resolve_sees_through_descriptors_and_decorators(module):
     assert fp.resolve("probe_mod", "Thing.stat") is mod.Thing.__dict__["stat"].__func__
     assert fp.resolve("probe_mod", "Thing.cls") is mod.Thing.__dict__["cls"].__func__
     assert fp.resolve("probe_mod", "outer") is mod.outer
-    assert fp.resolve("probe_mod", "<module>") is mod
     assert fp.resolve("probe_mod", "nothing") is None
     assert fp.resolve("no_such_module", "f") is None
 
@@ -132,7 +130,7 @@ def test_manifest_validates_until_the_code_changes(module):
     manifest = fp.build(codes)
     assert set(manifest.functions) == {"probe_mod:Thing.method", "probe_mod:helper"}
     assert manifest.constants == {"probe_mod:THRESHOLD": "3"}
-    assert manifest.distributions == {"polars": polars.__version__}
+    assert manifest.distributions["polars"] == polars.__version__
     assert set(manifest.fixed) == {"triplum._core", "migrations.sql"}
     assert fp.validate(manifest)
     code = manifest.code
@@ -158,7 +156,9 @@ def test_monkeypatch_and_unresolvable_entries_fail_closed(module):
     assert fp.validate(manifest)
     orphan = manifest.model_copy(update={"functions": {"probe_mod:gone": "abcd"}})
     assert not fp.validate(orphan)
-    stale_dist = manifest.model_copy(update={"distributions": {"polars": "0.0.0"}})
+    stale_dist = manifest.model_copy(
+        update={"distributions": {**manifest.distributions, "polars": "0.0.0"}}
+    )
     assert not fp.validate(stale_dist)
 
 

@@ -375,3 +375,35 @@ def test_a_dict_subclass_of_frames_is_a_different_input(run):
     over({"x": df})
     over(Special({"x": df}))
     assert calls.n == 2
+
+
+def test_manifests_exclude_the_harness_and_repeat_exactly(run):
+    """The wrapper, the run store and the hashing run inside every recording; a streamed stage
+    keeps its recording open while the consumer pulls. None of that is the stage's code."""
+
+    @stage
+    def gen(items: RecordDataset[Item]) -> Iterator[Item]:
+        for i in items:
+            yield Item(n=i.n + 1)
+
+    @stage
+    def total(items: Iterator[Item]) -> pl.DataFrame:
+        return pl.DataFrame({"t": [sum(i.n for i in items)]})
+
+    src = RecordDataset([Item(n=1), Item(n=2)])
+    assert total(gen(src))["t"][0] == 5
+    assert total(gen(src))["t"][0] == 5  # a lookup ran this time: the manifest must not see it
+    assert total(gen(RecordDataset([Item(n=3)])))["t"][0] == 4
+    inv = run.store.invocations(run.run_id)
+    assert inv["fetched"].to_list() == [0, 0, 1, 1, 0, 0]
+    codes = inv.group_by("stage").agg(pl.col("code").n_unique())["code"].to_list()
+    assert codes == [1, 1]
+    for code in inv["code"].unique():
+        manifest = run.store.manifest(code)
+        assert manifest is not None
+        assert not any(
+            k.startswith(("triplum.stage", "triplum.bench.runstore")) for k in manifest.functions
+        )
+        assert not any(
+            k.startswith(("triplum.stage", "triplum.bench.runstore")) for k in manifest.constants
+        )

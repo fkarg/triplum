@@ -161,9 +161,10 @@ class _Call:
             self.run.register(value, art.key, art.code)
             return value
         inv = self.start()
-        rec = Recording().start()
+        rec = Recording()
         try:
             with seeded(self.seed):
+                rec.start()  # the window is exactly the call; a stream keeps it open per pull
                 result = self.stage.fn(*self.bound.args, **self.bound.kwargs)
         except BaseException as e:
             rec.stop()
@@ -229,9 +230,10 @@ class _Call:
                     return
         inv = self.start()
         store.begin_effect(self.key, self.stage.name)
-        rec = Recording().start()
+        rec = Recording()
         try:
             with seeded(self.seed):
+                rec.start()
                 self.stage.fn(*self.bound.args, **self.bound.kwargs)
         except BaseException as e:
             rec.stop()

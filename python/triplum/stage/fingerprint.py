@@ -18,7 +18,7 @@ import linecache
 import sys
 import sysconfig
 import textwrap
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator
 from importlib.resources import files
 from pathlib import Path
 from types import CodeType, FunctionType, ModuleType
@@ -38,6 +38,11 @@ SITE = tuple(
     )
 )
 MODULE = "<module>"
+# The harness is never part of what a stage did: the wrapper, the run store it writes to and
+# the hashing it keys with run inside every recording, and a streamed stage keeps its recording
+# open while the consumer pulls, so without this exclusion the lookup path and the writer would
+# enter the manifest and no two executions would ever match.
+MACHINERY = ("triplum.stage", "triplum.bench.runstore", "triplum.cache")
 
 
 def is_first_party(filename: str) -> bool:
@@ -67,18 +72,16 @@ def _unwrap(obj: Any) -> Any:
         return obj
 
 
-def resolve(module: str, qualname: str) -> FunctionType | ModuleType | None:
-    """The function a manifest entry names, in the current process, or the module itself for
-    a `<module>` entry. Decorators, properties, static and class methods are seen through.
-    None when the module does not import or the name is not a function."""
+def resolve(module: str, qualname: str) -> FunctionType | None:
+    """The function a manifest entry names, in the current process. Decorators, properties,
+    static and class methods are seen through. None when the module does not import or the
+    name is not a function."""
     mod = sys.modules.get(module)
     if mod is None:
         try:
             mod = importlib.import_module(module)
         except ImportError:
             return None
-    if qualname == MODULE:
-        return mod
     obj: Any = mod
     for part in qualname.split("."):
         try:
@@ -182,24 +185,17 @@ def constants(fn: FunctionType) -> dict[str, str]:
 
 
 @functools.cache
-def _packages() -> Mapping[str, list[str]]:
-    return importlib.metadata.packages_distributions()
-
-
-def distribution(module: str) -> tuple[str, str] | None:
-    """The distribution and version owning an installed module, or None for the standard
-    library and for modules no distribution claims."""
-    top = module.partition(".")[0]
-    if top in sys.stdlib_module_names:
-        return None
-    dists = _packages().get(top)
-    if not dists:
-        return None
-    name = min(dists)
-    try:
-        return name, importlib.metadata.version(name)
-    except importlib.metadata.PackageNotFoundError:
-        return None
+def distributions() -> dict[str, str]:
+    """Every installed distribution and its version: the environment, recorded whole. Which
+    third-party functions a stage happens to enter varies with lazy code paths inside the
+    libraries, so a per-stage list would never repeat; a dependency bump invalidating every
+    artifact is the honest alternative."""
+    out: dict[str, str] = {}
+    for dist in importlib.metadata.distributions():
+        name = dist.metadata["Name"]
+        if name and name not in out:
+            out[name] = dist.version
+    return out
 
 
 @functools.cache
@@ -224,7 +220,7 @@ class Manifest(BaseModel):
 
     functions: dict[str, str]
     constants: dict[str, str]
-    distributions: dict[str, str]
+    distributions: dict[str, str]  # the whole environment, name to version
     fixed: dict[str, str]
 
     @property
@@ -245,6 +241,10 @@ def _files_to_modules() -> dict[str, str]:
     return out
 
 
+def is_machinery(module: str) -> bool:
+    return any(module == m or module.startswith(m + ".") for m in MACHINERY)
+
+
 def build(codes: Iterable[CodeType]) -> Manifest:
     """The manifest for a set of executed code objects. A first-party code object whose module
     cannot be found in `sys.modules` is recorded under its file name and hashed directly, so it
@@ -252,16 +252,22 @@ def build(codes: Iterable[CodeType]) -> Manifest:
     by_file = _files_to_modules()
     functions: dict[str, str] = {}
     consts: dict[str, str] = {}
-    dists: dict[str, str] = {}
     for code in codes:
         module = _module_of(code.co_filename, by_file)
         if not is_first_party(code.co_filename):
-            if module is not None and (d := distribution(module)) is not None:
-                dists[d[0]] = d[1]
             continue
         qual = outer(code)
+        if qual == MODULE:
+            # import-time code runs once per process and would make the first execution's
+            # manifest differ from every later one; constants and functions are covered on
+            # their own
+            continue
         if module is None:
-            functions[f"{code.co_filename}:{qual}"] = source_hash(code)
+            key = f"{code.co_filename}:{qual}"
+            if key not in functions or code.co_qualname == qual:  # the outermost object wins
+                functions[key] = source_hash(code)
+            continue
+        if is_machinery(module):
             continue
         key = f"{module}:{qual}"
         if key in functions:
@@ -275,7 +281,7 @@ def build(codes: Iterable[CodeType]) -> Manifest:
             for name, value in constants(target).items():
                 consts[f"{module}:{name}"] = value
     return Manifest(
-        functions=functions, constants=consts, distributions=dists, fixed=fixed_inputs()
+        functions=functions, constants=consts, distributions=distributions(), fixed=fixed_inputs()
     )
 
 
@@ -294,10 +300,4 @@ def validate(manifest: Manifest) -> bool:
         ok, value = as_plain(getattr(mod, name))
         if not ok or canonical_json(value) != expected:
             return False
-    for dist, version in manifest.distributions.items():
-        try:
-            if importlib.metadata.version(dist) != version:
-                return False
-        except importlib.metadata.PackageNotFoundError:
-            return False
-    return manifest.fixed == fixed_inputs()
+    return manifest.distributions == distributions() and manifest.fixed == fixed_inputs()
