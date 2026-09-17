@@ -9,11 +9,16 @@ contradictions.
 **Goal.** A composable, high-performance sandbox for everything LLM-plus-KG: construction from text,
 retrieval (GraphRAG in all its variants), serialisation for prompts, storage backend comparison
 (RDF vs property graph vs relational), and evaluation deep enough to say *when* a graph helps and
-when it does not. Industry-first: the output is one system that performs, not a paper.
+when it does not. A research project: the output is measurements that decide between techniques,
+and a library whose modules recombine into the next experiment (the doctrine and its
+consequences are in `AGENTS.md`).
 
 **First application.** Question answering / RAG, measured on public agentic multi-hop QA benchmarks.
 All other KG applications (search, recommendation, digital twins, ...) come later; the data layer
-must not preclude them.
+must not preclude them. The owner's own corpora are the second application and the reason the
+loaders take local files: a folder of papers (PDF), then podcast and video transcripts (YouTube
+and other sources), ingested in full, extracted, linked across sources and searched. Media
+transcription and OCR are separate sub-projects; the ingest layer takes text and its provenance.
 
 **Non-goals for now.** Multi-machine deployment. A public Rust-facing API. A UI. Serving
 infrastructure. Reproducing more than four pipelines before the harness reports numbers.
@@ -185,8 +190,19 @@ filesystem or tool context) or they fall outside this contract. Structured outpu
 where the provider supports it, otherwise parse-and-retry.
 
 *Alternatives.* litellm (a supply-chain incident tracked in Microsoft GraphRAG's issue #2289; heavy),
-pydantic-ai or rig (frameworks, more than we need). Rust crates `genai`/`async-openai` are the
-choice if the Rust side ever needs to call models directly.
+rig (Rust framework). Rust crates `genai`/`async-openai` are the choice if the Rust side ever
+needs to call models directly.
+
+*Amended 2026-09-17 (owner's decision).* pydantic-ai is adopted, under this protocol rather than
+instead of it: one adapter over its direct model-request API replaces the per-provider adapters
+and gives validated structured output, and its typed message and output datatypes are the
+default candidates for `Message` and `Completion` when the adapter lands (with the LLM
+extractor spec, the first stage where structured output changes results). An agent loop is
+cacheable as a whole: the request is the agent specification plus its inputs, the response is
+the final output, and the key is that whole. The condition is that every tool the loop can
+call is a pure function of inputs already in the run identity (the store bound to its corpus
+hash, the config); a tool over ambient state falls outside the contract, like a stateful CLI
+adapter.
 
 ### D6a. Every expensive stage is repeatable and cacheable
 
@@ -289,6 +305,15 @@ unstaged and untracked work. Ruff formatting is checked without rewriting files 
 The benchmark assembly layer assumes SQLite; that seam is extended when a second backend
 arrives, not before. Implementation state lives in `docs/flow.md` and `docs/api/index.md`, not
 here.
+
+*Documentation and API surface, decided 2026-09-17.* The reference is FastAPI's documentation:
+a tutorial of one concept per page, each page built around one runnable example file that a
+test executes against the committed fixtures, so an example that rots fails CI; a curated
+top-level namespace (`triplum` and each package `__init__`) that exports the names the tutorial
+uses and hides the module layout; a reference generated from the code, where only the
+documented public surface is rendered and a docstring is the decision to make a symbol public,
+not a coverage count. Research notes keep their dense, decision-record form. Sequenced after
+the extraction baseline, caching and run monitoring are functional end to end.
 
 ### D10. Name
 
