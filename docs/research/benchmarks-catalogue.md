@@ -219,6 +219,33 @@ Adopt for metric or taxonomy design only, not data: **RBAC-Text2SQL** (the AC-F1
 violation-rate, over-refusal quartet), **CRAG** (false premise, static-to-real-time dynamism,
 head/torso/tail popularity, `alt_ans`), **StratRAG** (as a deterministic retrieval-scoring fixture).
 
+## 4b. Registered on 2026-09-17
+
+Every row of the shortlist except WildGraphBench and LLMs4OL is now a registry entry
+(`triplum data` lists them; `docs/specs/2026-09-17-dataset-registry.md` is the spec). Fetch facts
+were re-verified by a Codex pass that downloaded each file, hashed it and joined a 50-question
+sample of gold to the shipped corpus (50/50 everywhere a corpus ships); the pins live in
+`python/triplum/eval/datasets/manifest.json`. What changed against the rows above:
+
+- **MoreHopQA** ships two inline paragraphs per question, not ten; the corpus is their union
+  (601 passages over the 1,118 verified questions).
+- **ECT-QA** reporting quarters are periods, so `observed_at` stays 0 and the old/new split is in
+  document metadata; the 100 global questions have no gold and are not loaded.
+- **2Wiki full**: the `xanhho` parquet mirror keeps `evidences` but drops the Wikidata ids; the
+  official zip (259 MB, Dropbox) is not registered.
+- **MuSiQue full**: only the dev file is registered (59 MB; train is 477 MB); the 2,417
+  unanswerable twins load with an `__unanswerable` id suffix.
+- **BrowseComp-Plus**: 4.5 GB, not 11.6 GB; query strings and doc ids are obfuscated with the
+  public canary and decoded by the loader; the query shards may need a Hugging Face token.
+- **GateMem** turns lack a timestamp a quarter of the time and no per-turn visibility label
+  exists, so grants are the speaker only and the set is declared `needs` a viewer per question.
+- **LongMemEval-cleaned**: only `_s` (277 MB) is registered; haystacks are namespaced per
+  question and the set is declared `needs` a corpus per question.
+- **GraphJudge** GenWiki-Hard has a few hundred non-3-tuples, kept in document metadata.
+- **WildGraphBench** is not registered: its 3,894 reference pages are separate files joined by a
+  slugified title, a 3,930-entry manifest for a second-tier set. **LLMs4OL** is term typing and
+  taxonomy induction, which the canonical frames do not represent; both stay catalogue-only.
+
 ## 5. What the dataset adapter has to support
 
 Consequences for the loader, derived from the rows above rather than from any single set:

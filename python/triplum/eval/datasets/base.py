@@ -135,6 +135,16 @@ class DatasetStatus:
     paths: tuple[Path, ...]
 
 
+MANIFEST = Path(__file__).with_name("manifest.json")
+
+
+def manifest_files(dataset: str) -> tuple[File, ...]:
+    """Pinned files for a dataset from `manifest.json` (url, sha256 and bytes as verified on
+    2026-09-17), stored under `<dataset>/<upstream path>` in the data root."""
+    entries = json.loads(MANIFEST.read_text())[dataset]
+    return tuple(File(e["url"], f"{dataset}/{e['name']}", e["sha256"], e["bytes"]) for e in entries)
+
+
 def data_root() -> Path:
     return Path(os.environ.get("TRIPLUM_DATA", Path.home() / ".cache" / "triplum" / "data"))
 
@@ -237,6 +247,47 @@ def corpus_frames(
         pl.DataFrame(grant_rows, schema=GRANT_SCHEMA, orient="row"),
         pl.DataFrame(chunk_rows, schema=CHUNK_SCHEMA, orient="row"),
     )
+
+
+class Corpus:
+    """Accumulates distinct (title, text) passages in first-seen order and hands out chunk ids, for
+    datasets whose corpus is the union of per-question inline paragraphs."""
+
+    def __init__(self, source: str) -> None:
+        self.source = source
+        self.key_to_chunk: dict[tuple[str, str], int] = {}
+        self.passages: list[tuple[str, str, str, int, dict | None]] = []
+
+    def add(self, title: str, text: str, observed_at: int = 0, meta: dict | None = None) -> int:
+        key = (title, text)
+        if key not in self.key_to_chunk:
+            self.key_to_chunk[key] = len(self.passages) + 1
+            self.passages.append(
+                (f"{self.source}:{len(self.passages)}", title, text, observed_at, meta)
+            )
+        return self.key_to_chunk[key]
+
+    def frames(self) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+        return corpus_frames(self.source, self.passages)
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    with path.open(encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+def utc_us(text: str, fmt: str | None = None) -> int:
+    """Microseconds since the epoch for an ISO-8601 string with offset, or a naive string in `fmt`
+    read as UTC."""
+    from datetime import UTC, datetime
+
+    if fmt:
+        dt = datetime.strptime(text, fmt).replace(tzinfo=UTC)
+    else:
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+    return int(dt.timestamp() * 1_000_000)
 
 
 def question_row(

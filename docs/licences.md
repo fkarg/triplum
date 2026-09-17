@@ -26,13 +26,30 @@ Dates are when the licence was checked; re-check before relying on a row.
 | MuSiQue | CC BY 4.0 | yes | 2026-09-16 | authors note possible single-hop leakage from seed datasets |
 | 2WikiMultiHopQA | Apache-2.0 | yes | 2026-09-16 | gold `evidences` triples usable for extraction scoring |
 | HippoRAG `reproduce/dataset` files | MIT (repo); content under the three above | yes, per content | 2026-09-16 | our corpora, hashes pinned in `hipporag.py` |
+| MoreHopQA (`alabnii/morehopqa`, verified split) | CC BY 4.0 | yes | 2026-09-17 | registered as `morehopqa` |
+| ECT-QA (`austinmyc/ECT-QA`) | MIT | yes | 2026-09-17 | registered as `ectqa`; 480 transcripts, local questions only |
+| HotpotQA distractor dev (`hotpotqa/hotpot_qa`) | CC BY-SA 4.0 | yes, share-alike | 2026-09-17 | registered as `hotpotqa_full` |
+| 2WikiMultiHopQA dev (`xanhho/2WikiMultihopQA`) | Apache-2.0 | yes | 2026-09-17 | registered as `twowiki_full`; mirror keeps `evidences`, drops Wikidata ids |
+| MuSiQue full dev (`bdsaglam/musique`) | CC BY 4.0 upstream; mirror card has no licence tag | yes | 2026-09-17 | registered as `musique_full`, with unanswerable twins |
+| MultiHop-RAG (`yixuantt/MultiHopRAG`) | ODC-BY | yes, attribution | 2026-09-17 | registered as `multihoprag` |
+| PopQA (`akariasai/PopQA`) | none declared | check | 2026-09-17 | registered as `popqa`; no corpus |
+| EntityQuestions (Princeton) | MIT | yes | 2026-09-17 | registered as `entityquestions`; test split, no corpus |
+| MQuAKE (`princeton-nlp/MQuAKE`) | MIT | yes | 2026-09-17 | registered as `mquake_cf`, `mquake_t`; needs edit ingestion |
+| GateMem (`Ray368/GateMem`) | CC BY 4.0 | yes | 2026-09-17 | registered as `gatemem`; needs a viewer per question |
+| LongMemEval-cleaned (`xiaowu0162/longmemeval-cleaned`) | MIT | yes | 2026-09-17 | registered as `longmemeval_s`; needs a corpus per question |
+| TEMPO (`tempo26/Tempo`) | CC BY 4.0 | yes | 2026-09-17 | registered as `tempo`; 2.4 GB, fetches only when named |
+| GraphJudge corpora (`hhy-huang/GraphJudge`) | MIT repo; GenWiki-Hard CC0, SciERC none declared, REBEL subset CC BY-NC-SA 4.0 | GenWiki yes; SciERC check; REBEL **no** | 2026-09-17 | registered as `graphjudge_genwiki`, `graphjudge_scierc`, `graphjudge_rebel` |
+| GenWiki (Edmond, MPG) | CC0 1.0 | yes | 2026-09-17 | registered as `genwiki` (test) and `genwiki_fine` |
+| CaRB (`dair-iitd/CaRB`) | MIT | yes | 2026-09-17 | registered as `carb` |
+| CoNLL04 (`DFKI-SLT/conll04`) | none declared | check | 2026-09-17 | registered as `conll04` |
+| SciERC (SpERT release files) | none declared | check | 2026-09-17 | registered as `scierc` |
 | Text2KGBench | Apache-2.0 (`cenguix/Text2KGBench`) | yes | 2026-09-16 | LettrIA refinement: data "upon request", terms unknown |
 | `GEM/web_nlg` (HF) | CC BY-NC 4.0 | **no** | 2026-09-16 | non-commercial |
 | REBEL dataset | CC BY-NC-SA 4.0 | **no** | 2026-09-16 | non-commercial, share-alike |
 | Re-DocRED, DocRED | see HF cards | check | 2026-09-16 | 4 of the 11 HF datasets we looked at declare no licence field |
 | GraphRAG-Bench (arXiv 2506.05690, ICLR 2026) | MIT | yes | 2026-09-16 | ships `evidence_relations` |
 | GraphRAG-Bench (arXiv 2506.02404) | academic-only, no redistribution | **no** | 2026-09-16 | unrelated benchmark with the same name |
-| BrowseComp-Plus | MIT | yes | 2026-09-16 | |
+| BrowseComp-Plus (`Tevatron/browsecomp-plus`, `-corpus`) | MIT | yes | 2026-09-17 | registered as `browsecomp_plus`; 4.5 GB, fetches only when named; query shards may need a HF token |
 | WildGraphBench | Apache-2.0 | yes | 2026-09-16 | |
 | InfoDeepSeek | CC BY-NC | **no** | 2026-09-16 | also live-web, non-reproducible |
 | `Zly0523/linear-rag`, `102202132zbz/rag_test` mirrors | none declared / apache-2.0 declared | not authoritative | 2026-09-16 | a mirror cannot relicense CC BY-SA content; not used |
@@ -61,8 +78,8 @@ Dates are when the licence was checked; re-check before relying on a row.
 
 | component | licence | commercial reuse | checked | notes |
 |---|---|---|---|---|
-| [Rich](https://github.com/Textualize/rich/blob/main/LICENSE) | MIT | yes | 2026-09-17 | terminal tables, wrapping and capability-aware colors |
 | [ty](https://github.com/astral-sh/ty/blob/main/LICENSE) | MIT | yes | 2026-09-17 | development-only Python type checker |
+| [Rich](https://github.com/Textualize/rich/blob/main/LICENSE) | MIT | yes | 2026-09-17 | terminal tables, wrapping and capability-aware colors |
 | [pytest-cov](https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE) | MIT | yes | 2026-09-16 | development-only branch coverage reporting |
 | sqlite-vec | MIT / Apache-2.0 | yes | 2026-09-16 | pre-v1 |
 | Oxigraph, `pyoxigraph` | MIT / Apache-2.0 | yes | 2026-09-16 | |

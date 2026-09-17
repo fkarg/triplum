@@ -118,7 +118,7 @@ def test_finite_choices_reach_canonical_config(tmp_path):
             "--pipeline",
             "CLOSED",
             "--dataset",
-            "mus",
+            "musique",
             "--reader",
             "fak",
             "--embedder",
@@ -265,9 +265,9 @@ def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
         _never,
     )
     monkeypatch.setitem(registry.SPECS, big.name, big)
-    result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "mus"])
+    result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "moreh"])
     assert result.exit_code == 0, result.output
-    assert seen == ["musique"]
+    assert seen == ["morehopqa"]
     seen.clear()
     result = CliRunner().invoke(app, ["data", "fetch"])
     assert result.exit_code == 0, result.output
@@ -275,8 +275,8 @@ def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
     seen.clear()
     result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "ALL"])
     assert result.exit_code == 0, result.output
-    assert seen == [name for name in registry.names() if name != "big-test"]
-    assert "big-test: skipped" in result.output
+    assert seen == [name for name in registry.names() if not registry.get(name).large]
+    assert "big-test: skipped" in result.output and "tempo: skipped" in result.output
 
 
 def test_single_substring_match_is_accepted():
@@ -349,7 +349,7 @@ def test_sweep_finite_choices_are_canonical(tmp_path):
             "--embedders",
             str(specs),
             "--dataset",
-            "mus",
+            "musique",
             "--reader",
             "fak",
             "--judge",
@@ -383,7 +383,7 @@ def test_multiple_typo_matches_still_require_a_choice(tmp_path, monkeypatch):
         "--pipeline",
         "closed",
         "--dataset",
-        "mus",
+        "musique",
         "--fixture",
         "--n",
         "1",

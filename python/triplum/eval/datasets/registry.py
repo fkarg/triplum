@@ -4,11 +4,36 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from triplum.eval.datasets import base, hipporag
+from triplum.eval.datasets import (
+    base,
+    browsecomp_plus,
+    controls,
+    ectqa,
+    extraction,
+    gatemem,
+    hipporag,
+    longmemeval,
+    mquake,
+    multihoprag,
+    tempo,
+    wiki_multihop,
+)
 from triplum.eval.datasets.base import Dataset, DatasetStatus, Spec
 
 SPECS: dict[str, Spec] = {}
-for _module in (hipporag,):
+for _module in (
+    hipporag,
+    wiki_multihop,
+    multihoprag,
+    ectqa,
+    controls,
+    mquake,
+    gatemem,
+    longmemeval,
+    tempo,
+    extraction,
+    browsecomp_plus,
+):
     for _spec in _module.SPECS:
         if _spec.name in SPECS:
             raise RuntimeError(f"duplicate dataset name {_spec.name}")

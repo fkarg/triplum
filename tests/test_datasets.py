@@ -134,7 +134,7 @@ def test_registry_specs_are_pinned_and_fixtures_load():
             ds.questions["gold_chunk_ids"].to_list(), ds.questions["answerable"].to_list()
         ):
             assert set(gold) <= chunk_ids, name
-            assert gold or ds.chunks.height == 0 or not q_answerable, name
+            assert gold or ds.chunks.height == 0 or not q_answerable or spec.needs, name
         assert len(ds.corpus_hash) == 64 and len(ds.questions_hash) == 64
 
 

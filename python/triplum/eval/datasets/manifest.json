@@ -1,0 +1,3494 @@
+{
+"browsecomp_plus": [
+{
+"bytes": 508023004,
+"name": "data/test-00000-of-00006.parquet",
+"sha256": "4ff9e93054eaee61b8d079a89b7ec4d02f16c9d05fa6e2fef7185b0786427a3a",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00000-of-00006.parquet"
+},
+{
+"bytes": 439458597,
+"name": "data/test-00001-of-00006.parquet",
+"sha256": "70cc3a6781693bb013c6855f231d15159222dddf826eb19947f6f85fcabccd4e",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00001-of-00006.parquet"
+},
+{
+"bytes": 447012029,
+"name": "data/test-00002-of-00006.parquet",
+"sha256": "f4fab28dcd293231da1b9da48680a19c7cdcb831df889d0691304de66016d194",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00002-of-00006.parquet"
+},
+{
+"bytes": 415470437,
+"name": "data/test-00003-of-00006.parquet",
+"sha256": "e738eb7a2e76feebe60632fc279a99773586d75ce5344e205c9c53fc3071c126",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00003-of-00006.parquet"
+},
+{
+"bytes": 473281326,
+"name": "data/test-00004-of-00006.parquet",
+"sha256": "25535ff3d41be25d8b213b903c478f34c18082af3cbfe0a4a3925989b84c87e4",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00004-of-00006.parquet"
+},
+{
+"bytes": 498182760,
+"name": "data/test-00005-of-00006.parquet",
+"sha256": "3a87031c5214322344b358db1d5f44d773b4d634ae43c60ce53ad582ccc47646",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus/resolve/main/data/test-00005-of-00006.parquet"
+},
+{
+"bytes": 218510750,
+"name": "data/train-00000-of-00007.parquet",
+"sha256": "7c07f9e23b1ca548110fd831714cadc67d44db5223bace6e45fcaa795d3153d0",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00000-of-00007.parquet"
+},
+{
+"bytes": 271758203,
+"name": "data/train-00001-of-00007.parquet",
+"sha256": "e92d8202e0f656a85b262153dbcd22ecf80ea2d0c96d9884f9c8e25480b869ab",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00001-of-00007.parquet"
+},
+{
+"bytes": 257605847,
+"name": "data/train-00002-of-00007.parquet",
+"sha256": "0e4113a4503342527258d8f2c49877747435f3e65bfe1f7306b4f488c8d225fe",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00002-of-00007.parquet"
+},
+{
+"bytes": 239125125,
+"name": "data/train-00003-of-00007.parquet",
+"sha256": "0ceea5e703332a2e3ce700f641273400d84583fad84b659d3248ed06d3a9fef3",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00003-of-00007.parquet"
+},
+{
+"bytes": 259072824,
+"name": "data/train-00004-of-00007.parquet",
+"sha256": "15b62914ddc3de6946893c770f07d5d84d29646e833ca1447955668f2b57940c",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00004-of-00007.parquet"
+},
+{
+"bytes": 257706279,
+"name": "data/train-00005-of-00007.parquet",
+"sha256": "a9a75708ad37c522e93a774e5a968a3129e12b0559971c8f950a5628e0201df0",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00005-of-00007.parquet"
+},
+{
+"bytes": 257801458,
+"name": "data/train-00006-of-00007.parquet",
+"sha256": "290062b60c1a6ebba7d5469a37a431f0a2596e68788295284b1b2d35db07b62c",
+"url": "https://huggingface.co/datasets/Tevatron/browsecomp-plus-corpus/resolve/main/data/train-00006-of-00007.parquet"
+}
+],
+"carb": [
+{
+"bytes": 581556,
+"name": "data/gold/dev.tsv",
+"sha256": "2081484b4fd237728591227becf6357799fd1575366fa1eeb51590822fbce6fc",
+"url": "https://raw.githubusercontent.com/dair-iitd/CaRB/master/data/gold/dev.tsv"
+},
+{
+"bytes": 612314,
+"name": "data/gold/test.tsv",
+"sha256": "5c74f7c51e147cc462ac7373d5293cb2b9df8455dcebd187fc6db6124bc5d4c2",
+"url": "https://raw.githubusercontent.com/dair-iitd/CaRB/master/data/gold/test.tsv"
+}
+],
+"conll04": [
+{
+"bytes": 46577,
+"name": "data/test-00000-of-00001.parquet",
+"sha256": "1b3da2113e62553a0510cc8a6f9fe9aecddc4c7b114ab20668106771fac926a5",
+"url": "https://huggingface.co/datasets/DFKI-SLT/conll04/resolve/main/data/test-00000-of-00001.parquet"
+},
+{
+"bytes": 117860,
+"name": "data/train-00000-of-00001.parquet",
+"sha256": "b7833f13e12a59cc326345e8a5017f69205ae09ff6022c1e6c457c058b6ea557",
+"url": "https://huggingface.co/datasets/DFKI-SLT/conll04/resolve/main/data/train-00000-of-00001.parquet"
+},
+{
+"bytes": 40518,
+"name": "data/validation-00000-of-00001.parquet",
+"sha256": "f394c97356d2337f12a660d1afca25f970c1ef1c390a4a2b38d55230e4f61e23",
+"url": "https://huggingface.co/datasets/DFKI-SLT/conll04/resolve/main/data/validation-00000-of-00001.parquet"
+}
+],
+"ectqa": [
+{
+"bytes": 67563,
+"name": "data/new/consumer_discretionary-CROX-2024-q1.json",
+"sha256": "a8214165039ed5facfa947ed198c05fa04d3654f6432263828963ff14978a208",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-CROX-2024-q1.json"
+},
+{
+"bytes": 70500,
+"name": "data/new/consumer_discretionary-CROX-2024-q2.json",
+"sha256": "647e7190660372d999f8121f2869cef8c0f82176b27a9531728cf412e86ee9ce",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-CROX-2024-q2.json"
+},
+{
+"bytes": 76962,
+"name": "data/new/consumer_discretionary-CROX-2024-q3.json",
+"sha256": "11e4371204f9e47927ded85090fb53fa767b02857cfeb08a872be76b394198c1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-CROX-2024-q3.json"
+},
+{
+"bytes": 77630,
+"name": "data/new/consumer_discretionary-CROX-2024-q4.json",
+"sha256": "ebb0a73d822b0b7658311042013c757b404c8c61f2cc8d5bc894ac5eb0cbd929",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-CROX-2024-q4.json"
+},
+{
+"bytes": 74491,
+"name": "data/new/consumer_discretionary-HD_US-2024-q1.json",
+"sha256": "623f4246324c6abda484f87ecf67627e36b41feb11096ef7ded47d35ede90261",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-HD_US-2024-q1.json"
+},
+{
+"bytes": 76091,
+"name": "data/new/consumer_discretionary-HD_US-2024-q2.json",
+"sha256": "ea5c704296dae65ca3d7a120bb4867d4b0527858dd566f2238c238e7b19d4d60",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-HD_US-2024-q2.json"
+},
+{
+"bytes": 73438,
+"name": "data/new/consumer_discretionary-HD_US-2024-q3.json",
+"sha256": "1b0f10f0d6e2ee3d5e37bace5042530ab6d5300320767b830ca018db6a33fca9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-HD_US-2024-q3.json"
+},
+{
+"bytes": 76001,
+"name": "data/new/consumer_discretionary-HD_US-2024-q4.json",
+"sha256": "a9ef44c85a8365a75ad23b8247d421cfabb072e23b759dcb249b399c6dff093a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-HD_US-2024-q4.json"
+},
+{
+"bytes": 56311,
+"name": "data/new/consumer_discretionary-JD_US-2024-q1.json",
+"sha256": "ad073379f3e81c177ebd775773ca3641ce61168c1925e47f8a4bc4497f521984",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-JD_US-2024-q1.json"
+},
+{
+"bytes": 56769,
+"name": "data/new/consumer_discretionary-JD_US-2024-q2.json",
+"sha256": "f5afb25b94591a5373ac1fffdfe32a66fcc98e64bea076d4e906640af0741fe2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-JD_US-2024-q2.json"
+},
+{
+"bytes": 61118,
+"name": "data/new/consumer_discretionary-JD_US-2024-q3.json",
+"sha256": "16755ad96f63fa8b181b2b802c9dcce0c461cf224ef5e51a84a4c644a5902121",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-JD_US-2024-q3.json"
+},
+{
+"bytes": 58561,
+"name": "data/new/consumer_discretionary-JD_US-2024-q4.json",
+"sha256": "95b094b35a5ce62cd6ca340b79e02cf2adb452abbab8cd7e2fee0dd343da39e0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-JD_US-2024-q4.json"
+},
+{
+"bytes": 84696,
+"name": "data/new/consumer_discretionary-SKX-2024-q1.json",
+"sha256": "528900fa2b4c72d7c924d5a8618cb15d692d88700140b5f35398090748bfd838",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-SKX-2024-q1.json"
+},
+{
+"bytes": 82149,
+"name": "data/new/consumer_discretionary-SKX-2024-q2.json",
+"sha256": "1d5281cd099dec47bf5e6a6131d1e16aad394d1d75c03913d6fec05551ad31ee",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-SKX-2024-q2.json"
+},
+{
+"bytes": 70147,
+"name": "data/new/consumer_discretionary-SKX-2024-q3.json",
+"sha256": "12c70123fa348fecdfcd7e31024004dc02636ad68e6ba800658d391ebc45e4f7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-SKX-2024-q3.json"
+},
+{
+"bytes": 95693,
+"name": "data/new/consumer_discretionary-SKX-2024-q4.json",
+"sha256": "534fc88f251c4f292d0d54b171a3ea7a8bed76e1d823953ff51522f441196b9b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-SKX-2024-q4.json"
+},
+{
+"bytes": 71700,
+"name": "data/new/consumer_discretionary-YUMC_US-2024-q1.json",
+"sha256": "fa5b3de45c3a042b1e7938b6e89fc2d90f1e5452487e7c230db46f5a339f4008",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-YUMC_US-2024-q1.json"
+},
+{
+"bytes": 72481,
+"name": "data/new/consumer_discretionary-YUMC_US-2024-q2.json",
+"sha256": "139999755b99ca568a2823bcc0e4456bc540b616135542bb0306f50e6fa5f605",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-YUMC_US-2024-q2.json"
+},
+{
+"bytes": 65651,
+"name": "data/new/consumer_discretionary-YUMC_US-2024-q3.json",
+"sha256": "8cb77821ffc5140e6166d1e75b929f98b4e6d2935ad21a6d5afc662aec9780d6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-YUMC_US-2024-q3.json"
+},
+{
+"bytes": 65683,
+"name": "data/new/consumer_discretionary-YUMC_US-2024-q4.json",
+"sha256": "ba337c25a4eb5caf9ed4af7563e92b6e147979d781b12327a2324f5ad8f1e72a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/consumer_discretionary-YUMC_US-2024-q4.json"
+},
+{
+"bytes": 80622,
+"name": "data/new/energy-EOG-2024-q1.json",
+"sha256": "40e65f07e86c0c3e7f8d6227ccdcac545263c5835a993a30233d2c463cfb87ba",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EOG-2024-q1.json"
+},
+{
+"bytes": 83907,
+"name": "data/new/energy-EOG-2024-q2.json",
+"sha256": "3e269c77592dcb7c43da64578ebf9753155087c386fea17c3d86382ca796a381",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EOG-2024-q2.json"
+},
+{
+"bytes": 80111,
+"name": "data/new/energy-EOG-2024-q3.json",
+"sha256": "54e82c74c8244daea2249853318f33c9a2b2fe313b2f66f54251e4e55eefc163",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EOG-2024-q3.json"
+},
+{
+"bytes": 79657,
+"name": "data/new/energy-EOG-2024-q4.json",
+"sha256": "fca829512f5d80e2be6cc823bb95c907e36006d8e2a32e7140aac290be1aa92d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EOG-2024-q4.json"
+},
+{
+"bytes": 43648,
+"name": "data/new/energy-EPD-2024-q1.json",
+"sha256": "caea11ec897954346a31a6620eef9d164182236f2947400dcf1b1a9fb40ad040",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EPD-2024-q1.json"
+},
+{
+"bytes": 48612,
+"name": "data/new/energy-EPD-2024-q2.json",
+"sha256": "df5296bd0f370ad5278e1c7ea22a4f2fba381931169fb3a4be0b048369276bd8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EPD-2024-q2.json"
+},
+{
+"bytes": 46804,
+"name": "data/new/energy-EPD-2024-q3.json",
+"sha256": "3174f72e4467d2eb98c6da5eced46995ed59f199415443247aa100c45c5d34db",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EPD-2024-q3.json"
+},
+{
+"bytes": 51602,
+"name": "data/new/energy-EPD-2024-q4.json",
+"sha256": "299037c543284c8ea5b4d72e4251448e0d9eda5a0f712b74c14277bea050a73f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-EPD-2024-q4.json"
+},
+{
+"bytes": 63061,
+"name": "data/new/energy-MPC-2024-q1.json",
+"sha256": "64aeb80b375526a2a99ce4e646cdaf3c4c1527b17c29db85614696de9944823b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-MPC-2024-q1.json"
+},
+{
+"bytes": 48136,
+"name": "data/new/energy-MPC-2024-q2.json",
+"sha256": "bf192e557cc16867ca1b41fa91125873e28fbd720f73499f9612f7cdf6a06fb4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-MPC-2024-q2.json"
+},
+{
+"bytes": 51254,
+"name": "data/new/energy-MPC-2024-q3.json",
+"sha256": "1edeb61f976a48efae7cc14718f9862d8b5d46dbea118bed43f5c017127cb186",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-MPC-2024-q3.json"
+},
+{
+"bytes": 73032,
+"name": "data/new/energy-MPC-2024-q4.json",
+"sha256": "d6d2c19d2f6102a88c5d5a0f6c1dd2aecff3037d715029ad0d19fcdde644cc43",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-MPC-2024-q4.json"
+},
+{
+"bytes": 62531,
+"name": "data/new/energy-OKE-2024-q1.json",
+"sha256": "8f5e8a5964d11231e9b7fc07a98a5995149dccd6577e209b9a53e46e9138a059",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OKE-2024-q1.json"
+},
+{
+"bytes": 61111,
+"name": "data/new/energy-OKE-2024-q2.json",
+"sha256": "0cdc31c6b38ff3db75a097ddf1523126bc175514836c668c159d6fc4e4414192",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OKE-2024-q2.json"
+},
+{
+"bytes": 60241,
+"name": "data/new/energy-OKE-2024-q3.json",
+"sha256": "506187f8370a9363b026c4d01796af472bc575e3d9ec0fe7ea50f3e738d71071",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OKE-2024-q3.json"
+},
+{
+"bytes": 66808,
+"name": "data/new/energy-OKE-2024-q4.json",
+"sha256": "df1631e813ecd84422b08580745d75e7b4bf233da3332eed00c809609a3d5109",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OKE-2024-q4.json"
+},
+{
+"bytes": 63372,
+"name": "data/new/energy-OXY_US-2024-q1.json",
+"sha256": "e5cd17427b5949661ffd2ff5c169eaa93f14d943ba666e5d3cce9a2b0b0fa9eb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OXY_US-2024-q1.json"
+},
+{
+"bytes": 73887,
+"name": "data/new/energy-OXY_US-2024-q2.json",
+"sha256": "076c7d00518457ffe667918f4b8f52a0b513bcc2ff9e36c1a6a53cdbaa02bb62",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OXY_US-2024-q2.json"
+},
+{
+"bytes": 76076,
+"name": "data/new/energy-OXY_US-2024-q3.json",
+"sha256": "ab93b08b37123919986c00d8db58f70e94379f47d0da79a16bdbd6dd422e70bb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OXY_US-2024-q3.json"
+},
+{
+"bytes": 80104,
+"name": "data/new/energy-OXY_US-2024-q4.json",
+"sha256": "3ba92ddd0683997f90ada876bfe0dee1fb7dea15ace9c214e919152b398be409",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/energy-OXY_US-2024-q4.json"
+},
+{
+"bytes": 69203,
+"name": "data/new/financials-AON-2024-q1.json",
+"sha256": "22d6ed5cecc5c3ca8a0e0138fa58588c8581d759f5e268fc630709f294670a47",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-AON-2024-q1.json"
+},
+{
+"bytes": 85399,
+"name": "data/new/financials-AON-2024-q2.json",
+"sha256": "721c0ec7b89fd649d91a210a96acbd223c2c0d2b1ddd190726269376a239664d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-AON-2024-q2.json"
+},
+{
+"bytes": 85066,
+"name": "data/new/financials-AON-2024-q3.json",
+"sha256": "37fcd35815ae5d00b98ddca34634503cc3c6638930e5d6dc99b3fb1f5a96ff45",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-AON-2024-q3.json"
+},
+{
+"bytes": 86630,
+"name": "data/new/financials-AON-2024-q4.json",
+"sha256": "60106aa4b9d7ee7cb4c27692198a206eb88ebe8255ee1530094b7a17b58d796d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-AON-2024-q4.json"
+},
+{
+"bytes": 47908,
+"name": "data/new/financials-CINF-2024-q1.json",
+"sha256": "4335004e8f103ae47e717ace5992e4f077f0000007ab5a576273b3f75c2ed98a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-CINF-2024-q1.json"
+},
+{
+"bytes": 59981,
+"name": "data/new/financials-CINF-2024-q2.json",
+"sha256": "a9b87f064d64a752b578022bca926ba6b347e8bef1e3ce0a07c84bedde5887b9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-CINF-2024-q2.json"
+},
+{
+"bytes": 51099,
+"name": "data/new/financials-CINF-2024-q3.json",
+"sha256": "e88b489ed5c1ad2f214da3c19ea3811961740a28eb1e00b979841820bbe4a51b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-CINF-2024-q3.json"
+},
+{
+"bytes": 43412,
+"name": "data/new/financials-CINF-2024-q4.json",
+"sha256": "840e6e57a352fb222bceb2839552898a55da5e422ee6dca8a95e434da3ba39f4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-CINF-2024-q4.json"
+},
+{
+"bytes": 77427,
+"name": "data/new/financials-MKL-2024-q1.json",
+"sha256": "169def9ab5c04f0efbdb28ead0ef3dc6d388b327873f743fad53ad36f54ef80f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-MKL-2024-q1.json"
+},
+{
+"bytes": 76753,
+"name": "data/new/financials-MKL-2024-q2.json",
+"sha256": "d2134927227305d95ffbca1307fd3ac4139a5b83551326f22ec278d15dadbb0f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-MKL-2024-q2.json"
+},
+{
+"bytes": 71810,
+"name": "data/new/financials-MKL-2024-q3.json",
+"sha256": "42ead0c0d5d60e50c486aaa8cf349f02fbc459f2bd53ccc3517bc4bbfda77129",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-MKL-2024-q3.json"
+},
+{
+"bytes": 85392,
+"name": "data/new/financials-MKL-2024-q4.json",
+"sha256": "a82f67be0bd1f9853820a3631835a32674fbd6c378942fe1ecc14c04f6398c38",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-MKL-2024-q4.json"
+},
+{
+"bytes": 72319,
+"name": "data/new/financials-PRU-2024-q1.json",
+"sha256": "ec58dbbdc1991ca840326ef99cecfd09add11d843ef4b52b0e774d61f54a68a4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-PRU-2024-q1.json"
+},
+{
+"bytes": 65262,
+"name": "data/new/financials-PRU-2024-q2.json",
+"sha256": "085171f5eaff67c679a86aca3f1b2b61239d8eecf3520c20ac8b69b3c9ba21fd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-PRU-2024-q2.json"
+},
+{
+"bytes": 76703,
+"name": "data/new/financials-PRU-2024-q3.json",
+"sha256": "b226e37297a4d83739e8341fa362b71d407da7f6d02d3f8940697790a4984dc1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-PRU-2024-q3.json"
+},
+{
+"bytes": 76973,
+"name": "data/new/financials-PRU-2024-q4.json",
+"sha256": "21a04351f9099228a4fd3ef31700604f94faa760b757a7fb063acd4c5567f954",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/financials-PRU-2024-q4.json"
+},
+{
+"bytes": 83039,
+"name": "data/new/information_technology-ADSK_US-2024-q1.json",
+"sha256": "6ceddf0290bc96b96d57600819327b9120b926e6d5a8838c57d7b4c9427c68f2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-ADSK_US-2024-q1.json"
+},
+{
+"bytes": 77081,
+"name": "data/new/information_technology-ADSK_US-2024-q2.json",
+"sha256": "dcfe28ac1dc23c74d073940793838e2af0d8d7366ed98aaf32592ea237a6a4e6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-ADSK_US-2024-q2.json"
+},
+{
+"bytes": 83142,
+"name": "data/new/information_technology-ADSK_US-2024-q3.json",
+"sha256": "46197b6299d218f041146c01a22f2f0114e301072307ef655f7f94803546312b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-ADSK_US-2024-q3.json"
+},
+{
+"bytes": 83352,
+"name": "data/new/information_technology-ADSK_US-2024-q4.json",
+"sha256": "a15855ad6b1b7b2851354e15caae767fe862a2e61a08ae6dc67cdeda817a9693",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-ADSK_US-2024-q4.json"
+},
+{
+"bytes": 67829,
+"name": "data/new/information_technology-BIDU_US-2024-q1.json",
+"sha256": "b7d5de3e10ee37af950f2bc39e313266c81233897c70a1591b8e38295fa5fe25",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-BIDU_US-2024-q1.json"
+},
+{
+"bytes": 73449,
+"name": "data/new/information_technology-BIDU_US-2024-q2.json",
+"sha256": "c7af8b436b13f757189745783b86d84f52dc25fbd9b7d2b22bdb2536cc34dffd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-BIDU_US-2024-q2.json"
+},
+{
+"bytes": 71830,
+"name": "data/new/information_technology-BIDU_US-2024-q3.json",
+"sha256": "805494907a4cfaffd1ea19ad3031a4b18661d7cdc53d2aa112062664c083b188",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-BIDU_US-2024-q3.json"
+},
+{
+"bytes": 69289,
+"name": "data/new/information_technology-BIDU_US-2024-q4.json",
+"sha256": "84a9b5dfbb17039b09a9f9a17598b6e0fd506a974e9a7e47af758d64ccc5197e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-BIDU_US-2024-q4.json"
+},
+{
+"bytes": 68890,
+"name": "data/new/information_technology-DXC-2024-q1.json",
+"sha256": "3a49a6285bdae4fd52c42ea8ab7d29b2bcf5e9c958d07da250b6894a43b3dfa2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-DXC-2024-q1.json"
+},
+{
+"bytes": 58342,
+"name": "data/new/information_technology-DXC-2024-q2.json",
+"sha256": "6c52347ede1e3d9cbc15c1f38b9214c30765c7bd1edcdcffa1df139da60c7566",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-DXC-2024-q2.json"
+},
+{
+"bytes": 76494,
+"name": "data/new/information_technology-DXC-2024-q3.json",
+"sha256": "a85ab5e8a78bb6f5d2c9a746020b2edbfac6657d80fd64c37b9da8642285b4d6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-DXC-2024-q3.json"
+},
+{
+"bytes": 67291,
+"name": "data/new/information_technology-DXC-2024-q4.json",
+"sha256": "dc53313c3f29e625797063434636bfd75526e33b7241abb86f52f12b85fa87ec",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-DXC-2024-q4.json"
+},
+{
+"bytes": 81056,
+"name": "data/new/information_technology-EPAM_US-2024-q1.json",
+"sha256": "2c40e2d5a3be4660743dd5f20fd45bbc337b178e06b20e188980abe0665bee71",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-EPAM_US-2024-q1.json"
+},
+{
+"bytes": 84369,
+"name": "data/new/information_technology-EPAM_US-2024-q2.json",
+"sha256": "bd6a40ed0019126d5b64951732e8788592d211877dcfb2a14f9a8d491755b17e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-EPAM_US-2024-q2.json"
+},
+{
+"bytes": 80661,
+"name": "data/new/information_technology-EPAM_US-2024-q3.json",
+"sha256": "4e77e46fe97dc684b89fadbb6b1e268d8aea9c3eb1e96bf72e688dd2b87291a4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-EPAM_US-2024-q3.json"
+},
+{
+"bytes": 85692,
+"name": "data/new/information_technology-EPAM_US-2024-q4.json",
+"sha256": "c4e1e5e678ecb35908e9c8bcf4256b11fcf08deac7158ef5b7b9f44c1caa054c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-EPAM_US-2024-q4.json"
+},
+{
+"bytes": 79056,
+"name": "data/new/information_technology-WDC-2024-q1.json",
+"sha256": "b57715d0f3214965f33691d90eb324610a2c9809ddcd8c6155e8db17fdb09a2f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-WDC-2024-q1.json"
+},
+{
+"bytes": 67582,
+"name": "data/new/information_technology-WDC-2024-q2.json",
+"sha256": "03c38c044faf9e73ba06a5dae6282205bcc6737dd20d70448635ae6bcebeab05",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-WDC-2024-q2.json"
+},
+{
+"bytes": 76475,
+"name": "data/new/information_technology-WDC-2024-q3.json",
+"sha256": "43246c6bcd3195756a3c17f2db74e2dcda373afca4f3b40d25515907d95d175c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-WDC-2024-q3.json"
+},
+{
+"bytes": 66894,
+"name": "data/new/information_technology-WDC-2024-q4.json",
+"sha256": "c13dba1518b8c1191fd79a648c801c64e29c3be888ee6fda7a9e4cd074c431c1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/information_technology-WDC-2024-q4.json"
+},
+{
+"bytes": 54418,
+"name": "data/new/real_estate-IRM-2024-q1.json",
+"sha256": "4c55769305063c3e70578c918686fb7f15a5531c9b05c97afa92819cdeb1d139",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-IRM-2024-q1.json"
+},
+{
+"bytes": 52970,
+"name": "data/new/real_estate-IRM-2024-q2.json",
+"sha256": "bc43b98238507592c588759f3f77268f113919d3c52317dd47743c2dd150b228",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-IRM-2024-q2.json"
+},
+{
+"bytes": 54637,
+"name": "data/new/real_estate-IRM-2024-q3.json",
+"sha256": "df7c4a662d66d253f5ee799c42244de4c392d0e3336301744d3afcaa76b33463",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-IRM-2024-q3.json"
+},
+{
+"bytes": 69195,
+"name": "data/new/real_estate-IRM-2024-q4.json",
+"sha256": "6548d149bb1705536b0673830f452672ba937cf3363c2580025cdcdaa4281335",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-IRM-2024-q4.json"
+},
+{
+"bytes": 71910,
+"name": "data/new/real_estate-MAC-2024-q1.json",
+"sha256": "ee8802880869820211031afb42dc83115d151ae5a59b1cd31dab56ba1b694c90",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-MAC-2024-q1.json"
+},
+{
+"bytes": 66670,
+"name": "data/new/real_estate-MAC-2024-q2.json",
+"sha256": "170cdfcb069aaf0348f3d3e7858634068026a12c98e14c4242316e745553b554",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-MAC-2024-q2.json"
+},
+{
+"bytes": 76947,
+"name": "data/new/real_estate-MAC-2024-q3.json",
+"sha256": "130e05192d12cecc03d3e88a1a66f19fc5bfcb5e68777793649b2dd5d03ea6a7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-MAC-2024-q3.json"
+},
+{
+"bytes": 72288,
+"name": "data/new/real_estate-MAC-2024-q4.json",
+"sha256": "1cefd34ec6e82e28758d4af4b5c98f0ce666bbb998a3f859cde166a953d4e5f4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-MAC-2024-q4.json"
+},
+{
+"bytes": 70667,
+"name": "data/new/real_estate-O-2024-q1.json",
+"sha256": "2284c2d19b4731736ddadb90e64978756f81dc2c6cc07fd044ce93ea62655b4d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-O-2024-q1.json"
+},
+{
+"bytes": 71072,
+"name": "data/new/real_estate-O-2024-q2.json",
+"sha256": "a7cbf615ae98da72100d326c1e10babaab50a98bcd9ff380ffef60c9885a2839",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-O-2024-q2.json"
+},
+{
+"bytes": 73686,
+"name": "data/new/real_estate-O-2024-q3.json",
+"sha256": "d75baf43159189413ffca4286d03aebe7f5ee6f8f348e6ac9b422d0ca210570e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-O-2024-q3.json"
+},
+{
+"bytes": 66339,
+"name": "data/new/real_estate-O-2024-q4.json",
+"sha256": "8402f151926cb4e6479341bedb1cf5782f558ec50755b9f6a763f373d7a62e84",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-O-2024-q4.json"
+},
+{
+"bytes": 51628,
+"name": "data/new/real_estate-SPG-2024-q1.json",
+"sha256": "ff6769af430c9e31ce2df4419d5e5c0dee2372b1a74a8c6303ea2a59976f8440",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-SPG-2024-q1.json"
+},
+{
+"bytes": 50166,
+"name": "data/new/real_estate-SPG-2024-q2.json",
+"sha256": "f3414129525a6616a39b070e52fcb511363ca377466cbb880727ba90337b10ad",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-SPG-2024-q2.json"
+},
+{
+"bytes": 50762,
+"name": "data/new/real_estate-SPG-2024-q3.json",
+"sha256": "03a6d424e0f58780bb6c3c1a94022d441d88f9c77ac130a410418e92a8737bfb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-SPG-2024-q3.json"
+},
+{
+"bytes": 48520,
+"name": "data/new/real_estate-SPG-2024-q4.json",
+"sha256": "4a4e0717606194ac591bc9ffa38d482e9f8419e8e13b48e68b2f948ec0dad8dc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-SPG-2024-q4.json"
+},
+{
+"bytes": 72104,
+"name": "data/new/real_estate-VICI-2024-q1.json",
+"sha256": "0b427897d692b171fb8ae56d408066419d6ddf4d2125a9947a32dfb19a4f2a09",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-VICI-2024-q1.json"
+},
+{
+"bytes": 71379,
+"name": "data/new/real_estate-VICI-2024-q2.json",
+"sha256": "2f2ccf0211c3b8a5a74eef230da9055e71eef409b81cc7e0f58eb8a509817638",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-VICI-2024-q2.json"
+},
+{
+"bytes": 70731,
+"name": "data/new/real_estate-VICI-2024-q3.json",
+"sha256": "a24fdc5b335c31967103faa408699078b3d03f60df2112f3e643e5fd5c43d78f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-VICI-2024-q3.json"
+},
+{
+"bytes": 73821,
+"name": "data/new/real_estate-VICI-2024-q4.json",
+"sha256": "45adbaa232bb79051a6d60a1325c14772e4f6b6d4e2978285388cdac477f98d8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/new/real_estate-VICI-2024-q4.json"
+},
+{
+"bytes": 83328,
+"name": "data/old/consumer_discretionary-CROX-2020-q1.json",
+"sha256": "6e9ad0d910503cbe2b43731635d02ea566136b9d44970788325385a414bee8f3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2020-q1.json"
+},
+{
+"bytes": 62149,
+"name": "data/old/consumer_discretionary-CROX-2020-q2.json",
+"sha256": "422e9b4f9e290d8167f85c279bf78038b371503f70426a146c0145d2c94c63d6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2020-q2.json"
+},
+{
+"bytes": 74376,
+"name": "data/old/consumer_discretionary-CROX-2020-q3.json",
+"sha256": "e80526e2dc58c01075f18d932f15c237a0700395c9ca75b4e1dd3e1db7eed841",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2020-q3.json"
+},
+{
+"bytes": 77660,
+"name": "data/old/consumer_discretionary-CROX-2020-q4.json",
+"sha256": "b4415413c35b385fc283d798d4f3751e0e79daebb9ff4ad9eaaf18019b3b8c6f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2020-q4.json"
+},
+{
+"bytes": 68755,
+"name": "data/old/consumer_discretionary-CROX-2021-q1.json",
+"sha256": "cf99acd1273abbb365d585e37d992d3a9fd7241446d10bf0bfe6aefeafc5f042",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2021-q1.json"
+},
+{
+"bytes": 75504,
+"name": "data/old/consumer_discretionary-CROX-2021-q2.json",
+"sha256": "0113500192bf8d93bb7dca42956206f127c4761bfdb68d1e83b1faab84f490e2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2021-q2.json"
+},
+{
+"bytes": 66126,
+"name": "data/old/consumer_discretionary-CROX-2021-q3.json",
+"sha256": "94414e7b9a4b7280af6a2f6ecbf5c0deb9942615d89ffbbf0489f4d7d76a9611",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2021-q3.json"
+},
+{
+"bytes": 80690,
+"name": "data/old/consumer_discretionary-CROX-2021-q4.json",
+"sha256": "e7b4072f0918d7a6f420febf46ecdb3e9395c8a61ca154675d95ccdcb5855390",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2021-q4.json"
+},
+{
+"bytes": 50256,
+"name": "data/old/consumer_discretionary-CROX-2022-q1.json",
+"sha256": "5552112f9df07505625835ba6bd2f806bc4c633ceadb4b9bee05caeffb174148",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2022-q1.json"
+},
+{
+"bytes": 79781,
+"name": "data/old/consumer_discretionary-CROX-2022-q2.json",
+"sha256": "45a2372ab64c00b791a143e280a72f889d48af13796e381e607ebd4e3798b5ce",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2022-q2.json"
+},
+{
+"bytes": 69883,
+"name": "data/old/consumer_discretionary-CROX-2022-q3.json",
+"sha256": "86e451a87cbb92b0a31dae762f87a125b8a07d9add4444bac9a40f8abda14660",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2022-q3.json"
+},
+{
+"bytes": 86426,
+"name": "data/old/consumer_discretionary-CROX-2022-q4.json",
+"sha256": "b7dc71551d369ba6244f221e5c938720632bdd4e060b8a6df8fc81efb7100d1f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2022-q4.json"
+},
+{
+"bytes": 69191,
+"name": "data/old/consumer_discretionary-CROX-2023-q1.json",
+"sha256": "f156ddcb2b5c223af1ad5b2edb2abf75625b8b9740b58c6c5364951946275066",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2023-q1.json"
+},
+{
+"bytes": 89675,
+"name": "data/old/consumer_discretionary-CROX-2023-q2.json",
+"sha256": "72ee528f47f4008cdd9fe93c97f7827ef5e25c56bd9cc1823688dbabf80d7108",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2023-q2.json"
+},
+{
+"bytes": 54926,
+"name": "data/old/consumer_discretionary-CROX-2023-q3.json",
+"sha256": "536974cbc50ba69ee3728f2827e2cde021f878e49b648d4e5bb4399c7fa4e7a1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2023-q3.json"
+},
+{
+"bytes": 79356,
+"name": "data/old/consumer_discretionary-CROX-2023-q4.json",
+"sha256": "451efee3fcdbd86cc14045f72f1df22e5866553bc53576c3513a649b80c9c416",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-CROX-2023-q4.json"
+},
+{
+"bytes": 79056,
+"name": "data/old/consumer_discretionary-HD_US-2020-q1.json",
+"sha256": "567786925d9deffca2a27e38a302d0b2fab0644d21a826d9f103b186281f5594",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2020-q1.json"
+},
+{
+"bytes": 74514,
+"name": "data/old/consumer_discretionary-HD_US-2020-q2.json",
+"sha256": "211a8a5926d286e4213ccae12446c3cfbfe65303569685cf6ba9fc39429dc9a8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2020-q2.json"
+},
+{
+"bytes": 79627,
+"name": "data/old/consumer_discretionary-HD_US-2020-q3.json",
+"sha256": "8df337de7028c3fb41c54e13cf7927b908d3d0567cb2823faf77e6afc5239653",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2020-q3.json"
+},
+{
+"bytes": 85130,
+"name": "data/old/consumer_discretionary-HD_US-2020-q4.json",
+"sha256": "22bb587ab06023eb01a9ad94cdc5bb2a787a3361575e1bbb6ca25226be7427ac",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2020-q4.json"
+},
+{
+"bytes": 72028,
+"name": "data/old/consumer_discretionary-HD_US-2021-q1.json",
+"sha256": "26953608ca2887b5366ab594cea26e198c4cd23088922d86e2adfb5b18c5a7bd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2021-q1.json"
+},
+{
+"bytes": 76248,
+"name": "data/old/consumer_discretionary-HD_US-2021-q2.json",
+"sha256": "e4db035d5a6179442749b2c3c2d27887f137ff15334567ffc620484ee28778d4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2021-q2.json"
+},
+{
+"bytes": 72491,
+"name": "data/old/consumer_discretionary-HD_US-2021-q3.json",
+"sha256": "45a18ab7b01e7fd0185d4698b25d60117154bd9f5579a4a24b6ec250ef40ad51",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2021-q3.json"
+},
+{
+"bytes": 110122,
+"name": "data/old/consumer_discretionary-HD_US-2021-q4.json",
+"sha256": "6c72d7ed970aef5d04bb4516f3804ec91231f338e23a6a098403985f0ed9a903",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2021-q4.json"
+},
+{
+"bytes": 72654,
+"name": "data/old/consumer_discretionary-HD_US-2022-q1.json",
+"sha256": "65285b8b6af79dd203fc470a153c3918624b95668664327ad8c3364a5f049296",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2022-q1.json"
+},
+{
+"bytes": 73828,
+"name": "data/old/consumer_discretionary-HD_US-2022-q2.json",
+"sha256": "6b99917723a99577bd2ba2c4a597ec354350cd54475927d4a055b9623aebbee3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2022-q2.json"
+},
+{
+"bytes": 76395,
+"name": "data/old/consumer_discretionary-HD_US-2022-q3.json",
+"sha256": "8d4fa9a262534804cdba792a24cc7f8f82eaf96252623fb524b6704d257c0ddc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2022-q3.json"
+},
+{
+"bytes": 79866,
+"name": "data/old/consumer_discretionary-HD_US-2022-q4.json",
+"sha256": "dda45e38950a4fdbcd3513fbfe5c7b7459dc2105990a5ada4b66ae97d3054516",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2022-q4.json"
+},
+{
+"bytes": 78255,
+"name": "data/old/consumer_discretionary-HD_US-2023-q1.json",
+"sha256": "a633d6c05cdc166953ff5facbd25ff8237e9569b502d90946ec06c8440397fa1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2023-q1.json"
+},
+{
+"bytes": 76692,
+"name": "data/old/consumer_discretionary-HD_US-2023-q2.json",
+"sha256": "e6d8710cf8462b0708292b7c4cf804c23b36b3fb66136a22a7d4cec9cece1e37",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2023-q2.json"
+},
+{
+"bytes": 76228,
+"name": "data/old/consumer_discretionary-HD_US-2023-q3.json",
+"sha256": "4b9b96e61744b0f32ccaeb7e952bd7547774615997dbf2c69e1197b88852c9e1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2023-q3.json"
+},
+{
+"bytes": 76716,
+"name": "data/old/consumer_discretionary-HD_US-2023-q4.json",
+"sha256": "05efba179860242f37119898179cd8f0bd723514c4269c8588fa18959797a83e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-HD_US-2023-q4.json"
+},
+{
+"bytes": 52751,
+"name": "data/old/consumer_discretionary-JD_US-2020-q1.json",
+"sha256": "006a53c591a3788f273109b20eb409fd2da472a318e4c9b881a779a8b1f38fe2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2020-q1.json"
+},
+{
+"bytes": 50017,
+"name": "data/old/consumer_discretionary-JD_US-2020-q2.json",
+"sha256": "64b7da3c27a193fc322e99471e35dfa770b70c89ff685d6a282ca62d7d28df21",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2020-q2.json"
+},
+{
+"bytes": 55153,
+"name": "data/old/consumer_discretionary-JD_US-2020-q3.json",
+"sha256": "8a5c5ccdb6f700e78c0eb60c88344db212a62d4b38026448cce2f759efd4ff13",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2020-q3.json"
+},
+{
+"bytes": 65324,
+"name": "data/old/consumer_discretionary-JD_US-2020-q4.json",
+"sha256": "39d7514d404c5c24dfe0492756d2cb897c80c9609d82654ace4ab9567bd6ec94",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2020-q4.json"
+},
+{
+"bytes": 62261,
+"name": "data/old/consumer_discretionary-JD_US-2021-q1.json",
+"sha256": "ece981571070b519b3fd9f3d949abc9db5763485b7f2c7d1c2e5da674b180a40",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2021-q1.json"
+},
+{
+"bytes": 64140,
+"name": "data/old/consumer_discretionary-JD_US-2021-q2.json",
+"sha256": "72e8e7be5f031a8c4cdf3e706df7fe59915ca17af6470882ee79655220006610",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2021-q2.json"
+},
+{
+"bytes": 58362,
+"name": "data/old/consumer_discretionary-JD_US-2021-q3.json",
+"sha256": "98607442c9fda9ce33715ab0fc0fdbdb5f1ccdc7f06102d83576fb95a2ce1035",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2021-q3.json"
+},
+{
+"bytes": 59436,
+"name": "data/old/consumer_discretionary-JD_US-2021-q4.json",
+"sha256": "12b5d04c591296d3be1a82e962349061294bbd4baf6c64000b4705355195f6b3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2021-q4.json"
+},
+{
+"bytes": 56017,
+"name": "data/old/consumer_discretionary-JD_US-2022-q1.json",
+"sha256": "551f819a1ec738fb9c6f451168def670024c80ddd4c1619ff405a1837ba9d59d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2022-q1.json"
+},
+{
+"bytes": 60327,
+"name": "data/old/consumer_discretionary-JD_US-2022-q2.json",
+"sha256": "d9f776b52e3b81d2566824e6d19f661befae3292868834d2b127abbfab6262a3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2022-q2.json"
+},
+{
+"bytes": 64563,
+"name": "data/old/consumer_discretionary-JD_US-2022-q3.json",
+"sha256": "73402bf6ac6d736d7f77876daadd0fbfbe029ea124dbf62f4e346894699537d3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2022-q3.json"
+},
+{
+"bytes": 65258,
+"name": "data/old/consumer_discretionary-JD_US-2022-q4.json",
+"sha256": "c4a4551c7d4be7fa6e007920c8429dff61d409e6892bade5b61eeeb8476fd9b6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2022-q4.json"
+},
+{
+"bytes": 52270,
+"name": "data/old/consumer_discretionary-JD_US-2023-q1.json",
+"sha256": "e1c29ff64a08bdad34b0f1fb9758da5c2f89989e6a208df6d1d6e34b0fe2bff9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2023-q1.json"
+},
+{
+"bytes": 51542,
+"name": "data/old/consumer_discretionary-JD_US-2023-q2.json",
+"sha256": "5cf3bab467e2b47e6b82de3d9b38fc2b290c999f45d83e1f035275ce46a820f0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2023-q2.json"
+},
+{
+"bytes": 57218,
+"name": "data/old/consumer_discretionary-JD_US-2023-q3.json",
+"sha256": "566d5e2141a3de20cc203b6067cb1a76d5278181e7efaa5ae10ab1d27f2100da",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2023-q3.json"
+},
+{
+"bytes": 57544,
+"name": "data/old/consumer_discretionary-JD_US-2023-q4.json",
+"sha256": "baf8602ed93febc3b4dde71d1e4bd33f7eaa6b65278270a2b7838cbe78f91c40",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-JD_US-2023-q4.json"
+},
+{
+"bytes": 87050,
+"name": "data/old/consumer_discretionary-SKX-2020-q1.json",
+"sha256": "e582b8a984bf1440add5ff6d744671c5cd69c05217e9bd55b63a4dbbe4111ebb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2020-q1.json"
+},
+{
+"bytes": 85301,
+"name": "data/old/consumer_discretionary-SKX-2020-q2.json",
+"sha256": "50eb33a5883d0ec557ef43762f846268162bbeef3dcfd24553e4822a39c4cab3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2020-q2.json"
+},
+{
+"bytes": 62861,
+"name": "data/old/consumer_discretionary-SKX-2020-q3.json",
+"sha256": "21259ef3bb1d4a21a48d019e85edeef8385668bb89aa367706be15b3af61b9a1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2020-q3.json"
+},
+{
+"bytes": 69238,
+"name": "data/old/consumer_discretionary-SKX-2020-q4.json",
+"sha256": "6a22c2a3256839043e0ada402261273d46f616d271c8071930365c15101bc3b8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2020-q4.json"
+},
+{
+"bytes": 78060,
+"name": "data/old/consumer_discretionary-SKX-2021-q1.json",
+"sha256": "0e91e4ee81df88c0335d317d149eb9192db19100ef8351bf1b2f8acec1165545",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2021-q1.json"
+},
+{
+"bytes": 75879,
+"name": "data/old/consumer_discretionary-SKX-2021-q2.json",
+"sha256": "fa1e9ad1aea5a7d72f59b0f088f5f52aa7ce783584fad1baf1bfee780c005796",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2021-q2.json"
+},
+{
+"bytes": 67611,
+"name": "data/old/consumer_discretionary-SKX-2021-q3.json",
+"sha256": "22fbf64f71eee9143d3f717b4714857f261621246a3bfa3e74f37aa87b240e85",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2021-q3.json"
+},
+{
+"bytes": 72947,
+"name": "data/old/consumer_discretionary-SKX-2021-q4.json",
+"sha256": "00e87d479d7d7f72df7fedcef363f4a3e21076717b8b1f5a18542d803102eaf3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2021-q4.json"
+},
+{
+"bytes": 71618,
+"name": "data/old/consumer_discretionary-SKX-2022-q1.json",
+"sha256": "b7923d635b4da0d91f92999b442f1370b7422499010a68df571912dd65ffd94c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2022-q1.json"
+},
+{
+"bytes": 85738,
+"name": "data/old/consumer_discretionary-SKX-2022-q2.json",
+"sha256": "e99dd78e410dcdd0ca8036dd25d6467ec7cbb9e35c24f1b1573d7ef20f367fd0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2022-q2.json"
+},
+{
+"bytes": 91655,
+"name": "data/old/consumer_discretionary-SKX-2022-q3.json",
+"sha256": "4957b23eb7ab6a70179b7e10215647801f18b08a03383faea98c5bca99027033",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2022-q3.json"
+},
+{
+"bytes": 79816,
+"name": "data/old/consumer_discretionary-SKX-2022-q4.json",
+"sha256": "6426c8e8c41cdf47a6ed6de595ea7180fdd04a959948ad3f5dbd85d0598fbb5f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2022-q4.json"
+},
+{
+"bytes": 82543,
+"name": "data/old/consumer_discretionary-SKX-2023-q1.json",
+"sha256": "14690062c162faec144b64578f0268843aa411f10e574cd8485629e11537e994",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2023-q1.json"
+},
+{
+"bytes": 59215,
+"name": "data/old/consumer_discretionary-SKX-2023-q2.json",
+"sha256": "1f3b43f2b2763b0c5a137da5092d4a5d2a719d52401791c679de19cd4c1bc708",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2023-q2.json"
+},
+{
+"bytes": 80954,
+"name": "data/old/consumer_discretionary-SKX-2023-q3.json",
+"sha256": "36a08b4a92b7e6e0ada2d34cabb6a25614f22cdafb1770f6961d04f25c26b78d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2023-q3.json"
+},
+{
+"bytes": 63379,
+"name": "data/old/consumer_discretionary-SKX-2023-q4.json",
+"sha256": "3783271c6a73c9871f6bc074c114fdfb1b64a31c9ffc3c365430a110ed0e191f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-SKX-2023-q4.json"
+},
+{
+"bytes": 77434,
+"name": "data/old/consumer_discretionary-YUMC_US-2020-q1.json",
+"sha256": "72f44edde0638cc0c064d244221aa6fca6921ef25422714524b26de5a01a1d4a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2020-q1.json"
+},
+{
+"bytes": 71891,
+"name": "data/old/consumer_discretionary-YUMC_US-2020-q2.json",
+"sha256": "ef85ca72c1410201d239c1bfc0d322be4ae9e5ee9d2ef062da100a3d26035822",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2020-q2.json"
+},
+{
+"bytes": 78989,
+"name": "data/old/consumer_discretionary-YUMC_US-2020-q3.json",
+"sha256": "e4ccff291e9d5f83fd73af43b7e351ba39f142bad4bf9c000072debc69f03397",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2020-q3.json"
+},
+{
+"bytes": 79802,
+"name": "data/old/consumer_discretionary-YUMC_US-2020-q4.json",
+"sha256": "61b1bb71ea5d251e88309b6dbdbe12ca22be50e54f12e2cd1533133d32386c06",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2020-q4.json"
+},
+{
+"bytes": 71246,
+"name": "data/old/consumer_discretionary-YUMC_US-2021-q1.json",
+"sha256": "10fb3940dc411d513f562fa43fbb4a076a83cde2f39c07c20c57d185c1e03b15",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2021-q1.json"
+},
+{
+"bytes": 70706,
+"name": "data/old/consumer_discretionary-YUMC_US-2021-q2.json",
+"sha256": "cbe2c141dd4441f7687d8e8ca5abe1e6297b256217d8515990924634f69547bc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2021-q2.json"
+},
+{
+"bytes": 57688,
+"name": "data/old/consumer_discretionary-YUMC_US-2021-q3.json",
+"sha256": "3c5e60dbac2ddd02c952f505422f4c14532758f2ebcbe4917087e9ec29e008e3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2021-q3.json"
+},
+{
+"bytes": 81833,
+"name": "data/old/consumer_discretionary-YUMC_US-2021-q4.json",
+"sha256": "cbe065a2fdf6771bd279f194c54ae138eb456fb245edd563d5939d8fb330e8fa",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2021-q4.json"
+},
+{
+"bytes": 70489,
+"name": "data/old/consumer_discretionary-YUMC_US-2022-q1.json",
+"sha256": "b612e009e8f79317054052ce2a99027c5aeea078f7ae38a89a694e12cfa1687d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2022-q1.json"
+},
+{
+"bytes": 83053,
+"name": "data/old/consumer_discretionary-YUMC_US-2022-q2.json",
+"sha256": "ceda891d94953ab6db4c16d99be9ec940ff33db6e4be18393b9d82e23665cb45",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2022-q2.json"
+},
+{
+"bytes": 77035,
+"name": "data/old/consumer_discretionary-YUMC_US-2022-q3.json",
+"sha256": "2a3328c505888b847b88037755d2fe79a0913fc1ee392e6afa7a50dbac11ab73",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2022-q3.json"
+},
+{
+"bytes": 83350,
+"name": "data/old/consumer_discretionary-YUMC_US-2022-q4.json",
+"sha256": "a3f3a416ce887e8e7fc574812f96375916ae974cdd6ff5f58a19977c52155be4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2022-q4.json"
+},
+{
+"bytes": 62912,
+"name": "data/old/consumer_discretionary-YUMC_US-2023-q1.json",
+"sha256": "beb7f0878d5ffd15a459face23aab1b0d6db072a8f5503b91df00231fce6e487",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2023-q1.json"
+},
+{
+"bytes": 71890,
+"name": "data/old/consumer_discretionary-YUMC_US-2023-q2.json",
+"sha256": "8d435514e88497c981bcabeb64b981b39b908fdcbf91435c35f93fd258b04e26",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2023-q2.json"
+},
+{
+"bytes": 61196,
+"name": "data/old/consumer_discretionary-YUMC_US-2023-q3.json",
+"sha256": "32b9659d080e853d3cb9421861c828a4c3eab032dd87f36de7b3694663bac5c3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2023-q3.json"
+},
+{
+"bytes": 78125,
+"name": "data/old/consumer_discretionary-YUMC_US-2023-q4.json",
+"sha256": "64812af52340c2b11930f3c53a97936f53e983985af411b4d2855898854656d3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/consumer_discretionary-YUMC_US-2023-q4.json"
+},
+{
+"bytes": 75433,
+"name": "data/old/energy-EOG-2020-q1.json",
+"sha256": "6be5626fe5a49073c6f83cf23bd5f4437392e3541e285262d503d4c86d74ec45",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2020-q1.json"
+},
+{
+"bytes": 77678,
+"name": "data/old/energy-EOG-2020-q2.json",
+"sha256": "135cfacaaea8e5c7378d8a7260c473176242046e6dd6f9a388c43d3dfef19e43",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2020-q2.json"
+},
+{
+"bytes": 80913,
+"name": "data/old/energy-EOG-2020-q3.json",
+"sha256": "d636ef8e6ab57413437616d0771d5c1e39aa6cefc0a96cb3cf337d28a0e0b4a7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2020-q3.json"
+},
+{
+"bytes": 79474,
+"name": "data/old/energy-EOG-2020-q4.json",
+"sha256": "87f543c19b03fd98ea6fe4aba85bd4c4860cc95257cb2989e0a10bbe8997e1ae",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2020-q4.json"
+},
+{
+"bytes": 74981,
+"name": "data/old/energy-EOG-2021-q1.json",
+"sha256": "fe7f180764b32866f45cea574037993da09efefc19ca2650482a2e93ad350457",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2021-q1.json"
+},
+{
+"bytes": 72319,
+"name": "data/old/energy-EOG-2021-q2.json",
+"sha256": "7e8e7bff06989eba19a50c4dc2bfb3ec28cdb3ee7ea57bfe75731c797b6902f0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2021-q2.json"
+},
+{
+"bytes": 74751,
+"name": "data/old/energy-EOG-2021-q3.json",
+"sha256": "696f97958ef1cfc7aae9e69eff76067d7a903744bc4bb9206a435ddadb5a9d04",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2021-q3.json"
+},
+{
+"bytes": 74020,
+"name": "data/old/energy-EOG-2021-q4.json",
+"sha256": "15d66240ab4b1071259749a55b01d567ff23cfbd5d1d7d86dc84fc994a12ed3c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2021-q4.json"
+},
+{
+"bytes": 75106,
+"name": "data/old/energy-EOG-2022-q1.json",
+"sha256": "9034f8e84d83ca698bc11c098530634768a0ec58855e46578e72116d5b8ee8d8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2022-q1.json"
+},
+{
+"bytes": 80414,
+"name": "data/old/energy-EOG-2022-q2.json",
+"sha256": "8ebddf020b95f5caedef3b33552cdf2b6d1284e38961162ac0dfcf61cad032d5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2022-q2.json"
+},
+{
+"bytes": 74495,
+"name": "data/old/energy-EOG-2022-q3.json",
+"sha256": "a5f8b0cd5f3b049a463f763350f012b42dc3ac963d4b0271c5168886d6757aa1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2022-q3.json"
+},
+{
+"bytes": 75265,
+"name": "data/old/energy-EOG-2022-q4.json",
+"sha256": "dbb6d4cfddcd8e138d89dec8b1c4edb8b2c5ea9de785c79d0b25ca9cef42c4de",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2022-q4.json"
+},
+{
+"bytes": 77149,
+"name": "data/old/energy-EOG-2023-q1.json",
+"sha256": "40f7a90e02244aeea1514fbc831757ee1886bae0eee465034b752d095f5109d7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2023-q1.json"
+},
+{
+"bytes": 68226,
+"name": "data/old/energy-EOG-2023-q2.json",
+"sha256": "90f955c3d642031527613af5df2a8eb1cd1d1672b7066c511b8051bf250ebea8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2023-q2.json"
+},
+{
+"bytes": 75428,
+"name": "data/old/energy-EOG-2023-q3.json",
+"sha256": "1313cb106f8ac79ff55779fcc4c5e7eea28d183442b97c5f123638e01eab2b33",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2023-q3.json"
+},
+{
+"bytes": 82608,
+"name": "data/old/energy-EOG-2023-q4.json",
+"sha256": "a8d55ff9f5b9f064ae50d45d73e4c33283365aed2eba8eff6a333e8c26c8eea5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EOG-2023-q4.json"
+},
+{
+"bytes": 66513,
+"name": "data/old/energy-EPD-2020-q1.json",
+"sha256": "7a209bab384a519189266c8cc81caadcfebd649606552d01a4f5f7d3496e4589",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2020-q1.json"
+},
+{
+"bytes": 63606,
+"name": "data/old/energy-EPD-2020-q2.json",
+"sha256": "284365de2fb2cbfc0ecfd2b2e3adad17916f10c5435ab5a026a7e9adaea6831d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2020-q2.json"
+},
+{
+"bytes": 68050,
+"name": "data/old/energy-EPD-2020-q3.json",
+"sha256": "dbad3fed924877290c5001dffcf56de0b45de09c6015c95d930629a9662347a8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2020-q3.json"
+},
+{
+"bytes": 70318,
+"name": "data/old/energy-EPD-2020-q4.json",
+"sha256": "85752d194e3bbaeb431c8b0acce6222447b2201f73e63569a557ecf16ce7ce5f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2020-q4.json"
+},
+{
+"bytes": 64464,
+"name": "data/old/energy-EPD-2021-q1.json",
+"sha256": "0aa65bb11c74918e991c9c55c3471a0f41a4c9ae14014938d9168bdde25fb47d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2021-q1.json"
+},
+{
+"bytes": 54196,
+"name": "data/old/energy-EPD-2021-q2.json",
+"sha256": "27c0472d099ccbdc33d3397560aaba791531f706efbd75193302cd28214c56b4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2021-q2.json"
+},
+{
+"bytes": 58802,
+"name": "data/old/energy-EPD-2021-q3.json",
+"sha256": "52306f9bb60c9207ca4f17d789ada518e69c6e876d51ba0174b81c78343b286c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2021-q3.json"
+},
+{
+"bytes": 59733,
+"name": "data/old/energy-EPD-2021-q4.json",
+"sha256": "24e9a127312539bc9ffa804d51e06d7d3b0e68b461582123afdc2e906335075c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2021-q4.json"
+},
+{
+"bytes": 51633,
+"name": "data/old/energy-EPD-2022-q1.json",
+"sha256": "37bf5be8ee33b761f5b9706d6fa7d06e7dd250e13be561dac3a2c1294e866ed7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2022-q1.json"
+},
+{
+"bytes": 57844,
+"name": "data/old/energy-EPD-2022-q2.json",
+"sha256": "9d2101a724a904fd849cd8fd9d9570be2da3182c05fcc09a502347857254020b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2022-q2.json"
+},
+{
+"bytes": 54796,
+"name": "data/old/energy-EPD-2022-q3.json",
+"sha256": "3709bbca512dfc9711f1145df0318fd33008c22fe395d125f6dd4bb48fadba33",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2022-q3.json"
+},
+{
+"bytes": 63128,
+"name": "data/old/energy-EPD-2022-q4.json",
+"sha256": "f9e44df2e2d28ebfe36ff0bab706c3d96bc3febd980836e43519bfbf6ec86939",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2022-q4.json"
+},
+{
+"bytes": 58388,
+"name": "data/old/energy-EPD-2023-q1.json",
+"sha256": "e6e845438fbaa77380a3f3049a25c204f7b965209c0946b543470379799cc1a9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2023-q1.json"
+},
+{
+"bytes": 55187,
+"name": "data/old/energy-EPD-2023-q2.json",
+"sha256": "90ec268b528bed0759aaebc15c97f3c83e33f95d5e4d8d4899447cf67b6c3777",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2023-q2.json"
+},
+{
+"bytes": 63254,
+"name": "data/old/energy-EPD-2023-q3.json",
+"sha256": "915f0de37c2fffb389ebd9cc19242940b942d9be89ffd9128f53f8d28a8fbf0d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2023-q3.json"
+},
+{
+"bytes": 69506,
+"name": "data/old/energy-EPD-2023-q4.json",
+"sha256": "03c946a6cb63f4037f7ae7abb8ee086736f4d590e1412366ad08236bd6296825",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-EPD-2023-q4.json"
+},
+{
+"bytes": 76048,
+"name": "data/old/energy-MPC-2020-q1.json",
+"sha256": "0634a5f2151b6e81831025be7e8bdae679f82fbe0963e3e0b49c2260ef68f68a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2020-q1.json"
+},
+{
+"bytes": 73196,
+"name": "data/old/energy-MPC-2020-q2.json",
+"sha256": "fc003bacd99527d5fdf666b73cd9416dc50d7cfb27920d2e3b6db90fe07868cb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2020-q2.json"
+},
+{
+"bytes": 80542,
+"name": "data/old/energy-MPC-2020-q3.json",
+"sha256": "44a9e934d4697d5eff5839c6fbe2362f53bd3ab0c35ca5d37d8de2f84411bca3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2020-q3.json"
+},
+{
+"bytes": 85548,
+"name": "data/old/energy-MPC-2020-q4.json",
+"sha256": "fa9d33af892c88103b771b32887ba5a1e722f10ae77cf07612c629944a8ff7d4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2020-q4.json"
+},
+{
+"bytes": 76380,
+"name": "data/old/energy-MPC-2021-q1.json",
+"sha256": "2a5d6f73eb278f18674ced2ea3bc54bd08827e4e264de6afe5c84923b888bbfe",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2021-q1.json"
+},
+{
+"bytes": 65916,
+"name": "data/old/energy-MPC-2021-q2.json",
+"sha256": "19445f77387308426f5bbd14afe221876cb93359978647f64d1611e5c7fdca5a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2021-q2.json"
+},
+{
+"bytes": 79277,
+"name": "data/old/energy-MPC-2021-q3.json",
+"sha256": "dfafb6ba059071e5a317446b2f9b60645bcf722e04c0de71e14f56daeefd948a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2021-q3.json"
+},
+{
+"bytes": 81062,
+"name": "data/old/energy-MPC-2021-q4.json",
+"sha256": "a009d300059d6182d7cf862e60f6b64d6c3ca8d5955529e2dee3b2b8d96845ab",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2021-q4.json"
+},
+{
+"bytes": 72685,
+"name": "data/old/energy-MPC-2022-q1.json",
+"sha256": "adab34309c5861c5dd8292da93f34994b2184638cd74eaef093748173d8bed38",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2022-q1.json"
+},
+{
+"bytes": 66440,
+"name": "data/old/energy-MPC-2022-q2.json",
+"sha256": "b976e2f16c8cd5610c2226b0077540e5b07c76780f1de2b998aaf5f53a8e92e6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2022-q2.json"
+},
+{
+"bytes": 76254,
+"name": "data/old/energy-MPC-2022-q3.json",
+"sha256": "6c9c009a8c9fa483da713f99485d8423ab0b381b266d27b76e6047339a4b30e2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2022-q3.json"
+},
+{
+"bytes": 79968,
+"name": "data/old/energy-MPC-2022-q4.json",
+"sha256": "c525f98dac6e07d03b85018750011bbdf627d53b3e729e64c43609c9c5aaebe4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2022-q4.json"
+},
+{
+"bytes": 74976,
+"name": "data/old/energy-MPC-2023-q1.json",
+"sha256": "7b51232312265d31c9cd46b92da2352ddccf3134ec639316d7bf1db814d2a833",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2023-q1.json"
+},
+{
+"bytes": 65368,
+"name": "data/old/energy-MPC-2023-q2.json",
+"sha256": "5ff593a12e350a4bb5bf046ea22a153804488fc4f49bc0fe7aee5e59b1b27599",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2023-q2.json"
+},
+{
+"bytes": 69459,
+"name": "data/old/energy-MPC-2023-q3.json",
+"sha256": "2f7127b2b16d7a28f77cf1a5790e73b048dcbc2ccffcfa61de4db342ff1ffbd0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2023-q3.json"
+},
+{
+"bytes": 80398,
+"name": "data/old/energy-MPC-2023-q4.json",
+"sha256": "7f1637ecca44b68667d179cfb59642699e4c94690503b3e72ac18cb4a3dfdc0d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-MPC-2023-q4.json"
+},
+{
+"bytes": 76443,
+"name": "data/old/energy-OKE-2020-q1.json",
+"sha256": "9496e2627f2f76e81f78740c471c82cb84659fedbfdcd4235dc4514f820b080d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2020-q1.json"
+},
+{
+"bytes": 70531,
+"name": "data/old/energy-OKE-2020-q2.json",
+"sha256": "ee2c0e76e3cf6b6c2c1f5b733ddf52862df648ac41bd7f84e1933ff418e07785",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2020-q2.json"
+},
+{
+"bytes": 84672,
+"name": "data/old/energy-OKE-2020-q3.json",
+"sha256": "1d376ae7282767d44688152c849d369a7aaf5bfbdd663a512212d166591a1240",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2020-q3.json"
+},
+{
+"bytes": 79456,
+"name": "data/old/energy-OKE-2020-q4.json",
+"sha256": "2ed6676e3c21e2f224d30b05be03875e52149908551535c910baf744055dc66e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2020-q4.json"
+},
+{
+"bytes": 79162,
+"name": "data/old/energy-OKE-2021-q1.json",
+"sha256": "32a2d2c5048e5f4cd1649ea3cfb962cd73db939bd665a03ad6653296975086ca",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2021-q1.json"
+},
+{
+"bytes": 76218,
+"name": "data/old/energy-OKE-2021-q2.json",
+"sha256": "8e8a2430828f1222d22535a86ae9c2895feb1d3e5195524dc6d9e547e6e35598",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2021-q2.json"
+},
+{
+"bytes": 53908,
+"name": "data/old/energy-OKE-2021-q3.json",
+"sha256": "aefc692f36af3a1050bdc727ca487f56ced9e509041e64df310f7909e707fa6b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2021-q3.json"
+},
+{
+"bytes": 67861,
+"name": "data/old/energy-OKE-2021-q4.json",
+"sha256": "412d0cadc9de53e99129585a2797fc11f2a3180ef018d857442a3b4b22955515",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2021-q4.json"
+},
+{
+"bytes": 50197,
+"name": "data/old/energy-OKE-2022-q1.json",
+"sha256": "b654de6fad1448dd1375551e22aa3865e9d28a664b81274cea801f21551d03f5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2022-q1.json"
+},
+{
+"bytes": 59267,
+"name": "data/old/energy-OKE-2022-q2.json",
+"sha256": "9acc67ba2534b59f6775b924ce967fcab1f7b91929defc26f117b45883a8043e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2022-q2.json"
+},
+{
+"bytes": 49166,
+"name": "data/old/energy-OKE-2022-q3.json",
+"sha256": "9629067ebf69f31f9fb879173832e093b0b78a969a5b4e922a8920a96f2265f8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2022-q3.json"
+},
+{
+"bytes": 62879,
+"name": "data/old/energy-OKE-2022-q4.json",
+"sha256": "b56807921f8defd2393490a4e1f38b4c57dc211bd19c66ca89236f560c5cc19a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2022-q4.json"
+},
+{
+"bytes": 54936,
+"name": "data/old/energy-OKE-2023-q1.json",
+"sha256": "918650eed2c693b9f3b7403758f22054dc3c6e0fa67851426bdf81b35d39cc99",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2023-q1.json"
+},
+{
+"bytes": 69313,
+"name": "data/old/energy-OKE-2023-q2.json",
+"sha256": "6b5bd6d36cbc70e3678d46541a8817b604404e0b0160d2c1b15269a29bf298a9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2023-q2.json"
+},
+{
+"bytes": 66187,
+"name": "data/old/energy-OKE-2023-q3.json",
+"sha256": "bb67cf4f21faec5df71c851c0b47b275f94be0b8f5a55d31000c38da03d9bf56",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2023-q3.json"
+},
+{
+"bytes": 73815,
+"name": "data/old/energy-OKE-2023-q4.json",
+"sha256": "69c7d2b2c31b5c1552f403a676e3194f6a8f8fb3c3386710aa85ab33a8a0a8cc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OKE-2023-q4.json"
+},
+{
+"bytes": 74487,
+"name": "data/old/energy-OXY_US-2020-q1.json",
+"sha256": "a35599669f6ae6f30122bff4fb2b4817e3c449ba93d273f0d967ff41a0a9a51a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2020-q1.json"
+},
+{
+"bytes": 75351,
+"name": "data/old/energy-OXY_US-2020-q2.json",
+"sha256": "16ccf03ff70312611203d6527a48fc0de62e625f728e4091fb1f1ec2071da293",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2020-q2.json"
+},
+{
+"bytes": 72905,
+"name": "data/old/energy-OXY_US-2020-q3.json",
+"sha256": "fbd0a668ef9aa6b75e402f3dfeb1394e896205a0d649a7cd6c23acb8c15a1a61",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2020-q3.json"
+},
+{
+"bytes": 73314,
+"name": "data/old/energy-OXY_US-2020-q4.json",
+"sha256": "12d2fdff93bdae4401ab9f3138f8594b3d22626522628e0af5a8c754af54d5f2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2020-q4.json"
+},
+{
+"bytes": 74776,
+"name": "data/old/energy-OXY_US-2021-q1.json",
+"sha256": "2befddabc492ecfb7a472d677492d1c603e7b1af64530d2a8865f6224bf7c0cf",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2021-q1.json"
+},
+{
+"bytes": 70973,
+"name": "data/old/energy-OXY_US-2021-q2.json",
+"sha256": "1b68f576c2e86cba064544aa7ed3eb9736b49c4ff63174b2624570e60df3a864",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2021-q2.json"
+},
+{
+"bytes": 69837,
+"name": "data/old/energy-OXY_US-2021-q3.json",
+"sha256": "8a4ff732713eb388fc97742bf5f69149348573e0998875a5b016fb5deb523bcb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2021-q3.json"
+},
+{
+"bytes": 86978,
+"name": "data/old/energy-OXY_US-2021-q4.json",
+"sha256": "ad750e6800b0b9088813c185454f272d38d74c694de779f74550dc27b88a34bc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2021-q4.json"
+},
+{
+"bytes": 78187,
+"name": "data/old/energy-OXY_US-2022-q1.json",
+"sha256": "f5a359acaceb4dc32b5a3e70862102d34dc30878bc0baf3aefa88bdc7a1c085e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2022-q1.json"
+},
+{
+"bytes": 79399,
+"name": "data/old/energy-OXY_US-2022-q2.json",
+"sha256": "5d15b5c87b6cff40ed4a049e7b92d237fb7b7f74118f0e23f152ad26d81cbf06",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2022-q2.json"
+},
+{
+"bytes": 79371,
+"name": "data/old/energy-OXY_US-2022-q3.json",
+"sha256": "573e1089336e17e8b525bf347e8a769499a428355c73722f4af51110aa2704f6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2022-q3.json"
+},
+{
+"bytes": 83484,
+"name": "data/old/energy-OXY_US-2022-q4.json",
+"sha256": "281f66b96456ddcc34a4fdfd47ca365900f3767cd40edfc1403208eedfae087d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2022-q4.json"
+},
+{
+"bytes": 72723,
+"name": "data/old/energy-OXY_US-2023-q1.json",
+"sha256": "06b7cb9ecdc5ccb8735cd1dde4eca96f8cb920b934503dc70af74e9fb8f25c47",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2023-q1.json"
+},
+{
+"bytes": 80919,
+"name": "data/old/energy-OXY_US-2023-q2.json",
+"sha256": "be0e8c3e98a6bc19b436ca69dda1576710504e5b41b888de15abba88fdcf8f1c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2023-q2.json"
+},
+{
+"bytes": 82990,
+"name": "data/old/energy-OXY_US-2023-q3.json",
+"sha256": "d5fb49cbacf2326ec2ec0e8abe2fffbad5a982b92f884da73d73ffc3b8e45180",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2023-q3.json"
+},
+{
+"bytes": 76340,
+"name": "data/old/energy-OXY_US-2023-q4.json",
+"sha256": "36188034724a63de23b672283085fc9a1015c0014692ecfad012c5973e92643a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/energy-OXY_US-2023-q4.json"
+},
+{
+"bytes": 86963,
+"name": "data/old/financials-AON-2020-q1.json",
+"sha256": "468ae2d71b70826ed92486f335c1808c211286aa76433dc9f299eeda6d9582eb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2020-q1.json"
+},
+{
+"bytes": 69832,
+"name": "data/old/financials-AON-2020-q2.json",
+"sha256": "243f96da4571fc8c9620b8a342b86dd83a2778c8355875f3791b54a1f4d54bb8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2020-q2.json"
+},
+{
+"bytes": 71762,
+"name": "data/old/financials-AON-2020-q3.json",
+"sha256": "3a887fa42ec8f04af148dd8cb74d231a9954a6fd19441ba5dfbb2f438af5309b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2020-q3.json"
+},
+{
+"bytes": 70298,
+"name": "data/old/financials-AON-2020-q4.json",
+"sha256": "ce87d48e32e2f4b4a5514b8d9c61d4fb52f7f5efa3cb473fb1aa4a23977bb6fd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2020-q4.json"
+},
+{
+"bytes": 63592,
+"name": "data/old/financials-AON-2021-q1.json",
+"sha256": "238cad69cbb730c0b986c73cc0d6813546b0f1e5cad0d756156beb74cc8e2c6a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2021-q1.json"
+},
+{
+"bytes": 74384,
+"name": "data/old/financials-AON-2021-q2.json",
+"sha256": "699ed938cca9d5ebb28be49e727a358a2025a5cf54ad5ec53f98a1314202210e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2021-q2.json"
+},
+{
+"bytes": 66378,
+"name": "data/old/financials-AON-2021-q3.json",
+"sha256": "4b58fd67649f061ddbfd3deee0eaeadeed0aa31f367bb3a44019b0d0fa715e50",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2021-q3.json"
+},
+{
+"bytes": 60546,
+"name": "data/old/financials-AON-2021-q4.json",
+"sha256": "0eb8d3b5e492de2642069af6ce96fb947dcc61691915136f2a291d433b6189dc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2021-q4.json"
+},
+{
+"bytes": 51681,
+"name": "data/old/financials-AON-2022-q1.json",
+"sha256": "f6aca8a7d86c11457074ead97e68061cf3eaf97b0aa06373c805cf9cea71a979",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2022-q1.json"
+},
+{
+"bytes": 65520,
+"name": "data/old/financials-AON-2022-q2.json",
+"sha256": "912c41e1bd4a1fbb79f030880fa2783702a4e26479a9e8a0a22a2480f2eda6c7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2022-q2.json"
+},
+{
+"bytes": 65032,
+"name": "data/old/financials-AON-2022-q3.json",
+"sha256": "a837238e8924198952e1f1cda5de42c22af1be1dd3d3ba0a20ae59ce7342f32b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2022-q3.json"
+},
+{
+"bytes": 79493,
+"name": "data/old/financials-AON-2022-q4.json",
+"sha256": "e6f5cb9e9fee6662e3ca49fa2a743e4c32eee4f94835d32e71b1425d0f75c9ad",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2022-q4.json"
+},
+{
+"bytes": 71992,
+"name": "data/old/financials-AON-2023-q1.json",
+"sha256": "9c6354d9438d021189c4c9d9bd7fa414418b8c99c54c1cd5f0749c634496c77f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2023-q1.json"
+},
+{
+"bytes": 80477,
+"name": "data/old/financials-AON-2023-q2.json",
+"sha256": "7b1955435f4b7e7b84d8cdeb8f2a1ff7fd47c639d33ce40dffe103528f0d125a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2023-q2.json"
+},
+{
+"bytes": 71536,
+"name": "data/old/financials-AON-2023-q3.json",
+"sha256": "3d6f921d47f3171dda92f71a3625a7fcca2e3a213dc30f999127a29f39903380",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2023-q3.json"
+},
+{
+"bytes": 85923,
+"name": "data/old/financials-AON-2023-q4.json",
+"sha256": "5aafaebcbbde62565464f8eac56fc8b2965ee700871bd5b3651881eaf19fd575",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-AON-2023-q4.json"
+},
+{
+"bytes": 61221,
+"name": "data/old/financials-CINF-2020-q1.json",
+"sha256": "f13a81073d7fb4acab469a68251c626ff1e3296f17e7851c63705d60721ab97d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2020-q1.json"
+},
+{
+"bytes": 51711,
+"name": "data/old/financials-CINF-2020-q2.json",
+"sha256": "0ab5190a743283c6483aff2789277289970ddac0f7e49d4d1c5ac70e1b08dca1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2020-q2.json"
+},
+{
+"bytes": 52890,
+"name": "data/old/financials-CINF-2020-q3.json",
+"sha256": "63a673df10fa9d903c129cca862639c1b0bb2beb3fd837b532044a1668fc83e6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2020-q3.json"
+},
+{
+"bytes": 52275,
+"name": "data/old/financials-CINF-2020-q4.json",
+"sha256": "ed2627f32b1732b25d21e3fe88387c037a17a0196ed04a519d85b8e52277dd8b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2020-q4.json"
+},
+{
+"bytes": 31654,
+"name": "data/old/financials-CINF-2021-q1.json",
+"sha256": "cb6d92852674ed8653e535d5f1e68f6cc00e54889aa8a23322d47ee5ad6b8469",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2021-q1.json"
+},
+{
+"bytes": 38674,
+"name": "data/old/financials-CINF-2021-q2.json",
+"sha256": "8cc0b2ffb57f604186c1122b1c55c976c672bb0a924a2af667c4a6104d5d8519",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2021-q2.json"
+},
+{
+"bytes": 32654,
+"name": "data/old/financials-CINF-2021-q3.json",
+"sha256": "493fe780e8e47f81bd029ae42d76ff2a3f13c02d1fd720095dc0bca12abe92d3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2021-q3.json"
+},
+{
+"bytes": 50804,
+"name": "data/old/financials-CINF-2021-q4.json",
+"sha256": "2ca88c1ff95affeb28483a89bd44f4667fa094b064b18bcfe119a246d9e71fb6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2021-q4.json"
+},
+{
+"bytes": 37060,
+"name": "data/old/financials-CINF-2022-q1.json",
+"sha256": "8cf7dc82a5af0d4acb0ed6d9c9f8308f628aa4f31a1d6746ae08a5f676443c32",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2022-q1.json"
+},
+{
+"bytes": 43906,
+"name": "data/old/financials-CINF-2022-q2.json",
+"sha256": "1864baed65eb5364514a8e6371862e2621583f15e5b7d9c3fd0dfeeb02dfa141",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2022-q2.json"
+},
+{
+"bytes": 59833,
+"name": "data/old/financials-CINF-2022-q3.json",
+"sha256": "2095f4f339df2781ba5b8fc0401fdbd1aa64e0040ac140eb78f0156a429fa201",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2022-q3.json"
+},
+{
+"bytes": 61739,
+"name": "data/old/financials-CINF-2022-q4.json",
+"sha256": "c509bd201b0223718762f30d0300179bc86da13aea6765f66e9e74c8ae55d650",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2022-q4.json"
+},
+{
+"bytes": 62871,
+"name": "data/old/financials-CINF-2023-q1.json",
+"sha256": "e0993ee51aa22997d720383a309f0a4aaffea793305905b03f0a7c7d9a0d9319",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2023-q1.json"
+},
+{
+"bytes": 49042,
+"name": "data/old/financials-CINF-2023-q2.json",
+"sha256": "ae850efc6241890b099bd3fd2ebb8d1dd26c88c28724c4b7a8be01bbb7f15475",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2023-q2.json"
+},
+{
+"bytes": 46042,
+"name": "data/old/financials-CINF-2023-q3.json",
+"sha256": "1d9b264ebb76ede0dee4ed7256229de502997020cae17076ab6ce858d8cc01cd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2023-q3.json"
+},
+{
+"bytes": 56145,
+"name": "data/old/financials-CINF-2023-q4.json",
+"sha256": "5ba6702eda21ed1e6a6a81afb1d1117bad110aa6a4f956ea6a809a854c8fe74e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-CINF-2023-q4.json"
+},
+{
+"bytes": 87606,
+"name": "data/old/financials-MKL-2020-q1.json",
+"sha256": "6a2868b8398264dbc2be80696d94ba1c49d9bbed83d21bee80d358e18ddb7757",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2020-q1.json"
+},
+{
+"bytes": 81104,
+"name": "data/old/financials-MKL-2020-q2.json",
+"sha256": "83e6e325090820fc7dcf718a7244c3ae094de2b5f7ae0a525aa77284787b84a5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2020-q2.json"
+},
+{
+"bytes": 91275,
+"name": "data/old/financials-MKL-2020-q3.json",
+"sha256": "bb5af8a12c91ebf498b5fe1ad6b1ebcecb7c7e016b81f8a893d3673e61a8aeeb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2020-q3.json"
+},
+{
+"bytes": 68781,
+"name": "data/old/financials-MKL-2020-q4.json",
+"sha256": "23f29e69344aabee84a5d8ac6188f47c714a100a9c417abfb549737850255464",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2020-q4.json"
+},
+{
+"bytes": 83383,
+"name": "data/old/financials-MKL-2021-q1.json",
+"sha256": "966baad3f42b2159942740a655afcf1c51caa276b7c144ff69dc8bc29640aef4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2021-q1.json"
+},
+{
+"bytes": 67165,
+"name": "data/old/financials-MKL-2021-q2.json",
+"sha256": "46edf9576c90b5ef96e1130b0def779cc22388366f8681952d8b6d2206a499e7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2021-q2.json"
+},
+{
+"bytes": 60108,
+"name": "data/old/financials-MKL-2021-q3.json",
+"sha256": "09813601c6e63d695371ead54e6168d9edf70fea19be412d7afed7628e019e92",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2021-q3.json"
+},
+{
+"bytes": 74904,
+"name": "data/old/financials-MKL-2021-q4.json",
+"sha256": "8a43f7da28e438988a44c465e282d044806fc9acf6f703b3761e8a6dd801d963",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2021-q4.json"
+},
+{
+"bytes": 72305,
+"name": "data/old/financials-MKL-2022-q1.json",
+"sha256": "cc7ef24c07015924e8a3e3506401f587707e67dbf1b4cc1e67df02629b256e08",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2022-q1.json"
+},
+{
+"bytes": 73097,
+"name": "data/old/financials-MKL-2022-q2.json",
+"sha256": "b37f2660ab1fe578fefc8c556323cc35c14daa9a92364310c9eafaa7ff400eba",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2022-q2.json"
+},
+{
+"bytes": 76791,
+"name": "data/old/financials-MKL-2022-q3.json",
+"sha256": "498aab45c65a33da4ee7bb7f060f86a5a10561270ae2f1dc46d5f58914fe47d6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2022-q3.json"
+},
+{
+"bytes": 78824,
+"name": "data/old/financials-MKL-2022-q4.json",
+"sha256": "11c89fcd88c304282c29d9841b2a2a4e84a4d8a44438b03bc94d2cb50b64d491",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2022-q4.json"
+},
+{
+"bytes": 71595,
+"name": "data/old/financials-MKL-2023-q1.json",
+"sha256": "887345bf5e8d0066b6613e764fad29755d1ee7ae4cc3c92a1125195673cf62ae",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2023-q1.json"
+},
+{
+"bytes": 66923,
+"name": "data/old/financials-MKL-2023-q2.json",
+"sha256": "35210a2dfb401e077a32b7acde3c863e22dc00210d92cf4773a5ec7bb7720193",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2023-q2.json"
+},
+{
+"bytes": 74240,
+"name": "data/old/financials-MKL-2023-q3.json",
+"sha256": "e9bb3d6f94b40f8095877fea0b9c1ceced2f9bd73eacc58d4b0189ba76b28c91",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2023-q3.json"
+},
+{
+"bytes": 74679,
+"name": "data/old/financials-MKL-2023-q4.json",
+"sha256": "cd13fb4360c8926cce376853c1db3f944ab030a45d86aebace5cd5562099f31c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-MKL-2023-q4.json"
+},
+{
+"bytes": 78886,
+"name": "data/old/financials-PRU-2020-q1.json",
+"sha256": "48baa551d0823666659c5a3b6893b5b097738be2bfe4de5463ecc2d109829855",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2020-q1.json"
+},
+{
+"bytes": 68396,
+"name": "data/old/financials-PRU-2020-q2.json",
+"sha256": "c5f6b303062e4b1d160ec4bd389f3d8481053ffdd8d8fb4584ca507a7a1f102b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2020-q2.json"
+},
+{
+"bytes": 67981,
+"name": "data/old/financials-PRU-2020-q3.json",
+"sha256": "2fec1cc39dcdbf94878421bcc6bae7146a8038884d2dc2333fcc35d7a0c11d77",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2020-q3.json"
+},
+{
+"bytes": 76890,
+"name": "data/old/financials-PRU-2020-q4.json",
+"sha256": "69047bd54bb41af6afe02bf392d0812de32bfc4b3369bbf5052583eed980063d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2020-q4.json"
+},
+{
+"bytes": 72562,
+"name": "data/old/financials-PRU-2021-q1.json",
+"sha256": "4c5390f856446175ce3dcddb8a4aa2e2848d2ff7a65f053a87ce9d806beea095",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2021-q1.json"
+},
+{
+"bytes": 69023,
+"name": "data/old/financials-PRU-2021-q2.json",
+"sha256": "52a553b7b69f51c73aaecead0c9f9fe93cf0660a2f980449fe9a780c498131dd",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2021-q2.json"
+},
+{
+"bytes": 68954,
+"name": "data/old/financials-PRU-2021-q3.json",
+"sha256": "ce373a39d692f6226a1a8851bfdafc63984029fa4ba7be0a693095f12a0e2574",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2021-q3.json"
+},
+{
+"bytes": 75023,
+"name": "data/old/financials-PRU-2021-q4.json",
+"sha256": "8252bc7686300aecbb11f9c5b269dde366f86d631547e3db38f24729389a734f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2021-q4.json"
+},
+{
+"bytes": 64331,
+"name": "data/old/financials-PRU-2022-q1.json",
+"sha256": "270c248cf74137960dabf13c8e0811567afb66dd245bdb20d80fef173b0148c2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2022-q1.json"
+},
+{
+"bytes": 68829,
+"name": "data/old/financials-PRU-2022-q2.json",
+"sha256": "689387eb078db69ae58c36b29eae9e953df6f1a80cd25214cd863239664ad148",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2022-q2.json"
+},
+{
+"bytes": 77515,
+"name": "data/old/financials-PRU-2022-q3.json",
+"sha256": "2d49a6ad6cfecac01906615d1177d310544853ad946b7b5665151b2e5817a41c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2022-q3.json"
+},
+{
+"bytes": 73989,
+"name": "data/old/financials-PRU-2022-q4.json",
+"sha256": "f740c7f3a0e5e0451ea0ce2c9df0e97580efd6111e6c9ea5d772b92fe1b2477b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2022-q4.json"
+},
+{
+"bytes": 76614,
+"name": "data/old/financials-PRU-2023-q1.json",
+"sha256": "7ffe852987f1733120c4cbb16692cf839a9c6ad8c3267a4985780892b7e94bc4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2023-q1.json"
+},
+{
+"bytes": 72084,
+"name": "data/old/financials-PRU-2023-q2.json",
+"sha256": "691af8d1765c4c177b7cb4b7aacaef17e7dc80d4bd9eb6aeac3ca0ceaed9d247",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2023-q2.json"
+},
+{
+"bytes": 69139,
+"name": "data/old/financials-PRU-2023-q3.json",
+"sha256": "5819fa80ce5ec2daa8ebc65c83c8f0f03c1056ed50d6e1c6feadc978804b54a6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2023-q3.json"
+},
+{
+"bytes": 72226,
+"name": "data/old/financials-PRU-2023-q4.json",
+"sha256": "648465620f1755919b0cda0d42ee4a6f32b69f711525758930fee310da836bfe",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/financials-PRU-2023-q4.json"
+},
+{
+"bytes": 87566,
+"name": "data/old/information_technology-ADSK_US-2020-q1.json",
+"sha256": "e98b4508336c6daa43ab94120e3773f823ccad376adc40e3e07e93c140b5e68e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2020-q1.json"
+},
+{
+"bytes": 91563,
+"name": "data/old/information_technology-ADSK_US-2020-q2.json",
+"sha256": "407b7acd935614dbf49e000383ebd0ba3e9b8e27cb2837f980a3f6809a072be8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2020-q2.json"
+},
+{
+"bytes": 86932,
+"name": "data/old/information_technology-ADSK_US-2020-q3.json",
+"sha256": "330bf206a7431c458d0ae36d7212bcac57afcb2557184f7f7dd361b4443ad1a6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2020-q3.json"
+},
+{
+"bytes": 89546,
+"name": "data/old/information_technology-ADSK_US-2020-q4.json",
+"sha256": "dbb76a276352bf03c51e5c7e9a958e1602d0c016e17b41acae39f4023444b51f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2020-q4.json"
+},
+{
+"bytes": 96703,
+"name": "data/old/information_technology-ADSK_US-2021-q1.json",
+"sha256": "43a744e51bce391890ae61557c4937bf588adbbb8bcc010cf3f99345c12da883",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2021-q1.json"
+},
+{
+"bytes": 85158,
+"name": "data/old/information_technology-ADSK_US-2021-q2.json",
+"sha256": "ef29aaeba31a2160234eefa0d6cd7ee027a8c982ff4a106cb2b3b894ef36fce3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2021-q2.json"
+},
+{
+"bytes": 90657,
+"name": "data/old/information_technology-ADSK_US-2021-q3.json",
+"sha256": "64bc42c6b31513d21f0cafd5aee1d897e77d4684db3d7116d3dd94f94e7481eb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2021-q3.json"
+},
+{
+"bytes": 84594,
+"name": "data/old/information_technology-ADSK_US-2021-q4.json",
+"sha256": "cb81bc2803d2820d75a7224f5f3b5e3df716e1f6ad10765feab04ee1a4abc99f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2021-q4.json"
+},
+{
+"bytes": 82330,
+"name": "data/old/information_technology-ADSK_US-2022-q1.json",
+"sha256": "53f5c1a4a84bcbf712b3f88a3b8a41ce4fc0ac5e0ecce5b5bd0134219b628c16",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2022-q1.json"
+},
+{
+"bytes": 78701,
+"name": "data/old/information_technology-ADSK_US-2022-q2.json",
+"sha256": "281430815964e4f5d6e48450d19e72320b58e23790f97e32c576e1ac5a79a34b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2022-q2.json"
+},
+{
+"bytes": 76368,
+"name": "data/old/information_technology-ADSK_US-2022-q3.json",
+"sha256": "0ad47f01c3f0643241f369550ad6ea6885babb1412f2debbbe187ff4b8ec7217",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2022-q3.json"
+},
+{
+"bytes": 77969,
+"name": "data/old/information_technology-ADSK_US-2022-q4.json",
+"sha256": "3943c08f76fd344b3f7fe9ccd99670188ef34bdba0600cf42f60de7a4c99f8ca",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2022-q4.json"
+},
+{
+"bytes": 81750,
+"name": "data/old/information_technology-ADSK_US-2023-q1.json",
+"sha256": "f768ea64fb6dd3476ac795351a502d72742c4f9131796bb7c9b06490e79bb5e6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2023-q1.json"
+},
+{
+"bytes": 76825,
+"name": "data/old/information_technology-ADSK_US-2023-q2.json",
+"sha256": "c2ac8e2aee32f2ad240e9c236b0e33233631073f92ba25967e31725b5646ce14",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2023-q2.json"
+},
+{
+"bytes": 79227,
+"name": "data/old/information_technology-ADSK_US-2023-q3.json",
+"sha256": "f1b28686b573661926fffd6094dcfe26a755373a8d3488cc13775032c0596c7d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2023-q3.json"
+},
+{
+"bytes": 80404,
+"name": "data/old/information_technology-ADSK_US-2023-q4.json",
+"sha256": "cfe6eee86330e3cb99613f0e6ed6c5d97db9486ce1669719ea85154dff869823",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-ADSK_US-2023-q4.json"
+},
+{
+"bytes": 71476,
+"name": "data/old/information_technology-BIDU_US-2020-q1.json",
+"sha256": "622e8945e4d9c76f86f981940c54e7de90bbea3cea4fc957d4847967a67b62fa",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2020-q1.json"
+},
+{
+"bytes": 72020,
+"name": "data/old/information_technology-BIDU_US-2020-q2.json",
+"sha256": "df147f4b8bd0ea4d23638cf98f30fd76978fd03a4d70d8b1d148dff1626510b0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2020-q2.json"
+},
+{
+"bytes": 77045,
+"name": "data/old/information_technology-BIDU_US-2020-q3.json",
+"sha256": "ffcf73e9f53945027ec0bcd494b4e7dd3eb3e7f7a9a143999d42459c586aebd8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2020-q3.json"
+},
+{
+"bytes": 83434,
+"name": "data/old/information_technology-BIDU_US-2020-q4.json",
+"sha256": "02a3912b4c1e41aaabb251159ced07acdeb0fb5802576a9096c12f5a8e167ce6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2020-q4.json"
+},
+{
+"bytes": 78312,
+"name": "data/old/information_technology-BIDU_US-2021-q1.json",
+"sha256": "f6ba5ee8af3235008f950f87c8e97fc96beab3b36bdc083cc69740c5069ad06f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2021-q1.json"
+},
+{
+"bytes": 65498,
+"name": "data/old/information_technology-BIDU_US-2021-q2.json",
+"sha256": "5f78d3f534bba9b78bd099023dcdaf617d657059767e5694cd9b33930d8f2a39",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2021-q2.json"
+},
+{
+"bytes": 70713,
+"name": "data/old/information_technology-BIDU_US-2021-q3.json",
+"sha256": "f7bc73beb57664925140f72ad0cd6896f271e7f5b4cbe8c639ffe7287e9cf842",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2021-q3.json"
+},
+{
+"bytes": 63170,
+"name": "data/old/information_technology-BIDU_US-2021-q4.json",
+"sha256": "7bdddaa244a8230adc5b558b5f05303a465c7b1e04d764c383b46b341bf5210b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2021-q4.json"
+},
+{
+"bytes": 62898,
+"name": "data/old/information_technology-BIDU_US-2022-q1.json",
+"sha256": "40eb2a7de74d254c1244557f24403dcb6c20fc0538e87b91cae208e81542057b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2022-q1.json"
+},
+{
+"bytes": 60901,
+"name": "data/old/information_technology-BIDU_US-2022-q2.json",
+"sha256": "77e207a614efbf1bc73383430d5634642a19fb2530f8d041f1753346432d7e8e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2022-q2.json"
+},
+{
+"bytes": 69441,
+"name": "data/old/information_technology-BIDU_US-2022-q3.json",
+"sha256": "6b40f3c8f162d3cf7a8ab3425eeb15453442903e797d713a41ea68da56596629",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2022-q3.json"
+},
+{
+"bytes": 66715,
+"name": "data/old/information_technology-BIDU_US-2022-q4.json",
+"sha256": "619bf197046cfd47e8929b11248c7dfc223bad6309594d11a689708d9757062f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2022-q4.json"
+},
+{
+"bytes": 68776,
+"name": "data/old/information_technology-BIDU_US-2023-q1.json",
+"sha256": "32e14b6ca657a6b110b53e40c817d9f12d7fb401cd1f61bc6aa620405854041d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2023-q1.json"
+},
+{
+"bytes": 70506,
+"name": "data/old/information_technology-BIDU_US-2023-q2.json",
+"sha256": "31e535da2076d1c42ddc471f13e5466781fec0d90fcd3c8ead3ee67471924957",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2023-q2.json"
+},
+{
+"bytes": 62192,
+"name": "data/old/information_technology-BIDU_US-2023-q3.json",
+"sha256": "29de1b902fef7cd8fa2326e5d4e0625c1bca4b190badea0146b499d7e3995366",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2023-q3.json"
+},
+{
+"bytes": 70406,
+"name": "data/old/information_technology-BIDU_US-2023-q4.json",
+"sha256": "73546ba0edfc04b5a33772f5b4b6041a14e071a74a6abeb23d6f02f9a97b9f67",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-BIDU_US-2023-q4.json"
+},
+{
+"bytes": 75141,
+"name": "data/old/information_technology-DXC-2020-q1.json",
+"sha256": "61f77398dd28adfb7837be120bcd189792cea6e37961eddcbc6cde7a058c71a3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2020-q1.json"
+},
+{
+"bytes": 74433,
+"name": "data/old/information_technology-DXC-2020-q2.json",
+"sha256": "b4095c89cba4465c9ae1f99d46cbf4dd73cb736181a9b5336214aec18aa1a827",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2020-q2.json"
+},
+{
+"bytes": 65456,
+"name": "data/old/information_technology-DXC-2020-q3.json",
+"sha256": "2999ab354291bff43e5d7ef521ffefeb325ab832109ec82e8f2c569541c6e73c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2020-q3.json"
+},
+{
+"bytes": 81887,
+"name": "data/old/information_technology-DXC-2020-q4.json",
+"sha256": "f6abbeeee27f825259ce67851ba31883c2996b1a174e9343c415923e5c3fa8a1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2020-q4.json"
+},
+{
+"bytes": 68308,
+"name": "data/old/information_technology-DXC-2021-q1.json",
+"sha256": "80e89cef6c50269f63c124f712f320f9a35b8f4ac7c4afdfdb69759c5cf915dc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2021-q1.json"
+},
+{
+"bytes": 64879,
+"name": "data/old/information_technology-DXC-2021-q2.json",
+"sha256": "9d88553e9faed9d13da53a164bd403fd297ad03759c875130728007ff0562875",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2021-q2.json"
+},
+{
+"bytes": 60344,
+"name": "data/old/information_technology-DXC-2021-q3.json",
+"sha256": "9c1c71bcd5605c0e808faf269b89e70cda6ad862db08b0244e1db0e8421bcf78",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2021-q3.json"
+},
+{
+"bytes": 62394,
+"name": "data/old/information_technology-DXC-2021-q4.json",
+"sha256": "6eb3fe8bc105e3721011f1bcf10c45808b7fbf9efc9627505f02539fd12d26ed",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2021-q4.json"
+},
+{
+"bytes": 54961,
+"name": "data/old/information_technology-DXC-2022-q1.json",
+"sha256": "b78d12f78ddfe933f5fda03c61a2da8565508a894c155852d010bb4a02fcc1ad",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2022-q1.json"
+},
+{
+"bytes": 74490,
+"name": "data/old/information_technology-DXC-2022-q2.json",
+"sha256": "c1c3ccf6fdeedef830aa8a4884a6da0eaf2f8cd32247feeb64ffc2f715b9f3aa",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2022-q2.json"
+},
+{
+"bytes": 81239,
+"name": "data/old/information_technology-DXC-2022-q3.json",
+"sha256": "4bbfc832163c42c2de571d4f18365e6274bb4897295cdb0bd9feb92a538fd54e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2022-q3.json"
+},
+{
+"bytes": 75816,
+"name": "data/old/information_technology-DXC-2022-q4.json",
+"sha256": "d8d46a793d355d983cdcc3d2310e65b6ca54b3cac97ed26bdf1e1d8bf2035d5a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2022-q4.json"
+},
+{
+"bytes": 65739,
+"name": "data/old/information_technology-DXC-2023-q1.json",
+"sha256": "9aaf3a97d544320e38b63d592642607c12ea99f390af82669b1536d22947858f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2023-q1.json"
+},
+{
+"bytes": 62186,
+"name": "data/old/information_technology-DXC-2023-q2.json",
+"sha256": "3d39c3f8cab59c3ee1ebf4c5776f2eba71768c05a00fa4113d53274b5a2de630",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2023-q2.json"
+},
+{
+"bytes": 76314,
+"name": "data/old/information_technology-DXC-2023-q3.json",
+"sha256": "11390223526ddec16294625e6476e02424cfdc04679f7e175e7d5fab12a38f81",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2023-q3.json"
+},
+{
+"bytes": 72882,
+"name": "data/old/information_technology-DXC-2023-q4.json",
+"sha256": "6487be84878ced6e297625ae53c20d13e37ae946ebf9f22a7ef4d6b43cbc8cf1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-DXC-2023-q4.json"
+},
+{
+"bytes": 69233,
+"name": "data/old/information_technology-EPAM_US-2020-q1.json",
+"sha256": "d3df9a8e4a54129180005a84d1c30c2eea7ba5f4fb1f2e9277be7cdb7d414cd9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2020-q1.json"
+},
+{
+"bytes": 73275,
+"name": "data/old/information_technology-EPAM_US-2020-q2.json",
+"sha256": "f829b79f09e094a39d88cf6da55a58dfa7db4f4812664bd69487bac2a8b33c58",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2020-q2.json"
+},
+{
+"bytes": 75572,
+"name": "data/old/information_technology-EPAM_US-2020-q3.json",
+"sha256": "0437b806e364e32b8b467e7602b4e71ce5fddbae10a657ee4555617df0ee84be",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2020-q3.json"
+},
+{
+"bytes": 80435,
+"name": "data/old/information_technology-EPAM_US-2020-q4.json",
+"sha256": "5fc992573a402cc1d4b8b9faf4ce0de34fa3211a6600b655c984e04377272922",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2020-q4.json"
+},
+{
+"bytes": 70932,
+"name": "data/old/information_technology-EPAM_US-2021-q1.json",
+"sha256": "11b89c4077b783bc7d8345fff6dbd932a927c187eb7d1a0d7892cc782e471886",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2021-q1.json"
+},
+{
+"bytes": 72535,
+"name": "data/old/information_technology-EPAM_US-2021-q2.json",
+"sha256": "91564eb815d5a6c54eb899ff089ba0de91c3dd3a04a6111f55bbcd9f4654fb21",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2021-q2.json"
+},
+{
+"bytes": 73911,
+"name": "data/old/information_technology-EPAM_US-2021-q3.json",
+"sha256": "8fd2667b4752f44de794def29218120a0713508f8d710f4f30fe7591a549542f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2021-q3.json"
+},
+{
+"bytes": 85045,
+"name": "data/old/information_technology-EPAM_US-2021-q4.json",
+"sha256": "738b17e06b5236791b10fc09a63603f5608dacba5dc2ef300fba3695acb18f70",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2021-q4.json"
+},
+{
+"bytes": 74437,
+"name": "data/old/information_technology-EPAM_US-2022-q1.json",
+"sha256": "4b47c9fa716e8ce34a6e008b5f593814f0aaa18f7a576fc8fb3bff24cb72e7f0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2022-q1.json"
+},
+{
+"bytes": 78161,
+"name": "data/old/information_technology-EPAM_US-2022-q2.json",
+"sha256": "c9c2808a3b2a17820e9ed6f690defac298b72db7633be1a324a6a50ea81301a9",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2022-q2.json"
+},
+{
+"bytes": 79998,
+"name": "data/old/information_technology-EPAM_US-2022-q3.json",
+"sha256": "80b94d756acd1c30f9138a34e5a8def4e96b894cb87b3dfb580ab1a809aecc17",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2022-q3.json"
+},
+{
+"bytes": 83995,
+"name": "data/old/information_technology-EPAM_US-2022-q4.json",
+"sha256": "bb1641e6dc22c24cf25e799c30a9eb725d2340470c7cdc1c556d2c6c040a62d2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2022-q4.json"
+},
+{
+"bytes": 82218,
+"name": "data/old/information_technology-EPAM_US-2023-q1.json",
+"sha256": "f961bc5fefc4b93664485c9bb98fc6454c7d4349217fc8d9828b2fad4965098c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2023-q1.json"
+},
+{
+"bytes": 80954,
+"name": "data/old/information_technology-EPAM_US-2023-q2.json",
+"sha256": "981dd15866abe7734562206f7e667deaac5813d0a35e78a31816381832e6df1f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2023-q2.json"
+},
+{
+"bytes": 81089,
+"name": "data/old/information_technology-EPAM_US-2023-q3.json",
+"sha256": "d9c06e3f5dc5d0c1350e559ec4d4b88f21aeff22355a5303e26a3e38f075af60",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2023-q3.json"
+},
+{
+"bytes": 80723,
+"name": "data/old/information_technology-EPAM_US-2023-q4.json",
+"sha256": "068a28806a930cd0386290cd5ebccd8447e81d6b664f8acfebcd000f24f0e51f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-EPAM_US-2023-q4.json"
+},
+{
+"bytes": 67305,
+"name": "data/old/information_technology-WDC-2020-q1.json",
+"sha256": "fc71c3cc29f8250ad2ccce41ba46b4c398fd1d2ec239148a6ce4ae262c35aeca",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2020-q1.json"
+},
+{
+"bytes": 62309,
+"name": "data/old/information_technology-WDC-2020-q2.json",
+"sha256": "b5609b62b6bc4b941eaa230a2a93ad4b2407d6cc2e8eb978f7d4803212670717",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2020-q2.json"
+},
+{
+"bytes": 73793,
+"name": "data/old/information_technology-WDC-2020-q3.json",
+"sha256": "406f59aa16adcb0bad040143cc18b0af9dbe295782a089380329b9056ccf3ced",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2020-q3.json"
+},
+{
+"bytes": 74465,
+"name": "data/old/information_technology-WDC-2020-q4.json",
+"sha256": "9ecefb1c4ac7ca70a74f0f48d79afc995acc450d5965d756c6da341f42e8b608",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2020-q4.json"
+},
+{
+"bytes": 76005,
+"name": "data/old/information_technology-WDC-2021-q1.json",
+"sha256": "3bf5cf722cd69930899e757869d229c367c37ea8f1c9a1674106bdc412f963cb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2021-q1.json"
+},
+{
+"bytes": 70980,
+"name": "data/old/information_technology-WDC-2021-q2.json",
+"sha256": "d2c63179ccb5f800187934090d54a71b66f3c57120f6e451635a72a0162bc021",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2021-q2.json"
+},
+{
+"bytes": 69156,
+"name": "data/old/information_technology-WDC-2021-q3.json",
+"sha256": "76b4972b7ee7be7c97298e587dd04fea0f3e29c42716068ed36d9d7ad7fec846",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2021-q3.json"
+},
+{
+"bytes": 71161,
+"name": "data/old/information_technology-WDC-2021-q4.json",
+"sha256": "56cc7c6e9b8c281fc9c368997c2633f9657fc309cada46a847c4f38afa0aec77",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2021-q4.json"
+},
+{
+"bytes": 74971,
+"name": "data/old/information_technology-WDC-2022-q1.json",
+"sha256": "4ec9c6d51ddb08d54eebad87b74de672f2c5535f5bfdaf526d9b56e86bd20b66",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2022-q1.json"
+},
+{
+"bytes": 78918,
+"name": "data/old/information_technology-WDC-2022-q2.json",
+"sha256": "f6056f5358409d713ed4ee3e154325a5f41b1ff95b80c5192ac74482e024a891",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2022-q2.json"
+},
+{
+"bytes": 71292,
+"name": "data/old/information_technology-WDC-2022-q3.json",
+"sha256": "3be9d3a637e89add3aaa21d67674c57b9e04f5d7c0df39da98d41ce3f66c2243",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2022-q3.json"
+},
+{
+"bytes": 74938,
+"name": "data/old/information_technology-WDC-2022-q4.json",
+"sha256": "3d35b4957747764b85669344d54b019376ad8caf9b489559df0a1280e6baddec",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2022-q4.json"
+},
+{
+"bytes": 67031,
+"name": "data/old/information_technology-WDC-2023-q1.json",
+"sha256": "e382009396b287cabdd87c00ebf31ad38fc03545ea6eb046eeb3ab6dc463cf4d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2023-q1.json"
+},
+{
+"bytes": 70130,
+"name": "data/old/information_technology-WDC-2023-q2.json",
+"sha256": "056f1abd341cd387b4a3fd65e51aeda597d0a9c4db9def4978431a340a0eeca1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2023-q2.json"
+},
+{
+"bytes": 70477,
+"name": "data/old/information_technology-WDC-2023-q3.json",
+"sha256": "22f369bbce0ebfc0547bf6a0d0f03ab98280365d1307a22f9f3e2e40be10c87f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2023-q3.json"
+},
+{
+"bytes": 72491,
+"name": "data/old/information_technology-WDC-2023-q4.json",
+"sha256": "937894e4554d9175e8e38954c2011f1008cb650ab2a830ec29093b59ff5c9e62",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/information_technology-WDC-2023-q4.json"
+},
+{
+"bytes": 77419,
+"name": "data/old/real_estate-IRM-2020-q1.json",
+"sha256": "29b69118cc4b2394bfb583ea407d4873bb3ff6e7c214b7dfd5a47a4aa226d0f4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2020-q1.json"
+},
+{
+"bytes": 85676,
+"name": "data/old/real_estate-IRM-2020-q2.json",
+"sha256": "bcfea26eff73cd4c35499a07d6029faa03ed875941fc2004eece9303deb50004",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2020-q2.json"
+},
+{
+"bytes": 74355,
+"name": "data/old/real_estate-IRM-2020-q3.json",
+"sha256": "ffa491a746b6c087e4f7b5c6416ce6c001f3c7031f7c9077218dd304fdc1852b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2020-q3.json"
+},
+{
+"bytes": 81824,
+"name": "data/old/real_estate-IRM-2020-q4.json",
+"sha256": "3f600fdda81295bf04098df824b9db8188dad12f482ce8649a4587345bb49471",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2020-q4.json"
+},
+{
+"bytes": 65854,
+"name": "data/old/real_estate-IRM-2021-q1.json",
+"sha256": "c4fd2effe93b276d47e00ef5ca73a7a92d8193ae5220f1222bb04caeecce117e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2021-q1.json"
+},
+{
+"bytes": 63717,
+"name": "data/old/real_estate-IRM-2021-q2.json",
+"sha256": "89fdd798539f0c79e42156d83f7920ea258246800b24236ede7e8bb41ad9264e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2021-q2.json"
+},
+{
+"bytes": 52549,
+"name": "data/old/real_estate-IRM-2021-q3.json",
+"sha256": "f6fe6801ebd4d22a6bd7f8a3b40797199b419fe52fd3e9c3de5ed4ccf1cc73f7",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2021-q3.json"
+},
+{
+"bytes": 69229,
+"name": "data/old/real_estate-IRM-2021-q4.json",
+"sha256": "52adb2f56ef5dcd12b553390f603fcc8f102300ec54275d65de2b5e3704eda44",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2021-q4.json"
+},
+{
+"bytes": 58046,
+"name": "data/old/real_estate-IRM-2022-q1.json",
+"sha256": "9e73d956f9494c8efdf6f9fd86812c4684921838e60b7b2e21ebd891eb29fc16",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2022-q1.json"
+},
+{
+"bytes": 60676,
+"name": "data/old/real_estate-IRM-2022-q2.json",
+"sha256": "661859f92652b7eb190700e5c3868662906dd38d2dfd8f51e33444dac1adc3fb",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2022-q2.json"
+},
+{
+"bytes": 53190,
+"name": "data/old/real_estate-IRM-2022-q3.json",
+"sha256": "57ff37377f3ca1a61ea3a778c3b60a72b75b2545d4d6319a20da8cd0464a59ea",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2022-q3.json"
+},
+{
+"bytes": 48933,
+"name": "data/old/real_estate-IRM-2022-q4.json",
+"sha256": "664ffcee89b28fe4048a179ea72a331b98af1507603de3073ee20dd3a267ba7c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2022-q4.json"
+},
+{
+"bytes": 66547,
+"name": "data/old/real_estate-IRM-2023-q1.json",
+"sha256": "08973292f3c0fc569ad12a082075a3e673929a63ceb55fc527e34535369d406f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2023-q1.json"
+},
+{
+"bytes": 73014,
+"name": "data/old/real_estate-IRM-2023-q2.json",
+"sha256": "c2ecdb0b6fc0fdb4de2c51340b8e7bb18c3320d20067f908c4f4eb88315c119c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2023-q2.json"
+},
+{
+"bytes": 64115,
+"name": "data/old/real_estate-IRM-2023-q3.json",
+"sha256": "afdaba195816462bb9e8d057011dd9b3f49895331e8a13e4debec93fdea4f2d5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2023-q3.json"
+},
+{
+"bytes": 61667,
+"name": "data/old/real_estate-IRM-2023-q4.json",
+"sha256": "f1feb27df2035f113f59258c43b8f4a104bdb3d77bd95af1fe1f3acacc3e1b90",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-IRM-2023-q4.json"
+},
+{
+"bytes": 77651,
+"name": "data/old/real_estate-MAC-2020-q1.json",
+"sha256": "e405e06a6d20992023bbc1a1cdb8987bad060b95468b8666486493f4247eae4b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2020-q1.json"
+},
+{
+"bytes": 78992,
+"name": "data/old/real_estate-MAC-2020-q2.json",
+"sha256": "41ed3f2ceb84b36c267d42128d18a5de4ac3be9f2df474a1fab8dd48f46284cf",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2020-q2.json"
+},
+{
+"bytes": 72318,
+"name": "data/old/real_estate-MAC-2020-q3.json",
+"sha256": "f332d6bf2f3ee5159603a4eba53103ec9b02e67258e1eda0b28eb95ee961c0a0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2020-q3.json"
+},
+{
+"bytes": 71015,
+"name": "data/old/real_estate-MAC-2020-q4.json",
+"sha256": "a36e152efe2752894e3e4941a07f14e06e85faa1e1e28b0a492f81d0cf161e92",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2020-q4.json"
+},
+{
+"bytes": 64290,
+"name": "data/old/real_estate-MAC-2021-q1.json",
+"sha256": "4384b53196f6acf22fb25fceba4cd69b2847268efe481b7e8f8582ac96ab0d82",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2021-q1.json"
+},
+{
+"bytes": 73342,
+"name": "data/old/real_estate-MAC-2021-q2.json",
+"sha256": "ea4ac36684511f40db136cbec7da0036bc38c1df4acb233558c7ccd846d7ff87",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2021-q2.json"
+},
+{
+"bytes": 75523,
+"name": "data/old/real_estate-MAC-2021-q3.json",
+"sha256": "553fe757788730a23e3d3446b04c2757d81511b3d61770976ea14a0cf4329f12",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2021-q3.json"
+},
+{
+"bytes": 77420,
+"name": "data/old/real_estate-MAC-2021-q4.json",
+"sha256": "3dfc866fb45e55bf9d484cc1d93dd9f92d17cf254ad4dd536bdb155c168f912d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2021-q4.json"
+},
+{
+"bytes": 72760,
+"name": "data/old/real_estate-MAC-2022-q1.json",
+"sha256": "e856bdabf378af02ea293c647f7c92ce641a572ded1c1dad022d24b0e219eac1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2022-q1.json"
+},
+{
+"bytes": 64474,
+"name": "data/old/real_estate-MAC-2022-q2.json",
+"sha256": "10f4dffaa409d43ea6958314c80ed37c613177d33ca0c552f1bed48f0c1a251e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2022-q2.json"
+},
+{
+"bytes": 77194,
+"name": "data/old/real_estate-MAC-2022-q3.json",
+"sha256": "591fbcf7875868507874ef453da636262516efba52ef1c89390514fa94b627e1",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2022-q3.json"
+},
+{
+"bytes": 77515,
+"name": "data/old/real_estate-MAC-2022-q4.json",
+"sha256": "321f9ace4bd83626db6ddcfc68b994d9b274f20d206fc25a00e6990065437597",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2022-q4.json"
+},
+{
+"bytes": 78664,
+"name": "data/old/real_estate-MAC-2023-q1.json",
+"sha256": "b2c7a46e8bc420b9e3991f1e8fc81af0c9f136b9aaa9844610dd2dc9a666668d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2023-q1.json"
+},
+{
+"bytes": 75450,
+"name": "data/old/real_estate-MAC-2023-q2.json",
+"sha256": "ce671ff85f853593350881bac0c40935035b028339390a92bd19d72b24c7ba2f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2023-q2.json"
+},
+{
+"bytes": 56074,
+"name": "data/old/real_estate-MAC-2023-q3.json",
+"sha256": "af55ddce7fe4f4b9c25cdc17fea582ba3d4e173027922e37bea3f44eea9a088d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2023-q3.json"
+},
+{
+"bytes": 73847,
+"name": "data/old/real_estate-MAC-2023-q4.json",
+"sha256": "909eaf79032f0058845174b8d484ebeea537c9bdd80c3a98fa255b1a5d4fe015",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-MAC-2023-q4.json"
+},
+{
+"bytes": 85033,
+"name": "data/old/real_estate-O-2020-q1.json",
+"sha256": "2e1a98eecafa42e998c1178be8e29470e68993e6cb2a6e0072ba8abdd02e6023",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2020-q1.json"
+},
+{
+"bytes": 73010,
+"name": "data/old/real_estate-O-2020-q2.json",
+"sha256": "d0ed87d61597cf72c2619d6f831065ab65153b4b2274e76343b7c49927d663a0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2020-q2.json"
+},
+{
+"bytes": 75658,
+"name": "data/old/real_estate-O-2020-q3.json",
+"sha256": "b773594d8bd18bcb09065943abf0bd58715fd55f2fe74b1297d318f367c78f9c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2020-q3.json"
+},
+{
+"bytes": 88763,
+"name": "data/old/real_estate-O-2020-q4.json",
+"sha256": "0349f6e9b17a89b8575463dd9c4f03fb1e0480b3858e596ec9566d3708e05dfc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2020-q4.json"
+},
+{
+"bytes": 82527,
+"name": "data/old/real_estate-O-2021-q1.json",
+"sha256": "a8cf565930b6de5dd37efc8ff5e58cd81ef8740cea854648d875b6ea158589a3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2021-q1.json"
+},
+{
+"bytes": 75336,
+"name": "data/old/real_estate-O-2021-q2.json",
+"sha256": "3a44465f364bb94cf11196d749992ddc33993ef011f78d244387af711026ed9a",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2021-q2.json"
+},
+{
+"bytes": 78041,
+"name": "data/old/real_estate-O-2021-q3.json",
+"sha256": "d562df096981be4d8c1769611c17cc628f6c619bde9b85518d38922b8741eca6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2021-q3.json"
+},
+{
+"bytes": 75719,
+"name": "data/old/real_estate-O-2021-q4.json",
+"sha256": "ab0fed5438623c7d759fa6f14de91e59d62a2077a67373a092aef57508e488c5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2021-q4.json"
+},
+{
+"bytes": 67661,
+"name": "data/old/real_estate-O-2022-q1.json",
+"sha256": "ce53655095365f3d9ce53cdfe7a2691abf48d631d49080033d08bb67b96333b2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2022-q1.json"
+},
+{
+"bytes": 63386,
+"name": "data/old/real_estate-O-2022-q2.json",
+"sha256": "cf8a0012893dead0a7682187612eeb843e7dd3b4988e54ca5a8679679fd38de3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2022-q2.json"
+},
+{
+"bytes": 71212,
+"name": "data/old/real_estate-O-2022-q3.json",
+"sha256": "c32c871800ae2bef76f7dcf355477b47738c73362bd19ac4965fcfa760c479c4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2022-q3.json"
+},
+{
+"bytes": 79520,
+"name": "data/old/real_estate-O-2022-q4.json",
+"sha256": "1787d904cc6f322da85f2f7b9630ee299d8a97f39484c268d4aaccf26feed926",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2022-q4.json"
+},
+{
+"bytes": 68839,
+"name": "data/old/real_estate-O-2023-q1.json",
+"sha256": "5e6bd95c84efad7b9421a3dd28a65ae8272cf33107a8b8aa9695fd0a7a050ee3",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2023-q1.json"
+},
+{
+"bytes": 64011,
+"name": "data/old/real_estate-O-2023-q2.json",
+"sha256": "7be87d371fe7b5e40685c327b78dbd588465f0287d77dd4a60ab95791968bd29",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2023-q2.json"
+},
+{
+"bytes": 59708,
+"name": "data/old/real_estate-O-2023-q3.json",
+"sha256": "85d14c69ade2bab13d62be6ab85c7c4535b765d3f4f65ffa980771722ef7157e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2023-q3.json"
+},
+{
+"bytes": 73962,
+"name": "data/old/real_estate-O-2023-q4.json",
+"sha256": "1ed3b10f14c1a9494c0157b2653083c950fb4f886503a2db7cbd9b3d9f5a5e11",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-O-2023-q4.json"
+},
+{
+"bytes": 79051,
+"name": "data/old/real_estate-SPG-2020-q1.json",
+"sha256": "94095d471e5f65f7674d1822429ff8ecae5d5ce60b76ef6a03ee02ee3293c91b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2020-q1.json"
+},
+{
+"bytes": 85810,
+"name": "data/old/real_estate-SPG-2020-q2.json",
+"sha256": "a94cebfd60378b9b70cfb35fa734d7f60093642e7e111390b417570a10424738",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2020-q2.json"
+},
+{
+"bytes": 71951,
+"name": "data/old/real_estate-SPG-2020-q3.json",
+"sha256": "fe00c801cbd2cbce436897a90c1bf11517a87400872d849366c011a999b0e335",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2020-q3.json"
+},
+{
+"bytes": 92406,
+"name": "data/old/real_estate-SPG-2020-q4.json",
+"sha256": "05b085ca48b33ffafc41534c3ae4c7cb55b88d52c136619d977d2f6a8a1da0ad",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2020-q4.json"
+},
+{
+"bytes": 76193,
+"name": "data/old/real_estate-SPG-2021-q1.json",
+"sha256": "98de3335c46a899ba23bbfaad3ede27ea75efbe3d84e8471176ece37c3ac5024",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2021-q1.json"
+},
+{
+"bytes": 77243,
+"name": "data/old/real_estate-SPG-2021-q2.json",
+"sha256": "bc15d30e3aa47ee32668c18fe9e800eb5c8eccbf26393e84dd120747babee24d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2021-q2.json"
+},
+{
+"bytes": 60783,
+"name": "data/old/real_estate-SPG-2021-q3.json",
+"sha256": "2c3511a1452e275300aa2b94160f2930e20d5e136d2fd680d39556e7a10b16dc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2021-q3.json"
+},
+{
+"bytes": 55552,
+"name": "data/old/real_estate-SPG-2021-q4.json",
+"sha256": "09066a4fecb910966c225e8534b0df172b8d86e048706444ea76386d229ccf77",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2021-q4.json"
+},
+{
+"bytes": 50399,
+"name": "data/old/real_estate-SPG-2022-q1.json",
+"sha256": "090bc97bef62d35ada824f16e2f80049f35970ab7981cc79e3f3480f3434abbc",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2022-q1.json"
+},
+{
+"bytes": 52594,
+"name": "data/old/real_estate-SPG-2022-q2.json",
+"sha256": "ff35aef5b7f9fdcf7253a9736e6d69933951a3e712ae988276bfe705a780af34",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2022-q2.json"
+},
+{
+"bytes": 47472,
+"name": "data/old/real_estate-SPG-2022-q3.json",
+"sha256": "cdd4866ed9c5191d2bcdbcd39478822cd1663c53367832bf5a0d1ae75fa7c21b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2022-q3.json"
+},
+{
+"bytes": 54552,
+"name": "data/old/real_estate-SPG-2022-q4.json",
+"sha256": "1e4aeaccc93fa58627ec56124274e482cb96eb1c8f74999c2b87d2c4d700d91d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2022-q4.json"
+},
+{
+"bytes": 54744,
+"name": "data/old/real_estate-SPG-2023-q1.json",
+"sha256": "55394a3d4f327e2066531c9b8790bd5fe81e87adf17ed27fd308d6640f023911",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2023-q1.json"
+},
+{
+"bytes": 51013,
+"name": "data/old/real_estate-SPG-2023-q2.json",
+"sha256": "841815d1102018f7f0eade3af05c4f82effa6bb3cf201ba7dd6f22c765cad9e4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2023-q2.json"
+},
+{
+"bytes": 54628,
+"name": "data/old/real_estate-SPG-2023-q3.json",
+"sha256": "8e10231e920aab15792be9ac6221f67fecf642de25affb49525cd76c7609b1d2",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2023-q3.json"
+},
+{
+"bytes": 56445,
+"name": "data/old/real_estate-SPG-2023-q4.json",
+"sha256": "844cc6ab4f19b84a6acd4ee8fc548d7ea52aa5444d99dc0444a61884ca793971",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-SPG-2023-q4.json"
+},
+{
+"bytes": 82591,
+"name": "data/old/real_estate-VICI-2020-q1.json",
+"sha256": "afae368bed7adef78d137705780a90791a2d5ea3c94caf1943e0858ffdaee153",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2020-q1.json"
+},
+{
+"bytes": 81989,
+"name": "data/old/real_estate-VICI-2020-q2.json",
+"sha256": "7129b93363abeb5b972ce00ff275822a8a78f5af1f407b5aef59244fd58bac1c",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2020-q2.json"
+},
+{
+"bytes": 76534,
+"name": "data/old/real_estate-VICI-2020-q3.json",
+"sha256": "60fc8424e88bf3bc3bba78754f1fbd39c03840a18d62922893b1e8582bb0a9b8",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2020-q3.json"
+},
+{
+"bytes": 84096,
+"name": "data/old/real_estate-VICI-2020-q4.json",
+"sha256": "4a64c2df441aaf6e24239bbd65ae91581ff1f2d0906aed89a653eaf0108a6b9e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2020-q4.json"
+},
+{
+"bytes": 78094,
+"name": "data/old/real_estate-VICI-2021-q1.json",
+"sha256": "ccc76fd156802338447bb4be01c6f1ac11bc73e1e75bc60308130c978f02a4c0",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2021-q1.json"
+},
+{
+"bytes": 78482,
+"name": "data/old/real_estate-VICI-2021-q2.json",
+"sha256": "3e4bd5c1c2b0dd2f3c6bd6cbe4351b4da5c9b00b5b9df77ce7b3e30d84fb9da6",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2021-q2.json"
+},
+{
+"bytes": 82148,
+"name": "data/old/real_estate-VICI-2021-q3.json",
+"sha256": "e3ae04fca346804089d42d2e1f07cb50ce83fbfc7f6b2e9461878a2fbf499b6b",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2021-q3.json"
+},
+{
+"bytes": 83219,
+"name": "data/old/real_estate-VICI-2021-q4.json",
+"sha256": "0e7d1f28972fff40242e8e3594c4f0bfe9dd0ed248f5e77084827c3a518fb094",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2021-q4.json"
+},
+{
+"bytes": 67104,
+"name": "data/old/real_estate-VICI-2022-q1.json",
+"sha256": "218d0fc84c69013ba88ce6837fb09092acc80b32dcdd822549ec10aad83fc71e",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2022-q1.json"
+},
+{
+"bytes": 76447,
+"name": "data/old/real_estate-VICI-2022-q2.json",
+"sha256": "e5b532bddf13cc3f6074c86af16a9cb7fce8bffad9420b7450b16c7be60d3130",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2022-q2.json"
+},
+{
+"bytes": 73162,
+"name": "data/old/real_estate-VICI-2022-q3.json",
+"sha256": "08682f3c64bae81d6878c378625052564b29d46061461f36a997c4f73c99fd6f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2022-q3.json"
+},
+{
+"bytes": 73735,
+"name": "data/old/real_estate-VICI-2022-q4.json",
+"sha256": "203724e1e9ec30b6dd2484e4f086cf239ae7ae8ad03944dc73d2b1d3bc6edf0f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2022-q4.json"
+},
+{
+"bytes": 71336,
+"name": "data/old/real_estate-VICI-2023-q1.json",
+"sha256": "0a828d0e6aca60eb7002d5dd0f4b9b728b9574b6e52cffb997e0ffdc4549f20f",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2023-q1.json"
+},
+{
+"bytes": 70482,
+"name": "data/old/real_estate-VICI-2023-q2.json",
+"sha256": "3afcbc80b496b11a1abc0f0808cc441cfe10fbc16a09eaf9682fe81e69cd20e5",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2023-q2.json"
+},
+{
+"bytes": 73691,
+"name": "data/old/real_estate-VICI-2023-q3.json",
+"sha256": "2ffbdfd7ceb7df7d6050b11b9db493c0bd33950e803b698859c9730390893dca",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2023-q3.json"
+},
+{
+"bytes": 76703,
+"name": "data/old/real_estate-VICI-2023-q4.json",
+"sha256": "0411d446294fffcf5ac9e9f6091fee776da6dc08f21e5d514230f2c94b556964",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/data/old/real_estate-VICI-2023-q4.json"
+},
+{
+"bytes": 7238,
+"name": "questions/global_questions_new.json",
+"sha256": "4da5ca6ad8187c3db68d5d2ec066575b74420f44091ef52fbea0390f0cee406d",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/questions/global_questions_new.json"
+},
+{
+"bytes": 20712,
+"name": "questions/global_questions_old.json",
+"sha256": "5fd3b891340ff0fd10c2420692c457fcf5e2d9e2a30cee78d42b733ce3d32049",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/questions/global_questions_old.json"
+},
+{
+"bytes": 555485,
+"name": "questions/local_questions_new.json",
+"sha256": "d5c1b2548a62bbe1e8ca56308ebe9398dc708faba67ceecd3f5e3f7401eb8888",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/questions/local_questions_new.json"
+},
+{
+"bytes": 1101998,
+"name": "questions/local_questions_old.json",
+"sha256": "6435bf757fa29696255b91fccbe1114914c84149e4ae78148c270701da43b2f4",
+"url": "https://huggingface.co/datasets/austinmyc/ECT-QA/resolve/main/questions/local_questions_old.json"
+}
+],
+"entityquestions": [
+{
+"bytes": 4828858,
+"name": "dataset.zip",
+"sha256": "015eb64a12fa2f9b2f95d2c78bba69779e0d200dbbd4b0772f3ce57bc00da9c5",
+"url": "https://nlp.cs.princeton.edu/projects/entity-questions/dataset.zip"
+}
+],
+"gatemem": [
+{
+"bytes": 458194,
+"name": "gatemem/data/education/checkpoints.jsonl",
+"sha256": "2a372a5017a99108c83324d2fed25dbfb7797a2fb25a20fc066ed5b2d05739b5",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/education/checkpoints.jsonl"
+},
+{
+"bytes": 1694314,
+"name": "gatemem/data/education/episodes.jsonl",
+"sha256": "5971478a96553c2eb18a9f1e079987275da0cddf6175e40abda8a58525e65862",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/education/episodes.jsonl"
+},
+{
+"bytes": 428315,
+"name": "gatemem/data/household/checkpoints.jsonl",
+"sha256": "4692c3e1ea91be63debd7b39ccc5fc425bc1a83155c1bfb5c197ba68cefd93ae",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/household/checkpoints.jsonl"
+},
+{
+"bytes": 1497218,
+"name": "gatemem/data/household/episodes.jsonl",
+"sha256": "e2bb506cc1bdc8dc7b16d4a57610147365798d03eb1c326f9197b6c6221efb6f",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/household/episodes.jsonl"
+},
+{
+"bytes": 361207,
+"name": "gatemem/data/medical/checkpoints.jsonl",
+"sha256": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/medical/checkpoints.jsonl"
+},
+{
+"bytes": 1028883,
+"name": "gatemem/data/medical/episodes.jsonl",
+"sha256": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/medical/episodes.jsonl"
+},
+{
+"bytes": 365996,
+"name": "gatemem/data/office/checkpoints.jsonl",
+"sha256": "7186bc1dd66b493f994b802bad8817d7aa5e7a91f498d67f87410a98f8116d0c",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/office/checkpoints.jsonl"
+},
+{
+"bytes": 1300119,
+"name": "gatemem/data/office/episodes.jsonl",
+"sha256": "e15797cc0ab778067e0235377a09811c73182b5e1aa28e2221adc5ef9638a409",
+"url": "https://huggingface.co/datasets/Ray368/GateMem/resolve/main/gatemem/data/office/episodes.jsonl"
+}
+],
+"genwiki": [
+{
+"bytes": 279301220,
+"name": "genwiki.zip",
+"sha256": "09f9f5367b7f8747e92290e02ed8374b78a84dc554386b64fd48656e79bbd682",
+"url": "https://edmond.mpg.de/api/access/datafile/246411"
+}
+],
+"graphjudge": [
+{
+"bytes": 212460,
+"name": "datasets/GPT4o_mini_result_GenWiki-Hard/test.source",
+"sha256": "4aeaef22673409b6f3deb78665cf64163a91f429dce9b70dd3fb6d039e986fd7",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_GenWiki-Hard/test.source"
+},
+{
+"bytes": 131340,
+"name": "datasets/GPT4o_mini_result_GenWiki-Hard/test.target",
+"sha256": "07e88a0e2f39d3e31eb31511bcf3b1bb514e21fc97d7e66106c258fe9d06b392",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_GenWiki-Hard/test.target"
+},
+{
+"bytes": 15008216,
+"name": "datasets/GPT4o_mini_result_GenWiki-Hard/train.source",
+"sha256": "9d008c5d37aa4df581efb3ae7af8a7c999d19787d6423ce35a27bf0c69a52d95",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_GenWiki-Hard/train.source"
+},
+{
+"bytes": 9240793,
+"name": "datasets/GPT4o_mini_result_GenWiki-Hard/train.target",
+"sha256": "cec114aa03e31e1bbaf5e11bac9ac8062e10abcc3397e9507493d644b211e65b",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_GenWiki-Hard/train.target"
+},
+{
+"bytes": 60366,
+"name": "datasets/GPT4o_mini_result_SCIERC/test.source",
+"sha256": "fa4c918388c17ce6a67fea765738b1c71a6f8d477458462ff4cc3f9a33282b06",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_SCIERC/test.source"
+},
+{
+"bytes": 83952,
+"name": "datasets/GPT4o_mini_result_SCIERC/test.target",
+"sha256": "f57795348de32afc96923bf9dcddd61b8a99ed4ade17c7764a467e52a2130c50",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_SCIERC/test.target"
+},
+{
+"bytes": 197694,
+"name": "datasets/GPT4o_mini_result_SCIERC/train.source",
+"sha256": "f6219421b2ad0cbbe7fc15ad2943782ff3eab51120954ceb1a433b8e3428513e",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_SCIERC/train.source"
+},
+{
+"bytes": 283387,
+"name": "datasets/GPT4o_mini_result_SCIERC/train.target",
+"sha256": "cc2134cdb6d469c0feac5f14280af9ff8437c109789de9222f6d72396507a93a",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_SCIERC/train.target"
+},
+{
+"bytes": 329692,
+"name": "datasets/GPT4o_mini_result_rebel_sub/test.source",
+"sha256": "3b0e616e1e0b6c34f424520dba5028f9d5e42c1f5d831b3bc4ffae1cd7fc62c9",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_rebel_sub/test.source"
+},
+{
+"bytes": 849129,
+"name": "datasets/GPT4o_mini_result_rebel_sub/test.target",
+"sha256": "ebcc74be03ba222a82c730f7d8874e1afe36054600b079054a8671567dd9fa21",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_rebel_sub/test.target"
+},
+{
+"bytes": 8398973,
+"name": "datasets/GPT4o_mini_result_rebel_sub/train.source",
+"sha256": "f47237abbf3eefe75f62e77eff98d1071193f36a2ea26a53f6330bdf88b1b1e7",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_rebel_sub/train.source"
+},
+{
+"bytes": 21019405,
+"name": "datasets/GPT4o_mini_result_rebel_sub/train.target",
+"sha256": "255cd1d93928da489d9454d709f194bb186b935a632f606ca62743720149f10e",
+"url": "https://raw.githubusercontent.com/hhy-huang/GraphJudge/main/datasets/GPT4o_mini_result_rebel_sub/train.target"
+}
+],
+"hotpotqa_full": [
+{
+"bytes": 27452575,
+"name": "distractor/validation-00000-of-00001.parquet",
+"sha256": "c20b638ca82b21d04fe12e14ff417ad05153d4d215a65de54497fca4e972f7c6",
+"url": "https://huggingface.co/datasets/hotpotqa/hotpot_qa/resolve/main/distractor/validation-00000-of-00001.parquet"
+}
+],
+"longmemeval_s": [
+{
+"bytes": 277383467,
+"name": "longmemeval_s_cleaned.json",
+"sha256": "d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442",
+"url": "https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json"
+}
+],
+"morehopqa": [
+{
+"bytes": 4230947,
+"name": "data/with_human_verification.json",
+"sha256": "41b1c31af2546f005fd699148bc1ae68968349179941f0218ef7975596489f4a",
+"url": "https://huggingface.co/datasets/alabnii/morehopqa/resolve/main/data/with_human_verification.json"
+}
+],
+"mquake": [
+{
+"bytes": 15383628,
+"name": "datasets/MQuAKE-CF-3k-v2.json",
+"sha256": "f82091cbb668cef8f2537f79f1768af1840184450b347ff8c344336090ddc71e",
+"url": "https://raw.githubusercontent.com/princeton-nlp/MQuAKE/main/datasets/MQuAKE-CF-3k-v2.json"
+},
+{
+"bytes": 8889248,
+"name": "datasets/MQuAKE-T.json",
+"sha256": "58500a1d4aaf9e036c23a1d9dd6be2d73d693e35a695614842f211ea5aff59f2",
+"url": "https://raw.githubusercontent.com/princeton-nlp/MQuAKE/main/datasets/MQuAKE-T.json"
+}
+],
+"multihoprag": [
+{
+"bytes": 5171312,
+"name": "MultiHopRAG.json",
+"sha256": "03cfb4926461f868684903aadc8024447bdda5bb3f6804741424cce338515bff",
+"url": "https://huggingface.co/datasets/yixuantt/MultiHopRAG/resolve/main/MultiHopRAG.json"
+},
+{
+"bytes": 6785567,
+"name": "corpus.json",
+"sha256": "20b61b5ab84de84a927420c5d265b7ec8d859ae49980699958a787ade9e4d28f",
+"url": "https://huggingface.co/datasets/yixuantt/MultiHopRAG/resolve/main/corpus.json"
+}
+],
+"musique_full": [
+{
+"bytes": 59422562,
+"name": "musique_full_v1.0_dev.jsonl",
+"sha256": "8cab31d56a3a1c4ef491b205a8dab3f1ac9c66e472098c6cf1de4e20294f7a4a",
+"url": "https://huggingface.co/datasets/bdsaglam/musique/resolve/main/musique_full_v1.0_dev.jsonl"
+}
+],
+"popqa": [
+{
+"bytes": 5205200,
+"name": "test.tsv",
+"sha256": "9a5227f41bff0e4c331d4a774d946b12f95307892b58f860a9606ef356e6089b",
+"url": "https://huggingface.co/datasets/akariasai/PopQA/resolve/main/test.tsv"
+}
+],
+"scierc": [
+{
+"bytes": 1002473,
+"name": "spert/scierc_train.json",
+"sha256": "40879beb794a2d947c60f4e7e936c269b5f35ce516e9e155cbff1feea0c3e8da",
+"url": "https://lavis.cs.hs-rm.de/storage/spert/public/datasets/scierc/scierc_train.json"
+},
+{
+"bytes": 144713,
+"name": "spert/scierc_dev.json",
+"sha256": "77506c1a9d9e6a3f596fdce937a1d80679c24df75a8b7cb836737c2a43ff0ec0",
+"url": "https://lavis.cs.hs-rm.de/storage/spert/public/datasets/scierc/scierc_dev.json"
+},
+{
+"bytes": 298943,
+"name": "spert/scierc_test.json",
+"sha256": "ecc88eca58a88cf2087aaa996dada9edad433c3c2f3f8f5be93625b098c20703",
+"url": "https://lavis.cs.hs-rm.de/storage/spert/public/datasets/scierc/scierc_test.json"
+}
+],
+"tempo": [
+{
+"bytes": 214978318,
+"name": "documents/bitcoin.parquet",
+"sha256": "248106172d2cb391bf29e776163daa2e224d73afe57ab38ccff8d5ab27558fe1",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/bitcoin.parquet"
+},
+{
+"bytes": 142158709,
+"name": "documents/cardano.parquet",
+"sha256": "70ce3fa4cd5660156d3c51d24916d49521d59659a3a772ca06f6232c29ab6948",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/cardano.parquet"
+},
+{
+"bytes": 113693145,
+"name": "documents/economics.parquet",
+"sha256": "77ea08e8f190205976b2a8ded38d0a33b660b8a7bc71de9b34c03a9138787859",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/economics.parquet"
+},
+{
+"bytes": 236315086,
+"name": "documents/genealogy.parquet",
+"sha256": "739169c19da86178d5b870a3eaaca41d1b1af32e979f3da382515a7c0d378485",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/genealogy.parquet"
+},
+{
+"bytes": 641160431,
+"name": "documents/history.parquet",
+"sha256": "a4b22ce7a0609ca3defc14a36ce7a741cbab5ef2f2325568e483f3ee2c198cbb",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/history.parquet"
+},
+{
+"bytes": 300549798,
+"name": "documents/hsm.parquet",
+"sha256": "880c5ad095273c86b5d24833185c08ccee3915c16f4f3749348d5771f6f4bd1d",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/hsm.parquet"
+},
+{
+"bytes": 26436025,
+"name": "documents/iota.parquet",
+"sha256": "ca69f1f551ecf7262ee5bf164504a8fef97b52c96499ba6480bc7a461f8db9c3",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/iota.parquet"
+},
+{
+"bytes": 53362078,
+"name": "documents/law.parquet",
+"sha256": "c6a0b3dbf0d777f8ede11998c2947cca37cd86f436836f29ca05a8a723647d06",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/law.parquet"
+},
+{
+"bytes": 151388620,
+"name": "documents/monero.parquet",
+"sha256": "f76335aa33f2c0a72388feef220330d0ffe52979b1b1aecc95b2b9c15fa530e6",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/monero.parquet"
+},
+{
+"bytes": 238570967,
+"name": "documents/politics.parquet",
+"sha256": "5662c668a05d88f00f09e4aec104989464f0cea4818c4cfcfafb6ccb9408bcc2",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/politics.parquet"
+},
+{
+"bytes": 31663808,
+"name": "documents/quant.parquet",
+"sha256": "30283086d66d6b5a2d55b21e7b53403c69e38adcf1eb2699daa91e83bd3e9b05",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/quant.parquet"
+},
+{
+"bytes": 178610826,
+"name": "documents/travel.parquet",
+"sha256": "666aa368a7ca42c879cc5a153431d3b9f8ec1452d8d00325cb9e8ed10f918025",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/travel.parquet"
+},
+{
+"bytes": 62662349,
+"name": "documents/workplace.parquet",
+"sha256": "7fd6e93fb2b83e25eb9a00709a2bb72886d0281baa438508954ac0b1393d994a",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/documents/workplace.parquet"
+},
+{
+"bytes": 448769,
+"name": "examples/bitcoin.parquet",
+"sha256": "59d6ba938caf477dc3ec483e1f56e5ed00bce5b47230f1a2f45c233fac1ea295",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/bitcoin.parquet"
+},
+{
+"bytes": 213762,
+"name": "examples/cardano.parquet",
+"sha256": "097a4a801b63424f207b480747a1c7013b6d43368c5fdf6c1df36d7d8b49fe37",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/cardano.parquet"
+},
+{
+"bytes": 385388,
+"name": "examples/economics.parquet",
+"sha256": "764ce276971c83a0f05a2b3192d7ec606dc9f026cdfb9ad8758f33abf51dc36e",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/economics.parquet"
+},
+{
+"bytes": 410343,
+"name": "examples/genealogy.parquet",
+"sha256": "98e00e196d563802e343df5b7041a4694da6eb7b6579284442ebd99ee906e889",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/genealogy.parquet"
+},
+{
+"bytes": 4155461,
+"name": "examples/history.parquet",
+"sha256": "56495c2b56866d44ba19eea5a9756c8216e3bd52d65949fadc3e3d17c87ffeb5",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/history.parquet"
+},
+{
+"bytes": 661456,
+"name": "examples/hsm.parquet",
+"sha256": "25f6c18188b88ac4f5dcb58c83b37ac62d1b73b7a2c5fb46d1235019c128f3f0",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/hsm.parquet"
+},
+{
+"bytes": 40700,
+"name": "examples/iota.parquet",
+"sha256": "79eb29454ed69c746eceb508d6f00a0b07fd89d1dce12ee13ade7d86ab26705c",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/iota.parquet"
+},
+{
+"bytes": 202599,
+"name": "examples/law.parquet",
+"sha256": "d1d026a841c40feb8b9cb761b8af240264b9379f5f11e11385dfc03d174c1a70",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/law.parquet"
+},
+{
+"bytes": 275563,
+"name": "examples/monero.parquet",
+"sha256": "6a0e7417942fcf76295befaddc5e246d4a35582c57ec6939d17c434f93dba594",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/monero.parquet"
+},
+{
+"bytes": 859717,
+"name": "examples/politics.parquet",
+"sha256": "e7f503e393e6c87909fee27fa87a1737d2ee8d5c5f8eefbc8aacd749310f4b06",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/politics.parquet"
+},
+{
+"bytes": 137465,
+"name": "examples/quant.parquet",
+"sha256": "f548346df75f99df12d7ebcd617d44e3b0421225dd3d99da7262e66061bf42a0",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/quant.parquet"
+},
+{
+"bytes": 530206,
+"name": "examples/travel.parquet",
+"sha256": "d42f60421dac02b374390ccbf3348a3c6473476d6ccf24973a1c6a3ce6ee7b95",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/travel.parquet"
+},
+{
+"bytes": 254476,
+"name": "examples/workplace.parquet",
+"sha256": "e5f17c03c249af6319993d9bc820fcd97ac96b3c9e32fd48ad2c3b56a05bdba2",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/examples/workplace.parquet"
+},
+{
+"bytes": 228030,
+"name": "steps/bitcoin.parquet",
+"sha256": "41aa3e99816920bd2f2e2879a430c4b6cb49411c106ef3a97648b9cee2113669",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/bitcoin.parquet"
+},
+{
+"bytes": 100237,
+"name": "steps/cardano.parquet",
+"sha256": "db2027f7a08ad9418b5deb3ea8cf3e13dbf05e5610236cb6f22bcfc54b59b1eb",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/cardano.parquet"
+},
+{
+"bytes": 272177,
+"name": "steps/economics.parquet",
+"sha256": "65097034116c3a638f634f89b1365304aeb15d9d3d6abe55578a1b4668d45a18",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/economics.parquet"
+},
+{
+"bytes": 381130,
+"name": "steps/genealogy.parquet",
+"sha256": "27cda9ead213f6d9f3ae72cb70a3fc8fc43251d4fb6e0d041533718aee30b3aa",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/genealogy.parquet"
+},
+{
+"bytes": 3651864,
+"name": "steps/history.parquet",
+"sha256": "f68db11095c9933a8162baafdb517c1d30f14edbe04db49f09ada73bfca6a0f4",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/history.parquet"
+},
+{
+"bytes": 514891,
+"name": "steps/hsm.parquet",
+"sha256": "2703dfade1ba431623405605b64736156209f1297538f8659d33e913246c3d3d",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/hsm.parquet"
+},
+{
+"bytes": 41529,
+"name": "steps/iota.parquet",
+"sha256": "6157ff9e1eac873f4b73efc3997c24e792d5a2180039b7c9e41e323c54f42112",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/iota.parquet"
+},
+{
+"bytes": 123616,
+"name": "steps/law.parquet",
+"sha256": "f831f758f591ce60372a8be4a431d2ded8372c11ef47610b3f6ddc5ba18e6189",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/law.parquet"
+},
+{
+"bytes": 120875,
+"name": "steps/monero.parquet",
+"sha256": "c6bf606fd451eac6f19f9627f209c534d540d8ffa032685b9b76c5c2ef84ddad",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/monero.parquet"
+},
+{
+"bytes": 593715,
+"name": "steps/politics.parquet",
+"sha256": "68b4073d6f41a5b7b41ea42ef591221b62adfa3c9dbd30d8305664272407c825",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/politics.parquet"
+},
+{
+"bytes": 104841,
+"name": "steps/quant.parquet",
+"sha256": "06c1d75e323c7654783f2ae0f91e2123a786481ecf0745021d1c90f4f8a1384f",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/quant.parquet"
+},
+{
+"bytes": 238822,
+"name": "steps/travel.parquet",
+"sha256": "be2c5fa463b87b59e00421c25976bb6ea13e2ba7b7d7d29cebca0bbe53401138",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/travel.parquet"
+},
+{
+"bytes": 108828,
+"name": "steps/workplace.parquet",
+"sha256": "a5dd6c8b011fca4d5458b3ccf64584ea1137f3f93c3d7e65724fe6341c378d7f",
+"url": "https://huggingface.co/datasets/tempo26/Tempo/resolve/main/steps/workplace.parquet"
+}
+],
+"twowiki_full": [
+{
+"bytes": 30056098,
+"name": "dev.parquet",
+"sha256": "c0d8b60b9026b728fb07ad74c5252a0f188f6942e8ba5c02df4dfa369502ea8d",
+"url": "https://huggingface.co/datasets/xanhho/2WikiMultihopQA/resolve/main/dev.parquet"
+}
+]
+}

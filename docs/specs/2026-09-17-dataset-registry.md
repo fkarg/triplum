@@ -100,8 +100,9 @@ via `needs` until the runner has them; the store acting on `observed_at`/`as_of`
   the default three; `fetch all` skips a large dataset and says so; `bench run` refuses
   extraction-only datasets, datasets with a `needs` note, and non-closed-book pipelines on
   corpus-less datasets.
-- The integration fixture test runs every pipeline on every fixture that has a corpus and no
-  `needs` note.
+- The integration fixture test keeps all five pipelines on the protocol three and runs bm25 and
+  oracle (closed_book without a corpus) on every other fixture without a `needs` note, and checks
+  that extraction-only fixtures are refused.
 
 ## Design review
 

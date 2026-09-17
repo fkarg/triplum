@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 
+import polars as pl
 from triplum.eval.datasets import base, registry
 
 
@@ -21,8 +22,12 @@ def main(names: list[str]) -> None:
             print(name, "has no fixture")
             continue
         ds = registry.load(name)
+        # Long-document sets (transcripts, articles) get fewer fillers to keep the fixture small.
+        mean_chars = ds.chunks.select(pl.col("text").str.len_chars().mean()).item() or 0
+        distractors = 5 if mean_chars > 5000 else 40
         frames = base.subset(
-            base.Frames(ds.questions, ds.documents, ds.grants, ds.chunks, ds.triples)
+            base.Frames(ds.questions, ds.documents, ds.grants, ds.chunks, ds.triples),
+            distractors=distractors,
         )
         path = base.write_fixture(name, frames)
         print(name, frames.questions.height, "questions", frames.chunks.height, "chunks", path.name)

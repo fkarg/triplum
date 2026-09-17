@@ -11,6 +11,7 @@ from triplum.bench.config import (
 from triplum.bench.report import summary
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
+from triplum.eval.datasets import base, registry
 
 FAKE_READER = LLMConfig(kind="fake")
 FAKE_EMB = EmbedderConfig(kind="fake", dims=64)
@@ -163,3 +164,30 @@ def test_inspect_diff_tail(tmp_path, capsys):
     assert "pipeline.name" in capsys.readouterr().out
     assert main(["bench", "tail", a, "--once", "--runstore", db]) == 0
     assert "20/20" in capsys.readouterr().out
+
+
+OTHER_FIXTURES = [
+    name
+    for name, spec in registry.SPECS.items()
+    if spec.fixture and not spec.default and not spec.needs and base.fixture_path(name).exists()
+]
+
+
+@pytest.mark.parametrize("dataset", OTHER_FIXTURES)
+def test_registered_fixtures_run(tmp_path, dataset):
+    """Every runnable fixture goes through bm25 and oracle (closed_book when there is no corpus);
+    extraction-only datasets are refused."""
+    ds = registry.load_fixture(dataset)
+    if ds.questions.height == 0:
+        with pytest.raises(ValueError, match="no questions"):
+            run_benchmark(_cfg(tmp_path, "bm25", dataset))
+        return
+    pipelines = ("closed_book",) if ds.chunks.height == 0 else ("bm25", "oracle")
+    for name in pipelines:
+        run_benchmark(_cfg(tmp_path, name, dataset))
+    by = {r["pipeline"]: r for r in summary(RunStore(tmp_path / "runs.db")).iter_rows(named=True)}
+    assert set(by) == set(pipelines)
+    if "oracle" in by and ds.questions["answerable"].any():
+        assert (
+            by["oracle"]["r5"] >= by["bm25"]["r5"] > 0
+        )  # some questions have more than 5 gold chunks
