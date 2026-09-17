@@ -34,6 +34,15 @@ from triplum.store.sqlite.store import SqliteStore
 
 
 def code_version() -> tuple[str, int]:
+    """Return the current checkout's git SHA and dirty flag for provenance only.
+
+    Neither value identifies a cached run. Run identity uses the pipeline configuration
+    hash and ``fingerprint.code_hash`` alongside dataset, model and evaluation metadata.
+    The code fingerprint reads source files; it does not inspect runtime replacements
+    of functions. Outside a git checkout, return ``("unknown", 1)``.
+    """
+    # TODO: include runtime-replaced functions and the full effective configuration
+    # (including judge settings) in run identity; git provenance cannot capture them.
     try:
         sha = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
@@ -103,6 +112,19 @@ def _load(cfg: RunConfig | ExtractConfig) -> Dataset:
 
 
 def run_benchmark(cfg: RunConfig) -> str:
+    """Run a configured question-answering benchmark and return its persisted run ID.
+
+    Load the dataset and construct model adapters, then look up the run identity.
+    Unless ``cfg.force`` is set, reuse a successful run; with ``cfg.resume``, continue
+    a matching interrupted run and skip its completed questions. Force creates a new
+    run but still reuses model-call caches and corpus artifacts.
+
+    For work that remains, prepare the corpus and optional embeddings in SQLite,
+    retrieve ranked chunk IDs, and generate and score answers question by question.
+    Store reads use ``cfg.principals`` through a Viewer. Each completed question's
+    answer, scores and events commit together. Persist run status and artifact paths;
+    exceptions during execution mark the run failed and propagate to the caller.
+    """
     t_start = time.perf_counter()
     root = cache_root(cfg)
     spec = datasets.get(cfg.dataset)
