@@ -61,6 +61,7 @@ Dates are when the licence was checked; re-check before relying on a row.
 
 | component | licence | commercial reuse | checked | notes |
 |---|---|---|---|---|
+| [Rich](https://github.com/Textualize/rich/blob/main/LICENSE) | MIT | yes | 2026-09-17 | terminal tables, wrapping and capability-aware colors |
 | [ty](https://github.com/astral-sh/ty/blob/main/LICENSE) | MIT | yes | 2026-09-17 | development-only Python type checker |
 | [pytest-cov](https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE) | MIT | yes | 2026-09-16 | development-only branch coverage reporting |
 | sqlite-vec | MIT / Apache-2.0 | yes | 2026-09-16 | pre-v1 |

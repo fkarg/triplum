@@ -84,11 +84,13 @@ nav:
       - Naming: research/naming.md
       - Fact check 2026-09-16: research/fact-check-2026-09-16.md
   - Specs:
+      - Dataset overview: specs/2026-09-17-data-overview.md
       - Type checking: specs/2026-09-17-type-checking.md
       - CLI selection: specs/2026-09-16-cli-selection.md
       - Harness and baselines: specs/2026-09-16-harness-and-baselines.md
       - Dataset registry: specs/2026-09-17-dataset-registry.md
   - Plans:
+      - Dataset overview: plans/2026-09-17-data-overview.md
       - Type checking: plans/2026-09-17-type-checking.md
       - CLI selection: plans/2026-09-16-cli-selection.md
       - Harness part 1, foundation: plans/2026-09-16-harness-part1-foundation.md

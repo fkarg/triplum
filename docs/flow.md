@@ -125,6 +125,11 @@ Planned, in the order of the design record:
 
 ## Forgiving CLI input
 
+Bare `triplum data` shows a status-count summary and aligned Dataset/State/Family/Flags
+columns, followed by fetch commands. Narrow terminals use stacked entries without truncating
+names. Status colors follow terminal support and `NO_COLOR`; text labels remain in plain output.
+Full command help is available via `triplum data --help` rather than appended to the overview.
+
 Snapshot 2026-09-17. The CLI resolves finite human choices before calling exact library
 APIs: commands, runs, question IDs, datasets, pipelines, reader/judge kinds and adapter
 prefixes. Exact matches win, then case-insensitive exact/unique prefixes. Single substring/typo matches also resolve with a stderr notice; missing or ambiguous

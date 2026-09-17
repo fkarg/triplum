@@ -2715,6 +2715,7 @@ dependencies = [
     { name = "openai" },
     { name = "polars" },
     { name = "pyarrow" },
+    { name = "rich" },
     { name = "sqlite-vec" },
     { name = "typer" },
 ]
@@ -2746,6 +2747,7 @@ requires-dist = [
     { name = "openai", specifier = ">=3,<4" },
     { name = "polars", specifier = ">=1.44" },
     { name = "pyarrow", specifier = ">=25" },
+    { name = "rich", specifier = ">=15.0.0" },
     { name = "sentence-transformers", marker = "extra == 'local'", specifier = ">=6" },
     { name = "sqlite-vec", specifier = ">=0.1.9,<0.2" },
     { name = "typer", specifier = ">=0.27" },

@@ -103,14 +103,11 @@ def test_cli_data_lists_registered_datasets_without_fetching(tmp_path, monkeypat
     assert main(["data"]) == 0
     out = capsys.readouterr().out
     assert "hotpotqa" in out and "musique" in out and "twowiki" in out
-    assert all(f"{name}: not downloaded" in out for name in ("hotpotqa", "musique", "twowiki"))
-    assert "States: verified = local files match pinned SHA-256" in out
-    assert (
-        "Fetch: downloads missing files, then verifies all; it does not overwrite invalid files."
-        in out
-    )
-    assert "[multihop, default]" in out
-    assert "Usage: pytest data" in out and "Commands" in out and "fetch" in out
+    assert "Dataset" in out and "State" in out and "Family" in out and "Flags" in out
+    assert "not downloaded" in out and "default" in out and "multihop" in out
+    assert "triplum data fetch --dataset <name>" in out
+    assert "triplum data --help" in out
+    assert "Usage:" not in out and "Commands" not in out
     assert not (tmp_path / "hipporag").exists()
 
 

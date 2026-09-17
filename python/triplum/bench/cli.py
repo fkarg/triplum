@@ -197,28 +197,11 @@ def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
     """List registered datasets and the state of their local files."""
     if ctx.invoked_subcommand is not None:
         return
+    from triplum.bench.data_view import print_overview
     from triplum.eval.datasets import base, registry
 
-    print(f"data root: {base.data_root()}")
-    states = []
-    for spec in registry.SPECS.values():
-        state = registry.status(spec.name).state
-        states.append(state)
-        tags = [
-            spec.family,
-            *(["default"] if spec.default else []),
-            *(["large"] if spec.large else []),
-        ]
-        print(f"{spec.name}: {state}  [{', '.join(tags)}]")
-    print("States: verified = local files match pinned SHA-256; partial = some local files;")
-    print("        not downloaded = no local files; invalid = a local hash mismatches.")
-    print("Fetch: downloads missing files, then verifies all; it does not overwrite invalid files.")
-    print("       `fetch` alone takes the default protocol; `--dataset all` takes every dataset")
-    print("       except the large ones, which download only when named.")
-    if any(state != "verified" for state in states):
-        print("Run `triplum data fetch --dataset <name>` to download; remove invalid files first.")
-    print()
-    print(ctx.get_help())
+    rows = [(spec, registry.status(spec.name).state) for spec in registry.SPECS.values()]
+    print_overview(rows, base.data_root())
 
 
 @data_app.command()

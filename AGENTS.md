@@ -52,6 +52,9 @@ enforced in the store, never post-hoc. Industry-first: numbers over novelty.
 
 ## Human-facing tools and tests
 
+- Use terminal color where it improves scanning (states, errors, next actions), respecting
+  terminal capabilities and `NO_COLOR`. Keep explicit text labels so color is never required.
+
 - `uv run ty check` must pass across source and tests, alongside `cargo check`, lint and tests.
   Fix contracts and narrowing; do not hide errors with broad ignores, `Any`, or excluded modules.
   Keep the Rust extension stub aligned with its exports. Optional adapter imports are allowed

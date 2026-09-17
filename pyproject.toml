@@ -19,6 +19,7 @@ dependencies = [
   "sqlite-vec>=0.1.9,<0.2",
   "openai>=3,<4",
   "typer>=0.27",
+  "rich>=15.0.0",
 ]
 
 [project.urls]
