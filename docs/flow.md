@@ -100,13 +100,16 @@ Implemented (sub-project 2, part 1; spec in
   AmbigQA, Bamboogle, FreshQA, ARC), reading comprehension (SQuAD 1.1/2.0, BoolQ), long documents
   (QuALITY, QASPER), a KG as source (MetaQA) and text-to-triple gold (GraphJudge, GenWiki, CaRB, CoNLL04, SciERC).
   `triplum data` lists them; the registry spec is `docs/specs/2026-09-17-dataset-registry.md`.
+  A folder of local PDF, Word, Markdown or text files is a dataset too (`--dataset ~/papers`,
+  optional `questions.jsonl`; text layer only, no OCR): `docs/specs/2026-09-17-local-files.md`.
 - **Pipelines**: the five above. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
   latency, indexing time.
 - **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the
   commands in the table above.
 
 Where the code differs from the spec's architecture sketch: there is no `ingest/chunking.py`
-(the protocol makes one passage one chunk, so the loader builds chunks directly); the retrieval
+(the protocol makes one passage one chunk, so the loader builds chunks directly; local files
+are packed by paragraph in `ingest/files.py`); the retrieval
 stages live in one file, `retrieve/stages.py`; one loader covers all three datasets; FTS and
 vector logic sit inside `store/sqlite/store.py`; there is no API reranker adapter and no
 `data/frames.py`.

@@ -1,4 +1,5 @@
-"""Every registered dataset, by name. Add a source module and list its `SPECS` here."""
+"""Every registered dataset, by name; a directory path names a local-files corpus (see
+`triplum.ingest.files`). Add a source module and list its `SPECS` here."""
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from triplum.eval.datasets import (
     wiki_multihop,
 )
 from triplum.eval.datasets.base import Dataset, DatasetStatus, Spec
+from triplum.ingest import files
 
 SPECS: dict[str, Spec] = {}
 for _module in (
@@ -50,20 +52,26 @@ def names(default_only: bool = False) -> list[str]:
     return [s.name for s in SPECS.values() if s.default or not default_only]
 
 
+def is_folder(name: str) -> bool:
+    return name not in SPECS and Path(name).expanduser().is_dir()
+
+
 def get(name: str) -> Spec:
+    if is_folder(name):
+        return files.spec(Path(name))
     return SPECS[name]
 
 
 def status(name: str, root: Path | None = None) -> DatasetStatus:
-    return base.status(SPECS[name], root)
+    return base.status(get(name), root)
 
 
 def fetch(name: str, root: Path | None = None) -> dict[str, Path]:
-    return base.fetch(SPECS[name], root)
+    return base.fetch(get(name), root)
 
 
 def load(name: str, n: int | None = None, root: Path | None = None) -> Dataset:
-    return base.load(SPECS[name], n, root)
+    return base.load(get(name), n, root)
 
 
 def load_fixture(name: str, n: int | None = None) -> Dataset:

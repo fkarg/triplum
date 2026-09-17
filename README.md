@@ -21,7 +21,8 @@ Real today:
   a deterministic fake; embedder and reranker protocols with local and fake adapters.
 - A registry of 37 pinned, auto-fetched datasets with a parser per source and committed
   20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
-  reading-comprehension, long-document and text-to-triple sets.
+  reading-comprehension, long-document and text-to-triple sets; and any folder of your own
+  PDF, Word, Markdown or text files as a corpus (text layer only, no OCR yet).
 - Five non-graph baselines (closed-book, BM25, dense, hybrid with rerank, oracle) run end to
   end with EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost and timing, recorded in a run store
   keyed by the full run identity.
@@ -76,6 +77,7 @@ choices when ambiguous) and never prompts under `--no-input`.
 ```
 uv run triplum data                              # every dataset and its local state
 uv run triplum data fetch                        # the default protocol files, sha256-verified
+uv run triplum bench run --dataset ~/papers --pipeline bm25 --reader fake   # your own folder
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake
 uv run triplum bench report                      # summary table over stored runs

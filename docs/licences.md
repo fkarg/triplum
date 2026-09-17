@@ -43,6 +43,8 @@ Dates are when the licence was checked; re-check before relying on a row.
 | CaRB (`dair-iitd/CaRB`) | MIT | yes | 2026-09-17 | registered as `carb` |
 | CoNLL04 (`DFKI-SLT/conll04`) | none declared | check | 2026-09-17 | registered as `conll04` |
 | SciERC (SpERT release files) | none declared | check | 2026-09-17 | registered as `scierc` |
+| pypdf 6 | BSD-3-Clause | yes | 2026-09-17 | PDF text layer for local-file corpora |
+| python-docx 1.2 (lxml BSD-3-Clause) | MIT | yes | 2026-09-17 | Word documents for local-file corpora |
 | NQ-Open (`google-research-datasets/nq_open`) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `nq_open`; validation split, no corpus |
 | AmbigQA light (UW) | CC BY-SA 3.0 | yes, share-alike | 2026-09-17 | registered as `ambigqa`; dev split, no corpus |
 | Bamboogle (`chiayewken/bamboogle`, from ofirpress/self-ask) | MIT | yes | 2026-09-17 | registered as `bamboogle`; 125 questions, no corpus |

@@ -49,7 +49,8 @@ class Pipeline(StrEnum):
 
 # Options shared by `bench run` and `bench sweep`.
 DatasetOpt = Annotated[
-    str | None, typer.Option(help="Benchmark dataset (`triplum data` lists them).")
+    str | None,
+    typer.Option(help="Benchmark dataset (`triplum data` lists them) or a folder of local files."),
 ]
 RunIdArg = Annotated[str | None, typer.Argument(help="Run id or unique prefix.")]
 NOpt = Annotated[int | None, typer.Option(help="Questions to run (default: the whole protocol).")]
@@ -184,6 +185,12 @@ def dataset_names() -> list[str]:
     return registry.names()
 
 
+def is_folder(dataset: str) -> bool:
+    from triplum.eval.datasets import registry
+
+    return registry.is_folder(dataset)
+
+
 @data_app.callback(invoke_without_command=True)
 def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
     """List registered datasets and the state of their local files."""
@@ -274,7 +281,8 @@ def run(
     from triplum.bench.runner import run_benchmark, runstore_path
 
     pipeline = resolve(pipeline, Pipeline, "pipeline", ctx=ctx)
-    dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
+    if dataset is None or not is_folder(dataset):
+        dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
     reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
     if judge is not None:
         judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)
@@ -328,7 +336,8 @@ def sweep(
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
 
-    dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
+    if dataset is None or not is_folder(dataset):
+        dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
     reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
     if judge is not None:
         judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)

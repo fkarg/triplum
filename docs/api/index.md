@@ -24,7 +24,8 @@ signature is still shown.
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
 | `triplum.bench.bench_view` | done | `print_overview`, `print_summary`, `print_inspect`, `print_diff`, `print_tail` | width-aware benchmark projections, literal values and terminal-aware colors; no data access |
 | `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |
-| `triplum.ingest` | planned (2a) | chunking | hierarchical chunking for the graph pipelines |
+| `triplum.ingest.files` | done | `frames`, `scan`, `spec`, `chunk` | a folder of PDF, Word, Markdown and text files as a corpus with portable identity, optional `questions.jsonl`; a directory path is accepted wherever a dataset name is |
+| `triplum.ingest` chunking | planned (2a) | hierarchical chunking | replaces paragraph packing for the graph pipelines |
 | `triplum.extract` | planned (2a, 2b) | entity and fact extraction | fills `entities`, `facts`, `fact_support`, `mentions` |
 | `triplum.store` graph side | planned (2a, 2c) | k-hop, PPR, pattern queries | graph kernels on the viewer's projection; Neo4j arm |
 

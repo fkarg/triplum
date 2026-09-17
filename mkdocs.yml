@@ -62,6 +62,7 @@ nav:
       - retrieve: api/retrieve.md
       - generate: api/generate.md
       - eval: api/eval.md
+      - ingest: api/ingest.md
       - bench: api/bench.md
   - Licences: licences.md
   - Releasing: releasing.md

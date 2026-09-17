@@ -24,6 +24,8 @@ dependencies = [
   "openai>=3,<4",
   "typer>=0.27",
   "rich>=15.0.0",
+  "pypdf>=6.19.0",
+  "python-docx>=1.2.0",
 ]
 
 [project.urls]
