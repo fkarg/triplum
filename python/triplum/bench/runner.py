@@ -18,7 +18,8 @@ from triplum.cache import default_root
 from triplum.data.viewer import Viewer
 from triplum.eval import judge as judge_mod
 from triplum.eval import metrics
-from triplum.eval.datasets import hipporag as hr
+from triplum.eval.datasets import base
+from triplum.eval.datasets import registry as datasets
 from triplum.generate import reader as reader_mod
 from triplum.generate.reader import read
 from triplum.retrieve import stages
@@ -64,8 +65,23 @@ def runstore_path(cfg: RunConfig) -> Path:
 def run_benchmark(cfg: RunConfig) -> str:
     t_start = time.perf_counter()
     root = cache_root(cfg)
-    ds = hr.load_fixture(cfg.dataset, cfg.n) if cfg.fixture else hr.load(cfg.dataset, cfg.n)
+    spec = datasets.get(cfg.dataset)
+    ds = (
+        datasets.load_fixture(cfg.dataset, cfg.n)
+        if cfg.fixture
+        else datasets.load(cfg.dataset, cfg.n)
+    )
     p = cfg.pipeline
+    if ds.questions.height == 0:
+        raise ValueError(
+            f"dataset {spec.name} has no questions (extraction-only); it cannot be run"
+        )
+    if spec.needs:
+        raise ValueError(f"dataset {spec.name} cannot be run yet: it needs {spec.needs}")
+    if ds.chunks.height == 0 and p.name != "closed_book":
+        raise ValueError(
+            f"dataset {spec.name} ships no corpus; only the closed_book pipeline applies"
+        )
     needs_embed = p.name in ("dense", "hybrid")
     embedder = factories.make_embedder(p.embedder, root) if needs_embed and p.embedder else None
     real_models = cfg.judge is not None and cfg.judge.kind != "fake" and p.reader.kind != "fake"
@@ -196,8 +212,12 @@ def run_benchmark(cfg: RunConfig) -> str:
                         "f1": metrics.f1(a["answer"], q["aliases"]),
                         "contain": metrics.contain(a["answer"], q["aliases"]),
                         "judge": jud,
-                        "r2": metrics.recall_at_k(q["gold_chunk_ids"], ids, 2),
-                        "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5),
+                        "r2": metrics.recall_at_k(q["gold_chunk_ids"], ids, 2)
+                        if q["gold_chunk_ids"]
+                        else None,
+                        "r5": metrics.recall_at_k(q["gold_chunk_ids"], ids, 5)
+                        if q["gold_chunk_ids"]
+                        else None,
                         "input_tokens": a["input_tokens"],
                         "output_tokens": a["output_tokens"],
                         "usd": rec.cost(p.reader.model, a["input_tokens"], a["output_tokens"], 0),
@@ -206,7 +226,7 @@ def run_benchmark(cfg: RunConfig) -> str:
                         "n_passages": a["n_passages"],
                     },
                 )
-        rs.add_artifact(run_id, "store", str(store_path), hr.sha256_file(store_path))
+        rs.add_artifact(run_id, "store", str(store_path), base.sha256_file(store_path))
         status = "ok"
     finally:
         store.close()

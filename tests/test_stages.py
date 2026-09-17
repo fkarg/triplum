@@ -1,7 +1,7 @@
 import polars as pl
 from triplum.data.viewer import Viewer
 from triplum.embed.fake import FakeEmbedder
-from triplum.eval.datasets import hipporag as hr
+from triplum.eval.datasets import registry as hr
 from triplum.eval.judge import judge_correct
 from triplum.generate.reader import read
 from triplum.llm.fake import FakeLLM

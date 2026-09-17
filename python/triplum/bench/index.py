@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from triplum.bench.runstore import Recorder
 from triplum.embed.protocol import Embedder
-from triplum.eval.datasets.hipporag import Dataset
+from triplum.eval.datasets.base import Dataset
 from triplum.store.sqlite.store import SqliteStore
 
 

@@ -48,14 +48,10 @@ class Pipeline(StrEnum):
     oracle = "oracle"
 
 
-class Dataset(StrEnum):
-    hotpotqa = "hotpotqa"
-    musique = "musique"
-    twowiki = "twowiki"
-
-
 # Options shared by `bench run` and `bench sweep`.
-DatasetOpt = Annotated[str | None, typer.Option(help="Benchmark dataset: " + ", ".join(Dataset))]
+DatasetOpt = Annotated[
+    str | None, typer.Option(help="Benchmark dataset (`triplum data` lists them).")
+]
 RunIdArg = Annotated[str | None, typer.Argument(help="Run id or unique prefix.")]
 NOpt = Annotated[int | None, typer.Option(help="Questions to run (default: the whole protocol).")]
 FixtureOpt = Annotated[
@@ -190,24 +186,37 @@ def _runstore(path: Path | None):
     return RunStore(path or default_root() / "runs.db")
 
 
+def dataset_names() -> list[str]:
+    from triplum.eval.datasets import registry
+
+    return registry.names()
+
+
 @data_app.callback(invoke_without_command=True)
 def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
-    """List supported datasets and the state of their local protocol files."""
+    """List registered datasets and the state of their local files."""
     if ctx.invoked_subcommand is not None:
         return
-    from triplum.eval.datasets import hipporag as hr
+    from triplum.eval.datasets import base, registry
 
-    states = [hr.status(name) for name in hr.FILES]
-    print(f"data root: {states[0].questions_path.parent}")
-    for state in states:
-        print(f"{state.name}: {state.state}")
-    print("States: verified = local files match pinned SHA-256; partial = one local file;")
-    print("        not downloaded = no local files; invalid = one or both local hashes mismatch.")
-    print(
-        "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files."
-    )
-    if any(state.state != "verified" for state in states):
-        print("Run `triplum data fetch` to download missing datasets; remove invalid files first.")
+    print(f"data root: {base.data_root()}")
+    states = []
+    for spec in registry.SPECS.values():
+        state = registry.status(spec.name).state
+        states.append(state)
+        tags = [
+            spec.family,
+            *(["default"] if spec.default else []),
+            *(["large"] if spec.large else []),
+        ]
+        print(f"{spec.name}: {state}  [{', '.join(tags)}]")
+    print("States: verified = local files match pinned SHA-256; partial = some local files;")
+    print("        not downloaded = no local files; invalid = a local hash mismatches.")
+    print("Fetch: downloads missing files, then verifies all; it does not overwrite invalid files.")
+    print("       `fetch` alone takes the default protocol; `--dataset all` takes every dataset")
+    print("       except the large ones, which download only when named.")
+    if any(state != "verified" for state in states):
+        print("Run `triplum data fetch --dataset <name>` to download; remove invalid files first.")
     print()
     print(ctx.get_help())
 
@@ -216,15 +225,24 @@ def data(ctx: typer.Context, no_input: NoInputOpt = False) -> None:
 def fetch(
     ctx: typer.Context,
     no_input: NoInputOpt = False,
-    dataset: Annotated[str, typer.Option(help="hotpotqa | musique | twowiki | all")] = "all",
+    dataset: Annotated[str, typer.Option(help="dataset name | default | all")] = "default",
 ) -> None:
-    """Download the HippoRAG protocol files and verify their sha256."""
-    from triplum.eval.datasets import hipporag as hr
+    """Download a dataset's files and verify their sha256."""
+    from triplum.eval.datasets import registry
 
-    dataset = resolve(dataset, [*hr.FILES, "all"], "dataset", ctx=ctx)
-    for name in hr.FILES if dataset == "all" else [dataset]:
-        qp, cp = hr.fetch(name)
-        print(f"{name}: {qp} {cp} (verified)")
+    dataset = resolve(dataset, [*registry.names(), "default", "all"], "dataset", ctx=ctx)
+    if dataset == "default":
+        names = registry.names(default_only=True)
+    elif dataset == "all":
+        names = [name for name in registry.names() if not registry.get(name).large]
+        for name in registry.names():
+            if registry.get(name).large:
+                print(f"{name}: skipped, large; fetch it by name", file=sys.stderr)
+    else:
+        names = [dataset]
+    for name in names:
+        local = registry.fetch(name)
+        print(f"{name}: {' '.join(str(path) for path in local.values())} (verified)")
 
 
 @bench_app.callback(invoke_without_command=True)
@@ -293,7 +311,7 @@ def run(
     from triplum.bench.runner import run_benchmark, runstore_path
 
     pipeline = resolve(pipeline, Pipeline, "pipeline", ctx=ctx)
-    dataset = resolve(dataset, Dataset, "dataset", ctx=ctx)
+    dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
     reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
     if judge is not None:
         judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)
@@ -347,7 +365,7 @@ def sweep(
     from triplum.bench.report import summary
     from triplum.bench.runner import run_benchmark, runstore_path
 
-    dataset = resolve(dataset, Dataset, "dataset", ctx=ctx)
+    dataset = resolve(dataset, dataset_names(), "dataset", ctx=ctx)
     reader = resolve(reader, ["fake", "openai", "claude-cli"], "reader", ctx=ctx)
     if judge is not None:
         judge = resolve(judge, ["fake", "openai", "claude-cli"], "judge", ctx=ctx)

@@ -10,7 +10,7 @@ the design record still plans. The caching and identity rules it relies on are i
 
 ```mermaid
 flowchart LR
-  DS[("HippoRAG protocol files<br/>questions + corpus")] --> LOAD["load<br/><code>eval/datasets/hipporag.py</code>"]
+  DS[("dataset files<br/>pinned by sha256")] --> LOAD["load<br/><code>eval/datasets/registry.py</code>"]
   LOAD --> ID["run identity<br/><code>bench/runstore.py</code> + <code>bench/fingerprint.py</code>"]
   ID -- "identical run exists" --> RS
   ID -- "new / --force / --resume" --> DOCS["ensure_documents<br/><code>bench/index.py</code>"]
@@ -33,7 +33,7 @@ Polars frames; the store enforces visibility, so every stage passes a `Viewer` t
 
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
-| 1 | load dataset | `eval/datasets/hipporag.py` | Fetches the HippoRAG protocol JSON (questions and corpus) into the cache root, verifies sha256, and parses it into the canonical frames: one document and one chunk per passage, one public grant per document, questions with `gold_chunk_ids` resolved from title and text. `--fixture` loads the committed 20-question fixture instead; `--n` truncates. | `corpus_hash`, `questions_hash` go into the run identity. A gold passage that cannot be mapped is an error, never a silent miss. |
+| 1 | load dataset | `eval/datasets/registry.py`, `base.py`, one parser module per source | Looks the dataset up in the registry, fetches its pinned files into the data root, verifies sha256, and parses them into the canonical frames: one document and one chunk per passage, one public grant per document, questions with `gold_chunk_ids` resolved from the source's gold, `answerable`, `as_of` and a JSON `metadata` column for source extras, gold `triples` where the source has them. `--fixture` loads the committed canonical 20-question fixture instead; `--n` truncates. The runner refuses extraction-only datasets, datasets with a `needs` note (a runner capability still missing), and non-closed-book pipelines on corpus-less datasets. | `corpus_hash` and `questions_hash` are hashes of the parsed frames, not the source bytes, so a parser change invalidates stores and runs. A gold passage that cannot be mapped is an error, never a silent miss. |
 | 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/cache/`. |
 | 3 | run identity | `bench/runstore.py`, `bench/fingerprint.py` | Hashes dataset, pipeline, config, the source of every module the pipeline executes (not the git sha), corpus and question hashes, `n`, embedding and reranker spec, reader and judge model, seed, viewer, and both prompt hashes. An identical completed run is returned without doing anything. `--force` starts a fresh run; `--resume` continues a running or failed run with the same identity from its last committed question. | `runs` row with all identity fields plus git sha, dirty flag and host; `prices` snapshot for the models used. |
 | 4 | index documents | `bench/index.py: ensure_documents` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | Event `index.documents`. Skipped when the store already holds the corpus. |
@@ -63,8 +63,8 @@ fails to load.
 
 | command | does |
 |---|---|
-| `triplum data` | lists each supported dataset and whether its two cached protocol files are absent, partial, verified, or invalid; does not download anything |
-| `triplum data fetch` | step 1 only: download and verify the protocol files |
+| `triplum data` | lists every registered dataset with family, default and large flags, and whether its cached files are absent, partial, verified, or invalid; does not download anything |
+| `triplum data fetch [--dataset <name>\|default\|all]` | step 1 only: download and verify files; bare `fetch` is the default protocol, `all` skips large datasets, which download only when named |
 | `triplum bench [--runstore <path>]` | read-only overview of supported pipelines and up to ten recent local runs, with state/action explanations and generated command help; does not create or migrate a database |
 | `triplum bench run` | steps 1 to 10 for one configuration |
 | `triplum bench sweep --embedders <json>` | `bench run` with `--pipeline dense` per embedding spec |
@@ -91,8 +91,10 @@ Implemented (sub-project 2, part 1; spec in
   tables are created by the migration and unused.
 - **Protocols with disk cache**: `LLM` (OpenAI-compatible, CLI subprocess, fake), `Embedder`
   (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
-- **Datasets**: HotpotQA, MuSiQue, 2WikiMultiHopQA under the HippoRAG 1000-question protocol,
-  hashes pinned, 20-question fixtures committed.
+- **Datasets**: a registry (`eval/datasets/registry.py`) of pinned, auto-fetched datasets with one
+  parser per source and canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA under
+  the HippoRAG 1000-question protocol are the default set. The registry spec is
+  `docs/specs/2026-09-17-dataset-registry.md`.
 - **Pipelines**: the five above. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
   latency, indexing time.
 - **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the

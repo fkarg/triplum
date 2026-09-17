@@ -87,6 +87,7 @@ nav:
       - Type checking: specs/2026-09-17-type-checking.md
       - CLI selection: specs/2026-09-16-cli-selection.md
       - Harness and baselines: specs/2026-09-16-harness-and-baselines.md
+      - Dataset registry: specs/2026-09-17-dataset-registry.md
   - Plans:
       - Type checking: plans/2026-09-17-type-checking.md
       - CLI selection: plans/2026-09-16-cli-selection.md

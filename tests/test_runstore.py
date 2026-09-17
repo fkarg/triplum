@@ -107,3 +107,35 @@ def test_old_schema_is_migrated(tmp_path):
     assert row["code_hash"] == "c0de"
     cols = {r[1] for r in rs.conn.execute("PRAGMA table_info(run_questions)")}
     assert "cached" in cols
+
+
+def test_old_store_with_not_null_recall_is_rebuilt(tmp_path):
+    import sqlite3
+
+    from triplum.bench import runstore
+
+    path = tmp_path / "old.db"
+    old_ddl = runstore.DDL.replace("r2 REAL, r5 REAL,", "r2 REAL NOT NULL, r5 REAL NOT NULL,")
+    with sqlite3.connect(path) as conn:
+        conn.executescript(old_ddl)
+        conn.execute(
+            "INSERT INTO runs (run_id, identity_hash, created_at, dataset, pipeline, config_hash, config_json,"
+            " code_version, dirty, code_hash, corpus_hash, questions_hash, n, reader_model, seed, viewer_json,"
+            " host, reader_prompt_hash) VALUES ('r', 'i', 0, 'd', 'p', 'c', '{}', 'v', 0, 'h', 'c', 'q', 1, 'm',"
+            " 0, '[]', 'h', 'p')"
+        )
+        conn.execute(
+            "INSERT INTO run_questions (run_id, question_id, retrieved_json, answer, em, f1, contain, r2, r5,"
+            " input_tokens, output_tokens, latency_s, n_passages) VALUES ('r', 'q', '[]', 'a', 1, 1, 1, 0.5, 1,"
+            " 0, 0, 0.1, 2)"
+        )
+    rs = RunStore(path)
+    notnull = {r[1]: r[3] for r in rs.conn.execute("PRAGMA table_info(run_questions)")}
+    assert notnull["r2"] == 0 and notnull["r5"] == 0 and notnull["em"] == 1
+    assert rs.questions("r")["r2"].to_list() == [0.5]
+    rs.conn.execute(
+        "INSERT INTO run_questions (run_id, question_id, retrieved_json, answer, em, f1, contain,"
+        " input_tokens, output_tokens, latency_s, n_passages) VALUES ('r', 'q2', '[]', 'a', 0, 0, 0,"
+        " 0, 0, 0.1, 0)"
+    )
+    assert RunStore(path).questions("r").height == 2

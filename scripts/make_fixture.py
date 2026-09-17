@@ -1,39 +1,32 @@
-"""Build the 20-question smoke fixtures from the fetched HippoRAG files.
+"""Build the 20-question smoke fixtures from the fetched dataset files.
 
-Keeps the first 20 questions and every corpus passage that appears in their candidate contexts,
-so retrieval on the fixture has the same gold/distractor structure as the full corpus.
-Run: uv run python scripts/make_fixture.py
+Keeps the first 20 questions, every chunk they need (gold and, where the dataset ships them, the
+candidate distractors recorded in `metadata`), and a deterministic fill of further chunks, so
+retrieval on the fixture keeps the gold/distractor structure of the full corpus.
+Run: uv run python scripts/make_fixture.py [dataset ...]   (default: every registered dataset)
 """
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import sys
 
-from triplum.eval.datasets import hipporag as hr
-
-OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
-N = 20
+from triplum.eval.datasets import base, registry
 
 
-def candidate_keys(name: str, q: dict) -> set[tuple]:
-    if name == "musique":
-        return {(p["title"], p["paragraph_text"]) for p in q["paragraphs"]}
-    return {(t,) for t, _ in q["context"]}
-
-
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    for name in hr.FILES:
-        qp, cp = hr.fetch(name)
-        questions = json.loads(qp.read_text())[:N]
-        corpus = json.loads(cp.read_text())
-        keep = set().union(*(candidate_keys(name, q) for q in questions))
-        sub = [r for r in corpus if hr.gold_key(name, r["title"], r["text"]) in keep]
-        (OUT / f"{name}_questions.json").write_text(json.dumps(questions, ensure_ascii=False))
-        (OUT / f"{name}_corpus.json").write_text(json.dumps(sub, ensure_ascii=False))
-        print(name, len(questions), "questions", len(sub), "passages")
+def main(names: list[str]) -> None:
+    base.FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
+    for name in names or registry.names():
+        spec = registry.get(name)
+        if not spec.fixture:
+            print(name, "has no fixture")
+            continue
+        ds = registry.load(name)
+        frames = base.subset(
+            base.Frames(ds.questions, ds.documents, ds.grants, ds.chunks, ds.triples)
+        )
+        path = base.write_fixture(name, frames)
+        print(name, frames.questions.height, "questions", frames.chunks.height, "chunks", path.name)
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

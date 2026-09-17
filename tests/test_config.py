@@ -106,9 +106,10 @@ def test_cli_data_lists_registered_datasets_without_fetching(tmp_path, monkeypat
     assert all(f"{name}: not downloaded" in out for name in ("hotpotqa", "musique", "twowiki"))
     assert "States: verified = local files match pinned SHA-256" in out
     assert (
-        "Fetch: downloads missing files, then verifies both; it does not overwrite invalid files."
+        "Fetch: downloads missing files, then verifies all; it does not overwrite invalid files."
         in out
     )
+    assert "[multihop, default]" in out
     assert "Usage: pytest data" in out and "Commands" in out and "fetch" in out
     assert not (tmp_path / "hipporag").exists()
 

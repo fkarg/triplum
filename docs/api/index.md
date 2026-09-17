@@ -18,7 +18,7 @@ signature is still shown.
 | `triplum.store` | chunk side done | `Store`, `Capabilities`, `SqliteStore` | viewer-filtered BM25 and vector search over chunks; graph tables exist but are unused |
 | `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `hybrid`, `rrf` | retrieval stages, frames in and out |
 | `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
-| `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.hipporag.load` | metrics, judge, datasets under the HippoRAG protocol |
+| `triplum.eval` | done | `metrics.*`, `judge.judge_correct`, `datasets.registry.load`, `datasets.base.Spec` | metrics, judge, the dataset registry with pinned files, parsers per source and canonical fixtures |
 | `triplum.bench` | done | `RunConfig`, `run_benchmark`, `RunStore`, `summary`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run`, `code_hash` | run identity, caching, recording, reporting; terminal summaries wrap per run without dropping fields |
 | `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, recent-run overview, finite-choice resolution and interactive drill-down |
 | `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
@@ -49,14 +49,14 @@ from pathlib import Path
 from triplum.data.viewer import Viewer
 from triplum.embed.fake import FakeEmbedder
 from triplum.eval import metrics
-from triplum.eval.datasets import hipporag as hr
+from triplum.eval.datasets import registry as datasets
 from triplum.generate.reader import read
 from triplum.llm.fake import FakeLLM
 from triplum.llm.protocol import DEFAULT_PARAMS
 from triplum.retrieve import stages
 from triplum.store.sqlite.store import SqliteStore
 
-ds = hr.load_fixture("musique", n=5)  # questions, documents, grants, chunks as Polars frames
+ds = datasets.load_fixture("musique", n=5)  # questions, documents, grants, chunks, triples frames
 store = SqliteStore(Path(tempfile.mkdtemp()) / "demo.sqlite")
 store.put_documents(ds.documents, ds.grants)
 store.put_chunks(ds.chunks)

@@ -26,6 +26,8 @@ BASE = [
     "triplum.generate.reader",
     "triplum.eval.metrics",
     "triplum.eval.judge",
+    "triplum.eval.datasets.base",
+    "triplum.eval.datasets.registry",
     "triplum.eval.datasets.hipporag",
     "triplum.retrieve.stages",
     "triplum.bench.index",

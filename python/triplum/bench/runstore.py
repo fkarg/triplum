@@ -14,7 +14,19 @@ import polars as pl
 from triplum.cache import content_key
 from triplum.data.schema import now_us
 
-DDL = """
+RUN_QUESTIONS_DDL = """
+CREATE TABLE IF NOT EXISTS run_questions (
+  run_id TEXT NOT NULL REFERENCES runs(run_id), question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
+  answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
+  r2 REAL, r5 REAL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
+  usd REAL, cached INTEGER NOT NULL DEFAULT 0, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
+  PRIMARY KEY (run_id, question_id)
+) STRICT;
+"""
+
+DDL = (
+    RUN_QUESTIONS_DDL
+    + """
 CREATE TABLE IF NOT EXISTS runs (
   run_id TEXT PRIMARY KEY, identity_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
   dataset TEXT NOT NULL, pipeline TEXT NOT NULL, config_hash TEXT NOT NULL, config_json TEXT NOT NULL,
@@ -26,13 +38,6 @@ CREATE TABLE IF NOT EXISTS runs (
   status TEXT NOT NULL DEFAULT 'running', wall_s REAL, cache_hits INTEGER, cache_misses INTEGER
 ) STRICT;
 CREATE INDEX IF NOT EXISTS runs_identity ON runs(identity_hash);
-CREATE TABLE IF NOT EXISTS run_questions (
-  run_id TEXT NOT NULL REFERENCES runs(run_id), question_id TEXT NOT NULL, retrieved_json TEXT NOT NULL,
-  answer TEXT NOT NULL, em REAL NOT NULL, f1 REAL NOT NULL, contain REAL NOT NULL, judge REAL,
-  r2 REAL NOT NULL, r5 REAL NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
-  usd REAL, cached INTEGER NOT NULL DEFAULT 0, latency_s REAL NOT NULL, n_passages INTEGER NOT NULL,
-  PRIMARY KEY (run_id, question_id)
-) STRICT;
 CREATE TABLE IF NOT EXISTS events (
   run_id TEXT NOT NULL REFERENCES runs(run_id), stage TEXT NOT NULL, question_id TEXT, provider TEXT, model TEXT,
   started_at INTEGER NOT NULL, ended_at INTEGER NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0,
@@ -56,6 +61,7 @@ CREATE TABLE IF NOT EXISTS run_artifacts (
   PRIMARY KEY (run_id, kind)
 ) STRICT;
 """
+)
 
 # code_hash (the pipeline's own source files) identifies a run; code_version and dirty are
 # recorded for bookkeeping only, so edits outside the pipeline do not orphan finished runs.
@@ -105,6 +111,17 @@ class RunStore:
             for name, decl in cols:
                 if name not in have:
                     self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        # r2/r5 became nullable (recall is undefined without gold chunks); SQLite cannot drop a
+        # NOT NULL, so stores created before that rebuild the table once.
+        notnull = {r[1]: r[3] for r in self.conn.execute("PRAGMA table_info(run_questions)")}
+        if notnull.get("r2"):
+            cols = ", ".join(notnull)
+            self.conn.executescript(
+                "ALTER TABLE run_questions RENAME TO run_questions_old;"
+                + RUN_QUESTIONS_DDL
+                + f"INSERT INTO run_questions ({cols}) SELECT {cols} FROM run_questions_old;"
+                "DROP TABLE run_questions_old;"
+            )
 
     # ---- prices -----------------------------------------------------------------------------
 

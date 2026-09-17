@@ -34,8 +34,9 @@ uv run pytest -m "not model"                 # fast, offline fixtures and fakes
 uv run ty check                             # required: Python source and tests
 uv run cargo check                          # Rust workspace, using the project's Python
 uv run pytest                               # includes installed optional real-model adapters
-uv run triplum data                         # local state of each supported dataset
-uv run triplum data fetch                   # HippoRAG protocol files, verified by sha256
+uv run triplum data                         # every registered dataset and its local state
+uv run triplum data fetch                   # the default protocol files, verified by sha256
+uv run triplum data fetch --dataset all     # every dataset except the large ones
 uv run triplum bench                        # recent local runs, states and available commands
 uv run triplum bench run --pipeline dense --dataset musique --n 20 --fixture \
     --embedder st:sentence-transformers/all-MiniLM-L6-v2 --reader fake

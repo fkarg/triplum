@@ -244,23 +244,39 @@ def test_adapter_suffix_preserved_and_missing_model_rejected():
             adapter(value, ["fake", "st", "openai"], "embedder", None)
 
 
-def test_fetch_dataset_prefix_and_all(monkeypatch, tmp_path):
-    from triplum.eval.datasets import hipporag
+def test_fetch_dataset_prefix_default_and_all(monkeypatch, tmp_path):
+    from triplum.eval.datasets import base, registry
+
+    def _never(paths, n) -> base.Frames:
+        raise AssertionError("parser must not run")
 
     seen = []
 
-    def fetch(name):
+    def fetch(name, root=None):
         seen.append(name)
-        return tmp_path / "questions", tmp_path / "corpus"
+        return {"q": tmp_path / "questions"}
 
-    monkeypatch.setattr(hipporag, "fetch", fetch)  # network boundary
+    monkeypatch.setattr(registry, "fetch", fetch)  # network boundary
+    big = base.Spec(
+        "big-test",
+        "test",
+        (base.File("u", "b", "0" * 64, base.LARGE_BYTES + 1),),
+        "none",
+        _never,
+    )
+    monkeypatch.setitem(registry.SPECS, big.name, big)
     result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "mus"])
     assert result.exit_code == 0, result.output
     assert seen == ["musique"]
     seen.clear()
+    result = CliRunner().invoke(app, ["data", "fetch"])
+    assert result.exit_code == 0, result.output
+    assert seen == ["hotpotqa", "musique", "twowiki"]
+    seen.clear()
     result = CliRunner().invoke(app, ["data", "fetch", "--dataset", "ALL"])
     assert result.exit_code == 0, result.output
-    assert seen == list(hipporag.FILES)
+    assert seen == [name for name in registry.names() if name != "big-test"]
+    assert "big-test: skipped" in result.output
 
 
 def test_single_substring_match_is_accepted():
