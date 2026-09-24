@@ -1,15 +1,11 @@
 # triplum
 
-A composable, benchmark-first sandbox for knowledge-graph work with LLMs: building a KG from
-text, GraphRAG retrieval over it, storage backends, and evaluation. It is a Python library with a
-Rust core behind an Arrow boundary. Two properties are enforced in the store rather than added
-later: every fact is bi-temporal (valid time and transaction time), and visibility derives from
-the provenance of a fact's supporting chunks, so a viewer never sees a fact, entity or summary
-built on text they could not read.
+A composable, benchmark-first sandbox for scalable document search, knowledge graphs and GraphRAG. Triplum fundamentally supports temporal relations and permissions in addition to deep provenance. This means that we can clearly model and reason not just about relations, but in particular about the *time* and *authority* of those relations, and ensure that only users with access to the provenance source can see relations derived from it.
 
-The project is public and research-oriented, and it is run with industrial priorities: numbers
-over novelty, every result reproducible from its run identity, and non-commercial components
-allowed only where [`docs/licences.md`](docs/licences.md) records what that costs.
+The project is public and research-oriented, but very much run with industry priorities:
+actual numbers over novelty, every result reproducible from its run identity, baseline
+robust systems and non-commercial components allowed only where
+[`docs/licences.md`](docs/licences.md) records what that costs.
 
 ## Status
 
