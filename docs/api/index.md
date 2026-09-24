@@ -10,7 +10,7 @@ promise that the interface has finished evolving; [Flow](../flow.md) records wha
 |---|---|---|---|
 | [`triplum.data`](data.md) | done | `Document`, `Segment`, `CorpusBatch`, `Viewer`, canonical schemas | Records describe source text; frames cross the store boundary; reads take a viewer. |
 | [`triplum.utils.data`](utils-data.md) | done | `Dataset`, `IterableDataset`, `RecordDataset`, `DataLoader` | Sources own records and fingerprints; loaders choose how to consume them. |
-| [`triplum.datasets`](datasets.md) | done | `registry.load`, `registry.verify`, `Pinned`, `InlineCorpus`, `corpus_batch` | Built-in sources remain lazy until read; collators project records to frames. |
+| [`triplum.datasets`](datasets.md) | done | `registry.load`, `registry.verify`, `Pinned`, `InlineCorpus`, `DistractorCorpus`, `corpus_batch` | Built-in sources and seeded corpus variants identify data before reading; collators project records to frames. |
 | [`triplum.stage`](stage.md) | done | `stage`, `Stage`, `Run`, `Artifact`, `Stream` | Calls identify results from inputs and record code provenance for reuse. |
 | [`triplum.cache`](cache.md) | done | `Cache`, `content_key` | Adapter calls use content-addressed disk entries. |
 | `triplum.settings` | done | `Settings` | Runtime paths and mirrors configure access, not data identity. |

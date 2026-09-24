@@ -1,8 +1,7 @@
-"""Every Python block on the tutorial pages runs, in order, against the committed fixtures.
+"""Every Python block on selected guide pages runs against the committed fixtures.
 
 Each page runs as a module whose source is registered with `linecache`, the way a notebook cell
-is, so functions defined on the page have a resolvable module and readable source: the stage
-example depends on both to fetch its own artifacts."""
+is, so functions defined on a page have a resolvable module and readable source."""
 
 import linecache
 import re
@@ -15,7 +14,7 @@ import pytest
 DOCS = Path(__file__).parents[1] / "docs"
 
 
-@pytest.mark.parametrize("page", ["datasets.md", "api/stage.md"])
+@pytest.mark.parametrize("page", ["datasets.md", "guide/benchmark.md", "guide/variants.md"])
 def test_page_examples_run(page):
     blocks = re.findall(r"```python\n(.*?)```", (DOCS / page).read_text(), re.DOTALL)
     assert blocks

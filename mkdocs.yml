@@ -55,6 +55,7 @@ nav:
       - Documents: guide/documents.md
       - Sources: guide/sources.md
       - Loading batches: guide/loading.md
+      - Seeded distractors: guide/variants.md
       - Corpus frames: guide/frames.md
       - Viewers: guide/viewers.md
       - Reading from a store: guide/store.md

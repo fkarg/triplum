@@ -70,9 +70,9 @@ def read(name: str, n: int | None = None, source: Path | None = None) -> Benchma
 
 
 def subset(
-    benchmark: Benchmark, n: int = FIXTURE_N, distractors: int = 40, seed: int = 0
+    benchmark: Benchmark, n: int | None = FIXTURE_N, distractors: int = 40, seed: int = 0
 ) -> Benchmark:
-    """The first `n` questions, every chunk they need (gold, and candidate ids from `metadata`),
+    """The first `n` questions (or all when `n` is None), every chunk they need (gold, and candidate ids from `metadata`),
     and up to `distractors` further chunks chosen with a fixed seed; without questions, the first
     `distractors` chunks. Triples of the kept documents and questions come along."""
     documents = list(benchmark.corpus) if benchmark.corpus is not None else []

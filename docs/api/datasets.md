@@ -17,6 +17,8 @@ catalog, and one module per built-in source.
 
 ::: triplum.datasets.fixtures
 
+::: triplum.datasets.variants
+
 ::: triplum.datasets.hipporag
 
 ::: triplum.datasets.wiki_multihop

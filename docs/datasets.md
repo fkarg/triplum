@@ -77,6 +77,9 @@ gold = {cid for ids in inputs.qa["gold_chunk_ids"].to_list() for cid in ids}
 assert gold <= set(inputs.corpus.chunks["id"])
 ```
 
+For an on-demand variant, use [`DistractorCorpus`](guide/variants.md) with a fixed seed. It
+identifies the variant before reading, then selects chunks when the benchmark loads it.
+
 `materialize` is the explicit eager bridge the current runner uses: it consumes every source
 through a `DataLoader` with the matching collator, runs the cross-source integrity checks, and
 reports the source fingerprints as the corpus and evaluation identities.
