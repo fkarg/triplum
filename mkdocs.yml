@@ -49,21 +49,26 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
-  - Overview: index.md
-  - Flow: flow.md
-  - Datasets: datasets.md
-  - Benchmarking and caching: benchmarking.md
+  - Home: index.md
   - Learn:
+      - Start here: guide/index.md
       - Documents: guide/documents.md
       - Sources: guide/sources.md
       - Loading batches: guide/loading.md
       - Corpus frames: guide/frames.md
       - Viewers: guide/viewers.md
-  - Modules and interfaces:
+      - Reading from a store: guide/store.md
+      - Run a benchmark: guide/benchmark.md
+  - How it works:
+      - Datasets: datasets.md
+      - Benchmark runs: flow.md
+      - Benchmark caching: benchmarking.md
+  - API reference:
       - Overview: api/index.md
-      - data: api/data.md
-      - utils.data: api/utils-data.md
+      - Data records and frames: api/data.md
+      - Data sources and loading: api/utils-data.md
       - datasets: api/datasets.md
+      - stage: api/stage.md
       - cache: api/cache.md
       - llm: api/llm.md
       - embed: api/embed.md
@@ -75,6 +80,5 @@ nav:
       - ingest: api/ingest.md
       - extract: api/extract.md
       - bench: api/bench.md
-      - stage: api/stage.md
   - Licences: licences.md
   - Releasing: releasing.md

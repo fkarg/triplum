@@ -1,7 +1,7 @@
 # Sources
 
-A source supplies records to an experiment. Use `RecordDataset` when the records are already in
-memory. It calculates its fingerprint from their content.
+A source supplies records to an experiment. For records already in memory, wrap them in
+`RecordDataset`:
 
 ```python
 from triplum.data.corpus import Document
@@ -9,11 +9,15 @@ from triplum.utils.data import RecordDataset
 
 source = RecordDataset([Document(id="note-1", source="notes", text="Alice met Bob.")])
 assert source[0].text == "Alice met Bob."
-assert source.fingerprint()
+assert list(source) == list(source)
+assert source.fingerprint() == source.fingerprint()
 ```
 
-For another source, implement `Dataset` for indexed access or `IterableDataset` for streaming.
-Both require `fingerprint()` so the benchmark can identify the ordered records without loading
-them. The [dataset guide](../datasets.md) shows built-in and custom sources.
+`fingerprint()` identifies the ordered records. A benchmark may load the same source more than
+once, so every pass must yield the same records in the same order for that fingerprint. If you
+want a different corpus, give that variant its own fingerprint.
+
+For a custom source, implement `Dataset` for indexed records or `IterableDataset` for streamed
+records. See [built-in sources](../datasets.md) for more examples.
 
 Next: [load records in batches](loading.md).

@@ -1,7 +1,7 @@
 # Documents
 
-A `Document` is text from one source. Its `id` must be unique across the corpus; `source` names
-where it came from. If you give no segments, the whole text is one segment.
+Use a `Document` for one piece of source text. Give it an `id` that is unique in the corpus and a
+`source` that names where the text came from.
 
 ```python
 from triplum.data.corpus import Document
@@ -11,8 +11,11 @@ assert doc.segments[0].start == 0
 assert doc.segments[0].end == len(doc.text)
 ```
 
-Use `segments` when the source already gives you passages, pages, or turns. Their `start` and
-`end` are character positions in `text`; `end` is excluded. `grants` lists who may read the
-document and defaults to `("public",)`.
+With no `segments`, the whole text becomes one segment. A segment is a piece the source already
+defines, such as a page or a transcript turn. Triplum does not split the text further here.
+
+The default `grants=("public",)` makes the document readable by a viewer with the `public`
+principal. Set `grants` explicitly for restricted text. See [viewers](viewers.md) for a read
+example.
 
 Next: [turn documents into frames](frames.md).

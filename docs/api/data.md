@@ -1,10 +1,10 @@
-# data reference
+# Data records and frames
 
-Start with [documents](../guide/documents.md), [corpus frames](../guide/frames.md), or
-[viewers](../guide/viewers.md) for short examples.
+New to these types? Read [documents](../guide/documents.md),
+[corpus frames](../guide/frames.md), and [viewers](../guide/viewers.md) first.
+
+::: triplum.data.corpus
 
 ::: triplum.data.schema
 
 ::: triplum.data.viewer
-
-::: triplum.data.corpus

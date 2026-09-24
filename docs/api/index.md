@@ -1,65 +1,47 @@
-# Modules and interfaces
+# API reference
 
-Every module below is importable on its own; the benchmark runner is one
-composition of them, not a framework they depend on. The pages in this section are generated
-from the source signatures, so they are exact as of the build. Where a docstring is missing the
-signature is still shown.
+Use [Learn](../guide/index.md) for small examples. This section lists the importable interfaces
+and their signatures from source. A `done` status describes the current implementation, not a
+promise that the interface has finished evolving; [Flow](../flow.md) records what a run does now.
 
-## Module map
+## Data and execution
 
-| module | status | key symbols | role |
+| Module | Status | Key symbols | Contract |
 |---|---|---|---|
-| `triplum.utils.data` | done | `Dataset`, `IterableDataset`, `Source`, `Take`, `RecordDataset`, `DataLoader` | author-defined records, indexed or streaming access, prefix selection, in-memory records, lazy batching and custom collation |
-| `triplum.settings` | done | `Settings` | data root, cache root and URL mirrors from `TRIPLUM_*`; never part of an identity |
-| `triplum.datasets` | done | `registry.load`, `registry.verify`, `base.Pinned`, `base.ListSource`, `base.InlineCorpus`, `base.Entry`, `files.Files`, `collate.*`, `fixtures.*`, `FrameDataset` | lazy built-in sources over pinned files (fetched on first use, fingerprinted without reading), the catalog, collators onto the canonical frames, committed fixtures |
-| `triplum.data.corpus` | done | `Document`, `Segment`, `content_id`, `chunk_id`, `CorpusBatch` | the corpus record with its source-declared id and segments; the canonical three-frame batch it projects onto |
-| `triplum.bench.inputs` | done | `Benchmark`, `PreparedBenchmark`, `materialize`, `check` | compose independent lazy sources; the explicit eager bridge for existing algorithms, with the cross-source integrity checks and identities from the sources' fingerprints |
-| `triplum.stage` | done | `stage`, `Stage`, `Run`, `active`, `Artifact`, `Stream`, `Manifest`, `derive` | a plain function with a data key from its arguments, a trace-discovered code manifest, a published artifact and an invocation row; lookup by key, validity along the lineage; live streams tee to parquet |
-| `triplum.data.schema` | done | `DOCUMENTS`, `DOCUMENT_GRANTS`, `CHUNKS`, `ENTITIES`, `FACTS`, `FACT_SUPPORT`, `MENTIONS`, `chunk_embeddings(dims)`, `now_us()` | the eight canonical Arrow schemas, owned by the Rust core |
-| `triplum.data.viewer` | done | `Viewer`, `Viewer.of(*principals)` | who is asking and as of when; every store read takes one |
-| `triplum.cache` | done | `Cache`, `content_key`, `canonical_json`, `default_root` | content-addressed disk cache shared by all adapters |
-| `triplum.llm` | done | `LLM`, `Message`, `GenParams`, `Completion`, `CachedLLM`, `OpenAICompatLLM`, `CliLLM`, `FakeLLM` | one completion protocol; adapters, never provider SDKs, in pipeline code; every adapter declares `seed_sensitive`, and the perturbing fake answers per seed for replicate tests |
-| `triplum.embed` | done | `EmbeddingSpec`, `Embedder`, `CachedEmbedder`, sentence-transformers, fastembed, OpenAI-compatible and fake adapters | embedding identity and adapters |
-| `triplum.rerank` | done | `RerankSpec`, `Reranker`, `CachedReranker`, cross-encoder and fake adapters | pointwise reranking |
-| `triplum.store` | done | `Store`, `Capabilities`, `SqliteStore`; graph side `put_graph`, `facts`, `mentions`, `neighbours` | viewer-filtered BM25 and vector search over chunks; facts visible only through a fully visible support group and both as-of instants; k-hop over visible `same_as` |
-| `triplum.retrieve.pipelines` | done | `PIPELINES`, `NAMES`, `get`, `closed_book`, `bm25`, `dense`, `rrf`, `hybrid`, `oracle` | named compositions of the stages with defaults; the one pipeline list the runner, CLI and fingerprint read |
-| `triplum.retrieve.stages` | done | `none`, `oracle`, `bm25`, `dense`, `fusion`, `hybrid`, `rrf` | retrieval stages, frames in and out |
-| `triplum.generate.reader` | done | `read`, `build_messages`, `PROMPT_HASH` | the one reader prompt |
-| `triplum.eval` | done | `Question`, `Triple`, `GoldMappingError`, `metrics.*`, `triples.score`, `judge.judge_correct` | evaluation records and schemas, QA metrics, intrinsic triple metrics (exact and partial, one-to-one), judge |
-| `triplum.bench` | done | `RunConfig`, `run_benchmark`, `run_experiment`, `ExtractConfig`, `run_extraction`, `stages.*`, `RunStore`, `summary`, `extraction_summary`, `variance`, `format_summary`, `inspect_run`, `diff_runs`, `tail_run` | the pipeline as stages composed under a `Run`; identity from source fingerprints before any read, stored runs matched by validating manifests, replicates under derived seeds with the variance report; `RunStore` owns its connection (context manager) and every write |
-| `triplum.bench.cli` | done | `app`, `bench`, `data` | dataset status, fetch and verify, recent-run overview, `bench extract`, finite-choice resolution and interactive drill-down |
-| `triplum.bench.selection` | done | `resolve`, `adapter`, `SelectionGroup` | shared exact/prefix/fuzzy CLI selection, terminal-only prompts, canonical values and stderr diagnostics |
-| `triplum.bench.bench_view` | done | `print_overview`, `print_summary`, `print_inspect`, `print_diff`, `print_tail` | width-aware benchmark projections, literal values and terminal-aware colors; no data access |
-| `triplum.bench.data_view` | done | `print_overview` | width-aware dataset table, colored status summary and fetch hints; no data access |
-| `triplum.ingest.files` | done | `FolderCorpus`, `FolderQuestions`, `document`, `chunk`, `entry` | a folder of PDF, Word, Markdown and text files as a streamed corpus with portable identity from file bytes, optional `questions.jsonl`; a directory path is accepted wherever a dataset name is |
-| `triplum.extract` | done (baseline) | `Extractor`, `ExtractorSpec`, `ResolverSpec`, `Extraction`, `extract`, `resolve`, `RulesExtractor`, `SmallModelExtractor`, `CachedExtractor` | an extractor returns spans and claims; `extract` grounds them into the four graph frames with document-scoped entity ids; `resolve` adds supported `same_as` facts; `rules` (spaCy) and `small_model` (GLiNER + GLiREL) behind one protocol |
-| `triplum.ingest` chunking | planned (2a) | hierarchical chunking | replaces paragraph packing for the graph pipelines |
-| `triplum.store` graph kernels | planned (2a, 2c) | PPR, pattern queries | beyond k-hop; Neo4j arm |
-| `triplum.retrieve` graph pipelines | planned (2a) | graph-augmented retrieval | the next spec; `neighbours` exists so it can start |
+| [`triplum.data`](data.md) | done | `Document`, `Segment`, `CorpusBatch`, `Viewer`, canonical schemas | Records describe source text; frames cross the store boundary; reads take a viewer. |
+| [`triplum.utils.data`](utils-data.md) | done | `Dataset`, `IterableDataset`, `RecordDataset`, `DataLoader` | Sources own records and fingerprints; loaders choose how to consume them. |
+| [`triplum.datasets`](datasets.md) | done | `registry.load`, `registry.verify`, `Pinned`, `InlineCorpus`, `corpus_batch` | Built-in sources remain lazy until read; collators project records to frames. |
+| [`triplum.stage`](stage.md) | done | `stage`, `Stage`, `Run`, `Artifact`, `Stream` | Calls identify results from inputs and record code provenance for reuse. |
+| [`triplum.cache`](cache.md) | done | `Cache`, `content_key` | Adapter calls use content-addressed disk entries. |
+| `triplum.settings` | done | `Settings` | Runtime paths and mirrors configure access, not data identity. |
 
-The contracts that hold across modules:
+## Processing and search
 
-- **Records at the source, frames at the stage.** A source yields `Document`, `Question` or
-  `Triple` records and identifies itself without reading; a collator projects them onto the
-  canonical frames, and a stage takes those frames and returns one. The consumer chooses the
-  batch size.
-- **Viewer everywhere.** Any read that could leak data takes a `Viewer`; the store filters
-  inside its indexes before ranking.
-- **Identity is a spec.** `EmbeddingSpec` and `RerankSpec` are frozen dataclasses, `LLMConfig`
-  and `PipelineConfig` frozen pydantic models; their hashes name cache entries, index tables
-  and runs; a dataset's
-  `fingerprint()` names its corpus and evaluation identities the same way.
-  A stage's artifact is addressed by a data key over those identities and validated by the
-  manifest of the code that produced it and its inputs, so a code edit reruns exactly the
-  stages that executed it.
-- **Pipelines are functions.** A named pipeline in `retrieve.pipelines` is a composition of
-  stages with defaults; the runner calls the same function a notebook would.
-- **Extractors produce claims, not facts.** An `Extractor` returns spans and every claim it
-  considered with a status; `extract.stages.extract` is the one place entity ids, facts and
-  support groups are made, so extractors never disagree on identity.
-- **Cache wrappers, not cache logic.** `CachedLLM`, `CachedEmbedder` and `CachedReranker` wrap
-  any adapter; the key is the full effective request.
+| Module | Status | Key symbols | Contract |
+|---|---|---|---|
+| [`triplum.ingest`](ingest.md) | done | `FolderCorpus`, `FolderQuestions`, `document`, `entry` | Local files become source records. |
+| [`triplum.extract`](extract.md) | baseline | `Extractor`, `Extraction`, `extract`, `resolve`, `RulesExtractor` | Extractors return claims; the stages ground them into graph frames. |
+| [`triplum.store`](store.md) | done | `Store`, `Capabilities`, `SqliteStore` | Writes accept frames; search and graph reads filter for a `Viewer`. |
+| [`triplum.retrieve`](retrieve.md) | done | `bm25`, `dense`, `rrf`, `hybrid`, `oracle`, `PIPELINES` | Stages take frames; named pipelines compose them as functions. |
+| [`triplum.generate`](generate.md) | done | `read`, `build_messages` | The reader turns retrieved passages into an answer. |
 
-## Examples
+## Models and experiments
 
-See [runnable examples](https://github.com/fkarg/triplum/tree/main/examples) for direct composition and benchmark runs.
+| Module | Status | Key symbols | Contract |
+|---|---|---|---|
+| [`triplum.llm`](llm.md) | done | `LLM`, `Message`, `Completion`, `CachedLLM` | Pipeline code calls one completion protocol. |
+| [`triplum.embed`](embed.md) | done | `EmbeddingSpec`, `Embedder`, `CachedEmbedder` | The spec identifies the embedding used in an index and run. |
+| [`triplum.rerank`](rerank.md) | done | `RerankSpec`, `Reranker`, `CachedReranker` | Rerankers rescore candidate passages. |
+| [`triplum.eval`](eval.md) | done | `Question`, `Triple`, `metrics`, `score` | Scores answer and extraction results. |
+| [`triplum.bench`](bench.md) | done | `Benchmark`, `RunConfig`, `run_benchmark`, `RunStore`, `summary` | The runner composes sources and pipelines, then records results by identity. |
+
+## Contracts across modules
+
+- A source's `fingerprint()` identifies its **ordered records** before a read; benchmark runs use
+  those identities. See [sources](../guide/sources.md) and [benchmark caching](../benchmarking.md).
+- Collators turn records into canonical frames at processing and store boundaries. See
+  [corpus frames](../guide/frames.md).
+- Store reads take a `Viewer` and filter before ranking. See
+  [viewers](../guide/viewers.md) and [reading from a store](../guide/store.md).
+- The benchmark runner calls importable pipeline functions. See
+  [run a benchmark](../guide/benchmark.md) and [benchmark runs](../flow.md).
