@@ -28,20 +28,18 @@ QUESTIONS = [
 ]
 
 
-class Fuse(IterableDataset[Document]):
-    """A corpus that can be read once; a second read blows the fuse."""
+class CountingCorpus(IterableDataset[Document]):
+    """A replayable corpus whose reads are observable."""
 
     def __init__(self) -> None:
         self.reads = 0
 
     def __iter__(self) -> Iterator[Document]:
         self.reads += 1
-        if self.reads > 1:
-            raise AssertionError("the corpus was read a second time")
         yield from DOCS
 
     def fingerprint(self) -> str:
-        return "fuse:v1"
+        return "counting-corpus:v1"
 
 
 def _cfg(tmp_path, **kw) -> RunConfig:
@@ -60,10 +58,10 @@ def _bench(corpus=None) -> Benchmark:
 
 
 def test_second_run_is_the_stored_run_and_reads_nothing(tmp_path):
-    fuse = Fuse()
+    source = CountingCorpus()
     cfg = _cfg(tmp_path)
-    first = run_benchmark(cfg, data=_bench(fuse))
-    assert run_benchmark(cfg, data=_bench(fuse)) == first
+    first = run_benchmark(cfg, data=_bench(source))
+    assert run_benchmark(cfg, data=_bench(source)) == first
     with RunStore(tmp_path / "runs.db") as rs:
         inv = rs.invocations(first)
         assert inv["fetched"].to_list() == [0] * inv.height
@@ -78,12 +76,34 @@ def test_second_run_is_the_stored_run_and_reads_nothing(tmp_path):
         assert row is not None and rs.questions(first).height == 2 and row["n"] == 2
         assert row["code_hash"] and row["experiment_id"]
         # a forced run is a new run whose stages are all fetched: still no read
-        forced = run_benchmark(replace(cfg, force=True), data=_bench(fuse))
+        forced = run_benchmark(replace(cfg, force=True), data=_bench(source))
         assert forced != first
         assert rs.invocations(forced)["fetched"].to_list() == [1] * inv.height
         assert rs.questions(forced).height == 2
         assert rs.artifact(forced, "store") is not None
-    assert fuse.reads == 1
+    assert source.reads == 1
+
+
+def test_one_benchmark_replays_its_source_for_cold_parameter_variants(tmp_path):
+    source = CountingCorpus()
+    benchmark = _bench(source)
+    first_cfg = _cfg(tmp_path)
+    second_cfg = replace(
+        first_cfg,
+        cache_root=str(tmp_path / "other-cache"),
+        runstore_path=str(tmp_path / "other-runs.db"),
+        pipeline=replace(first_cfg.pipeline, top_k=1),
+    )
+    first = run_benchmark(first_cfg, data=benchmark)
+    second = run_benchmark(second_cfg, data=benchmark)
+    assert source.reads == 2
+    with RunStore(tmp_path / "runs.db") as runs:
+        assert runs.questions(first).height == 2
+    with RunStore(tmp_path / "other-runs.db") as runs:
+        assert runs.questions(second).height == 2
+        assert runs.invocations(second).filter(pl.col("stage").str.ends_with(":corpus_frames"))[
+            "fetched"
+        ].to_list() == [0]
 
 
 def test_replicates_with_a_deterministic_reader_are_all_deterministic(tmp_path):

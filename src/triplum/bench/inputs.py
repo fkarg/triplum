@@ -30,7 +30,11 @@ BATCH = 1024
 
 @dataclass
 class Benchmark:
-    """An experiment's independently replaceable sources, not a universal dataset shape."""
+    """An experiment's independently replaceable, replayable sources.
+
+    Each source must yield the same ordered records on every pass for its fingerprint. The runner
+    may read it again on a cold stage, so one-shot sources are not valid benchmark inputs.
+    """
 
     name: str = "custom"
     corpus: Source[Document] | None = None

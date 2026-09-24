@@ -22,7 +22,9 @@ lazy source classes over pinned files, pydantic records (`Document` with segment
 batches, identity without reading. The stage work is recorded in the same note:
 the runner is a composition of stages with data keys, trace-discovered code manifests,
 artifacts and provenance rows; the corpus is read once into a frames artifact and every later
-run fetches it. Consuming a corpus in batches into the store, with the store's `effects` table
+run fetches it while that artifact remains valid. A benchmark source must replay the same ordered
+records on a cold read; confirm this across parameter variants with one benchmark instance.
+Consuming a corpus in batches into the store, with the store's `effects` table
 as the first form of its ingestion log, is layer 1.
 
 ### 1. Store ingestion boundary

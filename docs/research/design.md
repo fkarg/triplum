@@ -51,6 +51,13 @@ logical content without consuming iteration. A built-in source's identity is a v
 read; an in-memory source hashes its content. Loading batch size and physical chunk layout do
 not affect identity. This is not Python `__hash__`.
 
+Benchmark sources must replay the same ordered records on every traversal for a given fingerprint.
+Generic loaders can still consume one-shot iterators, but a one-shot source is unsuitable for a
+benchmark: an artifact miss may read it again. A changed corpus, including a seeded variant, has
+its own fingerprint and therefore its own store. Data variants use a fixed seed at construction;
+replicates keep the data fixed and vary pipeline randomness. The first concrete corpus variant is
+selected with the experiment that needs it.
+
 *Built-in datasets.* Sources yield pydantic records at the boundary:
 `Document` with the segments the source ships as units, `Question`, `Triple`. Document ids are
 the source's declared key (an upstream id, else a content key), never parse position; chunk ids
@@ -382,3 +389,4 @@ above and the active contracts they link.
 | Typing and hooks | Claude Opus 5; fresh-context GPT-family review | **Changed** optional-model type-check placement; **added verification** for snapshot isolation and whole-project checks; **rejected** replacing the requested `uvx` hook. |
 | Stage contract and implementation | Codex, GPT family | **Changed decisions** on execution keys, stream lifetime, store effects, and artifact publication; **found unique defects**, fixed with tests, in manifest validation, empty streams, and judge identity. |
 | Foundation layout and documentation | Fresh-context GPT-6 fallback; cross-model CLI unavailable | **Added verification** for package builds and preservation of live requirements. **Found unique documentation defects** in D8's code-identity wording, the premature R10 completion claim, and `graph_identity`'s ineffective pre-run identity slot; the docs now state the actual behavior and track the remaining decision. |
+| Benchmark source replay and corpus variants | Claude Opus 5.5 | **Found unique defect:** a one-shot source produced an empty cold run under an unchanged fingerprint. **Changed decision:** seeded corpus variants belong in fingerprinted sources so each variant gets a separate store; replicate seeds vary pipeline stages only. A process-wide content guard was rejected as extra mutable state that cannot prove replay across processes. |

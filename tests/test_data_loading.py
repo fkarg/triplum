@@ -29,10 +29,10 @@ class Numbers(IterableDataset[int]):
         yield from count()
 
 
-def test_documented_streaming_example():
-    page = (Path(__file__).parents[1] / "docs/api/utils-data.md").read_text()
+def test_documented_loading_example():
+    page = (Path(__file__).parents[1] / "docs/guide/loading.md").read_text()
     example = page.split("```python\n", 1)[1].split("```", 1)[0]
-    exec(compile(example, "docs/api/utils-data.md", "exec"), {})  # noqa: S102 - repository-owned example
+    exec(compile(example, "docs/guide/loading.md", "exec"), {})  # noqa: S102 - repository-owned example
 
 
 def test_indexed_dataset_and_partial_last_batch():
@@ -40,6 +40,8 @@ def test_indexed_dataset_and_partial_last_batch():
     assert words[1] == "beta"
     assert list(words) == ["alpha", "beta", "gamma"]
     assert list(DataLoader(words, batch_size=2)) == [["alpha", "beta"], ["gamma"]]
+    loader = DataLoader(words, batch_size=2)
+    assert list(loader) == list(loader)
 
 
 def test_infinite_stream_needs_neither_length_nor_indexing():

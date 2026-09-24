@@ -27,6 +27,12 @@ produces a new identity; editing a prompt string or a stage's source keeps the i
 the manifest validation, which is the same outcome: the pipeline runs, and each stage fetches its
 artifact when its own code and inputs are unchanged and recomputes otherwise.
 
+A source passed to `Benchmark` must yield the same ordered records each time it is read while
+its fingerprint stays the same. A benchmark may read it again after a cache miss, even if the
+first run used a stored artifact. Pin mutable inputs before constructing the benchmark. To vary
+corpus data, construct a separately fingerprinted source variant with a fixed seed; each variant
+gets its own corpus store. `--replicates` keeps the corpus fixed and varies pipeline seeds.
+
 The `graph_identity` column is filled after extraction. Its value is therefore a result, not a
 pre-run discriminator: the `IDENTITY_FIELDS` tuple contains its slot, but extraction hashes
 `None` there before the graph exists. Graph artifacts and store effects carry the resolved

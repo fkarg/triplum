@@ -26,7 +26,7 @@ def test_qa_only_composition_has_no_corpus_or_extraction_requirement():
     assert inputs.extraction is None
 
 
-def test_one_shot_corpus_is_consumed_only_at_explicit_materialization():
+def test_stream_corpus_is_consumed_only_at_explicit_materialization():
     pulled = []
 
     class Stream(IterableDataset[Document]):
@@ -44,6 +44,8 @@ def test_one_shot_corpus_is_consumed_only_at_explicit_materialization():
     assert inputs.corpus.chunks["text"].to_list() == ["hello"]
     assert inputs.corpus_hash == "stream:v1"
     assert inputs.qa is None and inputs.extraction is None
+    assert materialize(benchmark).corpus.chunks["text"].to_list() == ["hello"]
+    assert pulled == ["read", "read"]
 
 
 def test_identity_is_the_sources_fingerprint_not_the_materialised_content():
