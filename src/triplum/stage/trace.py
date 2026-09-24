@@ -39,7 +39,7 @@ def _enable() -> None:
 
 class Recording:
     """The set of code objects entered between `start()` and `stop()`; usable as a context
-    manager, or held open by hand across the pulls of a stream."""
+    manager across each pull of a stream. Restarting retains previously seen codes."""
 
     def __init__(self) -> None:
         self.codes: set[CodeType] = set()

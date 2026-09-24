@@ -13,7 +13,7 @@ import pytest
 from pydantic import BaseModel
 
 from triplum.bench.runstore import RunStore
-from triplum.stage import LiveStream, Run, Stream, active, artifacts, stage
+from triplum.stage import LiveStream, Run, Stream, active, artifacts, stage, stage_seed, trace
 from triplum.store.sqlite.store import SqliteStore
 from triplum.utils.data import RecordDataset
 
@@ -209,6 +209,80 @@ def test_stream_publishes_on_exhaustion_and_replays_from_parquet(run):
     assert count(replay)["c"][0] == 5
     inv = run.store.invocations(run.run_id)
     assert inv.filter(pl.col("stage").str.ends_with("count"))["fetched"].to_list() == [0, 1]
+
+
+def test_stream_pulls_use_the_producer_seed_even_inside_a_seeded_consumer(run):
+    class Sensitive:
+        seed_sensitive = True
+        adapter = "fake"
+        model = "m"
+
+    @stage
+    def gen(n: int, llm: object) -> Iterator[Item]:
+        yield Item(n=stage_seed())
+
+    @stage
+    def consume(items: Iterator[Item], llm: object) -> pl.DataFrame:
+        return pl.DataFrame({"seed": [item.n for item in items]})
+
+    top = [item.n for item in gen(1, Sensitive())]
+    assert stage_seed() == 0
+    nested = consume(gen(2, Sensitive()), Sensitive())["seed"].to_list()
+    rows = run.store.invocations(run.run_id).filter(pl.col("stage").str.ends_with("gen"))
+    assert top == [rows["seed"][0]]
+    assert nested == [rows["seed"][1]]
+    assert [item.n for item in gen(1, Sensitive())] == top
+
+
+def test_idle_stream_does_not_record_unrelated_code(run, helpers):
+    mod, _ = helpers
+
+    @stage
+    def gen(items: RecordDataset[Item]) -> Iterator[Item]:
+        yield from items
+
+    live = gen(RecordDataset([Item(n=1), Item(n=2)]))
+    assert mod.scale(2) == 4  # between creation and the first pull
+    iterator = iter(live)
+    assert next(iterator) == Item(n=1)
+    assert mod.scale(3) == 6  # between pulls
+    assert list(iterator) == [Item(n=2)]
+    inv = run.store.invocations(run.run_id)
+    manifest = run.store.manifest(inv["code"][0])
+    assert manifest is not None and "stage_helpers:scale" not in manifest.functions
+
+
+def test_stream_records_a_helper_first_called_on_a_later_pull(run, helpers):
+    mod, _ = helpers
+
+    @stage
+    def gen(items: RecordDataset[Item]) -> Iterator[Item]:
+        for item in items:
+            yield Item(n=mod.scale(item.n)) if item.n == 2 else item
+
+    stream = iter(gen(RecordDataset([Item(n=1), Item(n=2)])))
+    assert next(stream) == Item(n=1)
+    assert mod.scale(3) == 6  # outside the recording window before the second pull
+    assert list(stream) == [Item(n=4)]
+    inv = run.store.invocations(run.run_id)
+    manifest = run.store.manifest(inv["code"][0])
+    assert manifest is not None and "stage_helpers:scale" in manifest.functions
+
+
+def test_stream_error_cleans_up_its_recording_and_artifact(run):
+    @stage
+    def broken(items: RecordDataset[Item]) -> Iterator[Item]:
+        yield Item(n=1)
+        raise ValueError("broken stream")
+
+    stream = iter(broken(RecordDataset([Item(n=1)])))
+    assert next(stream) == Item(n=1)
+    with pytest.raises(ValueError, match="broken stream"):
+        next(stream)
+    inv = run.store.invocations(run.run_id)
+    assert inv["status"].to_list() == ["failed"]
+    assert run.store.artifacts(inv["key"][0]) == []
+    assert trace._active == []
 
 
 def test_an_interrupted_stream_leaves_no_artifact_and_the_consumer_is_unpublished(run):

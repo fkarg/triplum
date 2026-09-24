@@ -6,6 +6,9 @@ as an artifact and writes an invocation row; a rerun fetches the artifact when t
 and the manifest, and every input artifact's manifest, still hashes the same. Without a `Run`
 the wrapper is the function. The [benchmarking contract](../benchmarking.md) defines its
 identity and reuse rules.
+Stream stages run lazily: each pull uses the stage's derived seed and records only code executed
+during that pull. A stream publishes its artifact when exhausted; stopping early leaves no
+reusable artifact.
 For a runnable two-stage example with cache reuse and lineage, see
 [examples/stages.py](https://github.com/fkarg/triplum/blob/main/examples/stages.py).
 

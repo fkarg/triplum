@@ -163,18 +163,16 @@ class _Call:
         inv = self.start()
         rec = Recording()
         try:
-            with seeded(self.seed):
-                rec.start()  # the window is exactly the call; a stream keeps it open per pull
+            with seeded(self.seed), rec:
                 result = self.stage.fn(*self.bound.args, **self.bound.kwargs)
+                inner = iter(result) if isinstance(result, (IterableDataset, Iterator)) else None
         except BaseException as e:
-            rec.stop()
             self.run.store.finish_invocation(
                 inv, status="failed", code=None, fetched=False, error=repr(e)
             )
             raise
-        if isinstance(result, (IterableDataset, Iterator)):
-            return LiveStream(self, inv, rec, iter(result))
-        rec.stop()
+        if inner is not None:
+            return LiveStream(self, inv, rec, inner)
         manifest = fingerprint.build(rec.codes)
         self.run.store.put_manifest(manifest)
         writer = Writer(self.run.root, self.stage.name, self.key)
@@ -297,7 +295,12 @@ class LiveStream[T](IterableDataset[T]):
         writer.kind = "stream"  # an exhausted empty stream still publishes an empty artifact
         batch: list[Any] = []
         try:
-            for item in self.inner:
+            while True:
+                with seeded(self.call.seed), self.rec:
+                    try:
+                        item = next(self.inner)
+                    except StopIteration:
+                        break
                 if isinstance(item, pl.DataFrame):
                     writer.add(item)
                 else:
@@ -309,18 +312,15 @@ class LiveStream[T](IterableDataset[T]):
             if batch:
                 writer.add(batch)
         except GeneratorExit:
-            self.rec.stop()
             writer.abort()
             run.store.finish_invocation(self.inv, status="partial", code=None, fetched=False)
             raise
         except BaseException as e:
-            self.rec.stop()
             writer.abort()
             run.store.finish_invocation(
                 self.inv, status="failed", code=None, fetched=False, error=repr(e)
             )
             raise
-        self.rec.stop()
         manifest = fingerprint.build(self.rec.codes)
         run.store.put_manifest(manifest)
         self.artifact = self.call.publish(self.inv, writer, manifest)
