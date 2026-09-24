@@ -22,9 +22,9 @@ with TemporaryDirectory() as directory:
 
     store = SqliteStore(folder / "index.sqlite")
     try:
-        for batch in DataLoader(FolderCorpus(folder), batch_size=32, collate_fn=corpus_batch):
-            store.put_documents(batch.documents, batch.grants)
-            store.put_chunks(batch.chunks)
+        source = FolderCorpus(folder)
+        batches = DataLoader(source, batch_size=32, collate_fn=corpus_batch)
+        store.ingest_corpus(source.fingerprint(), "local", batches)
         matches = store.search_text("Oslo", Viewer.of("public"))
         assert matches["document_id"].to_list() == ["notes.md"]
         assert "Bob stayed in Oslo" in matches["text"][0]

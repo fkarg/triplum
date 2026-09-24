@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from collections.abc import Iterable
 from importlib.resources import files
 from pathlib import Path
 
@@ -17,6 +18,7 @@ import numpy as np
 import polars as pl
 
 from triplum.cache import content_key
+from triplum.data.corpus import CorpusBatch
 from triplum.data.schema import CHUNKS, FACT_SUPPORT, FACTS, MENTIONS, now_us, polars_schema
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import EmbeddingSpec
@@ -61,6 +63,14 @@ def fts_query(text: str) -> str:
     return " OR ".join(f'"{t}"' for t in terms)
 
 
+class CorpusMismatch(RuntimeError):
+    pass
+
+
+class DuplicateDocumentError(ValueError):
+    pass
+
+
 class SqliteStore:
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
@@ -101,6 +111,7 @@ class SqliteStore:
         self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)", (key, value))
 
     def identity(self) -> str:
+        self._require_complete()
         return content_key(
             "store", [self.get_meta("corpus_hash"), self.get_meta("graph_identity")]
         )[:16]
@@ -124,32 +135,82 @@ class SqliteStore:
 
     # ---- documents and grants ------------------------------------------------------------
 
+    def _require_complete(self) -> None:
+        if self.get_meta("ingest_state") == "in_progress":
+            raise RuntimeError(f"store {self.path} ingestion is in progress")
+
+    def ingest_corpus(self, corpus_hash: str, dataset: str, batches: Iterable[CorpusBatch]) -> None:
+        """Bind once, commit each batch atomically, and publish after source exhaustion.
+
+        A failed source leaves committed batches hidden. Replaying the same source resumes by
+        upserting those batches; a different corpus cannot enter the store.
+        """
+        with self._tx():
+            bound = self.get_meta("corpus_hash")
+            if bound is not None and bound != corpus_hash:
+                raise CorpusMismatch(
+                    f"store {self.path} holds corpus {bound[:12]}, dataset is {corpus_hash[:12]}"
+                )
+            if bound is None:
+                if any(
+                    self.conn.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+                    for table in ("documents", "document_grants", "chunks")
+                ):
+                    raise RuntimeError(f"store {self.path} has unbound corpus rows")
+                self.set_meta("corpus_hash", corpus_hash)
+                self.set_meta("dataset", dataset)
+            elif self.get_meta("ingest_state") != "in_progress":
+                return
+            self.set_meta("ingest_state", "in_progress")
+        seen: set[str] = set()
+        for batch in batches:
+            ids = batch.documents["id"].to_list()
+            batch_seen: set[str] = set()
+            duplicate: set[str] = set()
+            for doc_id in ids:
+                if doc_id in seen or doc_id in batch_seen:
+                    duplicate.add(doc_id)
+                batch_seen.add(doc_id)
+            if duplicate:
+                raise DuplicateDocumentError(f"duplicate document ids: {sorted(duplicate)[:5]}")
+            with self._tx():
+                self._write_documents(batch.documents, batch.grants)
+                self._write_chunks(batch.chunks)
+            seen.update(batch_seen)
+        with self._tx():
+            self.set_meta("ingest_state", "complete")
+
     def put_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None:
         """Upsert documents and grants, then rederive every touched document's ACL
         materialisations (acl_hash, acl_tokens on documents and chunks, vec0 partitions)."""
         _require_cols(docs, DOC_COLS, "documents")
         _require_cols(grants, GRANT_COLS, "document_grants")
         with self._tx():
-            self.conn.executemany(
-                "INSERT INTO documents(id, source, uri, observed_at, metadata, acl_hash, acl_tokens)"
-                " VALUES (?,?,?,?,?,'','') ON CONFLICT(id) DO UPDATE SET source = excluded.source,"
-                " uri = excluded.uri, observed_at = excluded.observed_at, metadata = excluded.metadata",
-                [
-                    (r["id"], r["source"], r["uri"], int(r["observed_at"]), r["metadata"])
-                    for r in docs.iter_rows(named=True)
-                ],
-            )
-            self.conn.executemany(
-                "INSERT INTO document_grants(document_id, principal, granted_at, revoked_at)"
-                " VALUES (?,?,?,?) ON CONFLICT(document_id, principal, granted_at)"
-                " DO UPDATE SET revoked_at = excluded.revoked_at",
-                [
-                    (r["document_id"], r["principal"], int(r["granted_at"]), r["revoked_at"])
-                    for r in grants.iter_rows(named=True)
-                ],
-            )
-            for doc_id in set(docs["id"].to_list()) | set(grants["document_id"].to_list()):
-                self._refresh_acl(doc_id)
+            self._write_documents(docs, grants)
+
+    def _write_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None:
+        _require_cols(docs, DOC_COLS, "documents")
+        _require_cols(grants, GRANT_COLS, "document_grants")
+        self.conn.executemany(
+            "INSERT INTO documents(id, source, uri, observed_at, metadata, acl_hash, acl_tokens)"
+            " VALUES (?,?,?,?,?,'','') ON CONFLICT(id) DO UPDATE SET source = excluded.source,"
+            " uri = excluded.uri, observed_at = excluded.observed_at, metadata = excluded.metadata",
+            [
+                (r["id"], r["source"], r["uri"], int(r["observed_at"]), r["metadata"])
+                for r in docs.iter_rows(named=True)
+            ],
+        )
+        self.conn.executemany(
+            "INSERT INTO document_grants(document_id, principal, granted_at, revoked_at)"
+            " VALUES (?,?,?,?) ON CONFLICT(document_id, principal, granted_at)"
+            " DO UPDATE SET revoked_at = COALESCE(document_grants.revoked_at, excluded.revoked_at)",
+            [
+                (r["document_id"], r["principal"], int(r["granted_at"]), r["revoked_at"])
+                for r in grants.iter_rows(named=True)
+            ],
+        )
+        for doc_id in set(docs["id"].to_list()) | set(grants["document_id"].to_list()):
+            self._refresh_acl(doc_id)
 
     def grant(self, document_id: str, principal: str, at: int) -> None:
         with self._tx():
@@ -205,6 +266,7 @@ class SqliteStore:
                     )
 
     def document_acl_hash(self, document_id: str) -> str:
+        self._require_complete()
         return self.conn.execute(
             "SELECT acl_hash FROM documents WHERE id = ?", (document_id,)
         ).fetchone()[0]
@@ -213,31 +275,45 @@ class SqliteStore:
 
     def put_chunks(self, chunks: pl.DataFrame) -> None:
         _require_cols(chunks, CHUNK_COLS, "chunks")
-        toks = dict(self.conn.execute("SELECT id, acl_tokens FROM documents"))
         with self._tx():
-            # An upsert, not REPLACE: a replaced row cascades away the chunk's support and
-            # mention rows, which would turn a two-chunk support group into a one-chunk one.
-            self.conn.executemany(
-                "INSERT INTO chunks(id, document_id, parent_id, level, span_start,"
-                " span_end, text, acl_tokens) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE"
-                " SET document_id = excluded.document_id, parent_id = excluded.parent_id,"
-                " level = excluded.level, span_start = excluded.span_start,"
-                " span_end = excluded.span_end, text = excluded.text,"
-                " acl_tokens = excluded.acl_tokens",
-                [
-                    (
-                        int(r["id"]),
-                        r["document_id"],
-                        r["parent_id"],
-                        int(r["level"]),
-                        int(r["span_start"]),
-                        int(r["span_end"]),
-                        r["text"],
-                        toks[r["document_id"]],
-                    )
-                    for r in chunks.iter_rows(named=True)
-                ],
+            self._write_chunks(chunks)
+
+    def _write_chunks(self, chunks: pl.DataFrame) -> None:
+        _require_cols(chunks, CHUNK_COLS, "chunks")
+        doc_ids = set(chunks["document_id"].to_list())
+        toks = (
+            dict(
+                self.conn.execute(
+                    f"SELECT id, acl_tokens FROM documents WHERE id IN ({_q(len(doc_ids))})",
+                    list(doc_ids),
+                )
             )
+            if doc_ids
+            else {}
+        )
+        # An upsert, not REPLACE: a replaced row cascades away the chunk's support and
+        # mention rows, which would turn a two-chunk support group into a one-chunk one.
+        self.conn.executemany(
+            "INSERT INTO chunks(id, document_id, parent_id, level, span_start,"
+            " span_end, text, acl_tokens) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE"
+            " SET document_id = excluded.document_id, parent_id = excluded.parent_id,"
+            " level = excluded.level, span_start = excluded.span_start,"
+            " span_end = excluded.span_end, text = excluded.text,"
+            " acl_tokens = excluded.acl_tokens",
+            [
+                (
+                    int(r["id"]),
+                    r["document_id"],
+                    r["parent_id"],
+                    int(r["level"]),
+                    int(r["span_start"]),
+                    int(r["span_end"]),
+                    r["text"],
+                    toks[r["document_id"]],
+                )
+                for r in chunks.iter_rows(named=True)
+            ],
+        )
 
     def _visible_ids_sql(self, viewer: Viewer) -> tuple[str, list]:
         ps = viewer.sorted_principals()
@@ -248,6 +324,7 @@ class SqliteStore:
         return sql, ps
 
     def get_chunks(self, ids: list[int], viewer: Viewer) -> pl.DataFrame:
+        self._require_complete()
         if not ids:
             return pl.DataFrame(schema=CHUNK_SCHEMA)
         vis, params = self._visible_ids_sql(viewer)
@@ -259,6 +336,7 @@ class SqliteStore:
         return pl.DataFrame(rows, schema=CHUNK_SCHEMA, orient="row")
 
     def eligible_acl_hashes(self, viewer: Viewer) -> list[str]:
+        self._require_complete()
         ps = viewer.sorted_principals()
         return [
             r[0]
@@ -274,6 +352,7 @@ class SqliteStore:
 
     def search_text(self, query: str, viewer: Viewer, limit: int = 10) -> pl.DataFrame:
         """Visible FTS5 matches in document order, without a ranking calculation."""
+        self._require_complete()
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
             raise ValueError("limit must be a non-negative integer")
         acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
@@ -288,6 +367,7 @@ class SqliteStore:
         return pl.DataFrame(rows, schema=CHUNK_SCHEMA, orient="row")
 
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame:
+        self._require_complete()
         acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
         match = f"text:({fts_query(query)}) AND acl_tokens:({acl})"
         vis, params = self._visible_ids_sql(viewer)
@@ -317,6 +397,7 @@ class SqliteStore:
     def put_embeddings(
         self, spec: EmbeddingSpec, chunk_ids: list[int], vectors: np.ndarray
     ) -> None:
+        self._require_complete()
         if vectors.shape != (len(chunk_ids), spec.dims):
             raise ValueError(f"vectors shape {vectors.shape} != ({len(chunk_ids)}, {spec.dims})")
         table = self._ensure_vec_table(spec)
@@ -341,6 +422,7 @@ class SqliteStore:
             )
 
     def has_embeddings(self, spec: EmbeddingSpec, chunk_ids: list[int]) -> list[bool]:
+        self._require_complete()
         table = spec.table_name()
         exists = self.conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
@@ -359,6 +441,7 @@ class SqliteStore:
     def vector_search(
         self, spec: EmbeddingSpec, query: np.ndarray, k: int, viewer: Viewer
     ) -> pl.DataFrame:
+        self._require_complete()
         table = spec.table_name()
         q = np.asarray(query, dtype=np.float32).reshape(-1)
         if q.shape[0] != spec.dims:
@@ -387,6 +470,7 @@ class SqliteStore:
         fact_support: pl.DataFrame,
         mentions: pl.DataFrame,
     ) -> None:
+        self._require_complete()
         _require_cols(facts, FACT_COLS, "facts")
         _require_cols(fact_support, list(SUPPORT_SCHEMA), "fact_support")
         _require_cols(mentions, list(MENTION_SCHEMA), "mentions")
@@ -452,11 +536,13 @@ class SqliteStore:
         return pl.DataFrame(rows, schema=FACT_SCHEMA, orient="row")
 
     def facts(self, viewer: Viewer) -> pl.DataFrame:
+        self._require_complete()
         return self._facts(*self._visible_facts_sql(viewer))
 
     def mentions(self, chunk_ids: list[int], viewer: Viewer) -> pl.DataFrame:
         """Mentions in the visible chunks among `chunk_ids`, of entities a visible fact
         touches (D4: an entity is visible iff a visible fact is)."""
+        self._require_complete()
         if not chunk_ids:
             return pl.DataFrame(schema=MENTION_SCHEMA)
         visible = self.get_chunks(chunk_ids, viewer)["id"].to_list()
@@ -473,6 +559,7 @@ class SqliteStore:
         return pl.DataFrame(rows, schema=MENTION_SCHEMA, orient="row")
 
     def neighbours(self, entity_ids: list[str], hops: int, viewer: Viewer) -> pl.DataFrame:
+        self._require_complete()
         vis, vparams = self._visible_facts_sql(viewer)
         seen: dict[int, tuple] = {}
 

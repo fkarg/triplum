@@ -1,8 +1,10 @@
 import polars as pl
 import pytest
 
+from triplum.data.corpus import Document
 from triplum.data.schema import now_us
 from triplum.data.viewer import Viewer
+from triplum.datasets.collate import corpus_batch
 from triplum.store.sqlite.acl import acl_hash, principal_token
 from triplum.store.sqlite.store import SqliteStore
 
@@ -112,6 +114,69 @@ def test_get_chunks_schema_matches_canonical(tmp_db, sample_corpus):
     expected = pl.DataFrame(pa.Table.from_pylist([], schema=schema.CHUNKS)).schema
     assert s.get_chunks([1], Viewer.of("public")).schema == expected
     assert s.get_chunks([], Viewer.of("public")).schema == expected
+
+
+def test_ingest_batches_resume_and_publish_only_when_complete(tmp_db):
+    s = SqliteStore(tmp_db)
+    first = corpus_batch([Document(id="a", source="test", text="first")])
+    second = corpus_batch([Document(id="b", source="test", text="second")])
+
+    def interrupted():
+        yield first
+        raise RuntimeError("source failed")
+
+    with pytest.raises(RuntimeError, match="source failed"):
+        s.ingest_corpus("same", "test", interrupted())
+    assert s.get_meta("ingest_state") == "in_progress"
+    assert s.conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 1
+    with pytest.raises(RuntimeError, match="in progress"):
+        s.search_text("first", Viewer.of("public"))
+    with pytest.raises(RuntimeError, match="in progress"):
+        s.get_chunks([], Viewer.of("public"))
+    with pytest.raises(RuntimeError, match="in progress"):
+        s.facts(Viewer.of("public"))
+    with pytest.raises(RuntimeError, match="in progress"):
+        s.identity()
+
+    s.ingest_corpus("same", "test", iter((first, second)))
+    assert s.get_meta("ingest_state") == "complete"
+    assert s.search_text("second", Viewer.of("public")).height == 1
+    s.revoke("a", "public", at=1)
+    s.ingest_corpus("same", "test", iter((first, second)))
+    assert s.search_text("first", Viewer.of("public")).height == 0
+
+
+def test_ingest_batch_rolls_back_on_invalid_chunk_and_refuses_mismatch(tmp_db):
+    s = SqliteStore(tmp_db)
+    good = corpus_batch([Document(id="a", source="test", text="first")])
+    bad = corpus_batch([Document(id="b", source="test", text="second")])
+    bad = bad._replace(chunks=bad.chunks.with_columns(pl.lit("missing").alias("document_id")))
+    with pytest.raises(KeyError, match="missing"):
+        s.ingest_corpus("same", "test", iter((good, bad)))
+    assert s.conn.execute("SELECT id FROM documents ORDER BY id").fetchall() == [("a",)]
+    with pytest.raises(RuntimeError, match="holds corpus"):
+        s.ingest_corpus("different", "test", iter(()))
+
+
+def test_ingest_empty_and_refuse_unbound_existing_rows(tmp_db):
+    s = SqliteStore(tmp_db)
+    s.ingest_corpus("empty", "test", iter(()))
+    assert s.get_meta("ingest_state") == "complete"
+    assert s.identity()
+
+    other = SqliteStore(tmp_db.with_name("other.sqlite"))
+    batch = corpus_batch([Document(id="a", source="test", text="first")])
+    other.put_documents(batch.documents, batch.grants)
+    with pytest.raises(RuntimeError, match="unbound corpus rows"):
+        other.ingest_corpus("new", "test", iter(()))
+
+
+def test_ingest_rejects_duplicate_documents(tmp_db):
+    s = SqliteStore(tmp_db)
+    doc = Document(id="a", source="test", text="first")
+    with pytest.raises(ValueError, match="duplicate document ids"):
+        s.ingest_corpus("same", "test", iter((corpus_batch([doc, doc]),)))
+    assert s.conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
 
 
 def test_schema_1_store_is_migrated_to_nullable_confidence(tmp_path):

@@ -67,6 +67,12 @@ The local folder source emits one full-text segment per file; chunking beyond so
 a later stage. The earlier source design is in the
 [temporary foundation note](../notes/previous-foundation.md).
 
+Store ingestion binds a source fingerprint before reading, then commits each batch's documents,
+grants and chunks in one transaction. A persistent in-progress marker blocks reads until the
+source is exhausted; retrying the same source replays from the start, while a different fingerprint
+is refused. A replay cannot reopen a revoked grant. The runner caches parsed document records as
+a stream, then materializes frames only for the algorithms that still need whole frames.
+
 Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
 (integer microseconds); intervals are closed-open; an open end uses a max sentinel rather than NULL
 so range predicates stay simple.
@@ -396,3 +402,4 @@ above and the active contracts they link.
 | First distractor variant | Fresh-context GPT-6 fallback; Claude Opus 5.5 CLI safeguard error | **Changed decision:** reuse the eager fixture selector inside a lazy fingerprinted source, so identity remains available before data is read. The peer found that calling the fixture selector at construction would forfeit identity-before-read. A fresh-context GPT-6 diff review **added verification** for non-integer counts and distinct selected chunks, and fixed guide ordering. |
 | Lazy stream execution | Claude Opus 5.5 | **Found unique defect:** a streamed stage used its consumer's seed or zero when pulled, then cached that result under the producer's seed key. The fix scopes the producer seed and code recording to each pull; a separate local review found unrelated code entering the manifest while a stream was idle. A diff review **added verification** for later-pull helpers and failure cleanup, and identified per-item monitoring cost. Existing seeded stream artifacts made before this correction are not invalidated by a wrapper-only change; no current production stream stage reads `stage_seed()`. |
 | First whole-file search path | Fresh-context GPT-6 fallback; Claude Opus 5.5 CLI safeguard error | **Changed decision:** existing folder files become one full-text segment, with a parser version bump, and SQLite exposes unranked FTS5 matches through the store. The review rejected adding a second folder source or routing this simple search through the QA benchmark runner. A diff review **found a unique defect:** unqualified FTS queries matched ACL tokens as content, fixed for both plain search and BM25. |
+| Incremental store ingestion | Fresh-context GPT-6 fallback; Claude Opus 5.5 CLI safeguard error | **Added verification** for per-batch atomicity, hidden incomplete stores, source replay, and revocation safety. The design review found that the previous grant upsert could reopen revoked access on replay, and that calling existing write methods inside a transaction would fail due to nested transactions. A diff review **found unique defects:** duplicate documents changed the benchmark error type, and automatic extraction vocabulary discovery still reads the source before the run. The error contract was restored and the early read documented. |

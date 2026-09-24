@@ -10,6 +10,7 @@ import platform
 import subprocess
 import time
 from pathlib import Path
+from typing import cast
 
 from triplum.bench import factories
 from triplum.bench import stages as st
@@ -17,6 +18,7 @@ from triplum.bench.config import ExtractConfig, RunConfig
 from triplum.bench.inputs import Benchmark, identities
 from triplum.bench.runstore import IDENTITY_FIELDS, RunStore
 from triplum.cache import content_key, default_root
+from triplum.data.corpus import Document
 from triplum.data.viewer import Viewer
 from triplum.datasets import collate
 from triplum.datasets import registry as datasets
@@ -27,7 +29,7 @@ from triplum.retrieve import pipelines
 from triplum.stage import Run, active, derive
 from triplum.stage.fingerprint import validate
 from triplum.store.sqlite.store import SqliteStore
-from triplum.utils.data import Dataset, Take
+from triplum.utils.data import Dataset, Source, Take
 
 
 def code_version() -> tuple[str, int]:
@@ -225,20 +227,21 @@ def run_experiment(cfg: RunConfig, *, data: Benchmark | None = None) -> list[str
                 with active(
                     Run(store=rs, root=root, run_id=run_id, seed=derive(cfg.seed, r), replicate=r)
                 ):
-                    corpus = (
-                        st.corpus_frames(benchmark.corpus)
+                    source = (
+                        cast(Source[Document], st.corpus_records(benchmark.corpus))
                         if benchmark.corpus is not None
-                        else st.empty_corpus()
+                        else None
                     )
+                    rec = rs.recorder(run_id)
+                    with rec.stage("index.documents"):
+                        st.ingest(store, source, benchmark.name, corpus_hash)
+                    corpus = st.corpus_frames(source) if source is not None else st.empty_corpus()
                     if corpus["chunks"].height == 0 and p.name != "closed_book":
                         raise ValueError(
                             f"dataset {benchmark.name} ships no corpus; only the closed_book pipeline applies"
                         )
                     qa = st.questions(benchmark.qa, corpus)
                     rs.update_run(run_id, n=qa.height)
-                    rec = rs.recorder(run_id)
-                    with rec.stage("index.documents"):
-                        st.ingest(store, corpus, benchmark.name, corpus_hash)
                     if embedder is not None:
                         with rec.stage(
                             "index.embed", model=embedder.spec.model, provider=embedder.spec.runtime
@@ -370,7 +373,11 @@ def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
         status = "failed"
         try:
             with active(Run(store=rs, root=root, run_id=run_id, seed=0, replicate=0)):
-                corpus = st.corpus_frames(benchmark.corpus)
+                source = cast(Source[Document], st.corpus_records(benchmark.corpus))
+                rec = rs.recorder(run_id)
+                with rec.stage("index.documents"):
+                    st.ingest(store, source, benchmark.name, corpus_hash)
+                corpus = st.corpus_frames(source)
                 if corpus["chunks"].height == 0:
                     raise ValueError(
                         f"dataset {benchmark.name} ships no corpus; nothing to extract from"
@@ -382,9 +389,6 @@ def run_extraction(cfg: ExtractConfig, *, data: Benchmark | None = None) -> str:
                     if benchmark.extraction is not None
                     else None
                 )
-                rec = rs.recorder(run_id)
-                with rec.stage("index.documents"):
-                    st.ingest(store, corpus, benchmark.name, corpus_hash)
                 with rec.stage("extract", model=extractor.spec.model or extractor.spec.name) as ev:
                     misses_before = extractor.misses
                     raw, extract_s = st.timed(st.claims, corpus["chunks"], extractor)

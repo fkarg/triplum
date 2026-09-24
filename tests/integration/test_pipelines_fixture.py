@@ -64,7 +64,7 @@ def test_identical_run_is_a_lookup(tmp_path):
 
 
 def test_store_bound_to_one_corpus(tmp_path):
-    from triplum.bench.stages import CorpusMismatch
+    from triplum.store.sqlite.store import CorpusMismatch
 
     run_benchmark(_cfg(tmp_path, "bm25", "musique"))
     with pytest.raises(CorpusMismatch):

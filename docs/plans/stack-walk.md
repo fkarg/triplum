@@ -27,16 +27,13 @@ records on a cold read; confirm this across parameter variants with one benchmar
 Consuming a corpus in batches into the store, with the store's `effects` table
 as the first form of its ingestion log, is layer 1.
 
-### 1. Store ingestion boundary
+### 1. Store ingestion boundary (batch ingestion done; graph placement open)
 
-Now: `put_documents(docs, grants)` and `put_chunks(chunks)` take whole frames; the runner binds
-`corpus_hash` from materialized content; a second corpus is a refusal.
+Now: `ingest_corpus` binds the source fingerprint before the first batch, commits documents,
+grants and chunks together per batch, and blocks reads until completion. The runner caches a
+record stream before materializing frames for its existing algorithms. A second corpus is refused.
 
-Questions: how a store consumes `Iterable[CorpusBatch]` so that a batch's documents, grants
-and chunks publish together (the review's "never publish partial ingestion, never widen an
-ACL" verification); when the corpus identity is bound (before the first batch, from the source
-fingerprint, with an in-progress marker until the last batch); whether binding and refusal live
-in the store or in the bench layer; where a second graph over one corpus lives (D-a).
+Question: where a second graph over one corpus lives (D-a).
 Satisfies R6, R8. Needed by: owner corpora (streams of documents with real `observed_at` and
 `uri`), the chunk `metadata` column question for media offsets and page numbers, 2c.
 

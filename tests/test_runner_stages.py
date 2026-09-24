@@ -12,7 +12,7 @@ from triplum.bench.report import variance
 from triplum.bench.runner import run_benchmark, run_experiment
 from triplum.bench.runstore import RunStore
 from triplum.data.corpus import Document, chunk_id
-from triplum.eval.inputs import Question
+from triplum.eval.inputs import GoldMappingError, Question
 from triplum.utils.data import IterableDataset, RecordDataset
 
 DOCS = [
@@ -66,6 +66,7 @@ def test_second_run_is_the_stored_run_and_reads_nothing(tmp_path):
         inv = rs.invocations(first)
         assert inv["fetched"].to_list() == [0] * inv.height
         assert set(inv["stage"].str.split(":").list.last()) == {
+            "corpus_records",
             "corpus_frames",
             "questions",
             "ingest",
@@ -82,6 +83,12 @@ def test_second_run_is_the_stored_run_and_reads_nothing(tmp_path):
         assert rs.questions(forced).height == 2
         assert rs.artifact(forced, "store") is not None
     assert source.reads == 1
+
+
+def test_duplicate_corpus_documents_keep_benchmark_error(tmp_path):
+    corpus = RecordDataset([DOCS[0], DOCS[0]])
+    with pytest.raises(GoldMappingError, match="duplicate document ids"):
+        run_benchmark(_cfg(tmp_path), data=_bench(corpus))
 
 
 def test_one_benchmark_replays_its_source_for_cold_parameter_variants(tmp_path):

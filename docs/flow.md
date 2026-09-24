@@ -18,8 +18,9 @@ flowchart LR
   DS[("dataset files<br/>pinned by sha256")] --> LOAD["lazy sources<br/><code>datasets/registry.py</code>"]
   LOAD --> ID["run identity from fingerprints<br/><code>bench/runstore.py</code>"]
   ID -- "identical run, manifests validate" --> RS
-  ID -- "new / --force / --resume" --> FR["corpus_frames, questions<br/><code>bench/stages.py</code>"]
-  FR --> DOCS["ingest (store effect)"]
+  ID -- "new / --force / --resume" --> RECORDS["corpus_records stream<br/><code>bench/stages.py</code>"]
+  RECORDS --> DOCS["ingest in batches (store effect)"]
+  DOCS --> FR["corpus_frames, questions<br/><code>bench/stages.py</code>"]
   DOCS --> EMB["embed<br/>one vec0 table per EmbeddingSpec"]
   DOCS --> RET
   EMB --> RET["retrieve<br/><code>retrieve/stages.py</code>"]
@@ -43,8 +44,8 @@ visibility, so every stage passes a `Viewer` through.
 | 1 | load dataset | `datasets/registry.py`, `datasets/base.py`, `datasets/variants.py`, one module per source | Builds a `Benchmark` of lazy sources (corpus, questions, gold triples), or the committed fixture. Nothing is read to construct it; a source fetches and verifies its pinned files on first iteration. `--n` selects questions with `Take` and never truncates the corpus. `DistractorCorpus` selects seeded extra chunks when read. Custom compositions pass as `data=` without registration. QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | Corpus and evaluation identities are the sources' fingerprints (pinned digests, parser version, record contract); a seeded variant also includes its source and question fingerprints, count and seed. An identity lookup never parses a dataset. Chunk ids are `chunk_id(document_id, ordinal)`, stable between fixture and full corpus. |
 | 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/`. |
 | 3 | run identity | `bench/runstore.py`, `bench/runner.py: run_valid` | Hashes dataset, pipeline, config, corpus and question fingerprints, embedding and reranker spec, reader and judge model, seed, replicate, viewer, and both prompt hashes, before anything is read. A completed run with that identity is returned when the manifests of every stage it ran still validate; a code edit anywhere those stages executed means the pipeline runs again and each stage fetches or recomputes on its own. `--force` starts a fresh run whose stages still fetch; `--resume` continues a running or failed run with the same identity, its finished questions served from the call cache. `--replicates N` runs N replicates under derived seeds. | `runs` row with the identity fields, `experiment_id`, `replicate`, git sha, dirty flag, host and, at the end, `code_hash` over the stage manifests; `prices` snapshot for the models used. |
-| 4 | corpus and questions | `bench/stages.py: corpus_frames, questions` | The corpus read once through loaders and collators into the canonical frames, and the questions frame with the cross-source checks (unique document ids, every gold chunk in the corpus). | Artifacts `frames` and `frame`, fetched by every later run over the same sources. |
-| 5 | ingest | `bench/stages.py: ingest` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | A store effect: the store's `effects` table answers the next run. Event `index.documents`. |
+| 4 | stream and ingest | `bench/stages.py: corpus_records, ingest`, `store/sqlite/store.py: ingest_corpus` | A cached document stream feeds lazy batches to one SQLite file per corpus. The store binds the fingerprint before the first batch, commits each batch's documents, grants and chunks together, and permits reads after the stream ends. A failed read can replay the same source; another fingerprint is refused. Automatic extraction vocabulary discovery still reads the corpus once before the run. | Stream artifact; store effect; event `index.documents`. |
+| 5 | corpus and questions | `bench/stages.py: corpus_frames, questions` | The cached stream becomes the canonical frames needed by the current whole-frame algorithms. Questions are checked against those frames, including gold chunk references. | Artifacts `frames` and `frame`, fetched by later runs over the same sources. |
 | 6 | embed | `bench/stages.py: embed` | Dense and hybrid only. Finds the chunks that have no vector for this `EmbeddingSpec`, embeds them in batches through the cached embedder, and writes them to a sqlite-vec `vec0` table named after the spec hash and partitioned by ACL hash. | A store effect. Event `index.embed`. Vectors persist in the store; the call cache makes a second machine-local run free. |
 | 7 | retrieve | `bench/stages.py: retrieve` over `retrieve/stages.py` | One call over all questions, returning `(question_id, chunk_id, rank, score)`. Filtering by viewer happens inside the store's FTS and vector queries, before the top-k cut. | Artifact `frame`. Event `retrieve` with reranker call counts. |
 | 8 | answer | `bench/stages.py: answer` over `generate/reader.py`, `eval/judge.py`, `eval/metrics.py` | Per question: the top-k passages and the question go into one prompt with a JSON answer schema; the optional judge asks whether the answer matches any gold alias; EM and token F1 with HotpotQA normalisation, max over aliases; Contain-Acc; Judge-Acc; R@2 and R@5 on gold passages; tokens, USD, latency, passage count. Seeded through the reader and judge adapters. | One `run_questions` row per question, committed in its own transaction with its `read` and `judge` events, so a crash loses at most one question. Artifact `frame` of the content columns; a replicate with a seed-sensitive reader recomputes it, one with a deterministic reader fetches it. |
@@ -112,9 +113,9 @@ under `$TRIPLUM_DATA` (default `~/.cache/triplum/data`) regardless of the cache 
 ## Current rewrite boundary
 
 The implemented modules and public interfaces are mapped in [api/index.md](api/index.md).
-The runner currently materializes corpus frames before ingestion. The next foundation change
-is store-owned, batch-atomic ingestion; the [stack walk](plans/stack-walk.md)
-tracks the subsequent interfaces and the [caching gap map](specs/caching-and-monitoring.md)
+The runner ingests batches before materializing frames for the current algorithms. The
+[stack walk](plans/stack-walk.md) tracks the subsequent interfaces and the
+[caching gap map](specs/caching-and-monitoring.md)
 tracks the requirements still open. Graph retrieval, LLM extraction and store comparison follow
 those interfaces and the temporal/ACL fixture gate. The earlier fixture-scale extraction
 measurements and development records are recoverable from the

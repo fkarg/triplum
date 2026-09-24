@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
 import polars as pl
 
+from triplum.data.corpus import CorpusBatch
 from triplum.data.viewer import Viewer
 from triplum.embed.protocol import EmbeddingSpec
 
@@ -20,6 +22,10 @@ class Capabilities:
 
 
 class Store(Protocol):
+    def ingest_corpus(self, corpus_hash: str, dataset: str, batches: Iterable[CorpusBatch]) -> None:
+        """Bind a fingerprint and publish the corpus after all batches are written."""
+        ...
+
     def put_documents(self, docs: pl.DataFrame, grants: pl.DataFrame) -> None: ...
     def put_chunks(self, chunks: pl.DataFrame) -> None: ...
     def put_embeddings(

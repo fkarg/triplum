@@ -21,7 +21,7 @@ from triplum.datasets import collate
 from triplum.embed.protocol import Embedder
 from triplum.eval import judge as judge_mod
 from triplum.eval import metrics
-from triplum.eval.inputs import QUESTION_SCHEMA, TRIPLE_SCHEMA, Question, Triple
+from triplum.eval.inputs import QUESTION_SCHEMA, TRIPLE_SCHEMA, GoldMappingError, Question, Triple
 from triplum.extract import stages as extract_stages
 from triplum.extract.protocol import Extraction, Extractor, ResolverSpec
 from triplum.generate.reader import read
@@ -30,7 +30,7 @@ from triplum.rerank.protocol import Reranker
 from triplum.retrieve import pipelines
 from triplum.retrieve import stages as retrieve_stages
 from triplum.stage import current, stage, stage_seed
-from triplum.store.sqlite.store import SqliteStore
+from triplum.store.sqlite.store import DuplicateDocumentError, SqliteStore
 from triplum.utils.data import DataLoader, Source
 
 BATCH = 1024
@@ -50,10 +50,6 @@ ANSWER_SCHEMA = {
 }
 TIMING = ("usd", "cached", "latency_s")  # per-question row columns that are not content
 GRAPH_FRAMES = ("entities", "facts", "fact_support", "mentions", "claims")
-
-
-class CorpusMismatch(RuntimeError):
-    pass
 
 
 class GraphMismatch(RuntimeError):
@@ -77,6 +73,12 @@ def extraction_of(frames: dict[str, pl.DataFrame]) -> Extraction:
 
 
 # ---- sources to frames ----------------------------------------------------------------------
+
+
+@stage
+def corpus_records(corpus: Source[Document]) -> Iterator[Document]:
+    """Cache parsed documents as they are read for store ingestion and later stages."""
+    yield from corpus
 
 
 def empty_corpus() -> dict[str, pl.DataFrame]:
@@ -129,20 +131,18 @@ def gold_triples(extraction: Source[Triple], questions: pl.DataFrame | None) -> 
 
 @stage
 def ingest(
-    store: SqliteStore, corpus: dict[str, pl.DataFrame], name: str, corpus_hash: str
+    store: SqliteStore, corpus: Source[Document] | None, name: str, corpus_hash: str
 ) -> None:
-    """Bind a store file to exactly one corpus and write it; another corpus is a refusal."""
-    bound = store.get_meta("corpus_hash")
-    if bound == corpus_hash:
-        return
-    if bound is not None:
-        raise CorpusMismatch(
-            f"store {store.path} holds corpus {bound[:12]}, dataset is {corpus_hash[:12]}"
-        )
-    store.put_documents(corpus["documents"], corpus["grants"])
-    store.put_chunks(corpus["chunks"])
-    store.set_meta("corpus_hash", corpus_hash)
-    store.set_meta("dataset", name)
+    """Consume document batches into one corpus-bound store."""
+    batches = (
+        DataLoader(corpus, batch_size=BATCH, collate_fn=collate.corpus_batch)
+        if corpus is not None
+        else iter(())
+    )
+    try:
+        store.ingest_corpus(corpus_hash, name, batches)
+    except DuplicateDocumentError as error:
+        raise GoldMappingError(str(error)) from error
 
 
 @stage
