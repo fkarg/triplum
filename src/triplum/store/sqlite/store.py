@@ -54,8 +54,7 @@ def _q(n: int) -> str:
 
 
 def fts_query(text: str) -> str:
-    """Quote every term so user text cannot inject FTS5 operators, and OR them: BM25 ranks by
-    how many query terms a chunk matches; FTS5's implicit AND would require all of them."""
+    """Quote terms so user text cannot inject FTS5 operators; match any term."""
     terms = re.findall(r"\w+", text)
     if not terms:
         return '""'
@@ -271,11 +270,26 @@ class SqliteStore:
             )
         ]
 
-    # ---- BM25 -------------------------------------------------------------------------------
+    # ---- indexed text search ----------------------------------------------------------------
+
+    def search_text(self, query: str, viewer: Viewer, limit: int = 10) -> pl.DataFrame:
+        """Visible FTS5 matches in document order, without a ranking calculation."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+            raise ValueError("limit must be a non-negative integer")
+        acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
+        match = f"text:({fts_query(query)}) AND acl_tokens:({acl})"
+        vis, params = self._visible_ids_sql(viewer)
+        rows = self.conn.execute(
+            "SELECT c.id, c.document_id, c.parent_id, c.level, c.span_start, c.span_end, c.text"
+            " FROM chunks_fts JOIN chunks c ON c.id = chunks_fts.rowid"
+            f" WHERE chunks_fts MATCH ? AND {vis} ORDER BY c.document_id, c.id LIMIT ?",
+            [match, *params, limit],
+        ).fetchall()
+        return pl.DataFrame(rows, schema=CHUNK_SCHEMA, orient="row")
 
     def bm25(self, query: str, k: int, viewer: Viewer) -> pl.DataFrame:
         acl = " OR ".join(principal_token(p) for p in viewer.sorted_principals())
-        match = f"({fts_query(query)}) AND acl_tokens:({acl})"
+        match = f"text:({fts_query(query)}) AND acl_tokens:({acl})"
         vis, params = self._visible_ids_sql(viewer)
         rows = self.conn.execute(
             "SELECT c.id, -bm25(chunks_fts, 1.0, 0.0) AS score FROM chunks_fts"

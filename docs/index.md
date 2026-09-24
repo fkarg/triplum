@@ -20,6 +20,7 @@ the example local and reproducible.
 
 - [Learn](guide/index.md) introduces documents, sources, batches, frames, and viewers one at a
   time.
+- [Search local documents](guide/search.md) shows the first whole-file, unranked text search path.
 - [Datasets](datasets.md) shows the available inputs and how to supply your own.
 - [Benchmark runs](flow.md) follows a run through the implemented pipeline.
 - [Benchmark caching](benchmarking.md) explains run identity, reuse, and replay.

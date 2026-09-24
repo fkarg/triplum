@@ -10,7 +10,8 @@ read them with a viewer. Each page introduces one idea with a small example.
 5. [Corpus frames](frames.md): convert records for the store.
 6. [Viewers](viewers.md): choose whose data a store read can see.
 7. [Reading from a store](store.md): write and retrieve visible text.
-8. [Run a benchmark](benchmark.md): compare a baseline on a small fixture.
+8. [Search local documents](search.md): index files and find text without ranking.
+9. [Run a benchmark](benchmark.md): compare a baseline on a small fixture.
 
 For a complete benchmark, continue with [datasets](../datasets.md) and
 [benchmark runs](../flow.md). For signatures and every available method, use the

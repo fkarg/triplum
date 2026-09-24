@@ -36,4 +36,4 @@ with TemporaryDirectory() as directory:
 `put_documents` writes document details and grants; `put_chunks` writes their text segments.
 `get_chunks` takes chunk IDs and a viewer, then returns only chunks that viewer may read.
 
-Next: [run a baseline benchmark](benchmark.md).
+Next: [search local documents](search.md) or [run a baseline benchmark](benchmark.md).

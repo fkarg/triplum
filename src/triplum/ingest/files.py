@@ -1,5 +1,5 @@
 """A folder of local files as a corpus. PDF (text layer only, no OCR), Word (`.docx`), Markdown
-and plain text become one document each, segmented by packing paragraphs to about `MAX_CHARS`;
+and plain text become one document and one full-text segment per file;
 a `questions.jsonl` beside them, with `question`, `answer`, optional `aliases` and `qtype`, and
 `gold` as a list of relative file paths, becomes the questions with every segment of a gold
 file as gold. Identity is portable: document ids are relative paths, `observed_at` is 0 and the
@@ -15,24 +15,21 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import re
 from collections.abc import Iterator
 from pathlib import Path
 
 from triplum.bench.inputs import Benchmark
 from triplum.cache import content_key
-from triplum.data.corpus import RECORD_VERSION, Document, Segment
+from triplum.data.corpus import RECORD_VERSION, Document
 from triplum.datasets.base import Entry
 from triplum.datasets.files import sha256_file
 from triplum.eval.inputs import GoldMappingError, Question
 from triplum.utils.data import Dataset, IterableDataset
 
 SUFFIXES = {".pdf", ".docx", ".md", ".markdown", ".txt", ".text"}
-MAX_CHARS = 1500
 QUESTIONS_FILE = "questions.jsonl"
 SOURCE = "files"  # constant, so the corpus identity depends on content only, not the folder name
-VERSION = 1  # bump when reading, segmentation or the record built here changes
-_BLANK = re.compile(r"\n\s*\n")
+VERSION = 2  # bump when reading or the record built here changes
 
 
 def read_pdf(data: bytes) -> tuple[list[str], str | None]:
@@ -59,43 +56,14 @@ def read(name: str, data: bytes) -> tuple[list[str], str | None]:
         return read_pdf(data)
     if suffix == ".docx":
         return read_docx(data)
-    return [data.decode("utf-8", errors="replace")], None
-
-
-def chunk(text: str, max_chars: int = MAX_CHARS) -> list[tuple[int, int]]:
-    """Spans of `text` that pack whole paragraphs up to `max_chars`. A longer paragraph is split
-    at whitespace into pieces that stand alone. Paragraphs are separated by blank lines."""
-    spans: list[tuple[int, int]] = []
-    pack: tuple[int, int] | None = None
-    pos = 0
-    for para in _BLANK.split(text):
-        p_start = text.index(para, pos)
-        p_end = pos = p_start + len(para)
-        if not para.strip():
-            continue
-        if p_end - p_start > max_chars:
-            if pack:
-                spans.append(pack)
-                pack = None
-            while p_end - p_start > max_chars:
-                cut = text.rfind(" ", p_start + 1, p_start + max_chars)
-                cut = cut if cut > p_start else p_start + max_chars
-                spans.append((p_start, cut))
-                p_start = cut + 1 if text[cut] == " " else cut
-            spans.append((p_start, p_end))
-        elif pack and p_end - pack[0] <= max_chars:
-            pack = (pack[0], p_end)
-        else:
-            if pack:
-                spans.append(pack)
-            pack = (p_start, p_end)
-    if pack:
-        spans.append(pack)
-    return [(a, b) for a, b in spans if text[a:b].strip()]
+    try:
+        return [data.decode("utf-8")], None
+    except UnicodeDecodeError as error:
+        raise ValueError(f"{name}: expected UTF-8 text") from error
 
 
 def document(name: str, data: bytes) -> Document:
-    """The document for one file: its text, its packed-paragraph segments, its metadata."""
+    """The document for one file: its full text and source metadata."""
     pages, title = read(name, data)
     text = "\n\n".join(pages)
     meta = {
@@ -104,10 +72,7 @@ def document(name: str, data: bytes) -> Document:
         "empty_pages": sum(1 for p in pages if not p.strip()),
         "sha256": hashlib.sha256(data).hexdigest(),
     }
-    segments = tuple(
-        Segment(ordinal=i, start=s, end=e) for i, (s, e) in enumerate(chunk(text))
-    ) or (Segment(ordinal=0, start=0, end=0),)
-    return Document(id=name, source=SOURCE, text=text, segments=segments, metadata=meta)
+    return Document(id=name, source=SOURCE, text=text, metadata=meta)
 
 
 def scan(root: Path) -> list[tuple[str, Path]]:
@@ -146,7 +111,7 @@ class FolderCorpus(IterableDataset[Document]):
 
 
 class FolderQuestions(Dataset[Question]):
-    """`questions.jsonl` beside the files; a gold file expands to every segment of that file,
+    """`questions.jsonl` beside the files; a gold file names its one full-text segment,
     so iterating parses the files a question names. The fingerprint needs no parse."""
 
     def __init__(self, root: Path) -> None:

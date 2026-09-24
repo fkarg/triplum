@@ -21,7 +21,7 @@ promise that the interface has finished evolving; [Flow](../flow.md) records wha
 |---|---|---|---|
 | [`triplum.ingest`](ingest.md) | done | `FolderCorpus`, `FolderQuestions`, `document`, `entry` | Local files become source records. |
 | [`triplum.extract`](extract.md) | baseline | `Extractor`, `Extraction`, `extract`, `resolve`, `RulesExtractor` | Extractors return claims; the stages ground them into graph frames. |
-| [`triplum.store`](store.md) | done | `Store`, `Capabilities`, `SqliteStore` | Writes accept frames; search and graph reads filter for a `Viewer`. |
+| [`triplum.store`](store.md) | done | `Store`, `Capabilities`, `SqliteStore`, `search_text` | Writes accept frames; indexed text search and graph reads filter for a `Viewer`. |
 | [`triplum.retrieve`](retrieve.md) | done | `bm25`, `dense`, `rrf`, `hybrid`, `oracle`, `PIPELINES` | Stages take frames; named pipelines compose them as functions. |
 | [`triplum.generate`](generate.md) | done | `read`, `build_messages` | The reader turns retrieved passages into an answer. |
 

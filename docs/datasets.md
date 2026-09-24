@@ -154,7 +154,8 @@ assert [b.chunks.height for b in batches] == [2, 1]
 A folder of PDF, Word, Markdown or text files is a source too, by path, with an optional
 `questions.jsonl` beside the files (`triplum.ingest.files`). Its identity is the hash of the
 file bytes, so a copy of the folder elsewhere is the same corpus, and no PDF is parsed to
-compute it.
+compute it. Each file becomes one full-text segment; source files are not chunked. See
+[search local documents](guide/search.md) for the indexed search path.
 
 ```python
 import tempfile

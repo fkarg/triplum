@@ -14,7 +14,9 @@ import pytest
 DOCS = Path(__file__).parents[1] / "docs"
 
 
-@pytest.mark.parametrize("page", ["datasets.md", "guide/benchmark.md", "guide/variants.md"])
+@pytest.mark.parametrize(
+    "page", ["datasets.md", "guide/benchmark.md", "guide/variants.md", "guide/search.md"]
+)
 def test_page_examples_run(page):
     blocks = re.findall(r"```python\n(.*?)```", (DOCS / page).read_text(), re.DOTALL)
     assert blocks

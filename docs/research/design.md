@@ -63,7 +63,8 @@ concrete variant: it keeps question evidence and selects additional chunks with 
 the source's declared key (an upstream id, else a content key), never parse position; chunk ids
 are `chunk_id(document_id, ordinal)`, so a question resolves its gold from its own record.
 Collators project record lists onto the canonical frames; the consumer chooses the batch size.
-Chunking beyond source segments is a later stage. The earlier source design is in the
+The local folder source emits one full-text segment per file; chunking beyond source segments is
+a later stage. The earlier source design is in the
 [temporary foundation note](../notes/previous-foundation.md).
 
 Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
@@ -252,7 +253,8 @@ the run identity) is superseded.
 
 ### D7. Store protocol with SQLite first
 
-One `Store` protocol whose every read takes a `Viewer`. Backend one is SQLite: FTS5 for BM25,
+One `Store` protocol whose every read takes a `Viewer`. Backend one is SQLite: FTS5 for basic
+unranked text search and BM25,
 sqlite-vec for vectors, recursive CTEs for bounded traversal, `rusqlite` and the stdlib module.
 Chosen for simplicity and single-machine performance at the scales we expect for a long time.
 Cost: SQLite is row-based, so the Arrow boundary needs a conversion. Whether it dominates depends on
@@ -393,3 +395,4 @@ above and the active contracts they link.
 | Benchmark source replay and corpus variants | Claude Opus 5.5 | **Found unique defect:** a one-shot source produced an empty cold run under an unchanged fingerprint. **Changed decision:** seeded corpus variants belong in fingerprinted sources so each variant gets a separate store; replicate seeds vary pipeline stages only. A process-wide content guard was rejected as extra mutable state that cannot prove replay across processes. |
 | First distractor variant | Fresh-context GPT-6 fallback; Claude Opus 5.5 CLI safeguard error | **Changed decision:** reuse the eager fixture selector inside a lazy fingerprinted source, so identity remains available before data is read. The peer found that calling the fixture selector at construction would forfeit identity-before-read. A fresh-context GPT-6 diff review **added verification** for non-integer counts and distinct selected chunks, and fixed guide ordering. |
 | Lazy stream execution | Claude Opus 5.5 | **Found unique defect:** a streamed stage used its consumer's seed or zero when pulled, then cached that result under the producer's seed key. The fix scopes the producer seed and code recording to each pull; a separate local review found unrelated code entering the manifest while a stream was idle. A diff review **added verification** for later-pull helpers and failure cleanup, and identified per-item monitoring cost. Existing seeded stream artifacts made before this correction are not invalidated by a wrapper-only change; no current production stream stage reads `stage_seed()`. |
+| First whole-file search path | Fresh-context GPT-6 fallback; Claude Opus 5.5 CLI safeguard error | **Changed decision:** existing folder files become one full-text segment, with a parser version bump, and SQLite exposes unranked FTS5 matches through the store. The review rejected adding a second folder source or routing this simple search through the QA benchmark runner. A diff review **found a unique defect:** unqualified FTS queries matched ACL tokens as content, fixed for both plain search and BM25. |

@@ -59,6 +59,7 @@ nav:
       - Corpus frames: guide/frames.md
       - Viewers: guide/viewers.md
       - Reading from a store: guide/store.md
+      - Search local documents: guide/search.md
       - Run a benchmark: guide/benchmark.md
   - How it works:
       - Datasets: datasets.md

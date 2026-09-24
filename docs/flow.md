@@ -1,6 +1,11 @@
-# Flow: what a benchmark run does
+# Flow: document search and benchmark runs
 
-This page follows one `triplum bench run` from the command line to the row
+The smallest library path reads local files with `FolderCorpus`, converts each whole-file
+`Document` through `corpus_batch`, writes it to `SqliteStore`, then calls `search_text` with a
+`Viewer`. FTS5 indexes the full text on write and returns visible matches in stable document
+order, without ranking or a reader. [Search local documents](guide/search.md) runs this path.
+
+The rest of this page follows one `triplum bench run` from the command line to the row
 in the run store, names the module that implements each step, and lists what exists versus what
 the design record still plans. The caching and identity rules it relies on are in
 [benchmarking.md](benchmarking.md); the decisions behind the shape are in

@@ -7,9 +7,11 @@ import shutil
 import pytest
 
 from triplum.bench.inputs import materialize
+from triplum.data.viewer import Viewer
 from triplum.datasets import registry
 from triplum.eval.inputs import GoldMappingError
 from triplum.ingest import files
+from triplum.store.sqlite.store import SqliteStore
 
 
 def minimal_pdf(pages: list[str]) -> bytes:
@@ -52,11 +54,32 @@ def docx_bytes(paragraphs: list[str]) -> bytes:
     return buf.getvalue()
 
 
-def test_chunk_packs_paragraphs_and_splits_long_ones():
-    text = "aaa\n\nbbb\n\n" + "c" * 30 + "\n\nddd"
-    spans = files.chunk(text, max_chars=12)
-    assert [text[s:e] for s, e in spans] == ["aaa\n\nbbb", "c" * 12, "c" * 12, "c" * 6, "ddd"]
-    assert files.chunk("\n\n  \n") == []
+def test_file_document_keeps_all_text_in_one_segment():
+    text = "first paragraph\n\n" + "second paragraph " * 100
+    doc = files.document("notes.md", text.encode())
+    assert doc.text == text
+    assert [(s.ordinal, s.start, s.end) for s in doc.segments] == [(0, 0, len(text))]
+
+
+def test_plain_text_rejects_invalid_utf8():
+    with pytest.raises(ValueError, match="broken.txt.*UTF-8"):
+        files.document("broken.txt", b"\xff")
+
+
+def test_folder_text_is_indexed_and_searchable_without_chunking(tmp_path):
+    (tmp_path / "notes.md").write_text("first paragraph\n\nneedle in the last paragraph")
+    (tmp_path / "other.txt").write_text("unrelated text")
+    prepared = materialize(registry.load(str(tmp_path)))
+    assert prepared.corpus.chunks.height == 2
+    store = SqliteStore(tmp_path / "index.sqlite")
+    try:
+        store.put_documents(prepared.corpus.documents, prepared.corpus.grants)
+        store.put_chunks(prepared.corpus.chunks)
+        matches = store.search_text("needle", Viewer.of("public"), limit=10)
+    finally:
+        store.close()
+    assert matches["document_id"].to_list() == ["notes.md"]
+    assert matches["text"].to_list() == ["first paragraph\n\nneedle in the last paragraph"]
 
 
 def test_folder_becomes_a_corpus_with_questions(tmp_path):
@@ -125,4 +148,4 @@ def test_question_identity_follows_the_files_it_parses(tmp_path):
     assert len(before[0].gold) == 1
     (tmp_path / "a.txt").write_text("\n\n".join(["p" * 1000] * 4), encoding="utf-8")
     after = files.FolderQuestions(tmp_path)
-    assert len(after[0].gold) == 4 and after.fingerprint() != one
+    assert len(after[0].gold) == 1 and after.fingerprint() != one
