@@ -52,7 +52,7 @@ Now: `complete(messages, schema, params) -> Completion`, adapters OpenAI-compati
 subprocess, fake; the disk cache keyed on the full effective request.
 
 Questions: the pydantic-ai adapter over the direct API with the request cache in a
-`WrapperModel` ([`../research/llm-adapter-pydantic-ai.md`](../research/llm-adapter-pydantic-ai.md));
+`WrapperModel` (earlier adapter research: [research snapshots](../notes/research-snapshots.md));
 whether the protocol keeps its frozen `Message` and `Completion` or adopts pydantic-ai's
 types (assessment: keep, convert at the edge; the owner leans to adopting, to be decided with
 the evidence); `Usage` gaining cache-read and cache-write tokens (R5, R12); seed declaration
@@ -92,6 +92,12 @@ as a `Benchmark` composition; evaluation identity from source fingerprints; whet
 a stage of generation or of evaluation for event accounting. Needed by: the leakage gate before
 2a.
 
+Fixture families: world-time as-of, system-time as-of, viewer-conditional answers,
+must-refuse when evidence is invisible, joint support with one invisible source, grant
+revocation, and invalidation provenance. Gate on zero retrieval and answer leakage. Report
+refusal precision and over-refusal on answerable cases, as-of accuracy for each time axis,
+and viewer consistency across grants; include canary answers from invisible evidence.
+
 ### 7. Bench: identity, caching, monitoring, tooling
 
 Now: `RunConfig`, `ExtractConfig`, `run_benchmark`, `run_extraction`, the run store, the
@@ -117,7 +123,7 @@ In this order, each with its own spec and plan, on the settled interfaces:
 4. **Owner corpora ingest**: papers through GROBID (sections as hierarchical chunks,
    references as linkable entities, captions), transcripts through the canonical transcript
    model; both cite `(source, offset)` spans. Research:
-   [`../research/ingestion-sources.md`](../research/ingestion-sources.md).
+   [research snapshots](../notes/research-snapshots.md).
 5. **Transcription**: yt-dlp captions and audio, mlx-whisper on the laptop, whisperX or
    Parakeet on the workstation, pyannote diarisation as a separate stage; a separate
    sub-project by the design record.

@@ -32,7 +32,7 @@ Each requirement names the layer of the stack walk that owns it.
 - R4. An adapter declares whether the provider honours a seed; the run records it.
 - R5. Retry and backoff live in the adapter that talks to a network, once, with the attempt
   count in the cached entry's provenance. The pydantic-ai adapter brings its own
-  ([`../research/llm-adapter-pydantic-ai.md`](../research/llm-adapter-pydantic-ai.md)).
+  (earlier adapter research is in the [research snapshots](../notes/research-snapshots.md)).
 
 ### Sources and store
 
@@ -118,5 +118,5 @@ with real trade-offs.
 
 ## External references
 
-- pydantic-ai adapter facts: [`../research/llm-adapter-pydantic-ai.md`](../research/llm-adapter-pydantic-ai.md).
+- Earlier pydantic-ai adapter research: [research snapshots](../notes/research-snapshots.md).
 - Why the run store stays SQLite-only: [temporary foundation note](../notes/previous-foundation.md).

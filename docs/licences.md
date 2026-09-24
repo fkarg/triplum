@@ -87,9 +87,9 @@ Dates are when the licence was checked; re-check before relying on a row.
 | `jinaai/jina-embeddings-v3`, v5 | CC BY-NC 4.0 | **no** | 2026-09-16 | |
 | `jinaai/jina-embeddings-v4` | Qwen Research License (card corrects an earlier CC BY-NC tag) | **no** | 2026-09-16 | derived from Qwen-2.5-VL-3B |
 | Qwen3-Embedding 0.6B / 4B / 8B, Qwen3-Reranker | Apache-2.0 | yes | 2026-09-16 | the local default tier of the sweep |
-| `nvidia/Nemotron-3-Embed-1B` | commercial-friendly per model card | yes, under its terms | 2026-09-16 | strongest commercially licensed open model fitting 8 GB at fp16, per `embeddings.md` |
+| `nvidia/Nemotron-3-Embed-1B` | commercial-friendly per model card | yes, under its terms | 2026-09-16 | historical model comparison in [research snapshots](notes/research-snapshots.md) |
 | `BAAI/bge-reranker-v2-m3` | Apache-2.0 | yes | 2026-09-16 | the fixed reranker |
-| Snowflake Arctic-Embed 2.0, Nomic Embed v2, granite-embedding, DenseOn, pplx-embed | Apache-2.0 / MIT per card | yes | 2026-09-16 | details in `docs/research/embeddings.md` |
+| Snowflake Arctic-Embed 2.0, Nomic Embed v2, granite-embedding, DenseOn, pplx-embed | Apache-2.0 / MIT per card | yes | 2026-09-16 | historical model comparison in [research snapshots](notes/research-snapshots.md) |
 | Claude via `claude -p` | Anthropic terms | yes, under the terms | 2026-09-16 | CLI adapter, stateless invocation required |
 
 ## Code and infrastructure

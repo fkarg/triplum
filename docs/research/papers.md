@@ -19,10 +19,10 @@ column holds the essentials.
 | *WildGraphBench* (arXiv 2602.02053) | 2026 | candidate | |
 | *Do We Still Need GraphRAG?* (arXiv 2604.09666) | 2026 | candidate | |
 | *Use Graph When It Needs* (arXiv 2602.03578) | 2026 | candidate | Reports GraphRAG underperforming vanilla RAG on real queries; motivates the per-corpus auto-benchmark. |
-| Rasmussen et al. *Zep: A Temporal Knowledge Graph Architecture for Agent Memory* (arXiv 2501.13956) | 2025 | reading | Bi-temporal edge model with four timestamps and flat episode provenance; what it lacks is in `temporal-and-permissions.md`. |
+| Rasmussen et al. *Zep: A Temporal Knowledge Graph Architecture for Agent Memory* (arXiv 2501.13956) | 2025 | reading | Bi-temporal edge model with four timestamps and flat episode provenance; see our D3 and D4. |
 | Lairgi et al. *ATOM: AdapTive and OptiMized dynamic temporal KG construction using LLMs* (arXiv 2510.22590) | Findings of EACL 2026 | adopting (atomic-fact decomposition) | Dual-time 5-tuples (observation vs validity time), atomic-fact decomposition before extraction, parallel per-document TKGs merged by cosine similarity. Benchmarks against iText2KG and Graphiti. |
 | Text2KGBench (ISWC 2023; repo `cenguix/Text2KGBench`, Apache-2.0) and the LettrIA refinement (CEUR Vol-4041 paper 3) | 2023 / 2025 | adopting (V&V) | Wikidata-TekGen (10 ontologies, 13,474 sentences) and DBpedia-WebNLG (19 ontologies, 4,860 sentences); triple P/R/F1, ontology conformance, hallucination. The LettrIA paper documents ontological flaws but links **no** dataset or repo ("available upon request"); ask the authors, else apply their fixes ourselves. Note `GEM/web_nlg` on HF is CC BY-NC. |
 | LinearRAG | ICLR 2026 | candidate | Prepackaged multi-hop corpora at HF `Zly0523/linear-rag`. |
 | Youtu-GraphRAG | ICLR 2026 | candidate | |
 
-Datasets, HF ids and licenses are in [`benchmarks.md`](benchmarks.md).
+Dataset interfaces are in [datasets.md](../datasets.md); terms are in [licences.md](../licences.md). The earlier benchmark survey is in the [research snapshots](../notes/research-snapshots.md).

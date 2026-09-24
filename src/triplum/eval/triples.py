@@ -5,7 +5,7 @@ F1 per slot with tokens equal up to inflection, subject and object at least 0.5,
 above 0.5 with auxiliaries and articles removed, so `work for` and `work against` do not match. Assignment is
 greedy by descending mean slot score, one gold per prediction and one prediction per gold;
 duplicate predictions and duplicate gold count once. Scores are micro-averaged over groups (documents, or
-questions where the gold is per question). See docs/research/benchmarks.md.
+questions where the gold is per question).
 """
 
 from __future__ import annotations

@@ -60,49 +60,6 @@ The contracts that hold across modules:
 - **Cache wrappers, not cache logic.** `CachedLLM`, `CachedEmbedder` and `CachedReranker` wrap
   any adapter; the key is the full effective request.
 
-## Composing by hand
+## Examples
 
-The same pieces the runner uses, without the runner (this snippet runs against the committed
-fixture with the fake embedder and fake reader):
-
-```python
-import tempfile
-from pathlib import Path
-
-from triplum.bench.inputs import materialize
-from triplum.data.viewer import Viewer
-from triplum.embed.fake import FakeEmbedder
-from triplum.eval import metrics
-from triplum.datasets import registry as datasets
-from triplum.generate.reader import read
-from triplum.llm.fake import FakeLLM
-from triplum.llm.protocol import DEFAULT_PARAMS
-from triplum.retrieve import stages
-from triplum.store.sqlite.store import SqliteStore
-
-ds = materialize(datasets.load_fixture("musique", n=5))
-assert ds.qa is not None
-store = SqliteStore(Path(tempfile.mkdtemp()) / "demo.sqlite")
-store.put_documents(ds.corpus.documents, ds.corpus.grants)
-store.put_chunks(ds.corpus.chunks)
-
-embedder = FakeEmbedder(dims=64)  # any Embedder; wrap a real one in CachedEmbedder
-store.put_embeddings(
-    embedder.spec,
-    ds.corpus.chunks["id"].to_list(),
-    embedder.embed_passages(ds.corpus.chunks["text"].to_list()),
-)
-
-viewer = Viewer.of("public")  # every read is scoped to a viewer
-hits = stages.dense(ds.qa, store, embedder, k=5, viewer=viewer)
-answers = read(ds.qa, hits, store, FakeLLM(), viewer, DEFAULT_PARAMS)
-
-q = ds.qa.row(0, named=True)
-ids = hits.filter(hits["question_id"] == q["id"]).sort("rank")["chunk_id"].to_list()
-print(answers.columns)  # question_id, answer, tokens, cached, latency_s, n_chunks
-print(metrics.recall_at_k(q["gold_chunk_ids"], ids, 5))
-```
-
-Swap `FakeEmbedder` for `triplum.embed.sentence_transformers.from_model(...)` inside a
-`CachedEmbedder`, and `FakeLLM` for `OpenAICompatLLM` inside a `CachedLLM`, and the snippet is
-the dense baseline. `bench.factories` does exactly that from the frozen configs.
+See [runnable examples](https://github.com/fkarg/triplum/tree/main/examples) for direct composition and benchmark runs.

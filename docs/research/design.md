@@ -65,7 +65,7 @@ so range predicates stay simple.
 
 | table | columns (initial) |
 |---|---|
-| documents | id (content-addressed), source, uri, observed_at, metadata (JSON) |
+| documents | id (source-declared), source, uri, observed_at, metadata (JSON) |
 | document_grants | document_id, principal, granted_at, revoked_at (system-versioned: revocation closes, never deletes) |
 | chunks | id, document_id, parent_id (hierarchy), level, span_start, span_end, text |
 | chunk_embeddings | chunk_id, embedding_spec (model id plus revision plus dims), vector |
@@ -146,9 +146,8 @@ revision, permission revision, viewer and both times.
 Extraction decomposes text into atomic claims before producing tuples (ATOM's first module) so
 that a validity interval and a supporting span are unambiguous per fact.
 
-RDF 1.2 reifiers are an export target only; the spec is still a working draft. Literature, benchmarks
-and the failure modes of existing systems are in
-[`temporal-and-permissions.md`](temporal-and-permissions.md).
+RDF 1.2 reifiers are an export target only. The earlier literature survey is archived in the
+[research snapshots](../notes/research-snapshots.md).
 
 ### D4. Permissions derived from provenance
 
@@ -177,8 +176,9 @@ Enforcement rules:
   measured on real data.
 - **Absence means "no support in this view"**, and the answer contract is refusal, not a guess.
 
-Details, production precedents and the synthetic benchmark design are in
-[`temporal-and-permissions.md`](temporal-and-permissions.md).
+The temporal and ACL fixture families are listed in the
+[stack walk](../plans/2026-09-17-stack-walk.md); earlier precedents are in the
+[research snapshots](../notes/research-snapshots.md).
 
 ### D5. Composition by plain callables
 
@@ -187,9 +187,8 @@ Configuration is a frozen dataclass per pipeline; its hash is part of every run 
 the benchmark runner's job. No DAG framework, no YAML, no plugin registry until there is a
 demonstrated need.
 
-*Alternatives.* neo4j-graphrag-python's component DAG and DIGIMON's YAML-composed operators are
-the two best existing designs (see [`landscape.md`](landscape.md)); both add a layer we do not need
-while the number of pipelines is single-digit.
+*Alternatives.* Component DAGs and YAML-composed operators add a layer we do not need while the
+number of pipelines is single-digit.
 
 ### D6. One LLM protocol, thin adapters, disk cache
 
@@ -198,12 +197,13 @@ OpenAI-compatible (covers vLLM, Ollama, OpenRouter, most providers), a CLI subpr
 local harness subscriptions (`claude -p`, `codex exec`), and a native Anthropic adapter when a
 reader needs it (not built; the CLI adapter covers Claude today). A content-addressed disk cache
 keyed on the **full effective request** (adapter id, model id and revision, messages, output schema,
-generation parameters) stores the raw response plus parse/retry provenance, so reruns are free and
+generation parameters) stores the raw response, so reruns are free and
 replay is exact. Model id plus prompt alone is not a valid key: the peer review collided two requests
 that differed only in output schema. Cached replay is not general determinism; runs record whether
 they were served from cache. CLI adapters must be invoked statelessly (no ambient conversation,
 filesystem or tool context) or they fall outside this contract. Structured output via JSON schema
-where the provider supports it, otherwise parse-and-retry.
+where the provider supports it. Parse/retry provenance is still open (R5 in the
+[caching gap map](../specs/2026-09-17-caching-and-monitoring.md)).
 
 *Alternatives.* litellm (a supply-chain incident tracked in Microsoft GraphRAG's issue #2289; heavy),
 rig (Rust framework). Rust crates `genai`/`async-openai` are the choice if the Rust side ever
@@ -271,7 +271,7 @@ unsupported filter fails or falls back to a measured exact path, never to silent
 Neo4j Community has no RBAC or property-based access control, so on both stores the visibility
 predicate is part of the query, which is what makes the comparison fair.
 
-Details in [`storage-sqlite.md`](storage-sqlite.md) and [`store-comparison.md`](store-comparison.md).
+Earlier backend surveys are in the [research snapshots](../notes/research-snapshots.md).
 
 ### D8. Benchmark-first
 
@@ -281,25 +281,19 @@ sources live in `triplum.datasets`, separate from evaluation. The harness loads 
 runs `(pipeline factory, dataset, evaluators, viewer)`, and writes one SQLite run store. A run record
 identifies everything that produced an answer: dataset and artifact ids (document revisions, chunking,
 extraction output, resolution decisions, index builds), code version, pipeline config hash, model ids
-and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config,
-and evaluator config. Cache hits and misses are measured outcomes, not identity fields.
+and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config.
+Cache hits and misses are measured outcomes, not identity fields.
 Construction cost and per-query cost are recorded separately with component timings. Reports
 are Polars frames. Stage code manifests validate reuse as described in D6a; the run identity is
 computed from data and configuration before sources are read. The operational contract is
 [`../benchmarking.md`](../benchmarking.md).
 
-Protocol commitments from [`benchmarks.md`](benchmarks.md): the HippoRAG
-1000-question corpora rebuilt from upstream releases and verified by content hash (HotpotQA is
-9,811 passages in the released files, not the 9,221 in the paper); "generation 2" configuration
-(Llama-3.3-70B-Instruct or GPT-4o-mini reader, NV-Embed-v2 retriever, top-5) labelled in every run;
-the embedder held fixed across all pipelines, because the embedder swing is an order of magnitude
-larger than any architecture effect; every run reports EM, token-F1, Contain-Acc, Judge-Acc, R@2,
-R@5 and indexing cost; mandatory baselines on every table: closed-book (contamination floor),
-BM25-only, oracle gold passages (reader ceiling); the judge from a different model family than any
-reader under test, with an A/A win rate recorded; BenchmarkQED AutoE adopted verbatim for the
-no-gold path; MuSiQue is the dataset to run at full scale if only one can be, because it is where
-graph methods actually separate from dense retrieval.
-Protocol and metrics in [`benchmarks.md`](benchmarks.md).
+Hold the embedder fixed across pipeline comparisons. Every results table carries EM, token-F1,
+Contain-Acc, Judge-Acc, R@2, R@5 and indexing cost, with closed-book, BM25-only and oracle-passage
+baselines. The judge comes from a different model family than each reader under test; record
+its A/A win rate. For the no-gold path, use BenchmarkQED AutoE's head-to-head protocol. The
+[benchmarking contract](../benchmarking.md) defines run identity and reporting; earlier dataset
+and model comparisons are in the [research snapshots](../notes/research-snapshots.md).
 
 The "auto-benchmark for your corpus" is the same runner plus BenchmarkQED-style question synthesis
 for corpora without gold answers; that arrives with the temporal+ACL synthetic benchmark.
@@ -357,7 +351,8 @@ the extraction baseline, caching and run monitoring are functional end to end.
 
 ### D10. Name
 
-`triplum`. Free on PyPI and crates.io as of 2026-09-16. See [`naming.md`](naming.md).
+`triplum`. The original naming survey is in the
+[research snapshots](../notes/research-snapshots.md).
 
 ## Research sequence
 

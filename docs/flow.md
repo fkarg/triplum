@@ -115,27 +115,8 @@ those interfaces and the temporal/ACL fixture gate. The earlier fixture-scale ex
 measurements and development records are recoverable from the
 [temporary note](notes/previous-foundation.md).
 
-## Forgiving CLI input
+## CLI input and views
 
-Bare `triplum data` shows a status-count summary and aligned Dataset/State/Family/Flags
-columns, followed by fetch commands. Narrow terminals use stacked entries without truncating
-names. Status colors follow terminal support and `NO_COLOR`; text labels remain in plain output.
-Full command help is available via `triplum data --help` rather than appended to the overview.
-
-The CLI resolves finite human choices before calling exact library
-APIs: commands, runs, question IDs, datasets, pipelines, reader/judge kinds and adapter
-prefixes. Exact matches win, then case-insensitive exact/unique prefixes. Single substring/typo matches also resolve with a stderr notice; missing or ambiguous
-selectors offer terminal choices with no default. Omitted
-question filters still mean all questions. Missing stores and unknown selectors give usage
-errors instead of tracebacks; run selection does not create an absent store.
-
-Use `--no-input` at the root, group or prompting command to prohibit prompts. Nonterminal
-input or stderr also prohibits prompting; errors list canonical candidates. Prompts and
-resolution notices use stderr so JSON stdout stays parseable. Model suffixes, paths, URLs,
-JSON configs and library identifiers remain exact; unknown option names use Typer's
-built-in suggestions. See the [selection contract](specs/2026-09-16-cli-selection.md).
-
-Benchmark text views use terminal-aware colors and wrap complete identifiers and values.
-`inspect` groups answers, metrics, passage previews and model calls; `diff` compares A/B
-values and lists changed questions; `tail` shows status and progress. `show` and
-`inspect --json` remain plain JSON.
+The CLI resolves finite choices and prompts only on terminals; the
+[selection contract](specs/2026-09-16-cli-selection.md) defines the behavior.
+Benchmark text views wrap identifiers and use terminal-aware color; structured output remains JSON.
