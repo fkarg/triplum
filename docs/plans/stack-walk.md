@@ -1,12 +1,12 @@
 # Stack walk: interfaces bottom-up, then recombination
 
-Snapshot 2026-09-24. The data sources, stage contract and runner have been reworked. The next
+The data sources, stage contract and runner have been reworked. The next
 boundary is store ingestion from `CorpusBatch` streams. Settle each remaining interface walking
 up the stack, then recombine components into pipelines and sub-projects.
 
 This plan lists the layers in walking order, what each layer currently is, the questions its
 interface must answer, and which requirements from the caching and monitoring spec
-([`../specs/2026-09-17-caching-and-monitoring.md`](../specs/2026-09-17-caching-and-monitoring.md),
+([`../specs/caching-and-monitoring.md`](../specs/caching-and-monitoring.md),
 "R" numbers) and which later sub-projects depend on it. Each layer gets its own spec section or
 spec, a cross-model design review, and a commit before the next layer starts.
 
@@ -15,11 +15,11 @@ spec, a cross-model design review, and a commit before the next layer starts.
 ### 0. `utils.data` and `datasets` (done, owner's rework)
 
 `Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`, `Take`, `RecordDataset`; sources own
-`fingerprint()`. Built-in datasets reworked 2026-09-17 (historical record in the
-[temporary note](../notes/previous-foundation.md)):
+`fingerprint()`. The built-in dataset rework is recorded in the
+[temporary note](../notes/previous-foundation.md):
 lazy source classes over pinned files, pydantic records (`Document` with segments, `Question`,
 `Triple`), ids from each source's declared key, `Benchmark` holds datasets and the consumer
-batches, identity without reading. Stages added 2026-09-18 (same note):
+batches, identity without reading. The stage work is recorded in the same note:
 the runner is a composition of stages with data keys, trace-discovered code manifests,
 artifacts and provenance rows; the corpus is read once into a frames artifact and every later
 run fetches it. Consuming a corpus in batches into the store, with the store's `effects` table

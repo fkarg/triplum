@@ -1,6 +1,6 @@
 # Modules and interfaces
 
-Snapshot 2026-09-24. Every module below is importable on its own; the benchmark runner is one
+Every module below is importable on its own; the benchmark runner is one
 composition of them, not a framework they depend on. The pages in this section are generated
 from the source signatures, so they are exact as of the build. Where a docstring is missing the
 signature is still shown.

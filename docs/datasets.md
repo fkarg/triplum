@@ -1,6 +1,6 @@
 # Datasets: built-in sources and your own
 
-Snapshot 2026-09-17. A dataset in triplum is a source of records with an identity, shaped like
+A dataset in triplum is a source of records with an identity, shaped like
 PyTorch's: implement `IterableDataset` for a stream, `Dataset` for indexed access, and
 `fingerprint()` for identity. A benchmark composes up to three independent sources, a corpus,
 questions and gold triples, and the consumer decides how to batch them. Nothing reads a file
@@ -143,7 +143,7 @@ class Ticker(IterableDataset[Document]):
         return f"ticker:{self.capture}"
 
 
-feed = Ticker(["one", "two", "three"], capture="2026-09-17T10:00Z")
+feed = Ticker(["one", "two", "three"], capture="feed-v1")
 batches = list(DataLoader(feed, batch_size=2, collate_fn=collate.corpus_batch))
 assert [b.chunks.height for b in batches] == [2, 1]
 ```

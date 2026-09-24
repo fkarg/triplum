@@ -1,6 +1,6 @@
 # Research snapshots to revisit
 
-Snapshot 2026-09-24. These dated surveys informed the first design. They are historical evidence,
+These archived surveys informed the first design. They are historical evidence,
 not current implementation contracts or current model recommendations. Read the full version
 with `git show dfc0e62:docs/research/<file>.md`. Recheck primary sources at the relevant design
 gate, then remove the row. The live decisions are in [design.md](../research/design.md).

@@ -1,9 +1,9 @@
 # Caching and run monitoring, end to end
 
-Snapshot 2026-09-24. R6, R7, R9, R14 and R15 landed with stages (commits
+R6, R7, R9, R14 and R15 landed with stages (commits
 `25861fe` to `40c5260`). Status: **open requirements, not yet an implementation contract.**
 Interfaces are settled layer by layer in the
-[`../plans/2026-09-17-stack-walk.md`](../plans/2026-09-17-stack-walk.md)); each requirement
+[`../plans/stack-walk.md`](../plans/stack-walk.md)); each requirement
 below names the layer that must satisfy it, and its interface is decided when the walk reaches
 that layer. The existing contract this spec makes true is `docs/benchmarking.md` and design D6a.
 

@@ -1,6 +1,6 @@
 # Previous foundation: temporary reference
 
-Snapshot 2026-09-24. This note is for the foundation rewrite. It records where to recover the
+This note is for the foundation rewrite. It records where to recover the
 previous specs and plans without making their old interfaces into current requirements. Remove
 each section when its replacement layer lands; remove this note when the walk is complete.
 Use `git show <commit>:<path>` to read the full record. Current decisions live in
@@ -26,8 +26,8 @@ the current runner materializes whole corpus frames. Earlier contracts and revie
 The original harness built the SQLite store and six retrieval baselines. The extraction baseline
 added supported graph facts and intrinsic scores. The later stage work replaced whole-run code
 fingerprints with argument keys, artifacts, execution manifests, and store effects. Open store,
-adapter, and monitoring questions are in the [stack walk](../plans/2026-09-17-stack-walk.md) and
-the [caching gap map](../specs/2026-09-17-caching-and-monitoring.md).
+adapter, and monitoring questions are in the [stack walk](../plans/stack-walk.md) and
+the [caching gap map](../specs/caching-and-monitoring.md).
 
 | Record | Last historical version |
 |---|---|
@@ -42,7 +42,7 @@ comparators, not a current full-set result.
 ## Operator surface and tooling
 
 The overview, terminal views, selection, and type-checking work established current CLI and
-development behavior. The [CLI selection contract](../specs/2026-09-16-cli-selection.md) remains
+development behavior. The [CLI selection contract](../specs/cli-selection.md) remains
 live because new commands must follow it.
 
 | Record | Last historical version |

@@ -1,6 +1,6 @@
 # triplum
 
-Snapshot 2026-09-24. Composable, benchmark-first sandbox for LLM knowledge-graph work: KG
+Composable, benchmark-first sandbox for LLM knowledge-graph work: KG
 construction, GraphRAG retrieval, storage backends and evaluation. Python-first with a Rust core
 behind an Arrow boundary. Bi-temporal facts and provenance-derived permissions are first-class
 and enforced in the store.
@@ -9,7 +9,7 @@ and enforced in the store.
 
 Six non-graph QA baselines and the non-LLM extraction baseline run end to end. The runner now
 uses cached stages; the foundation rewrite continues at the store ingestion boundary.
-[Flow](flow.md) records implemented behavior and the [stack walk](plans/2026-09-17-stack-walk.md)
+[Flow](flow.md) records implemented behavior and the [stack walk](plans/stack-walk.md)
 records open interfaces.
 
 ## Five minutes

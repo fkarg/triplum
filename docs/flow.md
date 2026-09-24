@@ -1,6 +1,6 @@
 # Flow: what a benchmark run does
 
-Snapshot 2026-09-24. This page follows one `triplum bench run` from the command line to the row
+This page follows one `triplum bench run` from the command line to the row
 in the run store, names the module that implements each step, and lists what exists versus what
 the design record still plans. The caching and identity rules it relies on are in
 [benchmarking.md](benchmarking.md); the decisions behind the shape are in
@@ -108,8 +108,8 @@ under `$TRIPLUM_DATA` (default `~/.cache/triplum/data`) regardless of the cache 
 
 The implemented modules and public interfaces are mapped in [api/index.md](api/index.md).
 The runner currently materializes corpus frames before ingestion. The next foundation change
-is store-owned, batch-atomic ingestion; the [stack walk](plans/2026-09-17-stack-walk.md)
-tracks the subsequent interfaces and the [caching gap map](specs/2026-09-17-caching-and-monitoring.md)
+is store-owned, batch-atomic ingestion; the [stack walk](plans/stack-walk.md)
+tracks the subsequent interfaces and the [caching gap map](specs/caching-and-monitoring.md)
 tracks the requirements still open. Graph retrieval, LLM extraction and store comparison follow
 those interfaces and the temporal/ACL fixture gate. The earlier fixture-scale extraction
 measurements and development records are recoverable from the
@@ -118,5 +118,5 @@ measurements and development records are recoverable from the
 ## CLI input and views
 
 The CLI resolves finite choices and prompts only on terminals; the
-[selection contract](specs/2026-09-16-cli-selection.md) defines the behavior.
+[selection contract](specs/cli-selection.md) defines the behavior.
 Benchmark text views wrap identifiers and use terminal-aware color; structured output remains JSON.

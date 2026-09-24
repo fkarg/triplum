@@ -17,7 +17,7 @@ The library runs six non-graph QA baselines and a non-LLM graph extraction basel
 fingerprinted datasets. The runner uses cached stages and validates executed code before
 reusing results. The active work is a bottom-up foundation rewrite; store ingestion from
 `CorpusBatch` streams is the next boundary. See [the current flow](docs/flow.md) for implemented
-behavior and [the stack walk](docs/plans/2026-09-17-stack-walk.md) for open interfaces.
+behavior and [the stack walk](docs/plans/stack-walk.md) for open interfaces.
 
 ## Install
 

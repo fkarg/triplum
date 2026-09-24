@@ -28,8 +28,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 ## Where things live
 
 - `docs/research/`: research foundation and the decision record. `design.md` is a living document:
-  change a decision there when it changes, do not append contradictions. Every doc carries its
-  snapshot date; versions and statuses are as-of that date.
+  change a decision there when it changes, do not append contradictions. Use Git history for
+  document provenance; current docs describe the current state without editorial timestamps.
 - `docs/specs/` and `docs/plans/`: active development contracts. Superseded detail is kept as
   temporary notes with commit references only while its replacement layer is being designed;
   remove those notes when the replacement lands. Keep development records out of MkDocs navigation.
@@ -89,7 +89,7 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   choices. Missing required finite selectors should guide the user. Never expose a lookup
   traceback for an unknown name. Keep opaque paths/model IDs and library identities exact.
 - Prompt only on a terminal, support `--no-input`, and keep prompts/diagnostics on stderr so
-  structured stdout stays usable. New commands must follow `docs/specs/2026-09-16-cli-selection.md`.
+  structured stdout stays usable. New commands must follow `docs/specs/cli-selection.md`.
 - Keep matching decisions locally testable and separate from command execution; split modules
   by responsibility rather than adding interfaces or single-use wrappers.
 - Measure branch coverage and test durations. Test workflows with real temporary stores and

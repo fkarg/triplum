@@ -1,7 +1,5 @@
 # Forgiving CLI selection
 
-Snapshot 2026-09-16.
-
 Human-facing discovery is a priority across the CLI. Exact matches win, followed by case-
 insensitive exact matches and unique prefixes. Single substring and plausible typo matches are
 accepted too, with a notice on stderr; multiple matches require a choice. Typo plausibility uses
@@ -47,15 +45,15 @@ this change.
 
  ## Design review
 
-2026-09-17, Claude Opus 5, `peer-review --mode design`; verdict challenges, with concrete
+Claude Opus 5, `peer-review --mode design`; verdict challenges, with concrete
 falsification attempts. **Changed decision:** coverage is opt-in locally, explicit in CI (the
 peer measured 7.05s covered vs 5.21s uncovered); accept --no-input at each prompting level.
 **Added verification:** absent-store errors do not create files; missing second diff argument
 offers candidates; data fetch resolves dataset/all; distinct diff IDs; adapter suffix preserved;
 fixture identities differ so rerun tests discriminate correctly. **Rejected with reason:**
 removing menus, fuzzy IDs and command prefixes contradicts the explicit user requirement. Random
-IDs make similarity uncertain; the user explicitly chose autoaccept for a single plausible match
-(2026-09-17), while multiple matches still prompt; document prefix instability for scripts.
+IDs make similarity uncertain; the user explicitly chose autoaccept for a single plausible match,
+while multiple matches still prompt; document prefix instability for scripts.
 Question IDs already select one question, so ambiguous matches choose one rather than silently
 turning the option into a multi-row filter. The peer's claim that the diff test is unsatisfiable
 applies to the old required signature; both arguments intentionally become optional so missing

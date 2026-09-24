@@ -1,7 +1,7 @@
 # Design record
 
-Decisions taken on 2026-09-16 while scoping the project, with the alternatives that were considered
-and why they lost. This is a living record: change a decision here when it changes, do not append
+Decisions and the alternatives considered while scoping the project. This is a living record:
+change a decision here when it changes; do not append
 contradictions.
 
 ## Goals and non-goals
@@ -51,7 +51,7 @@ logical content without consuming iteration. A built-in source's identity is a v
 read; an in-memory source hashes its content. Loading batch size and physical chunk layout do
 not affect identity. This is not Python `__hash__`.
 
-*Amended 2026-09-17 (built-in datasets).* Sources yield pydantic records at the boundary:
+*Built-in datasets.* Sources yield pydantic records at the boundary:
 `Document` with the segments the source ships as units, `Question`, `Triple`. Document ids are
 the source's declared key (an upstream id, else a content key), never parse position; chunk ids
 are `chunk_id(document_id, ordinal)`, so a question resolves its gold from its own record.
@@ -121,7 +121,7 @@ sufficient evidence). Multi-chunk groups exist only for explicit derivations; th
 derivation is a `same_as` fact from resolving two mentions, which cites both mention chunks as
 one group, so a merge is invisible to a viewer who cannot see both sides. Traversal follows
 visible `same_as` facts; `canonical_id` is a global materialisation for reporting, never a
-visibility shortcut (peer review of the extraction spec, 2026-09-17). Rule-based extractors have
+visibility shortcut (peer review of the extraction spec). Rule-based extractors have
 no calibrated confidence, so `confidence` is nullable on facts and mentions rather than a
 fabricated number. Any fact without support is rejected at the store boundary.
 
@@ -177,7 +177,7 @@ Enforcement rules:
 - **Absence means "no support in this view"**, and the answer contract is refusal, not a guess.
 
 The temporal and ACL fixture families are listed in the
-[stack walk](../plans/2026-09-17-stack-walk.md); earlier precedents are in the
+[stack walk](../plans/stack-walk.md); earlier precedents are in the
 [research snapshots](../notes/research-snapshots.md).
 
 ### D5. Composition by plain callables
@@ -203,13 +203,13 @@ that differed only in output schema. Cached replay is not general determinism; r
 they were served from cache. CLI adapters must be invoked statelessly (no ambient conversation,
 filesystem or tool context) or they fall outside this contract. Structured output via JSON schema
 where the provider supports it. Parse/retry provenance is still open (R5 in the
-[caching gap map](../specs/2026-09-17-caching-and-monitoring.md)).
+[caching gap map](../specs/caching-and-monitoring.md)).
 
 *Alternatives.* litellm (a supply-chain incident tracked in Microsoft GraphRAG's issue #2289; heavy),
 rig (Rust framework). Rust crates `genai`/`async-openai` are the choice if the Rust side ever
 needs to call models directly.
 
-*Amended 2026-09-17 (owner's decision).* pydantic-ai is adopted, under this protocol rather than
+*Owner's decision.* pydantic-ai is adopted, under this protocol rather than
 instead of it: one adapter over its direct model-request API replaces the per-provider adapters
 and gives validated structured output, and its typed message and output datatypes are the
 default candidates for `Message` and `Completion` when the adapter lands (with the LLM
@@ -238,7 +238,7 @@ the store itself. Provenance (artifacts, invocations, their input edges, manifes
 run store, so lineage is a query. The cache root is one directory per machine. The SQLite run
 store is the sole live event stream: every call and stage writes a timed, priced event, and effective
 cost and runtime per question are reported next to quality. No stage may *require* the cache to
-function, but every stage participates. Amended 2026-09-18. The earlier stage design is in the
+function, but every stage participates. The earlier stage design is in the
 [temporary foundation note](../notes/previous-foundation.md). The earlier form (a hash of the pipeline's source files in
 the run identity) is superseded.
 
@@ -298,7 +298,7 @@ and model comparisons are in the [research snapshots](../notes/research-snapshot
 The "auto-benchmark for your corpus" is the same runner plus BenchmarkQED-style question synthesis
 for corpora without gold answers; that arrives with the temporal+ACL synthetic benchmark.
 
-*Replicates (added 2026-09-18).* An experiment is a configuration, a root seed and a replicate
+*Replicates.* An experiment is a configuration, a root seed and a replicate
 count, default one. Replicate `r` runs under `derive(root, r)`; a stage draws from a seed derived
 from that and its name, so stages perturb only themselves. Adapters declare whether the seed
 changes their answer (LLMs yes, embedders and rerankers no by default); the derived seed enters
@@ -326,7 +326,7 @@ single fuzzy matches accepted with a notice; ambiguous/missing finite choices of
 interactively on terminals. All interaction
 uses stderr; unresolved selectors with --no-input or nonterminal use yield actionable
 usage errors. Library identities
-and opaque values stay exact. Contract: `docs/specs/2026-09-16-cli-selection.md`.
+and opaque values stay exact. Contract: `docs/specs/cli-selection.md`.
 Tests use focused helpers and real workflow fixtures. Report durations by default and branch
 coverage explicitly in CI/on demand; mark real-model tests so the offline suite remains fast.
 `uv run ty check` is required across source and tests; `cargo check` checks the Rust workspace.
@@ -340,7 +340,7 @@ The benchmark assembly layer assumes SQLite; that seam is extended when a second
 arrives, not before. Implementation state lives in `docs/flow.md` and `docs/api/index.md`, not
 here.
 
-*Documentation and API surface, decided 2026-09-17.* The reference is FastAPI's documentation:
+*Documentation and API surface.* The reference is FastAPI's documentation:
 a tutorial of one concept per page, each page built around one runnable example file that a
 test executes against the committed fixtures, so an example that rots fails CI; a curated
 top-level namespace (`triplum` and each package `__init__`) that exports the names the tutorial
@@ -356,7 +356,7 @@ the extraction baseline, caching and run monitoring are functional end to end.
 
 ## Research sequence
 
-The [foundation stack walk](../plans/2026-09-17-stack-walk.md) is the current work order.
+The [foundation stack walk](../plans/stack-walk.md) is the current work order.
 After its interfaces settle, the first comparisons are graph retrieval against matched
 non-graph baselines, KG-construction variants against the non-LLM extractor, SQLite against
 Neo4j, and an embedding sweep with the embedder held fixed across pipeline comparisons.
@@ -373,12 +373,12 @@ above and the active contracts they link.
 
 | Gate | Peer | Outcome |
 |---|---|---|
-| Initial architecture, 2026-09-16 | Codex, GPT family | **Changed decisions:** proposition/assertion/support identities, viewer-relative invalidation, derived visibility, full-request cache keys, and viewer-projected graph kernels. **Rejected:** an unmeasured SQLite conversion bottleneck claim. |
-| Harness implementation, 2026-09-16 | Codex, GPT family | **Found unique defects**, fixed with tests: ACL/index updates, visibility before top-k, cache key scope, gold mapping, run identity, judge/cost accounting, and deterministic ranking. |
-| Dataset/loader redesign, 2026-09-17 | Claude Opus 5 | **Added verification** for atomic ingestion, ACL, and global resolution; **rejected** eager-only and batch-dependent identity proposals. |
-| Dataset identity and built-in sources, 2026-09-17 | Codex, GPT family; fresh-context GPT-family fallback | **Changed decisions** on versioned source fingerprints and source-specific ids; **found unique defects**, fixed with tests, in collators, frame hashing, fixtures, and gold checks. |
-| Extraction baseline, 2026-09-17 | Codex, GPT family | **Found unique defects**, fixed with tests, in graph visibility, provenance, history, scoring, and resolver idempotence; **changed** graph identity to cover extraction plus resolution. |
-| CLI selection, 2026-09-17 | Claude Opus 5; fresh-context GPT-family fallback | **Changed** non-interactive handling and single fuzzy-match policy; **added verification** for missing and ambiguous selections. A final Claude diff review failed authentication and had no decision impact. |
-| Typing and hooks, 2026-09-17 | Claude Opus 5; fresh-context GPT-family review | **Changed** optional-model type-check placement; **added verification** for snapshot isolation and whole-project checks; **rejected** replacing the requested `uvx` hook. |
-| Stage contract and implementation, 2026-09-17–18 | Codex, GPT family | **Changed decisions** on execution keys, stream lifetime, store effects, and artifact publication; **found unique defects**, fixed with tests, in manifest validation, empty streams, and judge identity. |
-| Foundation layout and documentation, 2026-09-24 | Fresh-context GPT-6 fallback; cross-model CLI unavailable | **Added verification** for package builds and preservation of live requirements. **Found unique documentation defects** in D8's code-identity wording, the premature R10 completion claim, and `graph_identity`'s ineffective pre-run identity slot; the docs now state the actual behavior and track the remaining decision. |
+| Initial architecture | Codex, GPT family | **Changed decisions:** proposition/assertion/support identities, viewer-relative invalidation, derived visibility, full-request cache keys, and viewer-projected graph kernels. **Rejected:** an unmeasured SQLite conversion bottleneck claim. |
+| Harness implementation | Codex, GPT family | **Found unique defects**, fixed with tests: ACL/index updates, visibility before top-k, cache key scope, gold mapping, run identity, judge/cost accounting, and deterministic ranking. |
+| Dataset/loader redesign | Claude Opus 5 | **Added verification** for atomic ingestion, ACL, and global resolution; **rejected** eager-only and batch-dependent identity proposals. |
+| Dataset identity and built-in sources | Codex, GPT family; fresh-context GPT-family fallback | **Changed decisions** on versioned source fingerprints and source-specific ids; **found unique defects**, fixed with tests, in collators, frame hashing, fixtures, and gold checks. |
+| Extraction baseline | Codex, GPT family | **Found unique defects**, fixed with tests, in graph visibility, provenance, history, scoring, and resolver idempotence; **changed** graph identity to cover extraction plus resolution. |
+| CLI selection | Claude Opus 5; fresh-context GPT-family fallback | **Changed** non-interactive handling and single fuzzy-match policy; **added verification** for missing and ambiguous selections. A final Claude diff review failed authentication and had no decision impact. |
+| Typing and hooks | Claude Opus 5; fresh-context GPT-family review | **Changed** optional-model type-check placement; **added verification** for snapshot isolation and whole-project checks; **rejected** replacing the requested `uvx` hook. |
+| Stage contract and implementation | Codex, GPT family | **Changed decisions** on execution keys, stream lifetime, store effects, and artifact publication; **found unique defects**, fixed with tests, in manifest validation, empty streams, and judge identity. |
+| Foundation layout and documentation | Fresh-context GPT-6 fallback; cross-model CLI unavailable | **Added verification** for package builds and preservation of live requirements. **Found unique documentation defects** in D8's code-identity wording, the premature R10 completion claim, and `graph_identity`'s ineffective pre-run identity slot; the docs now state the actual behavior and track the remaining decision. |

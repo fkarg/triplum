@@ -101,10 +101,8 @@ verified protocol files.
 Everything downloadable lives in two places: model weights under the Hugging Face cache
 (`~/.cache/huggingface/hub`) and triplum's own data, stores, call cache and run store under
 `~/.cache/triplum` (override with `TRIPLUM_CACHE`; datasets with `TRIPLUM_DATA`). Budget on the
-laptop: under 200 GB for models plus data combined, keeping at least 100 GB free. Sizes as of
-2026-09-16: protocol data 40 MB; a corpus store with one embedder a few hundred MB; the Mac sweep
-subset about 3 GB of weights; NV-Embed-v2 about 16 GB and Qwen3-Embedding-4B about 8 GB, which
-are for the workstation. Check with `du -sh ~/.cache/huggingface/hub ~/.cache/triplum`.
+laptop: under 200 GB for models plus data combined, keeping at least 100 GB free. Check actual
+usage with `du -sh ~/.cache/huggingface/hub ~/.cache/triplum` before fetching large models.
 
 ## Cost and runtime
 
