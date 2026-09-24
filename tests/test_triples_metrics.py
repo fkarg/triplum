@@ -1,4 +1,5 @@
 import polars as pl
+
 from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA
 from triplum.eval import triples
 from triplum.eval.inputs import QUESTION_SCHEMA, TRIPLE_SCHEMA

@@ -5,6 +5,7 @@ from collections.abc import Iterator
 
 import polars as pl
 import pytest
+
 from triplum.bench.config import LLMConfig, PipelineConfig, RunConfig, replace
 from triplum.bench.inputs import Benchmark
 from triplum.bench.report import variance

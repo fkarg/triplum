@@ -1,4 +1,5 @@
 import polars as pl
+
 from triplum.bench.inputs import materialize
 from triplum.data.viewer import Viewer
 from triplum.datasets import registry as hr

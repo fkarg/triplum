@@ -5,6 +5,7 @@ import json
 import shutil
 
 import pytest
+
 from triplum.bench.inputs import materialize
 from triplum.datasets import registry
 from triplum.eval.inputs import GoldMappingError

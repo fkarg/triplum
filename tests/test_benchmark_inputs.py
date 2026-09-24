@@ -4,6 +4,7 @@ comes off the sources and the cross-source checks run before anything is scored.
 from collections.abc import Iterator
 
 import pytest
+
 from triplum.bench.inputs import Benchmark, materialize
 from triplum.data.corpus import Document, chunk_id
 from triplum.eval.inputs import GoldMappingError, Question, Triple

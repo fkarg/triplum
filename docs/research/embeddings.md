@@ -300,7 +300,7 @@ significant on MuSiQue — but reports significance without effect size, and its
 
 ## 5. The triplum sweep
 
-`EmbeddingSpec` in `python/triplum/embed/protocol.py` already carries exactly the identity fields this
+`EmbeddingSpec` in `src/triplum/embed/protocol.py` already carries exactly the identity fields this
 requires — `model, revision, dims, pooling, normalize, query_prefix, passage_prefix, quantization,
 runtime` — and its hash names the vector table, so a prefix change forces a re-index. Two gaps to
 close before the sweep: **`max_seq_length` / truncation policy is not in the spec** (silent truncation

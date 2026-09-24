@@ -11,6 +11,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 from pydantic import BaseModel
+
 from triplum.bench.runstore import RunStore
 from triplum.stage import LiveStream, Run, Stream, active, artifacts, stage
 from triplum.store.sqlite.store import SqliteStore

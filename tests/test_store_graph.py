@@ -2,6 +2,7 @@
 
 import polars as pl
 import pytest
+
 from triplum.data.viewer import Viewer
 from triplum.extract import ResolverSpec, extract, resolve
 from triplum.extract.fake import FakeExtractor

@@ -5,11 +5,12 @@ import sys
 
 import pytest
 from rich.text import Text
+from typer.testing import CliRunner
+
 from triplum.bench.cli import app
 from triplum.bench.config import LLMConfig, PipelineConfig, RunConfig
 from triplum.bench.runner import run_benchmark
 from triplum.bench.runstore import RunStore
-from typer.testing import CliRunner
 
 
 @pytest.fixture
@@ -236,6 +237,7 @@ def test_noninteractive_command_typo_resolves(tmp_path, monkeypatch):
 
 def test_adapter_suffix_preserved_and_missing_model_rejected():
     import typer
+
     from triplum.bench.selection import adapter
 
     model = "Vendor/MixedCase-Model:revision"

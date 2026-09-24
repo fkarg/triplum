@@ -7,6 +7,7 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
+
     from triplum.bench.report import summary
     from triplum.bench.runstore import RunStore
     from triplum.cache import default_root

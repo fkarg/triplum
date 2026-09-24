@@ -1,6 +1,6 @@
 """Stages: plain functions with a data key, a trace-discovered code manifest, a published
 artifact and an invocation record, so a rerun fetches what it can and recomputes exactly the
-stages whose code or inputs changed. Spec: `docs/specs/2026-09-17-stages.md`."""
+stages whose code or inputs changed. Contract: `docs/benchmarking.md`."""
 
 from .artifacts import Artifact, Stream
 from .fingerprint import Manifest

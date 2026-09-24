@@ -1,20 +1,16 @@
 # triplum
 
-Snapshot 2026-09-17. Composable, benchmark-first sandbox for LLM knowledge-graph work: KG
+Snapshot 2026-09-24. Composable, benchmark-first sandbox for LLM knowledge-graph work: KG
 construction, GraphRAG retrieval, storage backends and evaluation. Python-first with a Rust core
 behind an Arrow boundary. Bi-temporal facts and provenance-derived permissions are first-class
 and enforced in the store.
 
-## What works
+## Current state
 
-The non-graph half: canonical schemas, a SQLite store with viewer-filtered BM25 and vector
-search over chunks, cached LLM, embedder and reranker protocols with real and fake adapters, a
-registry of 37 pinned datasets with committed fixtures, six baselines (closed-book, BM25, dense,
-RRF fusion, hybrid with rerank, oracle), the metrics, and a run store keyed by run identity. The
-first graph half: a non-LLM extraction baseline (`rules` over spaCy, `small_model` over GLiNER and
-GLiREL), entity resolution as supported `same_as` facts, the store's graph side under the chunk
-visibility rule, and intrinsic triple scoring via `triplum bench extract`. Graph retrieval is
-next. [Flow](flow.md) keeps the implemented versus planned list exact.
+Six non-graph QA baselines and the non-LLM extraction baseline run end to end. The runner now
+uses cached stages; the foundation rewrite continues at the store ingestion boundary.
+[Flow](flow.md) records implemented behavior and the [stack walk](plans/2026-09-17-stack-walk.md)
+records open interfaces.
 
 ## Five minutes
 
@@ -41,6 +37,5 @@ Python is in the [README](https://github.com/fkarg/triplum#use-it-as-a-library).
   cross-module contracts, plus the API reference generated from the source.
 - [Benchmarking and caching](benchmarking.md): the contract for run identity, caching, replay,
   crash recovery and inspection.
-- [Design record](research/design.md): the decisions, the alternatives rejected, and the order of
-  sub-projects; the [research notes](research/README.md) behind them.
+- [Design record](research/design.md): the decisions, the alternatives rejected, and the intended research direction; the [research notes](research/README.md) behind them.
 - [Licences](licences.md): every third-party dataset, model and dependency with its terms.

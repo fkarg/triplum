@@ -4,6 +4,7 @@ committed fixtures."""
 import json
 
 import pytest
+
 from triplum.bench.inputs import Benchmark, materialize
 from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA, GRANT_SCHEMA, chunk_id, content_id
 from triplum.datasets import fixtures, registry

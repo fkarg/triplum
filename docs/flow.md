@@ -1,6 +1,6 @@
 # Flow: what a benchmark run does
 
-Snapshot 2026-09-17. This page follows one `triplum bench run` from the command line to the row
+Snapshot 2026-09-24. This page follows one `triplum bench run` from the command line to the row
 in the run store, names the module that implements each step, and lists what exists versus what
 the design record still plans. The caching and identity rules it relies on are in
 [benchmarking.md](benchmarking.md); the decisions behind the shape are in
@@ -28,7 +28,7 @@ that composes stages. A stage is a plain function in `bench/stages.py` wrapped b
 `triplum.stage.stage`: under the run it gets a data key from its arguments, records the code it
 executed as a manifest, publishes its output as an artifact and writes an invocation row, and on
 the next run it is fetched when the key matches and its manifest and its inputs' manifests still
-validate ([`specs/2026-09-17-stages.md`](specs/2026-09-17-stages.md)). The store enforces
+validate (see [benchmarking.md](benchmarking.md)). The store enforces
 visibility, so every stage passes a `Viewer` through.
 
 ## Step by step
@@ -36,14 +36,14 @@ visibility, so every stage passes a `Viewer` through.
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
 | 1 | load dataset | `datasets/registry.py`, `datasets/base.py`, one module per source | Builds a `Benchmark` of lazy sources (corpus, questions, gold triples), or the committed fixture. Nothing is read to construct it; a source fetches and verifies its pinned files on first iteration. `--n` selects questions with `Take` and never truncates the corpus. Custom compositions pass as `data=` without registration. QA runs reject missing QA, unmet `needs`, or corpus-less retrieval. | Corpus and evaluation identities are the sources' fingerprints (pinned digests, parser version, record contract), so an identity lookup never parses a dataset. Chunk ids are `chunk_id(document_id, ordinal)`, stable between fixture and full corpus. |
-| 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/cache/`. |
+| 2 | build components | `bench/factories.py` | Embedder, reader LLM, judge LLM and reranker are built from the frozen configs. Each is wrapped in the disk cache keyed on the full effective request (model, prompt, params, adapter id). The judge must come from a different model family than the reader. | Call cache under `<cache root>/`. |
 | 3 | run identity | `bench/runstore.py`, `bench/runner.py: run_valid` | Hashes dataset, pipeline, config, corpus and question fingerprints, embedding and reranker spec, reader and judge model, seed, replicate, viewer, and both prompt hashes, before anything is read. A completed run with that identity is returned when the manifests of every stage it ran still validate; a code edit anywhere those stages executed means the pipeline runs again and each stage fetches or recomputes on its own. `--force` starts a fresh run whose stages still fetch; `--resume` continues a running or failed run with the same identity, its finished questions served from the call cache. `--replicates N` runs N replicates under derived seeds. | `runs` row with the identity fields, `experiment_id`, `replicate`, git sha, dirty flag, host and, at the end, `code_hash` over the stage manifests; `prices` snapshot for the models used. |
 | 4 | corpus and questions | `bench/stages.py: corpus_frames, questions` | The corpus read once through loaders and collators into the canonical frames, and the questions frame with the cross-source checks (unique document ids, every gold chunk in the corpus). | Artifacts `frames` and `frame`, fetched by every later run over the same sources. |
 | 5 | ingest | `bench/stages.py: ingest` | One SQLite file per corpus at `stores/<dataset>-<corpus hash>.sqlite`, bound to that corpus by hash. Documents, grants and chunks are written once; FTS5 rows and ACL tokens are maintained by triggers. | A store effect: the store's `effects` table answers the next run. Event `index.documents`. |
 | 6 | embed | `bench/stages.py: embed` | Dense and hybrid only. Finds the chunks that have no vector for this `EmbeddingSpec`, embeds them in batches through the cached embedder, and writes them to a sqlite-vec `vec0` table named after the spec hash and partitioned by ACL hash. | A store effect. Event `index.embed`. Vectors persist in the store; the call cache makes a second machine-local run free. |
 | 7 | retrieve | `bench/stages.py: retrieve` over `retrieve/stages.py` | One call over all questions, returning `(question_id, chunk_id, rank, score)`. Filtering by viewer happens inside the store's FTS and vector queries, before the top-k cut. | Artifact `frame`. Event `retrieve` with reranker call counts. |
 | 8 | answer | `bench/stages.py: answer` over `generate/reader.py`, `eval/judge.py`, `eval/metrics.py` | Per question: the top-k passages and the question go into one prompt with a JSON answer schema; the optional judge asks whether the answer matches any gold alias; EM and token F1 with HotpotQA normalisation, max over aliases; Contain-Acc; Judge-Acc; R@2 and R@5 on gold passages; tokens, USD, latency, passage count. Seeded through the reader and judge adapters. | One `run_questions` row per question, committed in its own transaction with its `read` and `judge` events, so a crash loses at most one question. Artifact `frame` of the content columns; a replicate with a seed-sensitive reader recomputes it, one with a deterministic reader fetches it. |
-| 10 | finish | `bench/runner.py` | Records the store file as an artifact with its hash, sets the run status to `ok` or `failed`, and stores wall time and cache hit and miss counts. | `run_artifacts`, `runs.status`. |
+| 9 | finish | `bench/runner.py` | Records the store identity as an artifact, sets the run status to `ok` or `failed`, and stores wall time and cache hit and miss counts. | `run_artifacts`, `runs.status`. |
 
 ## Pipelines
 
@@ -66,8 +66,7 @@ fails to load.
 ## An extraction run
 
 `triplum bench extract` (library: `bench.runner.run_extraction(ExtractConfig)`) builds the
-graph for a dataset with a non-LLM extractor and scores it against the gold triples. Spec:
-[specs/2026-09-17-extraction-baseline.md](specs/2026-09-17-extraction-baseline.md).
+graph for a dataset with a non-LLM extractor and scores it against the gold triples.
 
 | # | step | module | what happens | recorded / cached |
 |---|---|---|---|---|
@@ -105,105 +104,16 @@ The call cache, one store per corpus and `runs.db` live under the cache root (`$
 default `~/.cache/triplum`); `--cache-root` and `--runstore` override it. Dataset files live
 under `$TRIPLUM_DATA` (default `~/.cache/triplum/data`) regardless of the cache root.
 
-## Implemented and planned
+## Current rewrite boundary
 
-`triplum.utils.data` provides task-independent indexed and streaming dataset bases, `Take` for
-prefix selection, `RecordDataset` for in-memory records, and a lazy loader with custom
-collation and native-batch pass-through. The built-in sources are lazy and streamable
-([datasets.md](datasets.md)); the runner still materializes them, so consuming a corpus in
-batches inside the store is the next boundary, not this one.
-
-Implemented (sub-project 2, part 1; spec in
-[specs/2026-09-16-harness-and-baselines.md](specs/2026-09-16-harness-and-baselines.md)):
-
-- **Data layer**: the eight canonical Arrow schemas in `crates/triplum-core`, exposed through
-  `triplum._core`; `Viewer` with principals and both as-of instants.
-- **Store**: SQLite: documents, system-versioned grants, chunks, FTS5 with ACL tokens,
-  sqlite-vec per embedding spec; and the graph side, `put_graph`, `facts`, `mentions`,
-  `neighbours`, where a fact is visible only through a fully visible support group and both
-  as-of instants, and traversal follows visible `same_as` facts only.
-- **Protocols with disk cache**: `LLM` (OpenAI-compatible, CLI subprocess, fake), `Embedder`
-  (OpenAI-compatible, sentence-transformers, fastembed, fake), `Reranker` (cross-encoder, fake).
-- **Data loading**: `utils.data.Dataset` and `IterableDataset` require source-owned fingerprints;
-  `DataLoader` lazily batches arbitrary records or passes native batches through. No length,
-  registry, task schema or replay is required for streaming. Records at the boundary are the
-  pydantic `Document`, `Question` and `Triple`; `datasets.collate` projects them onto the
-  canonical frames. Run identity comes from source fingerprints without a read.
-- **Datasets**: a catalog (`datasets/registry.py`) of 37 pinned datasets, each a set of lazy
-  source classes that download on first use, with canonical 20-question fixtures; HotpotQA, MuSiQue, 2WikiMultiHopQA
-  under the HippoRAG 1000-question protocol are the default set. The others cover multi-hop with
-  gold chains (MoreHopQA, the full HotpotQA/2Wiki/MuSiQue dev sets, BrowseComp-Plus), abstention
-  (MultiHop-RAG, MuSiQue twins), temporal ingestion (ECT-QA, TEMPO, MQuAKE), memory
-  (LongMemEval), access control (GateMem), question-only sets (PopQA, EntityQuestions, NQ-Open,
-  AmbigQA, Bamboogle, FreshQA, ARC), reading comprehension (SQuAD 1.1/2.0, BoolQ), long documents
-  (QuALITY, QASPER), a KG as source (MetaQA) and text-to-triple gold (GraphJudge, GenWiki, CaRB, CoNLL04, SciERC).
-  `triplum data` lists them; the contract is `docs/specs/2026-09-17-builtin-datasets.md`.
-  A folder of local PDF, Word, Markdown or text files is a dataset too (`--dataset ~/papers`,
-  optional `questions.jsonl`; text layer only, no OCR): `docs/specs/2026-09-17-local-files.md`.
-- **Pipelines**: the six above, each a named function in `retrieve/pipelines.py`. **Metrics**: EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost,
-  latency, indexing time.
-- **Run store and tooling**: identity lookup, force, resume, price snapshots, events, and the
-  commands in the table above.
-- **Extraction baseline** (spec in
-  [specs/2026-09-17-extraction-baseline.md](specs/2026-09-17-extraction-baseline.md)): the
-  `rules` and `small_model` extractors, resolvers, the graph identity, `bench extract` and the
-  intrinsic metrics; numbers below.
-
-### Extraction baseline numbers
-
-Rules extractor (`en_core_web_sm` 3.8.0, rule set v1) on the committed fixtures, 2026-09-17,
-Apple laptop, one process. Exact needs all three normalised strings equal; partial is the
-one-to-one CaRB-style match. `n` is chunks. Full-set runs replace these rows when made.
-
-| dataset | n | entities | facts | claims accepted / subordinate / ungrounded | pred | gold | exact P / R / F1 | partial P / R / F1 | span F1 | chunks/s | `same_as` with `exact` |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| carb | 40 | 190 | 305 | 41 / 22 / 24 | 41 | 151 | 0 / 0 / 0 | 0.195 / 0.053 / 0.083 | | 82 | 1 |
-| conll04 | 40 | 234 | 418 | 45 / 40 / 20 | 45 | 57 | 0 / 0 / 0 | 0.022 / 0.018 / 0.020 | 0.543 | 139 | 16 |
-| scierc | 40 | 221 | 263 | 17 / 31 / 26 | 17 | 71 | 0 / 0 / 0 | 0 / 0 / 0 | 0.446 | 141 | 44 |
-| genwiki | 40 | 193 | 430 | 86 / 12 / 25 | 84 | 180 | 0 / 0 / 0 | 0 / 0 / 0 | 0.588 | 164 | 77 |
-| graphjudge_genwiki | 40 | 205 | 409 | 61 / 17 / 37 | 61 | 160 | 0 / 0 / 0 | 0 / 0 / 0 | | 169 | 17 |
-| graphjudge_scierc | 40 | 995 | 1282 | 96 / 134 / 148 | 96 | 401 | 0 / 0 / 0 | 0 / 0 / 0 | | 37 | 416 |
-| graphjudge_rebel | 40 | 638 | 1235 | 157 / 90 / 143 | 155 | 114 | 0 / 0 / 0 | 0 / 0 / 0 | | 54 | 54 |
-| twowiki (evidences, recall only) | 219 | 3232 | 6582 | 868 / 381 / 941 | 849 | 50 | R 0 | R 0 | | 56 | 3325 |
-| metaqa (synthetic) | 170 | 16233 | 74985 | 15490 / 422 / 799 | 15418 | 524 | 0 / 0 / 0 | 0.022 / 0.206 / 0.039 | | 6.1 | 9843 |
-
-What the rows say. The rules extractor produces verb-lemma predicates (`found_in`, `be`), so
-against schema predicates (`OrgBased_In`, `country`, `mother`) exact is zero by construction
-and partial only matches where the gold predicate is verbal (CaRB, MetaQA's templates). Its
-span recall on the typed sets (CoNLL04 0.72, SciERC 0.57, GenWiki 0.58) is the number that
-carries over to `small_model`, whose relation vocabulary is the dataset's. Subordinate and
-ungrounded counts are the cost of the v1 restriction to independent clauses and grounded
-arguments. `same_as` counts grow quadratically with repeated names (MetaQA, 2Wiki) because the
-exact resolver links every pair, each with its own two-chunk evidence. MetaQA's duplicate rate
-of 0.69 is the forward-plus-inverse template restating every relation under both entities,
-not the extractor. `small_model` rows are
-pending the weight download.
-
-Where the code differs from the spec's architecture sketch: there is no `ingest/chunking.py`
-(the protocol makes one passage one chunk, so the loader builds chunks directly; local files
-are packed by paragraph in `ingest/files.py`); the retrieval
-stages live in one file, `retrieve/stages.py`; one loader covers all three datasets; FTS and
-vector logic sit inside `store/sqlite/store.py`; there is no API reranker adapter and no
-`data/frames.py`. The extraction plan's deviations from its spec are listed in
-[plans/2026-09-17-extraction-baseline.md](plans/2026-09-17-extraction-baseline.md).
-
-Planned, in the order of the design record:
-
-1. **Temporal and ACL contract fixtures** at toy scale, gating on zero retrieval-level leakage,
-   before any graph ingestion.
-2. **2a, graph retrieval pipelines**: hierarchical chunking, Liao et al. best-practice
-   GraphRAG, personalised PageRank over the KG, and a graph-disabled ablation with the same
-   evidence budget, over the graph the extraction baseline builds.
-3. **2b, KG-construction variants**: LLM extractors (open IE versus schema-based versus
-   ontology-aware) behind the same `Extractor` protocol, atomic-fact decomposition on and off,
-   coreference and embedding resolution; measured against the non-LLM baseline rows above and
-   downstream.
-4. **2c, SQLite versus Neo4j** behind the same `Store` protocol.
-5. **2d, embedding sweep**: the harness for it exists; the local-model runs are in progress and
-   the winner gets pinned for 2a to 2c.
-6. Further backends (Oxigraph, LadybugDB), the temporal and ACL synthetic benchmark, KG
-   construction V&V, private benchmarks.
-
+The implemented modules and public interfaces are mapped in [api/index.md](api/index.md).
+The runner currently materializes corpus frames before ingestion. The next foundation change
+is store-owned, batch-atomic ingestion; the [stack walk](plans/2026-09-17-stack-walk.md)
+tracks the subsequent interfaces and the [caching gap map](specs/2026-09-17-caching-and-monitoring.md)
+tracks the requirements still open. Graph retrieval, LLM extraction and store comparison follow
+those interfaces and the temporal/ACL fixture gate. The earlier fixture-scale extraction
+measurements and development records are recoverable from the
+[temporary note](notes/previous-foundation.md).
 
 ## Forgiving CLI input
 

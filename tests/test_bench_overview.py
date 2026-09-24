@@ -1,9 +1,10 @@
 import sqlite3
 
 from rich.text import Text
+from typer.testing import CliRunner
+
 from triplum.bench.cli import app
 from triplum.bench.runstore import RunStore
-from typer.testing import CliRunner
 
 
 def test_bench_overview_missing_store_does_not_create_cache(tmp_path, monkeypatch):

@@ -7,24 +7,30 @@ reused across runs, and any run can be forced to recompute. This page is the con
 ## Run identity
 
 A run's identity is the hash of these fields (see `IDENTITY_FIELDS` in
-`python/triplum/bench/runstore.py`):
+`src/triplum/bench/runstore.py`):
 
 | field | what it pins |
 |---|---|
+| kind | QA or extraction run |
 | dataset, corpus_hash, questions_hash | which data: the sources' fingerprints (pinned file digests, parser version, record contract, selection), computed without reading a file, so a parser version bump is a new identity even when the source bytes did not change; the selection (`n`) is inside the questions' fingerprint |
 | pipeline, config_hash | the pipeline name and the hash of the full `PipelineConfig` (top-k, candidates, embedder config, reranker config, reader config) |
 | embedding_spec, reranker_spec | hashes of the model specs actually instantiated (model, revision, dims, prefixes, quantisation, runtime) |
 | reader_model, judge_model, judge_hash, reader_prompt_hash, judge_prompt_hash | which models answered and judged (the reader's full config is inside `config_hash`, the judge's inside `judge_hash`: endpoint, argv, generation parameters), and the exact prompt text and output schema |
 | seed, replicate | the root seed and the replicate index; each replicate's stages draw from a seed derived from both, which reaches seed-sensitive adapters' requests and cache keys |
 | viewer_json | the principals the run was executed as |
+| extractor_spec, resolver_spec | the extraction and resolution configuration |
 | (code, validated) | code is not a hashed field. Every stage a run executed recorded a manifest of the first-party functions it ran, the constants they read and the distributions involved; a stored run matches only when every one of those manifests still hashes the same in the current process (`runner.run_valid`). Editing the CLI, the report or the docs changes nothing; editing a helper a stage calls, or a prompt constant, invalidates exactly the runs and artifacts that executed it. `code_hash` on the run summarises the manifests afterwards; the git sha and dirty flag are bookkeeping. |
 
 Two runs with the same identity are the same experiment. `run_benchmark` looks the identity up
 first and returns the existing run id unless `force` is set. Changing anything in the table above
 produces a new identity; editing a prompt string or a stage's source keeps the identity and fails
 the manifest validation, which is the same outcome: the pipeline runs, and each stage fetches its
-artifact when its own code and inputs are unchanged and recomputes otherwise
-([`specs/2026-09-17-stages.md`](specs/2026-09-17-stages.md)).
+artifact when its own code and inputs are unchanged and recomputes otherwise.
+
+The `graph_identity` column is filled after extraction. Its value is therefore a result, not a
+pre-run discriminator: the `IDENTITY_FIELDS` tuple contains its slot, but extraction hashes
+`None` there before the graph exists. Graph artifacts and store effects carry the resolved
+identity. The stack walk tracks whether this field should remain in that tuple.
 
 Things deliberately *outside* the identity: host name and wall time (recorded, not identifying),
 the git sha and dirty flag (recorded; the manifests are what matters), cache state (recorded as
@@ -82,10 +88,10 @@ triplum bench tail <run_id> [--once]                        # done/total and the
 ```
 
 Passage text in `inspect` is resolved from the store artifact recorded with the run (path and
-sha256); if the file is gone, ids are shown. `diff` never averages over missing questions: ids
+store identity); if the file is gone, ids are shown. `diff` never averages over missing questions: ids
 present in only one run are listed separately. These are projections over the SQLite run store
-(`python/triplum/bench/inspect.py`), not a second log format; see
-`docs/research/tooling-event-logs.md` for why the run store stays SQLite-only. To recompute
+(`src/triplum/bench/inspect.py`); see
+the [temporary foundation note](notes/previous-foundation.md) for the earlier event-log comparison. To recompute
 model calls as well, point `TRIPLUM_CACHE` at an empty directory. To rebuild a store, delete the
 store file (`~/.cache/triplum/stores/<dataset>-<corpus_hash>.sqlite`); it is regenerated from the
 verified protocol files.

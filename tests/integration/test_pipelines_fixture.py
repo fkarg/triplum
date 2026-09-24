@@ -1,4 +1,5 @@
 import pytest
+
 from triplum.bench.config import (
     EmbedderConfig,
     LLMConfig,

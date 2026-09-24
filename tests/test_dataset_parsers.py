@@ -10,6 +10,7 @@ import zipfile
 
 import polars as pl
 import pytest
+
 from triplum.bench.inputs import Benchmark, materialize
 from triplum.data.corpus import chunk_id, content_id
 from triplum.datasets import (

@@ -56,7 +56,8 @@ not affect identity. This is not Python `__hash__`.
 the source's declared key (an upstream id, else a content key), never parse position; chunk ids
 are `chunk_id(document_id, ordinal)`, so a question resolves its gold from its own record.
 Collators project record lists onto the canonical frames; the consumer chooses the batch size.
-Chunking beyond source segments is a later stage. Spec: `../specs/2026-09-17-builtin-datasets.md`.
+Chunking beyond source segments is a later stage. The earlier source design is in the
+[temporary foundation note](../notes/previous-foundation.md).
 
 Canonical tables, defined once as Arrow schemas owned by `triplum-core`. Times are UTC instants
 (integer microseconds); intervals are closed-open; an open end uses a max sentinel rather than NULL
@@ -234,11 +235,11 @@ a library whose users override helpers cannot rely on anyone bumping one. Author
 reads everything that shapes its output from its arguments and constants, never from mutable
 module state or the environment. Store effects (ingestion, embeddings, the graph) are recorded by
 the store itself. Provenance (artifacts, invocations, their input edges, manifests) lives in the
-run store, so lineage is a query. The cache root is one directory per machine. Cost and runtime
-are metrics: every call and stage writes a timed, priced event to the run store, and effective
+run store, so lineage is a query. The cache root is one directory per machine. The SQLite run
+store is the sole live event stream: every call and stage writes a timed, priced event, and effective
 cost and runtime per question are reported next to quality. No stage may *require* the cache to
-function, but every stage participates. Amended 2026-09-18; spec:
-`docs/specs/2026-09-17-stages.md`. The earlier form (a hash of the pipeline's source files in
+function, but every stage participates. Amended 2026-09-18. The earlier stage design is in the
+[temporary foundation note](../notes/previous-foundation.md). The earlier form (a hash of the pipeline's source files in
 the run identity) is superseded.
 
 ### D7. Store protocol with SQLite first
@@ -281,10 +282,11 @@ runs `(pipeline factory, dataset, evaluators, viewer)`, and writes one SQLite ru
 identifies everything that produced an answer: dataset and artifact ids (document revisions, chunking,
 extraction output, resolution decisions, index builds), code version, pipeline config hash, model ids
 and revisions, embedding spec, prompts, seeds, effective viewer and time context, evaluator config,
-and cache state; construction cost and per-query cost are recorded separately with component
-timings. Reports are Polars frames. Code is identified per pipeline by a hash of the source files
-it executes (not the git sha), so unrelated edits do not orphan runs and a crashed run can be
-resumed by identity; the contract is `docs/benchmarking.md`.
+and evaluator config. Cache hits and misses are measured outcomes, not identity fields.
+Construction cost and per-query cost are recorded separately with component timings. Reports
+are Polars frames. Stage code manifests validate reuse as described in D6a; the run identity is
+computed from data and configuration before sources are read. The operational contract is
+[`../benchmarking.md`](../benchmarking.md).
 
 Protocol commitments from [`benchmarks.md`](benchmarks.md): the HippoRAG
 1000-question corpora rebuilt from upstream releases and verified by content hash (HotpotQA is
@@ -321,7 +323,7 @@ not compared across machines and caches are not shared.
 
 
 Cargo workspace under `crates/` (Polars layout: `[workspace.package]`, feature-flagged umbrella
-crate, separate bindings crate). Python under `python/triplum/`, maturin mixed layout, uv. marimo
+crate, separate bindings crate). Python under `src/triplum/`, maturin mixed layout, uv. marimo
 notebooks (plain `.py`, git-diffable) over the same package; Rust exploration stays in cargo examples
 and tests. pytest and cargo test; one integration test per pipeline on a 20-question fixture.
 
@@ -357,188 +359,31 @@ the extraction baseline, caching and run monitoring are functional end to end.
 
 `triplum`. Free on PyPI and crates.io as of 2026-09-16. See [`naming.md`](naming.md).
 
-## Sub-projects, in order
+## Research sequence
 
-1. **Foundation** (this record, README, research docs, SOTA monitor).
-2. **First concrete task**, three threads sharing one harness and one corpus set (HotpotQA, MuSiQue,
-   2WikiMultiHopQA under the 1000-question protocol), each answering one question:
-   - **2a. Retrieval pipelines.** Runner plus naive dense baseline reporting numbers first; then
-     hybrid with rerank; then Liao et al. best-practice GraphRAG and PPR-over-KG, with a matched
-     graph-disabled ablation so a graph benefit is not merely a reranker or evidence-budget benefit.
-     Question: which retrieval design wins on multi-hop QA, and by how much over the baselines.
-   - **2b. KG-construction variants.** Same corpus, same retriever, swap the construction: open
-     information extraction vs schema-based prompts vs ontology-aware prompts; with and without
-     atomic-fact decomposition; entity-resolution variants (exact, fuzzy, embedding, LLM). Measured
-     intrinsically (Text2KGBench-style triple P/R/F1 and ontology conformance where a schema exists)
-     and extrinsically (downstream QA delta). Question: how much does construction quality move
-     retrieval quality, and which construction choices matter. Background survey in
-     [`kg-construction.md`](kg-construction.md).
-   - **2c. Store comparison, SQLite vs Neo4j.** Same graph, same queries, both stores behind the
-     `Store` protocol: k-hop neighbourhood, filtered vector search, BM25, PPR, pattern queries, at
-     increasing corpus scale and viewer selectivity. Question: where do the benefits of a graph
-     database start to show for basic GraphRAG usage. Methodology in
-     [`store-comparison.md`](store-comparison.md).
-   - **2d. Embedding sweep.** The dense baseline rerun once per embedding spec (API and local
-     models, several size tiers; list in [`embeddings.md`](embeddings.md)); the winner is then
-     pinned for 2a to 2c. Runs first, because the embedder swing on multi-hop recall is larger
-     than any architecture effect, and it is the cheapest sweep (no graph rebuild).
-   Part 1 of sub-project 2 (harness, non-graph baselines, embedding sweep) is specified in
-   [`../specs/2026-09-16-harness-and-baselines.md`](../specs/2026-09-16-harness-and-baselines.md).
-   Before any graph ingestion in 2a or 2b: small deterministic temporal/ACL contract fixtures (the
-   seven question families in `temporal-and-permissions.md`, at toy scale) gating on retrieval-level
-   leakage of zero.
-3. **Further backends**: Oxigraph and LadybugDB implementations of `Store`, same benchmark as 2c.
-4. **Temporal + ACL synthetic benchmark** and question synthesis for gold-less corpora.
-5. **KG-construction V&V** in full: Text2KGBench (LettrIA-refined), SHACL (pyshacl or `pyrudof`),
-   mapped onto the Schmidt et al. taxonomy.
-6. Private benchmarks; more pipelines (agentic iterative, community summaries once principal-scoped,
-   LightRAG-style local/global); non-QA applications.
-
-Each sub-project gets its own spec and plan before code.
+The [foundation stack walk](../plans/2026-09-17-stack-walk.md) is the current work order.
+After its interfaces settle, the first comparisons are graph retrieval against matched
+non-graph baselines, KG-construction variants against the non-LLM extractor, SQLite against
+Neo4j, and an embedding sweep with the embedder held fixed across pipeline comparisons.
+Small temporal and ACL fixtures gate graph retrieval on zero leakage. Later work covers
+additional backends, private corpora and non-QA applications. Each comparison gets a spec and
+plan at its own design gate; the [research notes](README.md) hold candidate evidence.
 
 ## Review record
 
-- 2026-09-18, `peer-review --mode diff-review` on the stages implementation
-  (`../specs/2026-09-17-stages.md`), peer: Codex (GPT family). Verdict "challenges", five
-  probes. **Found unique defects, fixed with tests**: store effects fetched without manifest
-  validation, empty streams crashing at publication, judge configuration outside the run
-  identity, untyped frame dictionaries. **Rejected**: run reuse gated on artifact presence (a run
-  is a recorded result). Full record in the spec.
+This is the outcome ledger, not a second design narrative. The earlier review details and
+falsification probes are recoverable through the commits in the
+[temporary foundation note](../notes/previous-foundation.md). Binding decisions are in D1–D10
+above and the active contracts they link.
 
-- 2026-09-17, `peer-review --mode design` on the stages spec
-  (`../specs/2026-09-17-stages.md`), peer: Codex (GPT family). Verdict "challenges", seven
-  falsification attempts, two as local probes. **Changed the decision** on five points
-  (stream discovery lifetime, structural versus execution key, store-owned effect records,
-  seeding by adapter argument, atomic publication with completion records). **Refuted** the
-  soundness argument for trace-discovered manifests under mutable dispatch registries; the
-  contract now captures dispatch state, with the peer's conservative whole-source hash recorded
-  as the alternative pending the owner's call. **Rejected**: spooling streams before use. Full
-  record in the spec.
-
-- 2026-09-17, `peer-review --mode design` on the built-in datasets spec
-  (`../specs/2026-09-17-builtin-datasets.md`), peer: Codex (GPT family). Verdict "challenges",
-  ten executed falsification attempts. **Changed the decision** on eight findings: identity is
-  a versioned recipe (file digests, parser version, shared record and id contract version,
-  resolved parameters) and the claim that a fixture test catches a forgotten bump was refuted
-  and withdrawn; no universal content-id rule but a per-source key and gold-resolution table,
-  confirmed on the pinned files (2Wiki question-side text differs from its corpus text, so
-  2Wiki and HotpotQA key by title, MuSiQue by title and text); record-local checks stay at
-  parse time and cross-source checks run at `materialize` before scoring; per-source unit
-  table; `Take` semantics pinned and question-linked triples restricted at `materialize`;
-  segment invariants validated, fixture ordinals preserved; `Source[T]` is a union, not a
-  subtype claim. **Added verification** on the cost of two independent reads. **No decision
-  impact**: the peer's counterproposal kept the architecture. Full record in the spec.
-
-- 2026-09-17, `peer-review --mode diff-review` on the built-in datasets implementation, peer:
-  Codex (GPT family). Verdict "challenges", nine executed probes. **Found unique defects, all
-  fixed with regression tests**: the gold check was skipped for an empty corpus; the folder
-  question identity omitted the files it parses; question parts bound whole manifests so a
-  question access would fetch a multi-GB corpus (and BrowseComp-Plus's corpus shards are only
-  distinguishable by URL, which the old parser got wrong); fixture subsetting could drop a
-  segment's parent and skipped validation; fixture writing consumed one-shot sources twice;
-  negative fixture selection sliced instead of failing. **No decision impact** on the
-  architecture. Full list in the spec's review record.
-
-- 2026-09-17, dataset identity follow-up: owner requires dataset-owned `fingerprint()`, not an
-  optional hook or Python `__hash__`. A later cross-model call returned no model answer because
-  its OAuth credentials expired. Fresh-context GPT-family fallback review **found unique
-  defects**: falsy callable collators were ignored, and JSON row hashing rejected binary/temporal
-  values and lost nanoseconds. Regression tests cover these and physical-chunk independence;
-  frame hashing rebuilds Arrow buffers from precision-preserving scalars. Follow-up review
-  **found unique defects** in dictionary serialization (colliding category values and nested
-  struct reconstruction); decoding dictionary values before serialization fixes both, covered
-  by categorical, enum, list and struct tests. Early cache lookup from
-  source identity and task-selective materialization remain deferred boundary work.
-
-- 2026-09-17, dataset/loader redesign, owner-approved: generic indexed `Dataset[T]` and
-  streaming `IterableDataset[T]`, with composable `DataLoader`, replace the universal five-frame
-  dataset outright. Corpus and evaluation sources are composed by the benchmark layer. Existing
-  algorithms may explicitly materialize inputs while their boundaries are addressed separately.
-  Claude Opus 5 design review **added verification** for ACL/partial-ingestion/global-resolution
-  semantics; its no-loader/eager-evaluation counterproposal was **rejected** as contrary to the
-  extension goal, and its batch-dependent digest proposal was **rejected** because batching must
-  not alter content identity. Spec: `../specs/2026-09-17-datasets-and-loaders.md`.
-
-- 2026-09-17, `peer-review --mode diff-review` on the extraction baseline (store graph side,
-  extract package, metrics, run store), peer: Codex (GPT family). Verdict "challenges", with
-  executed probes. **Found unique defects, all fixed with regression tests**: four visibility
-  holes in the store's graph side (delete cascade through chunk replacement, unchecked support
-  recording time, viewer-blind invalidation, mentions without a visible fact), history
-  overwrite in `put_graph`, a non-atomic run-store rebuild, three scoring errors, an apposition
-  clause-status gap, resolver idempotence. **Changed a decision**: the graph identity now
-  contains the extract-then-resolve composition (`extract.stages.build`). One finding rejected
-  (typed-score policy; documented as a plan deviation). Full list in the spec.
-
-- 2026-09-16, `peer-review --mode diff-review` on the part-2 harness (datasets, metrics, stages,
-  runner, run store, CLI), peer: Codex (GPT family). Verdict "challenges". **Found unique defects,
-  all fixed with regression tests**: unmapped gold passages silently scored recall 1.0 (loader now
-  raises on missing or duplicate keys; verified zero on the full corpora); store reuse was decided
-  by chunk count (now bound to the corpus hash in the store's meta table); run identity omitted the
-  dirty flag and the prompt text (now hashes of reader and judge prompts, plus dirty); the seed was
-  recorded but never sent to the model (now in GenParams, so in the cache key); judge usage was
-  discarded and cached calls had null cost (judge returns its completion; cost is always computed
-  and `cached` is a separate flag; report shows nominal vs spent); prices were not snapshotted per
-  run (new `run_prices` table); the judge-family rule was not enforced (now raises for real models);
-  the reranker was neither cached nor recorded (CachedReranker, pair count in the retrieve event);
-  ties at the top-k cut were nondeterministic (chunk id tie-break everywhere). **Simplification
-  accepted**: dead `RunConfig.from_json` removed. **Confirmed by the peer**: normalisation and F1
-  match the official HotpotQA evaluator; hidden chunks cannot reach the hybrid stage.
-- 2026-09-16, `peer-review --mode diff-review` on the part-1 implementation (scaffold, data layer,
-  store, model protocols), peer: Codex (GPT family, CLI default model). Verdict "challenges".
-  **Found unique defects, all fixed with regression tests**: `INSERT OR REPLACE` on documents
-  cascaded and deleted the document's chunks and FTS rows on a second `put_documents`; grant
-  changes through `put_documents` left `chunks.acl_tokens` and vec0 partitions stale; vector search
-  cut top-k before the exact visibility check and the principal-set hash used an ambiguous NUL
-  join; the LLM cache key ignored adapter configuration (`base_url`, CLI argv), letting two
-  endpoints replay each other's answers. **Also fixed**: `level` typed Int64 in the store's chunk
-  frame against Int32 in the canonical schema (the Polars view is now derived from the Arrow
-  schema); a tmp-file race in the cache; fastembed's constant revision (now package version).
-  **Rejected/no impact**: none. The peer could not execute the Python tests (no polars on its
-  host) or build the PyO3 crate (host Python 3.9); those paths are covered by our own suite.
-
-- 2026-09-16, `peer-review --mode design`, peer: Codex (GPT family, CLI default model). Verdict
-  "challenges". Ten executable falsification attempts. **Changed the decision**: separate
-  proposition / assertion / extraction identities; `recorded_at` on support rows; entity attributes
-  and resolution merges as facts; support groups with ANY-group-fully-visible semantics;
-  viewer-relative invalidation; cache key on the full effective request; run records identifying
-  constructed artifacts; graph kernels on the viewer's projection; v1 restricted to
-  single-chunk support. **Rejected**: an unconditional "SQLite conversion will dominate" claim (the
-  peer itself rejected it for lack of measurements; D7 now says to profile first). **Survived**:
-  timeless entity ids (rename attack), binary role facts for n-ary events (grouping attack),
-  Python-first composition, SQLite-first, the run store, marimo and maturin layout.
-
-- 2026-09-17, `peer-review --mode design` on CLI selection, peer **Claude Opus 5**.
-  Verdict challenges; thirteen named falsification attempts. **Changed decision:** opt-in
-  local coverage (explicit in CI) and --no-input on groups/commands as well as root.
-  **Added verification:** no database creation on missing-run lookup, data-fetch choices,
-  missing diff operand, distinct diff inputs, canonical rerun identity and opaque suffixes.
-  **Rejected with reason:** dropping interactive menus, fuzzy IDs and command prefixes
-  conflicts with the user's explicit requirement; multiple matches require a choice and scripts should use full names. The user later
-  explicitly chose automatic acceptance of a single plausible fuzzy match. Question selection remains single-valued. Full rationale
-  in the selection spec. The peer also confirmed the vendored-Click type incompatibility;
-  implementation uses Typer callbacks and its own group class, not standalone Click types.
-
-- 2026-09-17, fresh-context GPT-family subagent review of CLI selection: **added
-  verification** for unknown IDs in populated stores, truly empty stores, omitted question
-  filters returning every question and canonical sweep choices. No blocking defect found;
-  made report accept --no-input consistently with the other commands.
-
-- 2026-09-17, final `peer-review --mode diff-review` attempted with Claude Opus 5: no
-  review result (OAuth token expired, HTTP 401). **No decision impact; untested by that
-  peer.** Fresh-context GPT-family review completed instead: no blocking code defect;
-  **added verification** above, and corrected stale docs after the user explicitly chose
-  automatic acceptance of a single plausible fuzzy match. Its 40 CLI tests passed.
-
-- 2026-09-17, typing and modularity design review, peer **Claude Opus 5**; thirteen named
-  falsification attempts. **Changed decision:** run the optional-model type check on macOS
-  rather than install the CUDA dependency stack on Linux. **Added verification:** precise
-  Viewer constructor/helper types and whole-project Ruff scope. **Rejected with reason:**
-  replacing the explicitly requested `uvx` hook with `uv run`; the tool-version difference is
-  documented. The claim that the global hooks path bypasses `.githooks` was false: the
-  installed dispatcher explicitly delegates there. Executable mode is enabled at installation.
-  Dataset migration/typing observations concerned concurrent, separate work and are not included
-  in this commit. Fingerprint omissions and RunStore ownership are recorded above as follow-ups;
-  changing the missing-run API or introducing broad splits is outside this typing task.
-- 2026-09-17, fresh-context GPT-family hook/typing review: **added verification** for alternate
-  indexes, dependency-environment reuse and snapshot cleanup. Its editable-install leakage
-  attack confirmed ty rejects modules absent from the snapshot. No blocking defect found.
+| Gate | Peer | Outcome |
+|---|---|---|
+| Initial architecture, 2026-09-16 | Codex, GPT family | **Changed decisions:** proposition/assertion/support identities, viewer-relative invalidation, derived visibility, full-request cache keys, and viewer-projected graph kernels. **Rejected:** an unmeasured SQLite conversion bottleneck claim. |
+| Harness implementation, 2026-09-16 | Codex, GPT family | **Found unique defects**, fixed with tests: ACL/index updates, visibility before top-k, cache key scope, gold mapping, run identity, judge/cost accounting, and deterministic ranking. |
+| Dataset/loader redesign, 2026-09-17 | Claude Opus 5 | **Added verification** for atomic ingestion, ACL, and global resolution; **rejected** eager-only and batch-dependent identity proposals. |
+| Dataset identity and built-in sources, 2026-09-17 | Codex, GPT family; fresh-context GPT-family fallback | **Changed decisions** on versioned source fingerprints and source-specific ids; **found unique defects**, fixed with tests, in collators, frame hashing, fixtures, and gold checks. |
+| Extraction baseline, 2026-09-17 | Codex, GPT family | **Found unique defects**, fixed with tests, in graph visibility, provenance, history, scoring, and resolver idempotence; **changed** graph identity to cover extraction plus resolution. |
+| CLI selection, 2026-09-17 | Claude Opus 5; fresh-context GPT-family fallback | **Changed** non-interactive handling and single fuzzy-match policy; **added verification** for missing and ambiguous selections. A final Claude diff review failed authentication and had no decision impact. |
+| Typing and hooks, 2026-09-17 | Claude Opus 5; fresh-context GPT-family review | **Changed** optional-model type-check placement; **added verification** for snapshot isolation and whole-project checks; **rejected** replacing the requested `uvx` hook. |
+| Stage contract and implementation, 2026-09-17–18 | Codex, GPT family | **Changed decisions** on execution keys, stream lifetime, store effects, and artifact publication; **found unique defects**, fixed with tests, in manifest validation, empty streams, and judge identity. |
+| Foundation layout and documentation, 2026-09-24 | Fresh-context GPT-6 fallback; cross-model CLI unavailable | **Added verification** for package builds and preservation of live requirements. **Found unique documentation defects** in D8's code-identity wording, the premature R10 completion claim, and `graph_identity`'s ineffective pre-run identity slot; the docs now state the actual behavior and track the remaining decision. |

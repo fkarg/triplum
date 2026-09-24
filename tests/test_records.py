@@ -6,6 +6,7 @@ import json
 import polars as pl
 import pytest
 from pydantic import ValidationError
+
 from triplum.data.corpus import (
     CHUNK_SCHEMA,
     DOC_SCHEMA,

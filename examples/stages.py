@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import polars as pl
+
 from triplum.bench.runstore import RunStore
 from triplum.data.corpus import Document
 from triplum.stage import Run, active, stage

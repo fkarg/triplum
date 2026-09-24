@@ -2,8 +2,8 @@
 
 A source yields `Document` records: the document's text, the segments the source ships as
 units (passages, paragraphs, turns, pages), its grants and metadata. Identity is chosen by the
-source and never by parse position (spec `2026-09-17-builtin-datasets.md`, per-source key
-table). `CorpusBatch` is the canonical three-frame projection a collator makes from a list of
+source and never by parse position (see `docs/research/design.md` D2). `CorpusBatch` is the
+canonical three-frame projection a collator makes from a list of
 documents; it is what the store ingests.
 """
 

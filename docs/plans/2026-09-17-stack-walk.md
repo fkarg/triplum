@@ -1,11 +1,8 @@
 # Stack walk: interfaces bottom-up, then recombination
 
-Snapshot 2026-09-17. Owner direction: the first data-layer definitions were not what was
-intended; `utils.data` now has the PyTorch-shaped `Dataset`, `IterableDataset` and `DataLoader`
-(spec `2026-09-17-datasets-and-loaders.md`), and nothing above it has been reworked yet. The
-next work is to settle the interface of each component walking up the stack, and only then
-recombine components into pipelines and sub-projects. Sub-projects are not designed on the
-current, lossy boundaries.
+Snapshot 2026-09-24. The data sources, stage contract and runner have been reworked. The next
+boundary is store ingestion from `CorpusBatch` streams. Settle each remaining interface walking
+up the stack, then recombine components into pipelines and sub-projects.
 
 This plan lists the layers in walking order, what each layer currently is, the questions its
 interface must answer, and which requirements from the caching and monitoring spec
@@ -18,10 +15,11 @@ spec, a cross-model design review, and a commit before the next layer starts.
 ### 0. `utils.data` and `datasets` (done, owner's rework)
 
 `Dataset[T]`, `IterableDataset[T]`, `DataLoader[T, B]`, `Take`, `RecordDataset`; sources own
-`fingerprint()`. Built-in datasets reworked 2026-09-17 (`../specs/2026-09-17-builtin-datasets.md`):
+`fingerprint()`. Built-in datasets reworked 2026-09-17 (historical record in the
+[temporary note](../notes/previous-foundation.md)):
 lazy source classes over pinned files, pydantic records (`Document` with segments, `Question`,
 `Triple`), ids from each source's declared key, `Benchmark` holds datasets and the consumer
-batches, identity without reading. Stages added 2026-09-18 (`../specs/2026-09-17-stages.md`):
+batches, identity without reading. Stages added 2026-09-18 (same note):
 the runner is a composition of stages with data keys, trace-discovered code manifests,
 artifacts and provenance rows; the corpus is read once into a frames artifact and every later
 run fetches it. Consuming a corpus in batches into the store, with the store's `effects` table
@@ -99,10 +97,13 @@ a stage of generation or of evaluation for event accounting. Needed by: the leak
 Now: `RunConfig`, `ExtractConfig`, `run_benchmark`, `run_extraction`, the run store, the
 fingerprint, the CLI.
 
-Questions: identity from source fingerprints before any read (R6, R7); artifact cache layout
-(D-b); events with calls and hits (R11); progress rows (D-c, R13); store identity instead of a
-file hash (R14); one identity field list (R15); `cache status` and `prune` (R16); the logger
-(R17); the docs corrections (R18). This layer closes the caching and monitoring spec.
+Open questions: artifact cache layout (D-b); events with calls and hits (R11); progress rows
+(D-c, R13); `cache status` and `prune` (R16); the logger (R17); the remaining docs corrections
+(R18). Source-fingerprint lookup and persisted corpus artifacts (R6, R7), store identity (R14),
+and the shared identity field list (R15) landed with stages. `graph_identity` is currently
+filled after extraction, so its slot in the pre-run identity hashes `None`; decide whether to
+remove that ineffective slot when this layer settles the identity contract. This layer closes
+the caching and monitoring spec.
 
 ## Recombination, after the walk
 

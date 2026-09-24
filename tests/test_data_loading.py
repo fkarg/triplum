@@ -6,6 +6,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+
 from triplum.utils.data import DataLoader, Dataset, IterableDataset
 
 
@@ -246,6 +247,7 @@ def test_take_over_a_one_shot_source_adds_no_replay():
 
 def test_record_dataset_identity_is_ordered_content_recomputed_on_demand():
     from pydantic import BaseModel
+
     from triplum.utils.data import RecordDataset
 
     class Note(BaseModel):

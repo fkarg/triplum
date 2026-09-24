@@ -12,8 +12,8 @@ for the log. Re-check before pinning.
   metadata, feature-flagged umbrella crate, separate thin bindings crate, Python package name equal
   to import name, maturin build, pytest plus cargo test / clippy / miri.
 - **PyO3** 0.29.2 (2026-08-05): free-threaded Python is opt-out rather than opt-in since 0.28.0
-  (2026-02-01); 3.13t dropped in 0.29, 3.14t+ supported. **maturin** 1.15.0 (2026-08-24): mixed layout with `python/<pkg>/` plus `src/lib.rs`,
-  `[tool.maturin] python-source = "python"`, `module-name = "<pkg>._core"`. With uv, either
+  (2026-02-01); 3.13t dropped in 0.29, 3.14t+ supported. **maturin** 1.15.0 (2026-08-24): mixed layout; triplum now uses `src/triplum/` with Rust in `crates/`,
+  `[tool.maturin] python-source = "src"`, `module-name = "triplum._core"`. With uv, either
   `maturin develop --uv` or let `uv run` rebuild via
   `[tool.uv] cache-keys = [{file="pyproject.toml"},{file="Cargo.toml"},{file="**/*.rs"}]`
   (maturin issue #2314). Wheel matrix: abi3 at minimum supported Python, plus free-threaded variants.

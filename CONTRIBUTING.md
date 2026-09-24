@@ -46,12 +46,9 @@ model weights are marked `model`.
 
 ## Datasets and fixtures
 
-A dataset is a `Spec` in `python/triplum/eval/datasets/`: pinned files (URL, sha256, bytes in
-`manifest.json`) and a parser from the fetched files to the canonical frames. To add one:
-download the file once, add its pin to `manifest.json`, write the parser in the module for its
-family, list the module in `registry.py`, add a `::: module` line to `docs/api/eval.md`, a row to
-`docs/licences.md` and `tests/fixtures/ATTRIBUTION.md`, and a parser test on synthetic records in
-`tests/test_dataset_parsers.py`. Then build the fixture:
+Built-in sources live in `src/triplum/datasets/`. To add one, pin the upstream files in its
+source, implement `fingerprint()` and lazy record iteration, register the source, and add its
+licence and parser tests. Then build the fixture:
 
 ```
 uv run python scripts/make_fixture.py <name>
@@ -62,11 +59,10 @@ distractors. Every fixture runs under the BM25 and oracle pipelines in the integ
 
 ## Docs track the code
 
-`docs/flow.md` and `docs/api/index.md` describe the implementation state; a change that adds a
-module, a stage, a pipeline or a command, or moves something from planned to done, updates them
-in the same commit. Specs (`docs/specs/`) and plans (`docs/plans/`) are development records,
-kept out of the site navigation. `docs/research/design.md` holds decisions: change a decision
-in place, do not append a contradiction. Every page carries one snapshot date at the top.
+`docs/flow.md` describes implementation state; `docs/api/index.md` is the module map. Update
+them with the code they describe. `docs/research/design.md` holds live decisions: change a
+decision in place, do not append a contradiction. Temporary notes for layers being rewritten
+point to the relevant commits and are removed when their replacement contracts land.
 
 ## Commits and releases
 

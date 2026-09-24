@@ -1,97 +1,21 @@
 # Caching and run monitoring, end to end
 
-Snapshot 2026-09-17, updated 2026-09-18: gaps 7, 8 and 9 are closed and R6, R7, R9, R10, R14
-and R15 satisfied by the stages contract (`2026-09-17-stages.md`, commits `25861fe` to
-`40c5260`); the rest keep their layer. Status: **requirements and gap map, not yet a contract.**
-The owner is
-redefining the interfaces layer by layer (see
+Snapshot 2026-09-24. R6, R7, R9, R14 and R15 landed with stages (commits
+`25861fe` to `40c5260`). Status: **open requirements, not yet an implementation contract.**
+Interfaces are settled layer by layer in the
 [`../plans/2026-09-17-stack-walk.md`](../plans/2026-09-17-stack-walk.md)); each requirement
 below names the layer that must satisfy it, and its interface is decided when the walk reaches
 that layer. The existing contract this spec makes true is `docs/benchmarking.md` and design D6a.
 
-## Why now
+## Open gaps
 
-D9 sequences the documentation and examples work after "the extraction baseline, caching and
-run monitoring are functional end to end". The baseline is in. A read-only audit of caching and
-monitoring against the benchmarking contract (2026-09-17, findings below) shows they are not
-functional end to end: hit and miss counts are wrong or absent for most stages, two expensive
-stages recompute on every run, an identity lookup still parses the whole dataset, and the live
-view is blind inside any long stage.
-
-## Gap map
-
-Findings against the contract, with the module that owns each. Line numbers are omitted on
-purpose; the function names are stable enough to find.
-
-### Accounting
-
-1. **A cold extraction run reports zero cache misses.** `Recorder.stage` counts a miss only when
-   the event carries tokens; the `extract` event passes zero tokens (`bench/runner.py`,
-   `run_extraction`), so a run that computed every chunk counts as neither hit nor miss.
-   `CachedExtractor` knows its misses and nobody reads them.
-2. **The embedding stage always counts as a miss.** `ensure_embeddings` (`bench/index.py`)
-   reports whitespace word counts as input tokens and never sets `cached`, even when every
-   vector came from the call cache. `CachedEmbedder` has no hit counter.
-3. **Retrieval counts nothing** for dense and fusion pipelines and stuffs the reranker pair
-   count into `input_tokens` for hybrid (`run_benchmark`).
-4. **Two cost columns measure different things.** `run_questions.usd` is the reader only, with
-   cached-input tokens forced to zero; `usd_spent` in the report sums all non-cached events
-   including the judge. Neither is "what this question cost".
-5. **Cached-input tokens are dropped** by the reader's output schema (`generate/reader.py`), so
-   provider prompt-cache discounts never reach a price.
-6. **`retrieve` is one event for all questions**, so per-question latency is reader latency
-   only; the contract promises per-question latency and cost.
-
-### Recomputation
-
-7. *(closed 2026-09-18: `ground` and `resolve` are stages with artifacts.)* **Grounding and resolution run on every extraction run**, even when every chunk is a cache
-   hit: the per-chunk cache stores spans and claims, and `stages.build` (`extract/stages.py`)
-   rebuilds the frames and re-runs the resolver (quadratic for `fuzzy`) each time. The graph is
-   written to the store, but the store is a single slot, so the `Extraction` value has no home
-   of its own.
-8. *(closed 2026-09-18: identity from fingerprints before any read; the corpus frames are an artifact.)* **Dataset parse and frame hashing run on every invocation**, including a pure identity
-   lookup and `bench rerun`: `materialize` (`bench/inputs.py`) consumes the sources before
-   `find_run` is consulted. The new dataset fingerprints (`datasets-and-loaders` spec) exist to
-   make the lookup possible before reading; the runner does not use them yet. Local folders
-   re-extract every PDF each time.
-9. *(closed 2026-09-18: the store's identity is recorded.)* **`sha256_file(store)` at the end of every run** hashes a store of hundreds of MB, and the
-   hash is stale by construction because later runs add tables to the same file; `inspect`
-   only checks existence.
-
-### Structure
-
-10. **One graph per store, and the store is shared with QA runs.** `ensure_graph` refuses a
-    second graph identity; comparing two extractors on one dataset means deleting embeddings or
-    juggling `--store` by hand.
-11. **Keys that omit something that changes the output.** `RerankSpec.revision` is the literal
-    string `"hf"` for the cross-encoder; the small-model extractor's device (MPS versus CPU) is
-    not in its spec; the LLM cache stores the raw response but no parse or retry provenance
-    (D6 asks for it; nothing retries anywhere).
-12. **Unimplemented spec items.** `cache_only` mode, retry with backoff, and recording whether a
-    provider honours a seed (harness spec, "Caching and repeatability" and "Error handling").
-
-### Monitoring
-
-13. **`tail` is blind inside a long stage.** Events are written when a stage exits; extraction
-    and embedding are one event each. For extraction runs `done` counts question rows, so it
-    shows `0/n` until the end.
-14. **No cache tooling.** Nothing lists, sizes, prunes or verifies the cache root; the contract
-    tells the user to run `du`. The call cache's 256 shard directories sit directly beside
-    `stores/`, `data/` and `runs.db`, and the key hashes the kind in, so the kind of an entry
-    cannot be recovered from the file system.
-15. **No logging.** The package never imports `logging`; the only stderr lines are three CLI
-    notices. `inspect` prints per-event tokens and duration but not cost, and no per-question
-    total. The marimo notebook shows two tables and no events.
-
-### Documentation
-
-16. D6a says cache hits are "recorded in the run identity"; `benchmarking.md` says they are
-    deliberately outside it. The contract is right; the decision text is wrong.
-17. `flow.md` places the call cache under `<root>/cache/` and datasets under the cache root;
-    the cache is at the root and datasets follow `TRIPLUM_DATA` regardless of `--cache-root`.
-18. The identity table in `benchmarking.md` omits `kind`, `extractor_spec`, `resolver_spec` and
-    `graph_identity`, which `IDENTITY_FIELDS` contains; `diff` omits them too and includes the
-    non-identity `code_version` and `dirty`.
+The stage rewrite closed repeated dataset parsing, redundant grounding/resolution, and
+whole-file store hashing (R6, R7, R9, R14, R15). The remaining work is adapter call
+accounting and cache control; stable model/weight specs; per-question retrieval and cost
+accounting; separate timed events for grounding and resolution (R10); progress inside long
+stages; cache inspection/pruning; and logging. A corpus store
+still holds only one graph variant. The original audit, including its closed findings, is
+recoverable with `git show 977f1ac:docs/specs/2026-09-17-caching-and-monitoring.md`.
 
 ## Requirements
 
@@ -145,7 +69,7 @@ Each requirement names the layer of the stack walk that owns it.
 - R16. `triplum cache status` (sizes and entry counts by kind and by artifact identity) and
   `triplum cache prune` by kind. The layout must make the kind recoverable from the path.
 - R17. A `triplum` logger; the CLI attaches a stderr handler. No second event format: the run
-  store stays SQLite-only, as `docs/research/tooling-event-logs.md` decided.
+  store stays SQLite-only; the earlier comparison is in the temporary foundation note.
 - R18. D6a, `flow.md` and `benchmarking.md` corrected in the same change as the code that makes
   them true.
 
@@ -195,4 +119,4 @@ with real trade-offs.
 ## External references
 
 - pydantic-ai adapter facts: [`../research/llm-adapter-pydantic-ai.md`](../research/llm-adapter-pydantic-ai.md).
-- Why the run store stays SQLite-only: [`../research/tooling-event-logs.md`](../research/tooling-event-logs.md).
+- Why the run store stays SQLite-only: [temporary foundation note](../notes/previous-foundation.md).

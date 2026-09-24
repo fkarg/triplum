@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from rich.console import Console
+
 from triplum.bench.data_view import print_overview
 from triplum.bench.inputs import Benchmark
 from triplum.datasets.base import Entry

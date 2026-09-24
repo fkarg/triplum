@@ -9,6 +9,7 @@ from pathlib import Path
 
 import polars
 import pytest
+
 from triplum.stage import fingerprint as fp
 
 SOURCE = '''

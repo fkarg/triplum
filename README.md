@@ -11,31 +11,13 @@ The project is public and research-oriented, and it is run with industrial prior
 over novelty, every result reproducible from its run identity, and non-commercial components
 allowed only where [`docs/licences.md`](docs/licences.md) records what that costs.
 
-## Status (2026-09-17)
+## Status
 
-Real today:
-
-- The canonical Arrow schemas (Rust core, exposed to Python) and a SQLite store with
-  viewer-filtered BM25 and vector search over chunks.
-- One LLM protocol with a disk cache, and adapters for OpenAI-compatible APIs, CLI harnesses and
-  a deterministic fake; embedder and reranker protocols with local and fake adapters.
-- A catalog of 37 pinned datasets, each a set of lazy sources that download on first use and
-  identify themselves without reading, with committed 20-question fixtures, covering multi-hop, abstention, temporal, memory, access-control,
-  reading-comprehension, long-document and text-to-triple sets; and any folder of your own
-  PDF, Word, Markdown or text files as a corpus (text layer only, no OCR yet).
-- Six non-graph baselines (closed-book, BM25, dense, RRF fusion of both, hybrid with rerank,
-  oracle) run end to
-  end with EM, F1, Contain-Acc, Judge-Acc, R@2, R@5, cost and timing, recorded in a run store
-  keyed by the full run identity.
-
-- The first graph: a non-LLM extraction baseline. Two extractors behind one protocol, `rules`
-  (spaCy dependency rules, permissive, fast) and `small_model` (GLiNER spans, GLiREL relations),
-  document-scoped entities with exact and fuzzy resolution as supported `same_as` facts, the
-  store's graph side under the same visibility rule as chunks, and intrinsic scoring against
-  the text-to-triple gold sets (`triplum bench extract`).
-
-Not yet: graph retrieval pipelines, LLM extractors, the store comparison. [`docs/flow.md`](docs/flow.md)
-keeps the implemented versus planned list current.
+The library runs six non-graph QA baselines and a non-LLM graph extraction baseline over lazy,
+fingerprinted datasets. The runner uses cached stages and validates executed code before
+reusing results. The active work is a bottom-up foundation rewrite; store ingestion from
+`CorpusBatch` streams is the next boundary. See [the current flow](docs/flow.md) for implemented
+behavior and [the stack walk](docs/plans/2026-09-17-stack-walk.md) for open interfaces.
 
 ## Install
 

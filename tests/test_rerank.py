@@ -1,6 +1,7 @@
 import importlib.util
 
 import pytest
+
 from triplum.rerank.fake import FakeReranker
 from triplum.rerank.protocol import RerankSpec
 

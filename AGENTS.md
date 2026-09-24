@@ -30,11 +30,10 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - `docs/research/`: research foundation and the decision record. `design.md` is a living document:
   change a decision there when it changes, do not append contradictions. Every doc carries its
   snapshot date; versions and statuses are as-of that date.
-- `docs/specs/`: one spec per sub-project, written and reviewed before code. `docs/plans/`: the
-  implementation plan derived from a spec.
-  Keep both out of the MkDocs navigation; retain them as development records and link to them
-  from other docs where the context is useful.
-- `python/triplum/`: the Python package (`utils.data`, `datasets`, `data`, `cache`, `llm`, `embed`, `rerank`, `store`,
+- `docs/specs/` and `docs/plans/`: active development contracts. Superseded detail is kept as
+  temporary notes with commit references only while its replacement layer is being designed;
+  remove those notes when the replacement lands. Keep development records out of MkDocs navigation.
+- `src/triplum/`: the Python package (`utils.data`, `datasets`, `data`, `cache`, `llm`, `embed`, `rerank`, `store`,
   `retrieve`, `generate`, `eval`, `bench`, `ingest`; `extract` is planned). `crates/`: the
   Cargo workspace (`triplum-core`, `triplum-py`). `notebooks/`: marimo notebooks. `scripts/`:
   fixture generation and the pre-commit helper. `research/` (SOTA monitor, digests) is planned.

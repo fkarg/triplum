@@ -3,6 +3,7 @@ from io import StringIO
 import polars as pl
 import pytest
 from rich.console import Console
+
 from triplum.bench import bench_view
 
 

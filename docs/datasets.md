@@ -177,8 +177,8 @@ A built-in module defines one class per part over pinned files, using the helper
 `ENTRIES` with name, family, licence and a builder. Register the module in
 `datasets/registry.py`, pin the files in `datasets/manifest.json`, add the licence row, run
 `scripts/make_fixture.py <name>` and add a parser test on source-shaped records
-(`tests/test_dataset_parsers.py`). The contract in full:
-[`specs/2026-09-17-builtin-datasets.md`](specs/2026-09-17-builtin-datasets.md).
+(`tests/test_dataset_parsers.py`). The earlier source design and reviews are in the
+[temporary foundation note](notes/previous-foundation.md).
 
 ## Settings
 

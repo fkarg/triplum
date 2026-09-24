@@ -1,5 +1,6 @@
 import polars as pl
 import pytest
+
 from triplum.data.schema import now_us
 from triplum.data.viewer import Viewer
 from triplum.store.sqlite.acl import acl_hash, principal_token
@@ -101,6 +102,7 @@ def test_acl_hash_encoding_is_unambiguous():
 def test_get_chunks_schema_matches_canonical(tmp_db, sample_corpus):
     import polars as pl
     import pyarrow as pa
+
     from triplum.data import schema
 
     s = SqliteStore(tmp_db)

@@ -5,7 +5,7 @@ access, kept verbatim below its own title apart from this header. It answers wha
 non-LLM extraction stack can look like in September 2026 so that LLM extraction (sub-project 2b)
 has a cheap, deterministic comparator. Its recommendation, spaCy plus explicit dependency rules
 and conservative string resolution first, with GLiNER/GLiREL as a separate accuracy experiment,
-is what `docs/specs/2026-09-17-extraction-baseline.md` adopts; the companion dependency
+is what the [previous foundation](../notes/previous-foundation.md) adopted; the companion dependency
 resolutions it produced are not kept. Evidence labels (V, P, E, U) are the pass's own.
 
 ---

@@ -12,7 +12,7 @@ the data page, never an inference.
 
 ## 1. Registered
 
-`triplum data` lists these; `python/triplum/datasets/manifest.json` pins every file's URL,
+`triplum data` lists these; `src/triplum/datasets/manifest.json` pins every file's URL,
 sha256 and size; each has a committed 20-question fixture unless noted. Licences in full in
 `docs/licences.md`. "MB" is the pinned download.
 
@@ -77,8 +77,8 @@ which is exactly the claim a graph pipeline should beat once a shared corpus exi
 |---|---|---|---|
 | `metaqa` | CC BY 3.0 | 11 | the 134,741-triple movie KB loaded twice: as `triples` with `document_id`, for direct graph ingestion, and verbalised into one full-sentence chunk per entity (43,234; templates versioned in the parser), for text pipelines; 39,093 vanilla 1-, 2- and 3-hop test questions interleaved so any prefix mixes hops; gold is the topic's and the answers' chunks, which omit the middle entity of a 3-hop chain. Extraction over the verbalisation is a synthetic task. |
 
-Any folder of local PDF, Word, Markdown or text files is also a dataset
-(`docs/specs/2026-09-17-local-files.md`).
+Any folder of local PDF, Word, Markdown or text files is also a dataset; its earlier design is
+in the [temporary foundation note](../notes/previous-foundation.md).
 
 ## 2. Protocol and metrics
 

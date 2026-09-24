@@ -78,7 +78,7 @@ A stronger controlled example is [Nishida et al., TACL 2026][dissecting]: holdin
 
 The non-LLM comparator these variants are measured against is in
 [kg-construction-nonllm.md](kg-construction-nonllm.md) and specified in
-`docs/specs/2026-09-17-extraction-baseline.md`.
+the [previous foundation](../notes/previous-foundation.md).
 
 Implement six small pipelines over the same chunks and model configuration. These are recommendations, not reproductions unless original prompts and settings are pinned. The broad comparison ranks construction recipes; only matched contrasts isolate particular stages. Using identical resolver code also does not guarantee identical resolution quality when extractors produce different mentions.
 

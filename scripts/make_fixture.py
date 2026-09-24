@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 
 import polars as pl
+
 from triplum.bench.inputs import materialize
 from triplum.datasets import fixtures, registry
 

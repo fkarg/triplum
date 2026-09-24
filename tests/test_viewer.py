@@ -1,4 +1,5 @@
 import pytest
+
 from triplum.data.schema import TS_MAX
 from triplum.data.viewer import Viewer
 

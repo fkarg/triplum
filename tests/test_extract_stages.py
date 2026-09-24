@@ -2,6 +2,7 @@
 
 import polars as pl
 import pytest
+
 from triplum.cache import Cache
 from triplum.data.corpus import CHUNK_SCHEMA, DOC_SCHEMA
 from triplum.data.schema import TS_MAX

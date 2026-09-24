@@ -1,5 +1,6 @@
 import polars as pl
 import pytest
+
 from triplum.data.schema import now_us
 
 

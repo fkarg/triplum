@@ -12,6 +12,7 @@ def _():
 
     import marimo as mo
     import polars as pl
+
     from triplum.bench.runstore import RunStore
     from triplum.data.corpus import Document
     from triplum.stage import Run, active, stage

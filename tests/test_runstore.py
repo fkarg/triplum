@@ -1,4 +1,5 @@
 import pytest
+
 from triplum.bench.runstore import RunStore
 
 META = {

@@ -69,7 +69,7 @@ requires = ["maturin>=1.15,<2"]
 build-backend = "maturin"
 
 [tool.maturin]
-python-source = "python"
+python-source = "src"
 module-name = "triplum._core"
 manifest-path = "crates/triplum-py/Cargo.toml"
 features = ["pyo3/extension-module"]
@@ -89,7 +89,7 @@ addopts = "--durations=10"
 markers = ["model: loads real optional models; may download weights"]
 
 [tool.coverage.run]
-source = ["python/triplum"]
+source = ["src/triplum"]
 branch = true
 
 [tool.ruff]
@@ -110,31 +110,31 @@ unused-ignore-comment = "error"
 # Keep the default environment lean; CI also checks with the local extra installed.
 # These allowances only apply when the optional imports are absent.
 [[tool.ty.overrides]]
-include = ["python/triplum/embed/sentence_transformers.py"]
+include = ["src/triplum/embed/sentence_transformers.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["sentence_transformers", "torch", "huggingface_hub"]
 
 [[tool.ty.overrides]]
-include = ["python/triplum/embed/fastembed.py"]
+include = ["src/triplum/embed/fastembed.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["fastembed"]
 
 [[tool.ty.overrides]]
-include = ["python/triplum/rerank/cross_encoder.py"]
+include = ["src/triplum/rerank/cross_encoder.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["sentence_transformers"]
 
 [[tool.ty.overrides]]
-include = ["python/triplum/extract/rules.py"]
+include = ["src/triplum/extract/rules.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["spacy", "dateparser"]
 
 [[tool.ty.overrides]]
-include = ["python/triplum/extract/resolvers.py"]
+include = ["src/triplum/extract/resolvers.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["rapidfuzz"]
 
 [[tool.ty.overrides]]
-include = ["python/triplum/extract/small_model.py"]
+include = ["src/triplum/extract/small_model.py"]
 [tool.ty.overrides.analysis]
 allowed-unresolved-imports = ["gliner", "glirel"]
