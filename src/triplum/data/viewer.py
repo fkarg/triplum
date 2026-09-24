@@ -10,9 +10,10 @@ from triplum.data.schema import now_us
 
 @dataclass(frozen=True, init=False)
 class Viewer:
-    """principals: identities the caller holds. as_of_valid: world time. as_of_recorded:
-    transaction time. permission_revision: the ACL snapshot the query was authorised against
-    (None = current)."""
+    """Who may read the store and which time to query. `principals` are the caller's identities;
+    `as_of_valid` is world time, `as_of_recorded` is store history time. Both default to now;
+    if only valid time is set, recorded time uses it too. `permission_revision` is reserved for
+    grant snapshots; store reads currently use current grants."""
 
     principals: frozenset[str]
     as_of_valid: int

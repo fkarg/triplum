@@ -53,6 +53,12 @@ nav:
   - Flow: flow.md
   - Datasets: datasets.md
   - Benchmarking and caching: benchmarking.md
+  - Learn:
+      - Documents: guide/documents.md
+      - Sources: guide/sources.md
+      - Loading batches: guide/loading.md
+      - Corpus frames: guide/frames.md
+      - Viewers: guide/viewers.md
   - Modules and interfaces:
       - Overview: api/index.md
       - data: api/data.md

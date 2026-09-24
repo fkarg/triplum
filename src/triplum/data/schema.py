@@ -1,4 +1,4 @@
-"""Canonical Arrow schemas, owned by the Rust core and re-exported here as pyarrow schemas."""
+"""Column layouts for frames passed between processing steps and the store."""
 
 from __future__ import annotations
 
@@ -30,10 +30,7 @@ def chunk_embeddings(dims: int) -> pa.Schema:
 
 
 def polars_schema(arrow: pa.Schema) -> pl.Schema:
-    """The Polars view of a canonical schema for frames exchanged between modules. Column names,
-    order and non-time types come from the Arrow definition; timestamp columns are the integer
-    UTC microseconds D2 specifies for interchange (the physical Arrow representation), so frames
-    built from Python ints and SQLite rows need no conversion."""
+    """Convert an Arrow layout to Polars, keeping times as UTC microsecond integers."""
     view = pl.DataFrame(pa.Table.from_pylist([], schema=arrow)).schema
     return pl.Schema(
         {

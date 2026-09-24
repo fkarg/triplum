@@ -30,7 +30,7 @@ Real models need `OPENAI_API_KEY` (or an OpenAI-compatible `--base-url`), or a l
 Data access is independent of the benchmark harness: subclass `Dataset[T]` for indexed data or
 `IterableDataset[T]` for streaming, and implement `fingerprint()` to identify its logical content.
 `DataLoader` lazily batches either shape (or ordinary iterables), supports custom collation, and
-preserves native batches with `batch_size=None`. See the [data loading example](docs/api/utils-data.md).
+preserves native batches with `batch_size=None`. See the [data loading example](docs/guide/loading.md).
 Sources yield `Document`, `Question` and `Triple` records; the built-in sources and the catalog
 live in `triplum.datasets`, and a `Benchmark` composes a corpus with optional question and gold
 triple sources, all lazy ([docs/datasets.md](docs/datasets.md)). Current benchmark algorithms

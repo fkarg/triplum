@@ -29,6 +29,8 @@ Python is in the [README](https://github.com/fkarg/triplum#use-it-as-a-library).
 
 ## Where to go
 
+- [Learn](guide/documents.md): short examples for documents, sources, loading batches, corpus
+  frames, and viewers.
 - [Flow](flow.md): what a benchmark run does step by step, which modules implement each step,
   and what is implemented versus planned.
 - [Datasets](datasets.md): the built-in benchmarks, the record types, identity without reading,

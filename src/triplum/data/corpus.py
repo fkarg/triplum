@@ -1,11 +1,4 @@
-"""Corpus records at the ingestion boundary, and the canonical batch they project onto.
-
-A source yields `Document` records: the document's text, the segments the source ships as
-units (passages, paragraphs, turns, pages), its grants and metadata. Identity is chosen by the
-source and never by parse position (see `docs/research/design.md` D2). `CorpusBatch` is the
-canonical three-frame projection a collator makes from a list of
-documents; it is what the store ingests.
-"""
+"""Document records and the frames used to load them into a store."""
 
 from __future__ import annotations
 
@@ -32,13 +25,12 @@ def content_id(*parts: str) -> str:
 
 
 def chunk_id(document_id: str, ordinal: int) -> int:
-    """Positive 60-bit chunk id from the document id and the segment's ordinal, so a question
-    can name its gold without the corpus pass and ids never collide across sources."""
+    """Chunk ID derived from a document ID and a segment ordinal."""
     return int(content_key("chunk", [document_id, ordinal])[:15], 16)
 
 
 class Segment(BaseModel, frozen=True):
-    """One unit of a document: a closed-open character span into `Document.text`."""
+    """A passage or other source-defined unit. `start` is included; `end` is excluded."""
 
     ordinal: int
     start: int
@@ -48,8 +40,9 @@ class Segment(BaseModel, frozen=True):
 
 
 class Document(BaseModel, frozen=True):
-    """A document with the segments its source ships. Ordinals are stable within a pinned
-    layout and need not be contiguous, so a fixture keeps a subset with original ordinals."""
+    """Text from one source. `id` is unique across the corpus. `segments` mark
+    source-provided units; if omitted, the whole text is one segment. `grants` lists readers;
+    `observed_at` is a UTC time in microseconds."""
 
     id: str
     source: str
@@ -93,11 +86,7 @@ class Document(BaseModel, frozen=True):
 
 
 class CorpusBatch(NamedTuple):
-    """Documents, their grants and chunks in the canonical schemas.
-
-    This is a batch value, not a dataset superclass. Sources may yield these directly,
-    or a custom collator may construct them from source-specific records.
-    """
+    """Three frames for store ingestion: document details, reader grants and text chunks."""
 
     documents: pl.DataFrame
     grants: pl.DataFrame

@@ -110,6 +110,11 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   planned to done updates them in the same commit. The per-package API pages are generated from
   the source, so a new module only needs a `::: module` line in `docs/api/<package>.md` and the
   nav in `mkdocs.yml`. `uv run mkdocs build --strict` must pass.
+- **Docs teach one concept at a time.** Keep teaching pages short: state what the reader can do,
+  show a small runnable example, then explain only the fields and behavior needed to understand
+  it. Give each field context at first use. Put signatures and exhaustive detail in the generated
+  API reference instead of repeating them in prose. Prefer local understanding over a tour of
+  the whole architecture; link to the next concept when needed.
 - New technique: it enters `docs/research/papers.md` as a candidate, gets a note when read, and
   reaches "adopting" only with a harness run showing the delta.
 - Cross-model review at design gates via `peer-review --mode design|diff-review`; record the
