@@ -60,8 +60,9 @@ assert "hotpotqa" in registry.names(default_only=True)
 Iterating a source fetches its pinned files, verifies their sha256 and yields records.
 `registry.load(name, n=20)` selects the first twenty questions with `Take` and never truncates
 the corpus; the committed fixtures are the way to get a small corpus. `triplum data` lists the
-catalog with file states, `triplum data fetch` pre-fetches, and `triplum data verify <name>`
-reads a whole dataset and checks that document ids are unique and every gold chunk exists.
+catalog with file states, `triplum data fetch` pre-fetches, and
+`triplum data verify --dataset <name>` reads a whole dataset and checks that document ids are
+unique and every gold chunk exists.
 
 The fixtures are the same benchmarks cut to twenty questions with their gold and candidate
 chunks and a seeded fill of distractors, committed under `tests/fixtures`:
@@ -80,9 +81,10 @@ assert gold <= set(inputs.corpus.chunks["id"])
 For an on-demand variant, use [`DistractorCorpus`](guide/variants.md) with a fixed seed. It
 identifies the variant before reading, then selects chunks when the benchmark loads it.
 
-`materialize` is the explicit eager bridge the current runner uses: it consumes every source
-through a `DataLoader` with the matching collator, runs the cross-source integrity checks, and
-reports the source fingerprints as the corpus and evaluation identities.
+`materialize` reads every source into canonical frames and checks that document IDs are unique
+and every gold chunk exists. It returns corpus and evaluation identities derived from source
+fingerprints. The runner instead caches a corpus record stream, ingests its batches, then builds
+frames for its current whole-frame algorithms; its question-frame stage runs the same check.
 
 ## Your own source
 

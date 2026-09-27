@@ -1,7 +1,7 @@
 # Stack walk: interfaces bottom-up, then recombination
 
-The data sources, stage contract and runner have been reworked. The next
-boundary is store ingestion from `CorpusBatch` streams. Settle each remaining interface walking
+The data sources, stage contract, runner and batch store ingestion have been reworked. The next
+open question is graph placement over an ingested corpus. Settle each remaining interface walking
 up the stack, then recombine components into pipelines and sub-projects.
 
 This plan lists the layers in walking order, what each layer currently is, the questions its
@@ -24,8 +24,8 @@ the runner is a composition of stages with data keys, trace-discovered code mani
 artifacts and provenance rows; the corpus is read once into a frames artifact and every later
 run fetches it while that artifact remains valid. A benchmark source must replay the same ordered
 records on a cold read; confirm this across parameter variants with one benchmark instance.
-Consuming a corpus in batches into the store, with the store's `effects` table
-as the first form of its ingestion log, is layer 1.
+Layer 1 adds batch ingestion into the store, with the store's `effects` table as the first form
+of its ingestion log.
 
 ### 1. Store ingestion boundary (batch ingestion done; graph placement open)
 

@@ -1,19 +1,21 @@
 # triplum
 
-A composable, benchmark-first sandbox for scalable document search, knowledge graphs and GraphRAG. Triplum fundamentally supports temporal relations and permissions in addition to deep provenance. This means that we can clearly model and reason not just about relations, but in particular about the *time* and *authority* of those relations, and ensure that only users with access to the provenance source can see relations derived from it.
+A composable, benchmark-first sandbox for document search, knowledge graphs and GraphRAG.
+The design puts time, provenance and permissions in the data model and store: a reader should
+only see evidence its source grants them access to.
 
 The project is public and research-oriented, but very much run with industry priorities:
-actual numbers over novelty, every result reproducible from its run identity, baseline
-robust systems and non-commercial components allowed only where
-[`docs/licences.md`](docs/licences.md) records what that costs.
+actual numbers over novelty, per-run data, configuration and code provenance, and robust
+baselines. Non-commercial components are welcome when [`docs/licences.md`](docs/licences.md)
+records their reuse terms.
 
 ## Status
 
 The library runs six non-graph QA baselines and a non-LLM graph extraction baseline over lazy,
-fingerprinted datasets. The runner uses cached stages and validates executed code before
-reusing results. The active work is a bottom-up foundation rewrite; store ingestion from
-`CorpusBatch` streams is the next boundary. See [the current flow](docs/flow.md) for implemented
-behavior and [the stack walk](docs/plans/stack-walk.md) for open interfaces.
+fingerprinted datasets. The runner ingests corpus batches into a SQLite store, then materializes
+frames for algorithms that still need them. Cached stages validate the code they executed before
+reuse. [The current flow](docs/flow.md) describes implemented behavior;
+[the stack walk](docs/plans/stack-walk.md) tracks open interfaces.
 
 ## Install
 
@@ -33,8 +35,7 @@ Data access is independent of the benchmark harness: subclass `Dataset[T]` for i
 preserves native batches with `batch_size=None`. See the [data loading example](docs/guide/loading.md).
 Sources yield `Document`, `Question` and `Triple` records; the built-in sources and the catalog
 live in `triplum.datasets`, and a `Benchmark` composes a corpus with optional question and gold
-triple sources, all lazy ([docs/datasets.md](docs/datasets.md)). Current benchmark algorithms
-still explicitly materialize those sources; the generic loading API does not.
+triple sources, all lazy ([docs/datasets.md](docs/datasets.md)).
 
 Experiments are Python. A run is a frozen configuration; identical configurations return the
 stored run instead of recomputing (the contract is [`docs/benchmarking.md`](docs/benchmarking.md)).
@@ -65,9 +66,8 @@ from triplum.retrieve import pipelines
 hits = pipelines.rrf(questions, store, viewer, embedder=embedder, k=5, candidates=50)
 ```
 
-Every stage is also usable on its own: load a dataset, put it in a store, embed, retrieve with
-one of the stages, read with any `LLM`. [`docs/api/index.md`](docs/api/index.md) has the module
-map, the contracts that hold across modules, and a worked composition without the runner.
+The [local search example](docs/guide/search.md) composes a source, loader, store and viewer
+without the runner. The [API reference](docs/api/index.md) maps the modules and their contracts.
 
 ## The command line
 
@@ -94,8 +94,8 @@ The full command table, what each step does and which module does it are in
 ## Documentation
 
 - [`docs/flow.md`](docs/flow.md): a run step by step; implemented versus planned.
-- [`docs/api/index.md`](docs/api/index.md): module map, cross-module contracts, composition
-  by hand; the per-package pages are generated from the source.
+- [`docs/api/index.md`](docs/api/index.md): module map and cross-module contracts; the
+  per-package pages are generated from the source.
 - [`docs/benchmarking.md`](docs/benchmarking.md): run identity, caching, replay, resume.
 - [`docs/research/design.md`](docs/research/design.md): the decision record with rejected
   alternatives; [`docs/research/`](docs/research/README.md) holds the research notes behind it.

@@ -15,7 +15,18 @@ DOCS = Path(__file__).parents[1] / "docs"
 
 
 @pytest.mark.parametrize(
-    "page", ["datasets.md", "guide/benchmark.md", "guide/variants.md", "guide/search.md"]
+    "page",
+    [
+        "datasets.md",
+        "guide/documents.md",
+        "guide/sources.md",
+        "guide/frames.md",
+        "guide/viewers.md",
+        "guide/store.md",
+        "guide/benchmark.md",
+        "guide/variants.md",
+        "guide/search.md",
+    ],
 )
 def test_page_examples_run(page):
     blocks = re.findall(r"```python\n(.*?)```", (DOCS / page).read_text(), re.DOTALL)

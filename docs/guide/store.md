@@ -1,7 +1,7 @@
 # Read from a store
 
-The store checks document grants when it reads chunks. Here, each viewer sees only the document
-granted to that principal:
+The store checks document grants when it reads chunks. This example writes frames directly to
+show the grant check: each viewer sees only the document granted to that principal.
 
 ```python
 from pathlib import Path
@@ -35,5 +35,7 @@ with TemporaryDirectory() as directory:
 
 `put_documents` writes document details and grants; `put_chunks` writes their text segments.
 `get_chunks` takes chunk IDs and a viewer, then returns only chunks that viewer may read.
+For a document source, batch it with `DataLoader` and call `ingest_corpus` on a fresh store.
+That path binds the source fingerprint and makes reads available once ingestion completes.
 
 Next: [search local documents](search.md) or [run a baseline benchmark](benchmark.md).
