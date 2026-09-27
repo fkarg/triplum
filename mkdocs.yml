@@ -62,6 +62,7 @@ nav:
       - Indexing and retrieval: flow.md
       - Core Concepts:
           - Overview: concepts.md
+          - Decision points: concepts/decisions.md
           - Source: concepts/source.md
           - Chunk: concepts/chunk.md
           - Datasets and the DataLoader: concepts/datasets.md

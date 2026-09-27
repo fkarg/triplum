@@ -17,14 +17,19 @@ subsystems wholesale. Git history is reference material, not the current archite
   is indexing data and transformations: the owner proposes `Source` for identified input text,
   chunking into initial chunks with source references, then independently replaceable preparation
   of embedding text. Names and exact declarations remain open, as does whether generated summaries
-  share a chunk type. The `Embedder` discussion remains open; no replacement interface is approved
-  yet. A chunk may have multiple text representations (original text, description, questions),
+  share a chunk type. A chunk may have multiple text representations (original text, description, questions),
   but one vector for the chosen embedding configuration. Do not silently turn these into separately indexed vectors.
 - The owner decided to keep `Source` and `Chunk` in separate files under `datatype/` and build
   barebones pipelines that expand/generalize step by step. `datatype/` records stay plain Pydantic
   and backend-agnostic; relational (e.g. SQLModel) and graph persistence each get their own mapping
   behind a storage boundary, not as `datatype` subclasses. The concrete ORMs, graph database and
-  storage module layout remain open; this does not approve the whole indexing pipeline or future Protocols.
+  storage module layout remain open; this does not approve the whole indexing pipeline.
+- Step contracts are `typing.Protocol` classes with an abstract `__call__` in `triplum.steps`
+  (`Converter[A]`: item -> list[Source]; `Chunker`: Source -> list[Chunk]; `EmbeddingText`:
+  Chunk -> str; `Embedder`: `dimensions` + list[str] -> float32 matrix). Our implementations
+  subclass the Protocol explicitly; external ones fit structurally. Configuration and resources
+  live in `__init__`. Type aliases only for data shapes (`Vectors`), not for behaviour; no
+  `runtime_checkable`. Steps handle one item (embedding: one batch); pipelines map them over loaders.
 - Keep upstream ingestion in mind: dataset → document/webpage/etc. loader → optional OCR or
   preprocessing → `Source`. The owner deferred those interfaces; do not design them yet.
 - For each interface, draft the exact Python declaration and short, step-by-step documentation:

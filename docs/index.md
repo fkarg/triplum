@@ -13,8 +13,8 @@ then follow a question through retrieval to an answer.
 
 The retained Python foundation provides generic data loading, dataframe batching and caching.
 The Rust core is separate; the Python package does not build or link a Rust extension. An
-end-to-end pipeline is not yet available, and no replacement interface is approved.
+end-to-end pipeline is not yet available.
 
 The current focus is identified source text, initial chunks and preparation of embedding text.
-The overview explains those responsibilities and how they connect to retrieval; exact interfaces
-are still being defined.
+The overview explains those responsibilities and how they connect to retrieval. The indexing steps
+have first Protocol contracts with trivial reference implementations; see Core Concepts.

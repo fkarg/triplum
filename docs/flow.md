@@ -4,8 +4,9 @@
 This page follows the intended flow and shows where experiments can replace individual steps.
 
 Triplum is being rebuilt. Its retained Python data utilities and cache, plus a separate Rust core,
-are not a working end-to-end pipeline. No replacement interface is approved yet. These diagrams
-describe responsibilities, not a mandatory sequence of classes or Protocols.
+are not a working end-to-end pipeline. The indexing steps (conversion, chunking, embedding text,
+embedding) have first Protocol contracts; the rest does not. These diagrams describe
+responsibilities, not a mandatory sequence of classes.
 
 ## 1. Indexing: prepare searchable evidence
 
