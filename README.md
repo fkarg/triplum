@@ -11,9 +11,10 @@ were deliberately removed because the architecture and its explanation had becom
 The old benchmark runner, CLI examples and documentation are not working entry points for this
 checkout.
 
-Source files remain for data loading, datasets, caching and storage, but some import deleted
-modules. Their presence does not mean those subsystems work or that their interfaces are approved
-for the rebuild. Existing tests and configuration also retain references to removed code.
+The retained foundation is generic data-loading utilities, `FrameDataset` for dataframe batches,
+a disk cache with an explicit cache directory, access-control helpers and the Rust core. Orphaned
+dataset adapters, store interfaces and backend, examples and the CLI entry point have been removed
+along with obsolete tests. Retaining a utility does not approve its interface for the rebuild.
 The previous implementation is available in Git history; it is reference material, not a restore list.
 
 ## How we are rebuilding
@@ -29,11 +30,19 @@ We review **one interface at a time**, keeping the owner closely involved:
 
 Keep drafts clearly marked as proposals. Prefer simple functions and independent protocols;
 add classes, records or inheritance only when a concrete requirement warrants them.
-Do not restore an entire subsystem to make one interface work.
+Do not restore an entire subsystem to make one interface work. Commit coherent, verified changes
+periodically as the work progresses.
 
-**Current review:** `Embedder`, starting with query and passage encoding. Its signatures and
-metadata requirements are still proposals. [The discussion draft](docs/specs/embedding.md) records
-the open questions and Opus critique. No replacement interface has been approved yet.
+**Current review:** [indexing data and transformations](docs/specs/indexing.md), starting with
+source content and initial chunks. The owner proposes `Source` for identified input text, followed
+by chunking and independently replaceable preparation of embedding text; names and declarations
+remain open. A chunk can have separate original text, descriptions and generated questions, but
+has one embedding vector for a chosen configuration. The
+[embedding discussion](docs/specs/embedding.md) remains open. No replacement interface has been
+approved yet.
+
+Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
+preprocessing → `Source`. Its interfaces are deferred for a later discussion.
 
 ## Intended flow
 
@@ -54,9 +63,14 @@ Embedding and LLM calls are shared capabilities that can be used by several step
 
 ## Development
 
-[AGENTS.md](AGENTS.md) records the review process and contributor constraints. Documentation and
-checks will be re-established alongside the interfaces they describe. Remaining build and test
-configuration should not be taken as evidence that the full project currently passes its checks.
+[AGENTS.md](AGENTS.md) records the review process and contributor constraints. The retained suite
+has 42 passing tests and 96% Python coverage with branch measurement enabled. It covers data
+loading, caching, access-control helpers, pre-commit behavior and the retained Rust extension
+exports. The actual pre-commit hook passes Cargo, ty, Ruff lint and formatting checks against an
+isolated index containing the cleanup.
+
+The old MkDocs configuration still refers to removed documentation, so a full documentation build
+is not yet a working gate. New documentation and coverage will accompany each reviewed interface.
 
 ## License
 

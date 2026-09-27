@@ -5,14 +5,22 @@ Conventions for anyone (human or agent) working in this repository. Read the REA
 ## Current rebuild and review gate
 
 The owner deliberately removed the previous documentation and much of the code on `v2-rewrite`.
-Remaining source, tests and configuration can reference deleted modules. Do not describe the old
-pipelines as working, infer approval from surviving code, or restore deleted subsystems wholesale.
-Git history is reference material, not the current architecture contract.
+The subsequent cleanup removes orphaned source and obsolete tests, retaining generic data utilities,
+`FrameDataset`, a disk cache with an explicit directory, access-control helpers and the Rust core.
+Do not describe the old pipelines as working, infer approval from surviving code, or restore deleted
+subsystems wholesale. Git history is reference material, not the current architecture contract.
 
 - Work in the existing checkout and branch. Do not create worktrees or switch branches for this
   rebuild unless the owner explicitly asks. Preserve concurrent edits.
 - Rebuild **one interface at a time**, with the owner tightly involved. The current first review
-  is `Embedder`; no replacement interface is approved yet.
+  is indexing data and transformations: the owner proposes `Source` for identified input text,
+  chunking into initial chunks with source references, then independently replaceable preparation
+  of embedding text. Names and exact declarations remain open, as does whether generated summaries
+  share a chunk type. The `Embedder` discussion remains open; no replacement interface is approved
+  yet. A chunk may have multiple text representations (original text, description, questions) but one vector for the chosen
+  embedding configuration. Do not silently turn these into separately indexed vectors.
+- Keep upstream ingestion in mind: dataset → document/webpage/etc. loader → optional OCR or
+  preprocessing → `Source`. The owner deferred those interfaces; do not design them yet.
 - For each interface, draft the exact Python declaration and short, step-by-step documentation:
   purpose, inputs, outputs, guarantees, one usage example, and any unresolved tradeoffs.
   Explain supporting types at first use. Distinguish proposals from approved contracts.
@@ -30,8 +38,10 @@ Git history is reference material, not the current architecture contract.
 The principles below remain project requirements, but references to deleted documents describe
 historical contracts or intended documentation locations. They do not authorize restoring their
 old schemas or interfaces. Re-establish those contracts explicitly through the review above.
-Full-suite and documentation checks currently reference removed files; report that limitation
-and verify the reviewed slice without adding ignores or restoring unrelated code to make it green.
+The retained test suite and actual pre-commit hook pass for the cleanup; README records the
+verification scope. Keep those gates working as interfaces return. The old MkDocs configuration
+still references removed documentation. Report that limitation and verify the reviewed slice
+without adding ignores or restoring unrelated code to make it green.
 
 ## What this is
 
@@ -63,9 +73,13 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - `docs/specs/` and `docs/plans/`: active development contracts. Superseded detail is kept as
   temporary notes with commit references only while its replacement layer is being designed;
   remove those notes when the replacement lands. Keep development records out of MkDocs navigation.
-- `src/triplum/`: remaining Python source includes `utils.data`, `datasets`, `cache` and `store`;
-  some imports are broken by the deliberate deletions. Add other modules only as their contracts
-  are reviewed. `crates/` holds the Rust workspace; remaining examples and notebooks may be stale.
+- `src/triplum/`: `utils.data` provides generic dataset/loading utilities; `datasets.frames` holds
+  `FrameDataset`; `cache.py` holds the disk cache; `store.sqlite.acl` holds access-control helpers.
+  The dataset adapters, store protocol/backend and CLI entry point are removed. Add modules only
+  as their contracts are reviewed. `crates/` holds the retained Rust workspace.
+- `tests/`: covers retained data loading, caching, access-control helpers, pre-commit behavior
+  and Rust extension exports directly. Historical dataset fixtures remain as reference data, not
+  evidence of working adapters. The old examples are removed; notebooks may still be stale.
 
 ## Rules that are easy to get wrong
 
@@ -129,7 +143,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 
 - Spec, then plan, then code. Tests for behaviour that crosses a module boundary; the 20-question
   fixture is the integration test for every pipeline.
-- Commit small and often. No `Co-Authored-By` or agent attribution trailers in commits or PRs.
+- Commit coherent, verified changes periodically throughout the work; do not wait for the entire
+  rebuild. No `Co-Authored-By` or agent attribution trailers in commits or PRs.
 - **Two sources of truth, by kind.** `docs/research/design.md` holds decisions; `docs/flow.md`
   and `docs/api/index.md` hold implementation state. A decision changes in design.md, a status
   changes in flow.md; neither restates the other.
