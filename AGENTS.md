@@ -85,7 +85,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - `tests/`: covers retained Python data loading, caching and pre-commit behavior. Rust tests run
   with `cargo test`, independently of Python.
 - The working indexing prototype and its tests remain uncommitted under owner review. Do not
-  treat them as approved interfaces, publish them as working APIs or include them in cleanup commits.
+  treat them as approved interfaces, describe them as working APIs in prose docs or include them
+  in cleanup commits. The generated API reference deliberately shows the live state of `src/`.
 
 ## Rules that are easy to get wrong
 
@@ -158,8 +159,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   `docs/api/index.md` (module map: status, key symbols, contracts) describe the implementation
   state; a change that adds a module, a stage, a pipeline, a CLI command or moves something from
   planned to done updates them in the same commit. The API reference is generated at build time:
-  `scripts/gen_ref_pages.py` writes one page per module under `src/` and its nav. New modules
-  appear automatically; add unreviewed prototype packages to its `UNPUBLISHED` set.
+  `scripts/gen_ref_pages.py` writes one page per module under `src/` and its nav, so the
+  reference shows the live code, reviewed or not, and new modules appear automatically.
   `uv run mkdocs build --strict` must pass.
 - **Docs teach one concept at a time.** Keep teaching pages short: state what the reader can do,
   show a small runnable example, then explain only the fields and behavior needed to understand
