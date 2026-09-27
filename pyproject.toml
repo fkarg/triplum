@@ -36,6 +36,7 @@ dev = [
     "ty>=0.0.81",
 ]
 docs = [
+    "griffe-fieldz>=0.5.0",
     "mkdocs-material>=9.7",
     "mkdocstrings[python]>=1.0",
 ]

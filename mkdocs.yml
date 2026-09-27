@@ -33,6 +33,10 @@ plugins:
           paths: [src]
           options:
             docstring_style: google
+            extensions:
+              - griffe_fieldz:
+                  add_fields_to: docstring-attributes
+                  remove_fields_from_members: true
             show_if_no_docstring: true
             show_source: true
             show_root_heading: true
