@@ -41,7 +41,8 @@ by chunking and independently replaceable preparation of embedding text; names a
 remain open. A chunk can have separate original text, descriptions and generated questions, but
 has one embedding vector for a chosen configuration. The
 [embedding discussion](docs/specs/embedding.md) remains open. No replacement interface has been
-approved yet.
+approved yet. The owner has decided to keep `Source` and `Chunk` in separate files and develop
+barebones pipelines incrementally. The model base/ORM choice remains under discussion.
 
 Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
 preprocessing → `Source`. Its interfaces are deferred for a later discussion.

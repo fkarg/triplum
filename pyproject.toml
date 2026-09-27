@@ -21,6 +21,7 @@ dependencies = [
   "polars>=1.44",
   "pyarrow>=25",
   "pydantic>=2.13",
+  "pydantic-ai>=2.51.0",
 ]
 
 [project.urls]

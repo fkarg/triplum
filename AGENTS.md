@@ -177,3 +177,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   reaches "adopting" only with a harness run showing the delta.
 - Cross-model review at design gates via `peer-review --mode design|diff-review`; record the
   outcome (changed / added verification / rejected with reason / no impact) in the design record.
+-  We are in the process of going through base steps step-by-step in close
+   supervision from absurdly naive versions to upgrade and generalize them over
+   time. I'm asking a lot of one-shot (design) questions and want quick
+   (researched) feedback. I also probably want your help in writing code, but
+   core decisions for everything will remain with me.
