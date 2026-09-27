@@ -40,10 +40,29 @@ def _uri(name: str) -> str:
     return f"api/{name.replace('.', '/')}.md"
 
 
+def _nav(tree: dict, prefix: str, modules: dict[str, Path]) -> list:
+    """Nested nav: each package is a section led by its own page, then its submodules."""
+    entries = []
+    for part, children in tree.items():
+        name = prefix + part
+        page = [{part: _uri(name)}] if name in modules else []
+        if children:
+            entries.append({part: page + _nav(children, name + ".", modules)})
+        else:
+            entries.extend(page)
+    return entries
+
+
 def on_config(config: MkDocsConfig) -> None:
+    modules = _modules()
+    tree: dict = {}
+    for name in modules:
+        node = tree
+        for part in name.split("."):
+            node = node.setdefault(part, {})
     for item in config.nav or []:
         if isinstance(item, dict) and "API reference" in item:
-            item["API reference"] = [{name: _uri(name)} for name in _modules()]
+            item["API reference"] = _nav(tree, "", modules)
 
 
 def on_files(files: Files, config: MkDocsConfig) -> None:
