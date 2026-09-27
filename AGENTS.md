@@ -157,9 +157,10 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - **Docs track the code.** `docs/flow.md` (what a run does, implemented vs planned) and
   `docs/api/index.md` (module map: status, key symbols, contracts) describe the implementation
   state; a change that adds a module, a stage, a pipeline, a CLI command or moves something from
-  planned to done updates them in the same commit. The per-package API pages are generated from
-  the source, so a new module only needs a `::: module` line in `docs/api/<package>.md` and the
-  nav in `mkdocs.yml`. `uv run mkdocs build --strict` must pass.
+  planned to done updates them in the same commit. The API reference is generated at build time:
+  `scripts/gen_ref_pages.py` writes one page per module under `src/` and its nav. New modules
+  appear automatically; add unreviewed prototype packages to its `UNPUBLISHED` set.
+  `uv run mkdocs build --strict` must pass.
 - **Docs teach one concept at a time.** Keep teaching pages short: state what the reader can do,
   show a small runnable example, then explain only the fields and behavior needed to understand
   it. Give each field context at first use. Put signatures and exhaustive detail in the generated

@@ -22,8 +22,14 @@ theme:
     - scheme: slate
       primary: teal
       toggle: { icon: material/brightness-4, name: light mode }
+# `serve` only watches docs/ by default; API pages are generated from src/.
+watch: [src, scripts]
 plugins:
   - search
+  - gen-files:
+      scripts: [scripts/gen_ref_pages.py]
+  - literate-nav:
+      nav_file: SUMMARY.md
   - mkdocstrings:
       handlers:
         python:
@@ -53,4 +59,6 @@ nav:
   - Home: index.md
   - Overview:
       - Indexing and retrieval: flow.md
+  # Generated from src/ by scripts/gen_ref_pages.py.
+  - API reference: api/
   - Dependency licences: licences.md
