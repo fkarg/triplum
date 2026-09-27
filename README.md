@@ -44,22 +44,11 @@ approved yet.
 Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
 preprocessing → `Source`. Its interfaces are deferred for a later discussion.
 
-## Intended flow
+## Indexing and retrieval
 
-This is a map of responsibilities, not a claim that these stages are implemented or that every
-step needs its own Protocol.
-
-```text
-Indexing:
-Documents → Chunking → Chunks → Embedding → Vectors → Store
-                          └→ Extraction → Entity resolution → Graph → Store
-
-Answering:
-Question + Store → Retrieval → Evidence → Reranking → Formatting → LLM → Answer
-```
-
-The shape of graph evidence and the contracts between these steps will be reviewed separately.
-Embedding and LLM calls are shared capabilities that can be used by several steps.
+[Indexing and retrieval](docs/flow.md) explains how source material becomes searchable and how
+queries become answers. It covers basic pipelines, optional enrichment, graph construction and
+summaries, and distinguishes the intended boundaries from implemented functionality.
 
 ## Development
 
@@ -69,8 +58,8 @@ loading, caching, access-control helpers, pre-commit behavior and the retained R
 exports. The actual pre-commit hook passes Cargo, ty, Ruff lint and formatting checks against an
 isolated index containing the cleanup.
 
-The old MkDocs configuration still refers to removed documentation, so a full documentation build
-is not yet a working gate. New documentation and coverage will accompany each reviewed interface.
+Build the documentation with `uv run mkdocs build --strict`, or preview it with
+`uv run mkdocs serve`. New documentation and coverage accompany each reviewed interface.
 
 ## License
 

@@ -2,11 +2,12 @@ site_name: triplum
 site_description: Composable, benchmark-first sandbox for LLM knowledge-graph work
 repo_url: https://github.com/fkarg/triplum
 docs_dir: docs
-# Development records and temporary notes are built and searchable, outside the nav.
-not_in_nav: |
-  specs/*
-  plans/*
-  notes/*
+# Development records are not published or indexed by site search.
+exclude_docs: |
+  /drafts/
+  /specs/
+  /plans/
+  /notes/
 theme:
   name: material
   features:
@@ -50,37 +51,5 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Home: index.md
-  - Learn:
-      - Start here: guide/index.md
-      - Documents: guide/documents.md
-      - Sources: guide/sources.md
-      - Loading batches: guide/loading.md
-      - Seeded distractors: guide/variants.md
-      - Corpus frames: guide/frames.md
-      - Viewers: guide/viewers.md
-      - Reading from a store: guide/store.md
-      - Search local documents: guide/search.md
-      - Run a benchmark: guide/benchmark.md
-  - How it works:
-      - Datasets: datasets.md
-      - Benchmark runs: flow.md
-      - Benchmark caching: benchmarking.md
-  - API reference:
-      - Overview: api/index.md
-      - Data records and frames: api/data.md
-      - Data sources and loading: api/utils-data.md
-      - datasets: api/datasets.md
-      - stage: api/stage.md
-      - cache: api/cache.md
-      - llm: api/llm.md
-      - embed: api/embed.md
-      - rerank: api/rerank.md
-      - store: api/store.md
-      - retrieve: api/retrieve.md
-      - generate: api/generate.md
-      - eval: api/eval.md
-      - ingest: api/ingest.md
-      - extract: api/extract.md
-      - bench: api/bench.md
-  - Licences: licences.md
-  - Releasing: releasing.md
+  - Overview:
+      - Indexing and retrieval: flow.md

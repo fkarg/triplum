@@ -39,9 +39,11 @@ The principles below remain project requirements, but references to deleted docu
 historical contracts or intended documentation locations. They do not authorize restoring their
 old schemas or interfaces. Re-establish those contracts explicitly through the review above.
 The retained test suite and actual pre-commit hook pass for the cleanup; README records the
-verification scope. Keep those gates working as interfaces return. The old MkDocs configuration
-still references removed documentation. Report that limitation and verify the reviewed slice
-without adding ignores or restoring unrelated code to make it green.
+verification scope. Keep those gates working as interfaces return. MkDocs navigation starts with
+Home and the indexing/retrieval overview in `docs/flow.md`. Published MkDocs pages must never
+link to drafts, specs or plans. Exclude these development records from the built site and search,
+not merely from navigation. Verify documentation changes with `uv run mkdocs build --strict`. Keep the overview
+honest about intended responsibilities versus implemented interfaces.
 
 ## What this is
 
@@ -72,7 +74,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   document provenance; current docs describe the current state without editorial timestamps.
 - `docs/specs/` and `docs/plans/`: active development contracts. Superseded detail is kept as
   temporary notes with commit references only while its replacement layer is being designed;
-  remove those notes when the replacement lands. Keep development records out of MkDocs navigation.
+  remove those notes when the replacement lands. Keep development records out of the published
+  MkDocs site and search. Published pages must never link to drafts, specs or plans.
 - `src/triplum/`: `utils.data` provides generic dataset/loading utilities; `datasets.frames` holds
   `FrameDataset`; `cache.py` holds the disk cache; `store.sqlite.acl` holds access-control helpers.
   The dataset adapters, store protocol/backend and CLI entry point are removed. Add modules only
