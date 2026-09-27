@@ -1,4 +1,0 @@
-# cache
-
-::: triplum.cache
-
