@@ -159,8 +159,9 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   `docs/api/index.md` (module map: status, key symbols, contracts) describe the implementation
   state; a change that adds a module, a stage, a pipeline, a CLI command or moves something from
   planned to done updates them in the same commit. The API reference is generated at build time:
-  `scripts/gen_ref_pages.py` writes one page per module under `src/` and its nav, so the
-  reference shows the live code, reviewed or not, and new modules appear automatically.
+  the MkDocs hook `scripts/api_reference.py` adds one page per module under `src/` and its nav,
+  so the reference shows the live code, reviewed or not, and new modules appear automatically.
+  Under `mkdocs serve --dirty` it re-renders only pages whose module changed; keep it that way.
   `uv run mkdocs build --strict` must pass.
 - **Docs teach one concept at a time.** Keep teaching pages short: state what the reader can do,
   show a small runnable example, then explain only the fields and behavior needed to understand

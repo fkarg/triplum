@@ -1,5 +1,5 @@
 site_name: triplum
-site_description: Composable, benchmark-first sandbox for LLM knowledge-graph work
+site_description: Composable, benchmark-first sandbox for GraphRAG applications
 repo_url: https://github.com/fkarg/triplum
 docs_dir: docs
 # Development records are not published or indexed by site search.
@@ -24,12 +24,9 @@ theme:
       toggle: { icon: material/brightness-4, name: light mode }
 # `serve` only watches docs/ by default; API pages are generated from src/.
 watch: [src, scripts]
+hooks: [scripts/api_reference.py]
 plugins:
   - search
-  - gen-files:
-      scripts: [scripts/gen_ref_pages.py]
-  - literate-nav:
-      nav_file: SUMMARY.md
   - mkdocstrings:
       handlers:
         python:
@@ -59,6 +56,6 @@ nav:
   - Home: index.md
   - Overview:
       - Indexing and retrieval: flow.md
-  # Generated from src/ by scripts/gen_ref_pages.py.
-  - API reference: api/
+  # Filled with one page per module by scripts/api_reference.py.
+  - API reference: []
   - Dependency licences: licences.md

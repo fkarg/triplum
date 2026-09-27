@@ -36,8 +36,6 @@ dev = [
     "ty>=0.0.81",
 ]
 docs = [
-    "mkdocs-gen-files>=0.6.1",
-    "mkdocs-literate-nav>=0.6.3",
     "mkdocs-material>=9.7",
     "mkdocstrings[python]>=1.0",
 ]
