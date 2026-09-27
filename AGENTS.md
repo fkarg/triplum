@@ -6,7 +6,8 @@ Conventions for anyone (human or agent) working in this repository. Read the REA
 
 The owner deliberately removed the previous documentation and much of the code on `v2-rewrite`.
 The subsequent cleanup removes orphaned source and obsolete tests, retaining generic data utilities,
-`FrameDataset`, a disk cache with an explicit directory, access-control helpers and the Rust core.
+`FrameDataset` and a disk cache with an explicit directory. The Python package uses `uv_build`;
+there is no store package, PyO3 bridge or model extra. The Rust core remains independently in Cargo.
 Do not describe the old pipelines as working, infer approval from surviving code, or restore deleted
 subsystems wholesale. Git history is reference material, not the current architecture contract.
 
@@ -17,8 +18,8 @@ subsystems wholesale. Git history is reference material, not the current archite
   chunking into initial chunks with source references, then independently replaceable preparation
   of embedding text. Names and exact declarations remain open, as does whether generated summaries
   share a chunk type. The `Embedder` discussion remains open; no replacement interface is approved
-  yet. A chunk may have multiple text representations (original text, description, questions) but one vector for the chosen
-  embedding configuration. Do not silently turn these into separately indexed vectors.
+  yet. A chunk may have multiple text representations (original text, description, questions),
+  but one vector for the chosen embedding configuration. Do not silently turn these into separately indexed vectors.
 - Keep upstream ingestion in mind: dataset → document/webpage/etc. loader → optional OCR or
   preprocessing → `Source`. The owner deferred those interfaces; do not design them yet.
 - For each interface, draft the exact Python declaration and short, step-by-step documentation:
@@ -38,12 +39,13 @@ subsystems wholesale. Git history is reference material, not the current archite
 The principles below remain project requirements, but references to deleted documents describe
 historical contracts or intended documentation locations. They do not authorize restoring their
 old schemas or interfaces. Re-establish those contracts explicitly through the review above.
-The retained test suite and actual pre-commit hook pass for the cleanup; README records the
-verification scope. Keep those gates working as interfaces return. MkDocs navigation starts with
-Home and the indexing/retrieval overview in `docs/flow.md`. Published MkDocs pages must never
+The retained Python tests, Cargo checks/tests, ty, Ruff and strict MkDocs build pass. The pure
+Python package builds and installs independently of Rust. README records the verification scope.
+Keep the test suite and pre-commit gates working as interfaces return. MkDocs navigation starts
+with Home and the indexing/retrieval overview in `docs/flow.md`. Published MkDocs pages must never
 link to drafts, specs or plans. Exclude these development records from the built site and search,
-not merely from navigation. Verify documentation changes with `uv run mkdocs build --strict`. Keep the overview
-honest about intended responsibilities versus implemented interfaces.
+not merely from navigation. Verify documentation changes with `uv run mkdocs build --strict`.
+Keep the overview honest about intended responsibilities versus implemented interfaces.
 
 ## What this is
 
@@ -77,12 +79,13 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   remove those notes when the replacement lands. Keep development records out of the published
   MkDocs site and search. Published pages must never link to drafts, specs or plans.
 - `src/triplum/`: `utils.data` provides generic dataset/loading utilities; `datasets.frames` holds
-  `FrameDataset`; `cache.py` holds the disk cache; `store.sqlite.acl` holds access-control helpers.
-  The dataset adapters, store protocol/backend and CLI entry point are removed. Add modules only
-  as their contracts are reviewed. `crates/` holds the retained Rust workspace.
-- `tests/`: covers retained data loading, caching, access-control helpers, pre-commit behavior
-  and Rust extension exports directly. Historical dataset fixtures remain as reference data, not
-  evidence of working adapters. The old examples are removed; notebooks may still be stale.
+  `FrameDataset`; `cache.py` holds the disk cache. The store package, dataset adapters, CLI entry
+  point and Rust extension bridge are removed. `crates/` holds the independent Rust workspace.
+  Add modules only as their contracts are reviewed.
+- `tests/`: covers retained Python data loading, caching and pre-commit behavior. Rust tests run
+  with `cargo test`, independently of Python.
+- The working indexing prototype and its tests remain uncommitted under owner review. Do not
+  treat them as approved interfaces, publish them as working APIs or include them in cleanup commits.
 
 ## Rules that are easy to get wrong
 
@@ -120,10 +123,10 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - Use terminal color where it improves scanning (states, errors, next actions), respecting
   terminal capabilities and `NO_COLOR`. Keep explicit text labels so color is never required.
 
-- `uv run ty check` must pass across source and tests, alongside `cargo check`, lint and tests.
+- Install the pure Python package with `uv sync`. Run `uv run pytest --cov`, `uv run ty check`,
+  `uv run ruff check`, `uv run ruff format --check`, `cargo check`, `cargo test` and
+  `uv run mkdocs build --strict`. Rust checks are independent of the Python package.
   Fix contracts and narrowing; do not hide errors with broad ignores, `Any`, or excluded modules.
-  Keep the Rust extension stub aligned with its exports. Optional adapter imports are allowed
-  only where absent in the lean environment; CI also checks with the `local` extra installed.
 - The pre-commit gate exports the index and runs `cargo check`, `uvx ty check`,
   `ruff check` and `ruff format --check` there.
   Keep checks isolated from unstaged/untracked work; never stash another session's changes.

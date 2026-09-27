@@ -11,8 +11,9 @@ then follow a question through retrieval to an answer.
 
 ## Rebuild status
 
-Generic data-loading utilities, dataframe batching, caching, access-control helpers and a Rust
-core remain. An end-to-end pipeline is not yet available, and no replacement interface is approved.
+The retained Python foundation provides generic data loading, dataframe batching and caching.
+The Rust core is separate; the Python package does not build or link a Rust extension. An
+end-to-end pipeline is not yet available, and no replacement interface is approved.
 
 The current focus is identified source text, initial chunks and preparation of embedding text.
 The overview explains those responsibilities and how they connect to retrieval; exact interfaces

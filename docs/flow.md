@@ -3,9 +3,9 @@
 **Indexing prepares source material for search. Retrieval selects evidence for a question.**
 This page follows the intended flow and shows where experiments can replace individual steps.
 
-Triplum is being rebuilt. The retained utilities are not a working end-to-end pipeline, and no
-replacement interface is approved yet. These diagrams describe responsibilities, not a mandatory
-sequence of classes or Protocols.
+Triplum is being rebuilt. Its retained Python data utilities and cache, plus a separate Rust core,
+are not a working end-to-end pipeline. No replacement interface is approved yet. These diagrams
+describe responsibilities, not a mandatory sequence of classes or Protocols.
 
 ## 1. Indexing: prepare searchable evidence
 
@@ -29,8 +29,8 @@ flowchart TD
 ### Obtain source text
 
 A loader obtains a document, webpage or other input. Parsing, optional OCR and preprocessing make
-its text available. The provisional name **`Source`** means identified text with links or external IDs. Its exact
-fields and the loader/OCR interfaces are not yet defined.
+its text available. The provisional name **`Source`** means identified text with links or external
+IDs. Its exact fields and the loader/OCR interfaces are not yet defined.
 
 ### Produce initial chunks
 

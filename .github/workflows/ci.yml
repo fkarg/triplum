@@ -22,13 +22,12 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - name: Sync (builds the Rust extension; the extract extra is small enough to test here, the model extras stay out and their tests skip)
-        run: uv sync --extra extract
+      - name: Install Python dependencies
+        run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check
-      - run: uv run cargo check
+      - run: cargo check --locked
+      - run: cargo test --locked
       - run: uv run ty check
       - run: uv run pytest -q --cov --cov-report=term-missing:skip-covered
       - run: uv run mkdocs build --strict
-      - name: Check optional model adapters with their dependencies installed
-        run: uv run --extra local ty check

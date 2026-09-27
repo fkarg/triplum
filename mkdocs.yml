@@ -53,3 +53,4 @@ nav:
   - Home: index.md
   - Overview:
       - Indexing and retrieval: flow.md
+  - Dependency licences: licences.md

@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "Composable, benchmark-first sandbox for LLM knowledge-graph construction, GraphRAG and evaluation"
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
@@ -19,15 +20,7 @@ classifiers = [
 dependencies = [
   "polars>=1.44",
   "pyarrow>=25",
-  "numpy>=2.3",
-  "sqlite-vec>=0.1.9,<0.2",
-  "openai>=3,<4",
-  "typer>=0.27",
-  "rich>=15.0.0",
-  "pypdf>=6.19.0",
-  "python-docx>=1.2.0",
   "pydantic>=2.13",
-  "pydantic-settings>=2",
 ]
 
 [project.urls]
@@ -35,24 +28,10 @@ Repository = "https://github.com/fkarg/triplum"
 Documentation = "https://github.com/fkarg/triplum/tree/main/docs"
 Issues = "https://github.com/fkarg/triplum/issues"
 
-[project.optional-dependencies]
-local = ["sentence-transformers>=6", "fastembed>=0.8"]
-# The rules extractor: spaCy with the small English pipeline pinned by wheel URL (MIT).
-extract = [
-  "spacy>=3.8.16",
-  "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
-  "rapidfuzz>=3.14",
-  "dateparser>=1.4",
-]
-# The small_model extractor: GLiNER spans and GLiREL relations (research-only weights).
-extract-models = ["gliner>=0.2.29", "glirel>=1.2.1"]
-
 [dependency-groups]
 dev = [
     "pytest>=9",
     "ruff>=0.14",
-    "maturin>=1.15,<2",
-    "marimo>=0.24",
     "pytest-cov>=7.1.0",
     "ty>=0.0.81",
 ]
@@ -62,28 +41,21 @@ docs = [
 ]
 
 [build-system]
-requires = ["maturin>=1.15,<2"]
-build-backend = "maturin"
+requires = ["uv_build>=0.12.12,<0.13"]
+build-backend = "uv_build"
 
-[tool.maturin]
-python-source = "src"
-module-name = "triplum._core"
-manifest-path = "crates/triplum-py/Cargo.toml"
-features = ["pyo3/extension-module"]
-# The sdist is rooted at the workspace; maturin does not pick up the root LICENSE on its own and
-# PyPI rejects an sdist whose License-File entry is missing.
-include = [{ path = "LICENSE", format = "sdist" }]
+[tool.uv.build-backend]
+# Do not ship artifacts left by the previous Python/Rust extension build.
+source-exclude = ["*.so", "*.pyd", "*.dll", "*.dylib"]
 
 [tool.uv]
 # Both groups sync by default so `uv run mkdocs build --strict` works on a fresh clone; without
 # it `uv run` falls through to a global mkdocs that lacks the material/pymdownx extensions.
 default-groups = ["dev", "docs"]
-cache-keys = [{ file = "pyproject.toml" }, { file = "Cargo.toml" }, { file = "crates/**/Cargo.toml" }, { file = "crates/**/*.rs" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--durations=10"
-markers = ["model: loads real optional models; may download weights"]
 
 [tool.coverage.run]
 source = ["src/triplum"]
@@ -93,45 +65,8 @@ branch = true
 line-length = 100
 target-version = "py312"
 
-[tool.ruff.lint.per-file-ignores]
-# A cell's final expression is its displayed output in marimo.
-"notebooks/*.py" = ["B018"]
-"examples/*.py" = ["B018", "T201", "INP001"]  # printing is the point; not a package
-
 [tool.ty.terminal]
 error-on-warning = true
 
 [tool.ty.rules]
 unused-ignore-comment = "error"
-
-# Keep the default environment lean; CI also checks with the local extra installed.
-# These allowances only apply when the optional imports are absent.
-[[tool.ty.overrides]]
-include = ["src/triplum/embed/sentence_transformers.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["sentence_transformers", "torch", "huggingface_hub"]
-
-[[tool.ty.overrides]]
-include = ["src/triplum/embed/fastembed.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["fastembed"]
-
-[[tool.ty.overrides]]
-include = ["src/triplum/rerank/cross_encoder.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["sentence_transformers"]
-
-[[tool.ty.overrides]]
-include = ["src/triplum/extract/rules.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["spacy", "dateparser"]
-
-[[tool.ty.overrides]]
-include = ["src/triplum/extract/resolvers.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["rapidfuzz"]
-
-[[tool.ty.overrides]]
-include = ["src/triplum/extract/small_model.py"]
-[tool.ty.overrides.analysis]
-allowed-unresolved-imports = ["gliner", "glirel"]

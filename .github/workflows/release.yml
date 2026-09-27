@@ -1,6 +1,4 @@
-# Build wheels and the sdist on a version tag, then publish to PyPI via trusted publishing.
-# Build and publish are separate jobs so only the publish job holds the OIDC credential
-# (PyPA guide: packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/).
+# Build a pure-Python wheel and sdist, then publish on a version tag.
 name: Release
 
 on:
@@ -12,75 +10,57 @@ permissions:
   contents: read
 
 jobs:
-  wheels:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - { runner: ubuntu-latest, target: x86_64, name: linux-x86_64 }
-          - { runner: ubuntu-latest, target: aarch64, name: linux-aarch64 }
-          - { runner: macos-latest, target: aarch64, name: macos-aarch64 }
+  build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Tag must match pyproject version
         if: startsWith(github.ref, 'refs/tags/')
         run: grep -q "^version = \"${GITHUB_REF_NAME#v}\"$" pyproject.toml
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Build wheel (abi3, one per platform)
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist
-          manylinux: auto
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-      - name: Smoke-test the wheel
-        if: matrix.platform.target != 'aarch64' || runner.arch == 'ARM64'
+      - uses: astral-sh/setup-uv@v7
+      - name: Build wheel from source distribution
+        run: uv build --no-sources
+      - name: Verify distribution contents
+        shell: python
         run: |
-          python -m venv .smoke
-          . .smoke/bin/activate
-          pip install dist/*.whl
-          triplum --help
-          python -c "import triplum._core as c; print(c.ts_max())"
-      - uses: actions/upload-artifact@v6
-        with:
-          name: wheels-${{ matrix.platform.name }}
-          path: dist
+          from pathlib import Path
+          import tarfile
+          import zipfile
 
-  sdist:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-      - name: sdist must carry the licence file (PyPI rejects it otherwise)
-        run: tar tzf dist/*.tar.gz | grep -q '^triplum-[^/]*/LICENSE$'
+          wheel, = Path("dist").glob("*.whl")
+          assert wheel.name.endswith("-py3-none-any.whl")
+          with zipfile.ZipFile(wheel) as archive:
+              names = archive.namelist()
+              assert not any(name.endswith((".so", ".pyd", ".dll", ".dylib")) for name in names)
+              assert any(name.endswith("/licenses/LICENSE") for name in names)
+          sdist, = Path("dist").glob("*.tar.gz")
+          with tarfile.open(sdist) as archive:
+              assert any(name.endswith("/LICENSE") for name in archive.getnames())
+      - name: Smoke-test the wheel
+        run: |
+          uv venv .smoke --python 3.12
+          uv pip install --python .smoke/bin/python dist/*.whl
+          .smoke/bin/python -c "import importlib.util; from triplum.utils.data import DataLoader, RecordDataset; from triplum.datasets import FrameDataset; from triplum.cache import Cache; assert importlib.util.find_spec('triplum._core') is None"
       - uses: actions/upload-artifact@v6
         with:
-          name: wheels-sdist
+          name: distributions
           path: dist
 
   publish:
     name: Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [wheels, sdist]
+    needs: [build]
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/triplum
     permissions:
-      id-token: write   # trusted publishing; nothing else in this job
+      id-token: write
     steps:
       - uses: actions/download-artifact@v7
         with:
-          pattern: wheels-*
+          name: distributions
           path: dist
-          merge-multiple: true
-      - run: ls -l dist
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          skip-existing: true   # a re-run after a partial upload only adds the missing files
+          skip-existing: true

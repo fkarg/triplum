@@ -11,11 +11,13 @@ were deliberately removed because the architecture and its explanation had becom
 The old benchmark runner, CLI examples and documentation are not working entry points for this
 checkout.
 
-The retained foundation is generic data-loading utilities, `FrameDataset` for dataframe batches,
-a disk cache with an explicit cache directory, access-control helpers and the Rust core. Orphaned
-dataset adapters, store interfaces and backend, examples and the CLI entry point have been removed
-along with obsolete tests. Retaining a utility does not approve its interface for the rebuild.
-The previous implementation is available in Git history; it is reference material, not a restore list.
+The retained Python foundation is generic data-loading utilities, `FrameDataset` for dataframe
+batches and a disk cache with an explicit cache directory. The package uses `uv_build` and has no
+Rust extension, store package or model extras. The Rust core remains in an independent Cargo
+workspace; installing the Python package does not build or link it.
+
+Retaining a utility does not approve its interface for the rebuild. The previous implementation
+is available in Git history; it is reference material, not a restore list.
 
 ## How we are rebuilding
 
@@ -52,11 +54,12 @@ summaries, and distinguishes the intended boundaries from implemented functional
 
 ## Development
 
-[AGENTS.md](AGENTS.md) records the review process and contributor constraints. The retained suite
-has 42 passing tests and 96% Python coverage with branch measurement enabled. It covers data
-loading, caching, access-control helpers, pre-commit behavior and the retained Rust extension
-exports. The actual pre-commit hook passes Cargo, ty, Ruff lint and formatting checks against an
-isolated index containing the cleanup.
+[AGENTS.md](AGENTS.md) records the review process and contributor constraints;
+[CONTRIBUTING.md](CONTRIBUTING.md) lists the checks. Use `uv sync` for Python, then run tests with
+coverage, type checking and Ruff. Check and test the independent Rust workspace with Cargo.
+The retained suite has 34 passing Python tests. Cargo checks and tests, ty, Ruff and the strict
+MkDocs build pass. The pure Python package also builds from an isolated source snapshot and
+installs in a fresh Python environment without the Rust bridge or unapproved prototype.
 
 Build the documentation with `uv run mkdocs build --strict`, or preview it with
 `uv run mkdocs serve`. New documentation and coverage accompany each reviewed interface.
