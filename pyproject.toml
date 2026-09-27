@@ -35,9 +35,6 @@ Repository = "https://github.com/fkarg/triplum"
 Documentation = "https://github.com/fkarg/triplum/tree/main/docs"
 Issues = "https://github.com/fkarg/triplum/issues"
 
-[project.scripts]
-triplum = "triplum.bench.cli:app"
-
 [project.optional-dependencies]
 local = ["sentence-transformers>=6", "fastembed>=0.8"]
 # The rules extractor: spaCy with the small English pipeline pinned by wheel URL (MIT).

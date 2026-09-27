@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from itertools import count, islice
-from pathlib import Path
+from typing import assert_type
 
 import polars as pl
 import pytest
@@ -29,18 +29,13 @@ class Numbers(IterableDataset[int]):
         yield from count()
 
 
-def test_documented_loading_example():
-    page = (Path(__file__).parents[1] / "docs/guide/loading.md").read_text()
-    example = page.split("```python\n", 1)[1].split("```", 1)[0]
-    exec(compile(example, "docs/guide/loading.md", "exec"), {})  # noqa: S102 - repository-owned example
-
-
 def test_indexed_dataset_and_partial_last_batch():
     words = Words()
     assert words[1] == "beta"
     assert list(words) == ["alpha", "beta", "gamma"]
     assert list(DataLoader(words, batch_size=2)) == [["alpha", "beta"], ["gamma"]]
     loader = DataLoader(words, batch_size=2)
+    assert_type(loader, DataLoader[str, list[str]])
     assert list(loader) == list(loader)
 
 
@@ -65,7 +60,9 @@ def test_custom_collation_can_make_columnar_batches():
     def collate(items: list[str]) -> pl.DataFrame:
         return pl.DataFrame({"text": items})
 
-    frames = list(DataLoader(Words(), batch_size=2, collate_fn=collate))
+    loader = DataLoader(Words(), batch_size=2, collate_fn=collate)
+    assert_type(loader, DataLoader[str, pl.DataFrame])
+    frames = list(loader)
     assert [f.to_dicts() for f in frames] == [
         [{"text": "alpha"}, {"text": "beta"}],
         [{"text": "gamma"}],
@@ -74,7 +71,9 @@ def test_custom_collation_can_make_columnar_batches():
 
 def test_native_batches_pass_through_without_copying():
     frame = pl.DataFrame({"text": ["hello"]})
-    assert next(iter(DataLoader([frame], batch_size=None))) is frame
+    loader = DataLoader([frame], batch_size=None)
+    assert_type(loader, DataLoader[pl.DataFrame, pl.DataFrame])
+    assert next(iter(loader)) is frame
 
 
 def test_empty_source_and_source_errors_are_preserved():

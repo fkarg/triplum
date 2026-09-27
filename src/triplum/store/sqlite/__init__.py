@@ -1,1 +1,1 @@
-"""SQLite backend: FTS5 for BM25, sqlite-vec for vectors, the D2 tables from `migrations.sql`."""
+"""Principal and ACL identity helpers retained from the SQLite backend."""

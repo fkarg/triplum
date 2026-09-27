@@ -1,7 +1,7 @@
-"""Content-addressed disk cache shared by LLM, embedder and reranker adapters.
+"""Content-addressed disk cache with an explicit storage directory.
 
 Keys are sha256 over (kind, canonical JSON payload). One file per entry, sharded by the first two
-hex characters. The cache is per machine (design D6a); nothing requires it to exist.
+hex characters. The caller supplies the cache directory; it is created on the first write.
 """
 
 from __future__ import annotations
@@ -26,15 +26,9 @@ def content_key(kind: str, payload: Any) -> str:
     return h.hexdigest()
 
 
-def default_root() -> Path:
-    from triplum.settings import Settings
-
-    return Settings().cache
-
-
 class Cache:
-    def __init__(self, root: Path | str | None = None) -> None:
-        self.root = Path(root) if root is not None else default_root()
+    def __init__(self, root: Path | str) -> None:
+        self.root = Path(root)
 
     def _path(self, key: str) -> Path:
         return self.root / key[:2] / key

@@ -1,1 +1,1 @@
-"""The `Store` protocol every backend implements, taking a `Viewer` on every read."""
+"""Retained storage utilities; the store interface is awaiting review."""

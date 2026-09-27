@@ -18,18 +18,18 @@ class DataLoader[T, B]:
     """
 
     @overload
-    def __init__(
-        self: DataLoader[T, list[T]],
-        dataset: Iterable[T],
+    def __init__[Item](
+        self: DataLoader[Item, list[Item]],
+        dataset: Iterable[Item],
         *,
         batch_size: int = 1,
         collate_fn: None = None,
     ) -> None: ...
 
     @overload
-    def __init__(
-        self: DataLoader[T, T],
-        dataset: Iterable[T],
+    def __init__[Item](
+        self: DataLoader[Item, Item],
+        dataset: Iterable[Item],
         *,
         batch_size: None,
         collate_fn: None = None,
