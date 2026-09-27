@@ -1,7 +1,37 @@
 # AGENTS.md
 
-Conventions for anyone (human or agent) working in this repository. Read the README first, then
-`docs/research/design.md`; the design record is the source of truth for architecture decisions.
+Conventions for anyone (human or agent) working in this repository. Read the README first.
+
+## Current rebuild and review gate
+
+The owner deliberately removed the previous documentation and much of the code on `v2-rewrite`.
+Remaining source, tests and configuration can reference deleted modules. Do not describe the old
+pipelines as working, infer approval from surviving code, or restore deleted subsystems wholesale.
+Git history is reference material, not the current architecture contract.
+
+- Work in the existing checkout and branch. Do not create worktrees or switch branches for this
+  rebuild unless the owner explicitly asks. Preserve concurrent edits.
+- Rebuild **one interface at a time**, with the owner tightly involved. The current first review
+  is `Embedder`; no replacement interface is approved yet.
+- For each interface, draft the exact Python declaration and short, step-by-step documentation:
+  purpose, inputs, outputs, guarantees, one usage example, and any unresolved tradeoffs.
+  Explain supporting types at first use. Distinguish proposals from approved contracts.
+- Have Claude Opus independently review and critique each draft before the owner's detailed
+  review. Use `peer-review` on the host, outside the sandbox, as explicitly requested. Report the
+  actual serving model, dissent, attempted falsifications and the impact of the review.
+- Stop for the owner's review before implementing the contract or proceeding to the next
+  interface. Agreement to this process is not blanket approval of future designs. Interface
+  declarations and their documentation may be drafted for review; adapters and pipelines wait.
+- Prefer simple functions and independent protocols. Add records, classes, inheritance or
+  metadata only for concrete needs. Do not rebuild the old object hierarchy by default.
+- Keep README's status and this review checkpoint current after approval. Record review outcomes
+  with the interface draft until a new design record exists.
+
+The principles below remain project requirements, but references to deleted documents describe
+historical contracts or intended documentation locations. They do not authorize restoring their
+old schemas or interfaces. Re-establish those contracts explicitly through the review above.
+Full-suite and documentation checks currently reference removed files; report that limitation
+and verify the reviewed slice without adding ignores or restoring unrelated code to make it green.
 
 ## What this is
 
@@ -25,7 +55,7 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   cheap comparators (closed-book, BM25, dense, fusion, oracle; a non-LLM extractor), reported
   with the full run identity, or it stays a candidate in `docs/research/papers.md`.
 
-## Where things live
+## Documentation and source layout as it is rebuilt
 
 - `docs/research/`: research foundation and the decision record. `design.md` is a living document:
   change a decision there when it changes, do not append contradictions. Use Git history for
@@ -33,10 +63,9 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
 - `docs/specs/` and `docs/plans/`: active development contracts. Superseded detail is kept as
   temporary notes with commit references only while its replacement layer is being designed;
   remove those notes when the replacement lands. Keep development records out of MkDocs navigation.
-- `src/triplum/`: the Python package (`utils.data`, `datasets`, `data`, `cache`, `llm`, `embed`, `rerank`, `store`,
-  `retrieve`, `generate`, `eval`, `bench`, `ingest`; `extract` is planned). `crates/`: the
-  Cargo workspace (`triplum-core`, `triplum-py`). `notebooks/`: marimo notebooks. `scripts/`:
-  fixture generation and the pre-commit helper. `research/` (SOTA monitor, digests) is planned.
+- `src/triplum/`: remaining Python source includes `utils.data`, `datasets`, `cache` and `store`;
+  some imports are broken by the deliberate deletions. Add other modules only as their contracts
+  are reviewed. `crates/` holds the Rust workspace; remaining examples and notebooks may be stale.
 
 ## Rules that are easy to get wrong
 
