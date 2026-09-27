@@ -58,8 +58,17 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Home: index.md
-  - Overview:
+  - Overview and Core Concepts:
       - Indexing and retrieval: flow.md
+      - Core Concepts:
+          - Overview: concepts.md
+          - Source: concepts/source.md
+          - Chunk: concepts/chunk.md
+          - Datasets and the DataLoader: concepts/datasets.md
+          - Conversion: concepts/conversion.md
+          - Chunking: concepts/chunking.md
+          - Chunk preprocessing: concepts/chunk-preprocessing.md
+          - Embedding: concepts/embedding.md
   # Filled with one page per module by scripts/api_reference.py.
   - API reference: []
   - Dependency licences: licences.md
