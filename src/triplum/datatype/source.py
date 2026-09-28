@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -17,8 +17,8 @@ class Source(BaseModel):
     """
 
     id: UUID = Field(
-        default_factory=uuid4,
-        description="Storage identity of this record; random, not derived from content.",
+        default_factory=uuid7,
+        description="Storage identity of this record: a time-ordered UUIDv7, not derived from content.",
     )
     origin: Path | str = Field(
         description="Identifies where the text came from: a file path, or another identifier such as a URL.",

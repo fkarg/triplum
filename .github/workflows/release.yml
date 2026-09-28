@@ -38,9 +38,9 @@ jobs:
               assert any(name.endswith("/LICENSE") for name in archive.getnames())
       - name: Smoke-test the wheel
         run: |
-          uv venv .smoke --python 3.12
+          uv venv .smoke --python 3.14
           uv pip install --python .smoke/bin/python dist/*.whl
-          .smoke/bin/python -c "import importlib.util; from triplum.utils.data import DataLoader, RecordDataset; from triplum.datasets import FrameDataset; from triplum.cache import Cache; assert importlib.util.find_spec('triplum._core') is None"
+          .smoke/bin/python -c "import importlib.util; from triplum.utils.data import DataLoader, RecordDataset; from triplum.datasets import FrameDataset; from triplum.utils.cache import Cache; assert importlib.util.find_spec('triplum._core') is None"
       - uses: actions/upload-artifact@v6
         with:
           name: distributions
