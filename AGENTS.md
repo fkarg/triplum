@@ -88,11 +88,14 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   temporary notes with commit references only while its replacement layer is being designed;
   remove those notes when the replacement lands. Keep development records out of the published
   MkDocs site and search. Published pages must never link to drafts, specs or plans.
-- `src/triplum/`: `utils.data` provides generic dataset/loading utilities; `datasets.frames` holds
-  `FrameDataset`; `cache.py` holds the disk cache. The store package, dataset adapters, CLI entry
-  point and Rust extension bridge are removed. `crates/` holds the independent Rust workspace.
-  Add modules only as their contracts are reviewed.
-- `tests/`: covers retained Python data loading, caching and pre-commit behavior. Rust tests run
+- `src/triplum/`: `datatype` holds the `Source` and `Chunk` records; `steps` the step Protocols
+  with reference implementations; `store` one Protocol per storage capability (`RecordStore` with
+  `MemoryStore` and SQLModel-backed `SQLStore` so far); `utils.data` generic dataset/loading
+  utilities, `utils.cache` the disk cache and `utils.fingerprint` the `Fingerprinted` mixin;
+  `datasets` `FrameDataset` and reference datasets. The CLI entry point and Rust extension bridge
+  are removed. `crates/` holds the independent Rust workspace. Add modules only as their
+  contracts are reviewed.
+- `tests/`: covers data loading, caching, fingerprints, steps, stores and pre-commit behavior. Rust tests run
   with `cargo test`, independently of Python.
 - The working indexing prototype and its tests remain uncommitted under owner review. Do not
   treat them as approved interfaces, describe them as working APIs in prose docs or include them

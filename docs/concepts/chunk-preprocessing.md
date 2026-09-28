@@ -9,10 +9,12 @@ The library provides one naive choice, `OriginalText`, which uses the chunk text
 ## Example
 
 ```python
-from triplum.datatype import Chunk
+from triplum.datatype import Source
 from triplum.steps.chunk_preprocessing import OriginalText
+from triplum.steps.chunking import FixedSize
 
-chunk = Chunk(origin="notes/returns.md", start=0, text="Returns are accepted within 30 days.")
+source = Source(origin="notes/returns.md", text="Returns are accepted within 30 days.")
+[chunk] = FixedSize(100)(source)
 embedding_text = OriginalText()
 print(embedding_text(chunk))  # Returns are accepted within 30 days.
 ```
@@ -39,7 +41,8 @@ class EmbeddingText(Protocol):
 
 ## Writing your own
 
-Subclass the protocol and implement `__call__`. This one adds the source's origin as context:
+Subclass the protocol and implement `__call__`. This one adds the source's origin as context
+(continuing the example above):
 
 ```python
 from triplum.datatype import Chunk
@@ -53,7 +56,6 @@ class WithOrigin(EmbeddingText):
         return f"{chunk.origin}\n{chunk.text}"
 
 
-chunk = Chunk(origin="notes/returns.md", start=0, text="Returns are accepted within 30 days.")
 print(WithOrigin()(chunk))
 # notes/returns.md
 # Returns are accepted within 30 days.

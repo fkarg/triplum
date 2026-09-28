@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Protocol
 
 from triplum.datatype import Chunk, Source
+from triplum.utils.fingerprint import Fingerprinted
 
 # operations of form Source -> Chunk
 
@@ -13,7 +14,7 @@ class Chunker(Protocol):
     def __call__(self, source: Source, /) -> list[Chunk]: ...
 
 
-class FixedSize(Chunker):
+class FixedSize(Chunker, Fingerprinted):
     """Slice the text every `size` characters; the last chunk keeps the remainder.
 
     Chunks do not overlap and concatenate back to the source text. Empty text yields no chunks.
@@ -26,6 +27,11 @@ class FixedSize(Chunker):
 
     def __call__(self, source: Source, /) -> list[Chunk]:
         return [
-            Chunk(origin=source.origin, start=start, text=source.text[start : start + self.size])
+            Chunk(
+                source_id=source.id,
+                origin=source.origin,
+                start=start,
+                text=source.text[start : start + self.size],
+            )
             for start in range(0, len(source.text), self.size)
         ]

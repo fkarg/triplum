@@ -1,4 +1,4 @@
-from triplum.cache import Cache, canonical_json, content_key
+from triplum.utils.cache import Cache, canonical_json, content_key
 
 
 def test_canonical_json_is_order_independent():

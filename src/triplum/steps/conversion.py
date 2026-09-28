@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 from triplum.datatype import Source
+from triplum.utils.fingerprint import Fingerprinted
 
 
 class Converter[A](Protocol):
@@ -14,7 +15,7 @@ class Converter[A](Protocol):
     def __call__(self, item: A, /) -> list[Source]: ...
 
 
-class Utf8File(Converter[Path]):
+class Utf8File(Converter[Path], Fingerprinted):
     """Read a file as UTF-8 text, keeping newlines unchanged; `origin` is the path."""
 
     def __call__(self, item: Path, /) -> list[Source]:

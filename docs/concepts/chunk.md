@@ -15,13 +15,14 @@ source = Source(
     origin=Path("notes/returns.md"),
     text="Returns are accepted within 30 days. Refunds take 5 days.",
 )
-chunk = Chunk(origin=source.origin, start=37, text="Refunds take 5 days.")
+chunk = Chunk(source_id=source.id, origin=source.origin, start=37, text="Refunds take 5 days.")
 
 assert source.text[chunk.start : chunk.start + len(chunk.text)] == chunk.text
 ```
 
 1. Build a `Source` as before.
-2. Create a `Chunk` with the same `origin` as its source.
+2. Create a `Chunk` pointing at its source: `source_id` is the source's `id`, and `origin` is
+   copied from it.
 3. `start` is the offset of the excerpt in `source.text`, and `text` is the excerpt, verbatim.
 4. The assertion is the relationship every chunk has to its source: slicing the source text at
    `start` gives back the chunk text.

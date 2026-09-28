@@ -8,7 +8,7 @@ from itertools import islice
 
 from pydantic import BaseModel
 
-from triplum.cache import content_key
+from triplum.utils.cache import content_key
 
 
 class Dataset[T](ABC):

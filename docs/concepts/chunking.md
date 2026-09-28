@@ -67,7 +67,12 @@ class Paragraphs(Chunker):
 
     def __call__(self, source: Source, /) -> list[Chunk]:
         return [
-            Chunk(origin=source.origin, start=match.start(), text=match.group())
+            Chunk(
+                source_id=source.id,
+                origin=source.origin,
+                start=match.start(),
+                text=match.group(),
+            )
             for match in re.finditer(r"[^\n]+(?:\n[^\n]+)*", source.text)
         ]
 
@@ -85,7 +90,9 @@ example above):
 
 ```python
 def whole_text(source: Source, /) -> list[Chunk]:
-    return [Chunk(origin=source.origin, start=0, text=source.text)] if source.text else []
+    if not source.text:
+        return []
+    return [Chunk(source_id=source.id, origin=source.origin, start=0, text=source.text)]
 
 
 chunker: Chunker = whole_text  # accepted by the type checker

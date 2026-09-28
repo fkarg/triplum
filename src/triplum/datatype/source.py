@@ -1,6 +1,9 @@
 from pathlib import Path
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+
+from triplum.utils.cache import content_key
 
 
 class Source(BaseModel):
@@ -13,6 +16,10 @@ class Source(BaseModel):
         >>> Source(origin=Path("notes/intro.md"), text="# Intro\\n...")
     """
 
+    id: UUID = Field(
+        default_factory=uuid4,
+        description="Storage identity of this record; random, not derived from content.",
+    )
     origin: Path | str = Field(
         description="Identifies where the text came from: a file path, or another identifier such as a URL.",
         examples=[Path("notes/intro.md"), "https://example.org/page"],
@@ -20,3 +27,9 @@ class Source(BaseModel):
     text: str = Field(
         description="The full source text. May be empty; chunking then produces no chunks.",
     )
+
+    @computed_field
+    @property
+    def fingerprint(self) -> str:
+        """Content hash of `origin` and `text`; equal for records with equal content, whatever their `id`."""
+        return content_key("source", [str(self.origin), self.text])

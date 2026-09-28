@@ -5,6 +5,8 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
+from triplum.utils.fingerprint import Fingerprinted
+
 type Vectors = NDArray[np.float32]
 """Embeddings of a batch of texts: shape `(len(texts), dimensions)`, one row per text."""
 
@@ -18,7 +20,7 @@ class Embedder(Protocol):
     def __call__(self, texts: list[str], /) -> Vectors: ...
 
 
-class ZeroEmbedder(Embedder):
+class ZeroEmbedder(Embedder, Fingerprinted):
     """Return all-zero vectors. This is a placeholder for an embedding function."""
 
     def __init__(self, dimensions: int = 1536) -> None:
