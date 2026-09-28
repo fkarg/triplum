@@ -70,6 +70,10 @@ nav:
           - Chunking: concepts/chunking.md
           - Chunk preprocessing: concepts/chunk-preprocessing.md
           - Embedding: concepts/embedding.md
+  - Infrastructure:
+      - Store: infrastructure/store.md
+      - Fingerprints: infrastructure/fingerprints.md
+      - Cache: infrastructure/cache.md
   # Filled with one page per module by scripts/api_reference.py.
   - API reference: []
   - Dependency licences: licences.md

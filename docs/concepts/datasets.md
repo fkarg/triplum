@@ -36,6 +36,39 @@ for batch in DataLoader(corpus, batch_size=256):
 4. `DataLoader(corpus, batch_size=256)` yields lists of up to 256 sources. The last batch keeps
    the remainder.
 
+## A local example: Markdown files
+
+[`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] reads your own notes: one `Source`
+per `.md` file in a folder. Given a folder `notes/` with `returns.md` and `shipping.md`:
+
+```python
+from pathlib import Path
+
+from triplum.datasets.markdownfolder import MarkdownFolder
+from triplum.utils.data import DataLoader
+
+notes = MarkdownFolder(Path("notes"))
+print(len(notes))
+
+for source in DataLoader(notes, batch_size=None):
+    print(source.origin.name, repr(source.text[:20]))
+```
+
+Output:
+
+```text
+2
+returns.md '# Returns\n\nReturns a'
+shipping.md '# Shipping\n\nOrders s'
+```
+
+- Only `.md` files directly in the folder count; subfolders are not searched. Files come in
+  sorted name order.
+- The file list is fixed when you create the dataset; a file added later needs a new
+  `MarkdownFolder`. Contents are read, as UTF-8, each time a record is accessed.
+- `origin` is the absolute path of the file.
+- Its `fingerprint()` hashes every file's name and bytes, so it reads the whole folder.
+
 ## Two kinds of dataset
 
 - **`Dataset`**: indexed. Implement `__len__`, `__getitem__` and `fingerprint()`. Use it when
@@ -71,6 +104,7 @@ Turning a dataset's records into sources, when they are not sources already, is
   [`IterableDataset`][triplum.utils.data.dataset.IterableDataset] and
   [`RecordDataset`][triplum.utils.data.dataset.RecordDataset]
 - [`DataLoader`][triplum.utils.data.loader.DataLoader]
-- [`triplum.datasets.multihoprag`][triplum.datasets.multihoprag]
+- [`triplum.datasets.multihoprag`][triplum.datasets.multihoprag] and
+  [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder]
 
 Next: [Conversion](conversion.md).

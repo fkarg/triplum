@@ -29,10 +29,15 @@ print(source.origin, len(source.text))  # notes/returns.md 57
 ## What it guarantees
 
 - `Source` is a plain [Pydantic](https://docs.pydantic.dev/) model, so construction validates the
-  field types. It has no methods and no storage behavior.
+  field types. It has no storage behavior of its own.
 - `text` may be empty; chunking then produces no chunks.
-- The `origin` is what chunks use to refer back to the source, so it should be unique within a
-  collection you index together. The class does not enforce this.
+- Every source gets an `id` (a time-ordered UUIDv7) when it is created. Chunks refer back to their
+  source through `source_id`, which is that `id`. Creating a second `Source` with the same text
+  gives a different `id`.
+- `fingerprint` is a hash of `origin` and `text`: two sources with the same content have the same
+  fingerprint, whatever their `id`. See [Fingerprints](../infrastructure/fingerprints.md).
+- `origin` is for people and for matching back to the original document; it is not checked for
+  uniqueness.
 
 ## Reference
 

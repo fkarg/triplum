@@ -4,48 +4,36 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from uuid import UUID
 
-from sqlmodel import Field, Session, SQLModel, col, create_engine, select
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, col, create_engine, select
 
 from triplum.datatype import Chunk, Source
-from triplum.store import RecordStore
-
-
-class SourceRow(SQLModel, table=True):
-    __tablename__ = "source"  # type: ignore[assignment]
-
-    id: UUID = Field(primary_key=True)
-    origin: str
-    origin_is_path: bool
-    text: str
-    fingerprint: str = Field(index=True)
-
-
-class ChunkRow(SQLModel, table=True):
-    __tablename__ = "chunk"  # type: ignore[assignment]
-
-    id: UUID = Field(primary_key=True)
-    source_id: UUID = Field(foreign_key="source.id", index=True)
-    origin: str
-    origin_is_path: bool
-    start: int
-    text: str
-    fingerprint: str = Field(index=True)
+from triplum.store.protocols import RecordStore
+from triplum.store.sql.tables import ChunkRow, SourceRow
 
 
 def _origin(value: str, is_path: bool) -> Path | str:
     return Path(value) if is_path else value
 
 
-class SQLStore(RecordStore):
-    """Records in the database at `url`; tables are created if missing.
+class SQLAlchemyStore(RecordStore):
+    """Records in the database at `url` (any SQLAlchemy URL); missing tables are created.
 
-    `Path` and `str` origins are kept apart with an `origin_is_path` column. The default URL is a
-    private in-memory SQLite database.
+    The default URL is an in-memory SQLite database, private to this store instance and shared
+    by all threads using it. `Path` and `str` origins are kept apart with an `origin_is_path`
+    column. Backend-specific stores may subclass this where specific SQL is faster.
     """
 
     def __init__(self, url: str = "sqlite://") -> None:
-        self.engine = create_engine(url)
-        SQLModel.metadata.create_all(self.engine)
+        if url == "sqlite://":
+            # One shared connection; otherwise each thread gets its own empty in-memory database.
+            self.engine = create_engine(
+                url, poolclass=StaticPool, connect_args={"check_same_thread": False}
+            )
+        else:
+            self.engine = create_engine(url)
+        tables = [SQLModel.metadata.tables[row.__tablename__] for row in (SourceRow, ChunkRow)]  # pyright: ignore[reportArgumentType]
+        SQLModel.metadata.create_all(self.engine, tables=tables)  # not every imported table
 
     def add_sources(self, sources: Iterable[Source], /) -> None:
         with Session(self.engine) as session:

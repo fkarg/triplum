@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
@@ -5,14 +6,12 @@ import pytest
 
 from triplum.datatype import Chunk, Source
 from triplum.steps.chunking import FixedSize
-from triplum.store import RecordStore
-from triplum.store.memory import MemoryStore
-from triplum.store.sql import SQLStore
+from triplum.store import MemoryStore, RecordStore, SQLAlchemyStore
 
 
 @pytest.fixture(params=["memory", "sqlite"])
 def store(request: pytest.FixtureRequest) -> RecordStore:
-    return MemoryStore() if request.param == "memory" else SQLStore()
+    return MemoryStore() if request.param == "memory" else SQLAlchemyStore()
 
 
 def test_sources_and_chunks_round_trip(store: RecordStore):
@@ -55,10 +54,18 @@ def test_chunk_needs_its_source_and_nothing_of_the_batch_is_stored(store: Record
 def test_sql_store_persists_across_instances(tmp_path: Path):
     url = f"sqlite:///{tmp_path / 'records.db'}"
     a = Source(origin="a", text="abc")
-    first = SQLStore(url)
+    first = SQLAlchemyStore(url)
     first.add_sources([a])
     first.add_chunks(FixedSize(2)(a))
 
-    second = SQLStore(url)
+    second = SQLAlchemyStore(url)
     assert second.source(a.id) == a
     assert [c.text for c in second.chunks(a.id)] == ["ab", "c"]
+
+
+def test_in_memory_sql_store_is_shared_across_threads():
+    store = SQLAlchemyStore()
+    a = Source(origin="a", text="abc")
+    store.add_sources([a])
+    with ThreadPoolExecutor(1) as pool:
+        assert pool.submit(store.source, a.id).result() == a

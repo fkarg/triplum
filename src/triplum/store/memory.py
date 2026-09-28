@@ -2,7 +2,7 @@ from collections.abc import Iterable, Iterator
 from uuid import UUID
 
 from triplum.datatype import Chunk, Source
-from triplum.store import RecordStore
+from triplum.store.protocols import RecordStore
 
 
 class MemoryStore(RecordStore):

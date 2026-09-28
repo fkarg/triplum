@@ -7,7 +7,7 @@ Conventions for anyone (human or agent) working in this repository. Read the REA
 The owner deliberately removed the previous documentation and much of the code on `v2-rewrite`.
 The subsequent cleanup removes orphaned source and obsolete tests, retaining generic data utilities,
 `FrameDataset` and a disk cache with an explicit directory. The Python package uses `uv_build`;
-there is no store package, PyO3 bridge or model extra. The Rust core remains independently in Cargo.
+there is no PyO3 bridge or model extra. The Rust core remains independently in Cargo.
 Do not describe the old pipelines as working, infer approval from surviving code, or restore deleted
 subsystems wholesale. Git history is reference material, not the current architecture contract.
 
@@ -22,8 +22,11 @@ subsystems wholesale. Git history is reference material, not the current archite
 - The owner decided to keep `Source` and `Chunk` in separate files under `datatype/` and build
   barebones pipelines that expand/generalize step by step. `datatype/` records stay plain Pydantic
   and backend-agnostic; relational (e.g. SQLModel) and graph persistence each get their own mapping
-  behind a storage boundary, not as `datatype` subclasses. The concrete ORMs, graph database and
-  storage module layout remain open; this does not approve the whole indexing pipeline.
+  behind a storage boundary, not as `datatype` subclasses. Store layout: capability Protocols in
+  `store/protocols.py`, implementations grouped by backend technology (`store/sql/` shares its
+  tables across SQL stores; backend-specific stores subclass the generic one where faster SQL
+  exists). The graph database and the full set of record types remain open; this does not
+  approve the whole indexing pipeline.
 - Step contracts are `typing.Protocol` classes with an abstract `__call__` in `triplum.steps`
   (`Converter[A]`: item -> list[Source]; `Chunker`: Source -> list[Chunk]; `EmbeddingText`:
   Chunk -> str; `Embedder`: `dimensions` + list[str] -> float32 matrix). Our implementations
@@ -56,6 +59,11 @@ with Home and the indexing/retrieval overview in `docs/flow.md`. Published MkDoc
 link to drafts, specs or plans. Exclude these development records from the built site and search,
 not merely from navigation. Verify documentation changes with `uv run mkdocs build --strict`.
 Keep the overview honest about intended responsibilities versus implemented interfaces.
+Keep the hand-written (non-API) docs in sync with the code actively, in the same change: when a
+contract, record field, module path or behavior changes, update the concept and infrastructure
+pages that describe it and re-run their examples. Delegate docs writing and sync passes to a
+subagent regularly (after each interface change), giving it the changed code and the owner's
+decisions; verify its build and spot-check its pages before reporting.
 
 ## What this is
 
@@ -90,7 +98,8 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   MkDocs site and search. Published pages must never link to drafts, specs or plans.
 - `src/triplum/`: `datatype` holds the `Source` and `Chunk` records; `steps` the step Protocols
   with reference implementations; `store` one Protocol per storage capability (`RecordStore` with
-  `MemoryStore` and SQLModel-backed `SQLStore` so far); `utils.data` generic dataset/loading
+  `MemoryStore` and the portable SQLModel-backed `SQLAlchemyStore` so far; SQL tables in
+  `store.sql.tables`, backend-specific stores later); `utils.data` generic dataset/loading
   utilities, `utils.cache` the disk cache and `utils.fingerprint` the `Fingerprinted` mixin;
   `datasets` `FrameDataset` and reference datasets. The CLI entry point and Rust extension bridge
   are removed. `crates/` holds the independent Rust workspace. Add modules only as their
