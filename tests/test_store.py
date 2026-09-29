@@ -15,14 +15,13 @@ def store(request: pytest.FixtureRequest) -> RecordStore:
 
 
 def test_sources_and_chunks_round_trip(store: RecordStore):
-    a = Source(origin=Path("a.md"), text="abcdefg")
+    a = Source(origin="a.md", text="abcdefg")
     b = Source(origin="https://example.org", text="xy")
     chunks = FixedSize(3)(a)
     store.add_sources([a, b])
     store.add_chunks(reversed(chunks))
 
     assert store.source(a.id) == a
-    assert isinstance(store.source(a.id).origin, Path)
     assert store.source(b.id) == b
     assert sorted(store.sources(), key=lambda s: s.text) == [a, b]
     assert store.chunks(a.id) == chunks

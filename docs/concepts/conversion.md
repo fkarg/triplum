@@ -27,7 +27,7 @@ print(sources[0].origin, repr(sources[0].text))
    HTTP client) take them in `__init__`; `Utf8File` needs none.
 2. Call it with one item, here a `Path`. It returns a **list** of sources, because one item may
    hold several documents (an archive, a JSON Lines file). `Utf8File` always returns one.
-3. The source's `origin` is the path as given, and `text` is the file decoded as UTF-8 with its
+3. The source's `origin` is the path as given, as a string, and `text` is the file decoded as UTF-8 with its
    newlines unchanged. Invalid UTF-8 raises an error.
 
 ## The contract

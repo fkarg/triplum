@@ -20,8 +20,8 @@ class SQLAlchemyStore(RecordStore):
     """Records in the database at `url` (any SQLAlchemy URL); missing tables are created.
 
     The default URL is an in-memory SQLite database, private to this store instance and shared
-    by all threads using it. `Path` and `str` origins are kept apart with an `origin_is_path`
-    column. Backend-specific stores may subclass this where specific SQL is faster.
+    by all threads using it. `Path` and `str` chunk origins are kept apart with an
+    `origin_is_path` column. Backend-specific stores may subclass this where specific SQL is faster.
     """
 
     def __init__(self, url: str = "sqlite://") -> None:
@@ -41,8 +41,7 @@ class SQLAlchemyStore(RecordStore):
                 session.merge(
                     SourceRow(
                         id=s.id,
-                        origin=str(s.origin),
-                        origin_is_path=isinstance(s.origin, Path),
+                        origin=s.origin,
                         text=s.text,
                         fingerprint=s.fingerprint,
                     )
@@ -75,13 +74,13 @@ class SQLAlchemyStore(RecordStore):
             row = session.get(SourceRow, id)
             if row is None:
                 raise KeyError(id)
-            return Source(id=row.id, origin=_origin(row.origin, row.origin_is_path), text=row.text)
+            return Source(id=row.id, origin=row.origin, text=row.text)
 
     def sources(self) -> Iterator[Source]:
         with Session(self.engine) as session:
             rows = session.exec(select(SourceRow)).all()
         for row in rows:
-            yield Source(id=row.id, origin=_origin(row.origin, row.origin_is_path), text=row.text)
+            yield Source(id=row.id, origin=row.origin, text=row.text)
 
     def chunks(self, source_id: UUID, /) -> list[Chunk]:
         with Session(self.engine) as session:

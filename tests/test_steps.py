@@ -14,7 +14,7 @@ def test_utf8_file_keeps_newlines(tmp_path: Path):
     path = tmp_path / "a.md"
     path.write_bytes("é\r\nx".encode())
     [source] = Utf8File()(path)
-    assert (source.origin, source.text) == (path, "é\r\nx")
+    assert (source.origin, source.text) == (str(path), "é\r\nx")
 
 
 def test_fixed_size_slices_by_character():

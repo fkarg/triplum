@@ -19,4 +19,4 @@ class Utf8File(Converter[Path], Fingerprinted):
     """Read a file as UTF-8 text, keeping newlines unchanged; `origin` is the path."""
 
     def __call__(self, item: Path, /) -> list[Source]:
-        return [Source(origin=item, text=item.read_bytes().decode("utf-8"))]
+        return [Source(origin=str(item), text=item.read_bytes().decode("utf-8"))]

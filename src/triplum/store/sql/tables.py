@@ -10,7 +10,6 @@ class SourceRow(SQLModel, table=True):
 
     id: UUID = Field(primary_key=True)
     origin: str
-    origin_is_path: bool
     text: str
     fingerprint: str = Field(index=True)
 

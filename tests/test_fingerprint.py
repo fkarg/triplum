@@ -11,9 +11,9 @@ from triplum.utils.fingerprint import Fingerprinted
 
 
 def test_record_fingerprint_ignores_id_and_follows_content():
-    a = Source(origin=Path("a.md"), text="abc")
-    assert Source(origin=Path("a.md"), text="abc").fingerprint == a.fingerprint
-    assert Source(origin=Path("a.md"), text="abd").fingerprint != a.fingerprint
+    a = Source(origin="a.md", text="abc")
+    assert Source(origin="a.md", text="abc").fingerprint == a.fingerprint
+    assert Source(origin="a.md", text="abd").fingerprint != a.fingerprint
     assert "fingerprint" in a.model_dump()
 
     chunk = Chunk(source_id=a.id, origin="a.md", start=0, text="ab")

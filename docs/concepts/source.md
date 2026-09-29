@@ -10,12 +10,10 @@ them works on plain text and never needs to know the original file format.
 ## Example
 
 ```python
-from pathlib import Path
-
 from triplum.datatype import Source
 
 source = Source(
-    origin=Path("notes/returns.md"),
+    origin="notes/returns.md",
     text="Returns are accepted within 30 days. Refunds take 5 days.",
 )
 print(source.origin, len(source.text))  # notes/returns.md 57
@@ -23,7 +21,7 @@ print(source.origin, len(source.text))  # notes/returns.md 57
 
 1. Import `Source` from `triplum.datatype`.
 2. Set `origin` to something that identifies the text. Here it is a file path; a URL or another
-   string identifier works too (`Path | str`).
+   identifier works too. It is always a string.
 3. Set `text` to the full text, already decoded. The source holds it in memory.
 
 ## What it guarantees

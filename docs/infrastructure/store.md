@@ -24,13 +24,11 @@ This chunks one source, writes both to a SQLite file, and reads them back throug
 opened on the same file, as a later run of your program would.
 
 ```python
-from pathlib import Path
-
 from triplum.datatype import Source
 from triplum.steps.chunking import FixedSize
 from triplum.store import SQLAlchemyStore
 
-source = Source(origin=Path("notes/returns.md"), text="Returns are accepted within 30 days.")
+source = Source(origin="notes/returns.md", text="Returns are accepted within 30 days.")
 chunks = FixedSize(20)(source)
 
 store = SQLAlchemyStore("sqlite:///records.db")
@@ -115,8 +113,8 @@ column types, but this has not been verified.
 - **Reads**: `source(id)` raises `KeyError` for an unknown id. `sources()` yields every source in
   no particular order. `chunks(source_id)` returns a list ordered by `start`, empty if the source
   has no chunks.
-- **Round trip**: a record read back equals the one you stored, including whether `origin` was a
-  `Path` or a `str`.
+- **Round trip**: a record read back equals the one you stored, including whether a chunk's `origin`
+  was a `Path` or a `str`.
 
 ## Capabilities, not one big store
 

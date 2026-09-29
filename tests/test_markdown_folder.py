@@ -14,8 +14,8 @@ def test_top_level_markdown_files_in_name_order(tmp_path: Path):
 
     dataset = MarkdownFolder(tmp_path)
     assert [(s.origin, s.text) for s in dataset] == [
-        (tmp_path.resolve() / "a.md", "first"),
-        (tmp_path.resolve() / "b.md", "é\r\nx"),
+        (str(tmp_path.resolve() / "a.md"), "first"),
+        (str(tmp_path.resolve() / "b.md"), "é\r\nx"),
     ]
 
 

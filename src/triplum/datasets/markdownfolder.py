@@ -26,7 +26,7 @@ class MarkdownFolder(Dataset[Source]):
 
     def __getitem__(self, index: int) -> Source:
         path = self.paths[index]
-        return Source(origin=path, text=path.read_bytes().decode("utf-8"))
+        return Source(origin=str(path), text=path.read_bytes().decode("utf-8"))
 
     def fingerprint(self) -> str:
         return content_key(

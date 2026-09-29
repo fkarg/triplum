@@ -51,7 +51,7 @@ notes = MarkdownFolder(Path("notes"))
 print(len(notes))
 
 for source in DataLoader(notes, batch_size=None):
-    print(source.origin.name, repr(source.text[:20]))
+    print(source.origin, repr(source.text[:20]))
 ```
 
 Output:
@@ -66,7 +66,7 @@ shipping.md '# Shipping\n\nOrders s'
   sorted name order.
 - The file list is fixed when you create the dataset; a file added later needs a new
   `MarkdownFolder`. Contents are read, as UTF-8, each time a record is accessed.
-- `origin` is the absolute path of the file.
+- `origin` is the absolute path of the file, as a string.
 - Its `fingerprint()` hashes every file's name and bytes, so it reads the whole folder.
 
 ## Two kinds of dataset
