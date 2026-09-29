@@ -11,10 +11,10 @@ were deliberately removed because the architecture and its explanation had becom
 The old benchmark runner, CLI examples and documentation are not working entry points for this
 checkout.
 
-The retained Python foundation is generic data-loading utilities, `FrameDataset` for dataframe
-batches and a disk cache with an explicit cache directory. The package uses `uv_build` and has no
-Rust extension, store package or model extras. The Rust core remains in an independent Cargo
-workspace; installing the Python package does not build or link it.
+The Python library includes data-loading utilities, source and chunk records, indexing steps,
+memory and SQL record stores, and a disk cache with an explicit cache directory. The package uses
+`uv_build`. The Rust core remains in an independent Cargo workspace; installing the Python package
+does not build or link it.
 
 Retaining a utility does not approve its interface for the rebuild. The previous implementation
 is available in Git history; it is reference material, not a restore list.
@@ -43,7 +43,8 @@ has one embedding vector for a chosen configuration. The owner has decided to ke
 `Chunk` in separate files as backend-agnostic Pydantic records and develop barebones pipelines
 incrementally. The indexing steps are `Protocol` contracts in `triplum.steps` (`Converter`,
 `Chunker`, `EmbeddingText`, `Embedder` with batched numpy vectors), each with a trivial reference
-implementation. Storage mapping remains open.
+implementation. Storage mappings live separately from the records; see the
+[store guide](docs/infrastructure/store.md) for the current implementations and guarantees.
 
 Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
 preprocessing → `Source`. Its interfaces are deferred for a later discussion.
@@ -59,9 +60,7 @@ summaries, and distinguishes the intended boundaries from implemented functional
 [AGENTS.md](AGENTS.md) records the review process and contributor constraints;
 [CONTRIBUTING.md](CONTRIBUTING.md) lists the checks. Use `uv sync` for Python, then run tests with
 coverage, type checking and Ruff. Check and test the independent Rust workspace with Cargo.
-The retained suite has 34 passing Python tests. Cargo checks and tests, ty, Ruff and the strict
-MkDocs build pass. The pure Python package also builds from an isolated source snapshot and
-installs in a fresh Python environment without the Rust bridge or unapproved prototype.
+Use the check output and CI results for current test counts, coverage and verification status.
 
 Build the documentation with `uv run mkdocs build --strict`, or preview it with
 `uv run mkdocs serve`. New documentation and coverage accompany each reviewed interface.
