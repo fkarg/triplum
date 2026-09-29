@@ -18,6 +18,11 @@ SQLite or PostgreSQL) are planned where database-specific SQL is faster; they wi
 tables, [`SourceRow`][triplum.store.sql.tables.SourceRow] and
 [`ChunkRow`][triplum.store.sql.tables.ChunkRow] in `triplum.store.sql.tables`.
 
+A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also available, with the
+`id` and `name` of a [collection](../concepts/collection.md). `SQLAlchemyStore` does not yet create
+its table or manage collection records; `RecordStore` has no collection methods. Source and chunk
+rows do not yet carry collection membership.
+
 ## Example
 
 This chunks one source, writes both to a SQLite file, and reads them back through a second store

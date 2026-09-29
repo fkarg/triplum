@@ -63,6 +63,7 @@ nav:
       - Core Concepts:
           - Overview: concepts.md
           - Decision points: concepts/decisions.md
+          - Collection: concepts/collection.md
           - Source: concepts/source.md
           - Chunk: concepts/chunk.md
           - Datasets and the DataLoader: concepts/datasets.md

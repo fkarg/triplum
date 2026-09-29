@@ -5,6 +5,13 @@ from uuid import UUID
 from sqlmodel import Field, SQLModel
 
 
+class CollectionRow(SQLModel, table=True):
+    __tablename__ = "collection"  # type: ignore[assignment]
+
+    id: UUID = Field(primary_key=True)
+    name: str
+
+
 class SourceRow(SQLModel, table=True):
     __tablename__ = "source"  # type: ignore[assignment]
 

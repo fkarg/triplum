@@ -28,12 +28,21 @@ work-in-progress snapshot, but tests, ruff, ty and the strict docs build pass.
   - `docs/concepts/*` covers the steps and records.
   - `docs/infrastructure/{store,fingerprints,cache}.md`.
   - `docs/specs/record-types.md` holds the record-type research and proposal. It is a draft and
-    has no decisions yet.
+    records the collection decisions; the remaining types are proposals.
 - Owner prototypes, committed in this snapshot at the owner's request:
   - `steps/indexing.py`
   - `steps/ingestion.py` (an outline)
   - `examples/naive.py`
   - `tests/test_indexing_prototype.py`
+
+## Collection baseline
+
+- Exclusive Source membership and derived-record scope are decided; permissions stay separate.
+- `datatype.Collection` and SQL `CollectionRow` have a UUIDv7 `id` and required string `name`.
+  Names need not be unique. Stores do not yet create or manage collections, and Source/Chunk
+  membership fields are not implemented.
+- Identity is the next discussion. UUID encoding and revision semantics remain proposals.
+- The owner asked to mostly skip peer reviews and prioritize fast, small steps for now.
 
 ## Just changed
 

@@ -61,4 +61,11 @@ Everything else can arrive as new tables or optional fields.
 
 ## Decisions
 
-- (none yet)
+- Collection membership is exclusive: each Source belongs to exactly one collection; derived
+  records remain in that scope. Collection scope is separate from access permissions.
+- The baseline `Collection` is a plain Pydantic model with a generated UUIDv7 `id` and a required
+  string `name`. Names are human-readable labels and need not be unique. `CollectionRow` maps
+  the same fields, with `id` as primary key. These declarations are implemented; membership
+  fields and collection store operations are deferred.
+- Peer review is skipped for this baseline at the owner's request for fast, small steps.
+  Identity is the next design discussion; deterministic IDs and revision semantics remain open.

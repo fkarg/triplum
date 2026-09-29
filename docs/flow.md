@@ -8,6 +8,10 @@ are not a working end-to-end pipeline. The indexing steps (conversion, chunking,
 embedding) have first Protocol contracts; the rest does not. These diagrams describe
 responsibilities, not a mandatory sequence of classes.
 
+A [collection](concepts/collection.md) is the logical corpus scope. Its baseline record and SQL
+mapping are implemented. Exclusive source membership and derived-record scope are decided, but
+membership fields and collection storage operations are not implemented yet.
+
 ## 1. Indexing: prepare searchable evidence
 
 ```mermaid

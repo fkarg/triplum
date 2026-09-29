@@ -6,6 +6,9 @@ implementation, with what the library provides today.
 
 ## Indexing
 
+Start with a [Collection](concepts/collection.md) to identify the corpus scope. Its baseline
+record exists; source membership and scope enforcement are not implemented yet.
+
 Indexing turns input material into searchable chunks. The concepts in pipeline order:
 
 1. [Source](concepts/source.md): identified input text.
