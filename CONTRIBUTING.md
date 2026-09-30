@@ -48,6 +48,10 @@ for `uv run`, so verify the actual hook before claiming it passes.
 Keep its status accurate. Public MkDocs pages must not link to drafts, specs or plans; development
 records are excluded from both the built site and search. Run the strict build after docs changes.
 
+Use the [persona reader workflow](docs/personae/README.md) to probe whether readers can find
+answers and use the documentation. It includes reusable prompts, five reader profiles, and a
+small fix-and-retry loop; larger changes remain owner decisions.
+
 Follow the interface review process in AGENTS.md before adding implementations. Do not restore
 historical dataset adapters, pipelines or release instructions merely because they existed before.
 

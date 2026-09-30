@@ -8,6 +8,7 @@ exclude_docs: |
   /specs/
   /plans/
   /notes/
+  /personae/
 theme:
   name: material
   features:
