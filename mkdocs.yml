@@ -61,17 +61,17 @@ nav:
   - Home: index.md
   - Overview and Core Concepts:
       - Indexing and retrieval: flow.md
-      - Core Concepts:
-          - Overview: concepts.md
-          - Decision points: concepts/decisions.md
-          - Collection: concepts/collection.md
-          - Source: concepts/source.md
-          - Chunk: concepts/chunk.md
-          - Datasets and the DataLoader: concepts/datasets.md
-          - Conversion: concepts/conversion.md
-          - Chunking: concepts/chunking.md
-          - Chunk preprocessing: concepts/chunk-preprocessing.md
-          - Embedding: concepts/embedding.md
+  - Core Concepts:
+      - Overview: concepts.md
+      - Decision points: concepts/decisions.md
+      - Collection: concepts/collection.md
+      - Source: concepts/source.md
+      - Chunk: concepts/chunk.md
+      - Datasets and the DataLoader: concepts/datasets.md
+      - Conversion: concepts/conversion.md
+      - Chunking: concepts/chunking.md
+      - Chunk preprocessing: concepts/chunk-preprocessing.md
+      - Embedding: concepts/embedding.md
   - Infrastructure:
       - Store: infrastructure/store.md
       - Fingerprints: infrastructure/fingerprints.md
