@@ -1,85 +1,122 @@
 # Cache
 
-The **cache** remembers the result of a computation on disk, so that the next run with the same
-inputs can read the result instead of computing it again. It is a key/value store: you build a
-key from everything that determines the result, and store bytes or JSON under it.
+Cache selected computations so later calls can reuse their results. Several steps can borrow
+one explicitly owned [`Cache`][triplum.cache.Cache]; ordinary functions remain uncached.
 
-What exists today is only this building block: [`Cache`][triplum.utils.cache.Cache] and the key
-function [`content_key`][triplum.utils.cache.content_key]. Steps are not cached automatically
-yet; code that wants caching calls the cache itself, as below.
+## Cache a function
 
-## Example
+Cached inputs and outputs implement `fingerprint()`, returning a SHA-256 hex digest of their
+semantic content. The default output serializer accepts Pydantic models. This example deliberately
+selects the text field, rather than hashing every attribute a model might acquire later.
 
 ```python
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from triplum.utils.cache import Cache, content_key
+from pydantic import BaseModel
 
-cache = Cache(Path(".cache/triplum"))
-key = content_key("word-count", {"text": "Returns are accepted within 30 days."})
+from triplum.cache import Cache, SQLiteBackend, cached
+from triplum.utils.cache import content_key
 
-result = cache.get_json(key)
-if result is None:
-    result = {"words": len("Returns are accepted within 30 days.".split())}
-    cache.put_json(key, result)
-print(result)
-print(key[:16])
-print(sorted(str(p) for p in Path(".cache").rglob("*") if p.is_file()))
+
+class Text(BaseModel):
+    text: str
+
+    def fingerprint(self) -> str:
+        return content_key("text-v1", {"text": self.text})
+
+
+with TemporaryDirectory() as directory:
+    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite"), pending_bytes=1_000_000) as cache:
+
+        @cached(
+            cache=cache,
+            process_id=content_key("lowercase-v1", {}),
+            output_type=Text,
+        )
+        def lowercase(value: Text) -> Text:
+            print("Computing")
+            return Text(text=value.text.lower())
+
+        print(lowercase(Text(text="Hello")).text)
+        print(lowercase(Text(text="Hello")).text)
 ```
 
-Output (the same on the first and on every later run):
+Output:
 
 ```text
-{'words': 6}
-428a53e347797f4c
-['.cache/triplum/42/428a53e347797f4c18e35146dd70cfe6225a5458c209305ae8903bfb71a626e1']
+Computing
+hello
+hello
 ```
 
-1. `Cache(Path(".cache/triplum"))` chooses the cache directory. A relative path is relative to
-   the current working directory. Nothing is created yet.
-2. `content_key("word-count", {...})` builds the key: a SHA-256 digest of a *kind* string and a
-   JSON-serialisable payload. The kind separates different computations that happen to get the
-   same payload.
-3. `get_json(key)` returns the stored value, or `None` on a miss. On the first run it misses, so
-   the result is computed and stored with `put_json`. On later runs it hits.
-4. Each entry is one file, named after its key, in a subfolder named after the key's first two
-   characters. Directories are created on the first write.
+The second call can read the accepted result even before the background writer persists it.
+Closing the context drains accepted writes and closes the backend. Use a persistent local file
+path instead of a temporary directory to reuse results between runs; create its parent directory
+first.
 
-## Building keys
+## What identifies a computation?
 
-The key must change whenever the result could change. Put everything that affects the result
-into the payload: the input (or its [record or dataset fingerprint](fingerprints.md)), and the
-configured step that computes it (its [object fingerprint](fingerprints.md#object-fingerprints)).
-Anything left out means a stale result is returned when that thing changes.
+A lookup matches **all three** parts: computation fingerprint, immediate input fingerprint and
+serialization format. The computation fingerprint must include its kind/revision and effective
+configuration, including relevant helper or model revisions. Changing a function body does not
+automatically change the explicit `process_id` in this example: update its revision yourself.
 
-- **Payloads are canonical JSON.** [`canonical_json`][triplum.utils.cache.canonical_json] sorts
-  dictionary keys and removes whitespace, so `{"a": 1, "b": 2}` and `{"b": 2, "a": 1}` give the
-  same key. List order matters: `[1, 2]` and `[2, 1]` give different keys.
-- **Only JSON values are accepted**: dicts, lists, tuples (treated as lists), strings, numbers,
-  booleans and `None`. Anything else, such as a `Path`, raises `TypeError`; convert it with
-  `str(path)` first.
-- `1` and `1.0` are different JSON and therefore different keys.
-- Use keys made by `content_key`. The cache uses the key as a file name without checking it.
+Equivalent configured steps can share entries across pipelines. Pipeline position, object identity,
+cache location and queue policy do not belong in the fingerprint. Neither does upstream processing
+history when the immediate input is identical. Separate cache instances are useful for independent
+storage or resource budgets, but are not required to separate different computations.
 
-## Managing the cache directory
+Choose value identity fields explicitly. Exclude bookkeeping timestamps; retain dates that affect
+the answer. Computations must not depend on excluded fields, mutate their input, or read hidden
+changing state. Both inputs and outputs must be fingerprintable; custom output types also need a
+[`Codec`][triplum.cache.Codec]. Source and Chunk have not yet migrated to this method-based contract.
 
-- **Where it lives** is whatever directory you pass; the cache has no default location.
-- **Clearing it** means deleting the directory, for example `rm -rf .cache/triplum`. The next run
-  recomputes everything and recreates the directory. Deleting a single entry means deleting its
-  file.
-- **It never shrinks by itself.** There is no expiry, size limit or eviction.
-- **Concurrent writers are safe.** An entry is written to a temporary file and then renamed into
-  place, so a reader sees either the complete entry or none. A process killed mid-write can leave
-  a `*.tmp` file behind; it is never read and can be deleted.
+## Serialization and other entry points
+
+`output_type=Text` selects [`PydanticCodec`][triplum.cache.PydanticCodec] by default. It serializes
+JSON bytes and validates them back into the model, checking on each write that the semantic
+fingerprint survives the round-trip. This adds a decode to the write path; reads only decode.
+The default format namespace includes the model's qualified name and its validation/serialization
+schemas. Custom serializers or validators whose behavior changes without a schema change need an
+explicit versioned `format_id`. Supply `codec=PydanticCodec(Text, format_id="text-json-v2")`, or a
+custom codec for another representation. Serialization performance has not been benchmarked.
+
+For configured classes, [`CachedStep`][triplum.cache.CachedStep] owns `__call__`; implement
+`compute(item)` and `fingerprint()` for the computation. Put the mixin before domain Protocol
+bases. It borrows its cache and never closes it. The decorator accepts a one-input function or an
+already-bound callable; it does not proxy additional object attributes.
+
+Pass `cache=None` to either frontend to bypass fingerprints, serialization and lookup. Manual
+`Cache.get(CacheKey(...))` and `Cache.put(key, payload)` operate on bytes; the caller owns the
+codec and identity checks at that boundary. See the generated API reference for their signatures.
+
+## Background writes and ownership
+
+Serialization happens in the caller; persistence happens on one background writer. `pending_bytes`
+counts queued and in-flight key/payload bytes plus a bookkeeping allowance, not total process
+memory or temporary serialization buffers.
+
+- The default full-queue policy skips the new write, returns the computed result, and increments
+  `cache.skipped_writes`.
+- `CachePolicy(on_full="block")` waits for capacity. Set it on the cache or override it on a
+  decorator, mixin or manual `put`. An entry larger than the entire budget raises `ValueError`
+  under this policy, including after a cached computation has already finished.
+- `put` returning `True` means accepted, not durable. `flush()` waits for previously accepted
+  writes; `close()` drains and closes. Both report background writer failure. Subsequent
+  operations also fail after a writer failure; disk errors are not treated as cache misses.
+
+Steps may share a cache across caller threads. SQLite uses separate reader/writer connections;
+multiple cache owners can share the database file, but only their own pending writes are immediately
+visible. Concurrent misses may compute twice. A crash can lose pending writes. There is no eviction,
+size cap for the database, or measured performance guarantee at hundreds of GB yet.
 
 ## Cache versus store
 
-The cache and the [store](store.md) are deliberately separate. The cache holds results you could
-recompute; deleting it costs time, not data. The store holds the records you chose to keep, keyed
-by their `id`. Do not use one as the other.
+The cache holds recomputable results. The [store](store.md) holds records selected for persistence,
+keyed by record ID. Reusing an intermediate payload must not copy another source's provenance or
+record references. Cache whole records only when their inputs account for those references.
 
-## Reference
-
-- [`Cache`][triplum.utils.cache.Cache]
-- [`content_key`][triplum.utils.cache.content_key] and
-  [`canonical_json`][triplum.utils.cache.canonical_json]
+The older [`triplum.utils.cache.Cache`][triplum.utils.cache.Cache] remains an independent,
+synchronous file-per-key utility with byte and JSON methods. Existing callers are unchanged;
+new optional step caching uses `triplum.cache`.

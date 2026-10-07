@@ -5,11 +5,11 @@ The current discussion connects **Source identity and caching** to a small examp
 The owner confirmed A → B → A should recover the original Source ID and prefers at least 24
 collection-tag bits for Source, with remaining bits a fingerprint excluding creation/change time.
 The Chunk UUID allocation is decided; the Source allocation and exact hash inputs are still under
-discussion. No new ID or pipeline implementation has been authorized through the interface review
-yet. The owner approved reuse of identical intermediate content across different upstream
-processes, with Bazel's cache design as orientation. See `docs/specs/cached-pipeline.md` for the
-identity discussion and earlier example; `docs/specs/cache-interfaces.md` is the proposed next
-interface review, not an implemented API.
+discussion. The owner authorized implementing the optional cache and a small reuse example
+for review; Source/Chunk ID changes remain unimplemented. The owner approved reuse of identical
+intermediate content across different upstream processes, with Bazel's cache design as orientation. See `docs/specs/cached-pipeline.md` for the
+identity discussion and earlier example; `docs/specs/cache-interfaces.md` records the cache
+interface and review decisions.
 
 Latest performance requirements: cache target is dozens to hundreds of GB with room to grow;
 lookup-first low overhead and deferred background writes. Cached calls require fingerprintable
@@ -17,7 +17,8 @@ input AND output values, and our intermediate types should provide that contract
 and a `CachedStep` mixin are requested; manual get/put remains available. Individual steps or
 larger blocks opt in, and multiple backends are acceptable. The final queue-full default is
 **skip and count**, configurable per run/task/step; the brief block-default choice was retracted.
-Exact declarations, codecs, resource ownership and backend selection remain under review.
+The first implementation uses explicit shared ownership, a SQLite backend and Pydantic
+serialization by default. The owner will review the implementation.
 
 ## Implemented state
 
@@ -35,7 +36,10 @@ Exact declarations, codecs, resource ownership and backend selection remain unde
   `store/sql/tables.py`. Current writes replace records by ID. Current reads do not take a Viewer.
   `store/graph/` is an empty placeholder.
 - Utilities: configured-object fingerprints; dataset/loading utilities; SHA-256 `content_key`;
-  a disk cache with an explicit directory and one file per entry (the current cache is not SQLite).
+  an independent disk-cache utility with an explicit directory and one file per entry.
+- `triplum.cache`: optional `cached` decorator, `CachedStep.compute()` mixin, manual byte
+  get/put, default `PydanticCodec` and replaceable `CacheBackend` with `SQLiteBackend`.
+  `examples/cached_pipeline.py` demonstrates reuse without migrating Source/Chunk identities.
 - Datasets: `FrameDataset`, `MarkdownFolder`, `MultiHopRAGCorpus` with `download()`.
 - Owner prototypes `steps/indexing.py`, `steps/ingestion.py`, `examples/naive.py` and
   `tests/test_indexing_prototype.py` are committed, but remain prototypes under owner review.
@@ -90,7 +94,8 @@ replace the existing source lookup index. No database speedup has been measured.
   bypass is intended; benchmark methodology, including whether benchmarks should always disable
   caching, is deferred. Do not add time to fingerprints to force misses.
 - Use Bazel's separation of computation lookup and output content identity as orientation. The
-  concrete encoding, storage arrangement and example remain proposals, not implemented contracts.
+  first implementation stores results directly under process/input/format keys; it does not
+  implement a separate content-addressed output store.
 - Record IDs and reusable payloads serve different purposes. Equal embedding text can reuse a
   vector computation without merging Sources or copying another Source's Chunk references.
   Cache complete records only when the inputs account for the references they carry; otherwise
@@ -99,11 +104,20 @@ replace the existing source lookup index. No database speedup has been measured.
   the protocol; custom types may implement it or remain uncached. Concrete datatype changes still
   need review. Cache handles, backend selection and queue/policy settings are outside semantic
   fingerprints.
-- Decorators, a `CachedStep` mixin and manual access are requested. Steps and larger composed
+- Decorators, a `CachedStep` mixin and manual access are implemented. Steps and larger composed
   blocks opt in. Embedding-only caching remains an earlier example option, not a universal
   boundary. Record UUID changes and caching whole records remain separate interface reviews.
 - Queue-full policy is configurable per run/task/step. The latest owner decision is skip new
   cache writes and count them by default; blocking remains an option, not the default.
+- One cache may be shared across steps. Computation kind/revision plus effective configuration
+  identifies the process; immediate input and codec format complete the key. Step instances,
+  pipeline positions and policies do not affect identity.
+- Pydantic serialization is the default external surface, with custom codecs available. Encoding
+  checks that a JSON round-trip preserves the semantic fingerprint. Its CPU overhead is not
+  benchmarked. Custom serializer/validator changes may require an explicit versioned format ID.
+- Accepted writes remain readable while pending. A bounded byte budget defaults to skip-and-count;
+  blocking admission is opt-in and rejects entries larger than the whole budget. Only persistence
+  runs in the background. Close drains; writer failures are sticky errors rather than cache misses.
 - An optional Bloom filter below the interface is accepted for consideration. It must use the
   full computation key and have coverage of the backend read view before a negative can skip
   lookup. Accepted pending writes must remain visible. No filter implementation is approved.

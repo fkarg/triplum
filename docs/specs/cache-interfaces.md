@@ -1,11 +1,13 @@
-# Optional caching interfaces — draft for owner review
+# Optional caching interfaces — first implementation for owner review
 
 The owner wants interchangeable storage, policies configurable per run/step, manual access,
 decorators and a CachedStep mixin. Cached calls require fingerprintable input AND output values;
 our intermediate value types should support that contract. Plain uncached user steps need not.
 Skip-and-count is the default when pending writes cannot be admitted; blocking is configurable.
-The cache target is tens to hundreds of GB with room to grow. No runtime implementation is approved
-by this interface draft. Benchmark policy remains a later discussion.
+The cache target is tens to hundreds of GB with room to grow. The owner authorized a first runtime
+implementation in `triplum.cache`, including default Pydantic serialization. Benchmark policy and
+large-scale performance comparisons remain later work. The explicit API below is implemented;
+convenient defaults are the next refinement requested by the owner.
 
 ## Recommended shape
 
@@ -80,7 +82,8 @@ Process IDs are full 64-character SHA-256 hex digests, not arbitrary labels; ena
 validate them before use. CacheKey digest components are exactly 32 bytes. Input fingerprints
 are validated at the caching boundary. Malformed identities raise ValueError.
 
-`Codec[T]` converts a fingerprintable result to immutable bytes and back. Its `format_id` changes
+`output_type=Model` selects Pydantic serialization by default. `Codec[T]` is an explicit override
+that converts a fingerprintable result to immutable bytes and back. Its `format_id` changes
 when its encoding or decode semantics become incompatible. Decoding preserves the result's
 fingerprint and semantic content. A codec is not a storage backend; binary vector codecs can work
 with SQLite, LMDB or files. No pickle fallback or automatic serialization of arbitrary objects.
@@ -162,7 +165,8 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     *,
     cache: Cache | None,
     process_id: str,
-    codec: Codec[O],
+    output_type: type[O],
+    codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
 ) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
@@ -172,7 +176,8 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
         self,
         *,
         cache: Cache | None,
-        codec: Codec[O],
+        output_type: type[O],
+        codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
     ) -> None: ...
     def __call__(self, item: I, /) -> O: ...
@@ -189,7 +194,8 @@ batch before returning. Readers must never see a partial individual value; no at
 keys is required. Backends may optimize a batch as one transaction. An error may leave some complete
 entries visible and is reported. Backend implementations own engine connections and their thread
 constraints: `get` may run concurrently with the Cache's one writer calling `put_many`. `close`
-runs after callers/writer stop. SQLite, LMDB and files remain competing candidates.
+runs after callers/writer stop. SQLite is the first implementation, using a rowid table with an indexed compound key and WAL.
+LMDB and files remain comparison candidates; no performance winner has been established.
 
 Cache supports concurrent callers and one background writer. The Cache owner chooses an explicit
 pending-byte budget. `get` checks accepted pending writes
@@ -199,7 +205,8 @@ accounts for keys, immutable payloads and an entry overhead allowance, not total
 
 - `skip`: a full budget returns False and increments the counter; the computed result still returns.
 - `block`: wait for capacity. An item larger than the entire budget cannot make progress: proposed
-  behavior is ValueError for block, and skip/count for skip. This remains an owner tradeoff:
+  behavior is ValueError for block, and skip/count for skip. The first implementation follows
+  this proposal; the tradeoff remains visible for review:
   a blocking cached call would raise after computing an oversized result. An alternative is a
   coordinated synchronous handoff through the same writer, preserving the result but relaxing the
   pending budget for one oversized entry. Neither choice may wait for impossible admission.
@@ -217,7 +224,8 @@ accounts for keys, immutable payloads and an entry overhead allowance, not total
   and subsequent operations; `on_full='block'` must not wait forever for disk space to appear.
   A writer failure becomes sticky: stop admission, release pending entries and wake all waiting
   writers/flush callers. Subsequent get/put/flush raise the recorded failure; close cleans up before
-  reporting it. It is not counted as queue saturation. Normal draining close can wait on engine I/O;
+  reporting it. The original traceback is logged; retained failure state is textual so traceback
+  frames cannot keep failed payloads alive. It is not counted as queue saturation. Normal draining close can wait on engine I/O;
   interrupt cancellation and crash durability are not guaranteed by this interface.
 
 Pending visibility is in-process. Other processes may see only committed entries and recompute
@@ -239,6 +247,7 @@ A use sketch, with reviewed fingerprintable TextBatch/VectorBatch types still to
 cached_embed = cached(
     cache=cache,
     process_id=plain_embed_step.fingerprint(),
+    output_type=VectorBatch,
     codec=vector_batch_codec,
     policy=CachePolicy(on_full="block"),
 )(plain_embed_step)
@@ -309,6 +318,26 @@ read-your-writes while a commit is in flight, duplicate-key writes, queue overfl
 worker errors and draining close. Real backend comparison uses the same binary codecs, policy and
 representative key/payload sizes, measuring reads during writes as well as idle reads.
 
+## Pydantic default and implementation checks
+
+`PydanticCodec(Model)` reuses one TypeAdapter. Encoding produces JSON bytes with round_trip=True
+and serialization warnings treated as errors, then validates them back and compares semantic
+fingerprints before admission. This intentionally adds one decode to each insertion, while hits
+only decode. It rejects top-level subclass values rather than silently dropping their fields.
+Unsupported fields, non-finite values that do not survive the model's JSON settings, and semantic
+roundtrip mismatches fail in the caller.
+
+Its default format namespace includes the qualified model name plus validation and serialization
+JSON schemas. Custom serializer/validator changes invisible in those schemas require an explicit
+versioned format_id. This is not automatic dependency tracking. Custom codecs remain responsible
+for their own fingerprint-preserving roundtrip.
+
+The first implementation has no per-hit output rehash, eviction, Bloom filter, Source/Chunk
+migration or embedding-type rewrite. `examples/cached_pipeline.py` demonstrates content reuse
+across upstream computations, A→B→A and database reopening. Existing file-cache APIs remain in
+`utils.cache`. Tests exercise real temporary SQLite databases, including two simultaneous owners,
+and controlled commit/read boundaries for queue, failure and close behavior.
+
 ## Independent review and sources
 
 Claude Opus 5.5 (`claude-opus-5-5`), review `7f21ce5134b344bab6762de2d3149eea`,
@@ -339,3 +368,35 @@ separation of queue saturation from worker/storage errors:
 - [Joblib Memory](https://joblib.readthedocs.io/en/stable/user_guide/memory.html)
 - [cachetools cached methods](https://cachetools.readthedocs.io/en/stable/#cachetools.cachedmethod)
 - [RocksDB Bloom filter guidance](https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter)
+
+
+### Implementation design review
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `6e694fe8b7fb4f57b9939bda6b230c55`.
+**Changed/added verification:** require computation kind/revision in process fingerprints; enforce
+Pydantic exact-type encoding and fingerprint roundtrips; use explicit SQLite lock timeout,
+BEGIN IMMEDIATE, WAL verification, FIFO replacement and concurrent-owner/read-close tests.
+**No decision impact:** duplicate-write sequence protection and rowid tables already followed the
+proposal. **Not adopted:** per-hit output digest verification would add hashing to every lookup;
+codec namespace compatibility remains an explicit contract, with schema-derived defaults and
+encode-time checking. A backend-wide maximum-entry API is deferred; SQLite size/engine errors
+surface through the documented writer failure path, and ordinary admission remains bounded.
+
+Attacks included actual Pydantic infinity/subclass/non-UTF8 serialization probes, a SQLite point-read
+transaction/checkpoint probe (the suspected lingering transaction was refuted), digest parsing
+leniency and cross-computation namespace collision examples. The current linked SQLite is 3.53.1;
+this does not establish compatibility/performance on every deployment. The peer did not measure
+large-database performance or real multi-process contention.
+
+An independent consistency reviewer found two unique retention defects: completed batch locals
+kept payloads alive while idle, and stored exception tracebacks retained failed payloads. Regression
+tests reproduced both before fixes. Successful batches now release their local references; sticky
+failure state holds text while the original traceback is logged. That review also added lifecycle
+and simultaneous-owner coverage.
+
+Additional official sources: [Pydantic TypeAdapter](https://docs.pydantic.dev/latest/api/type_adapter/),
+[Pydantic serialization configuration](https://docs.pydantic.dev/latest/api/config/),
+[Python sqlite3](https://docs.python.org/3/library/sqlite3.html),
+[SQLite WAL](https://www.sqlite.org/wal.html),
+[SQLite size limits](https://www.sqlite.org/limits.html),
+[WITHOUT ROWID tradeoffs](https://www.sqlite.org/withoutrowid.html).

@@ -109,3 +109,17 @@ text and a text index. An enriched vector experiment adds preparation and embedd
 experiment also builds entities, facts or summaries. The goal is to let users replace individual
 transformations with their own functions or configured classes; the exact interfaces are still
 being defined.
+
+## Reusing intermediate results
+
+Optional [computation caching](infrastructure/cache.md) is implemented independently of the
+indexing prototypes. Functions can use `cached`; configured classes can use `CachedStep`.
+Both consume fingerprintable values and return fingerprintable, serializable results. Ordinary
+steps remain uncached, and `cache=None` bypasses caching for an opted-in step.
+
+Several steps can share one explicitly owned cache. Entries match the current computation and
+configuration, immediate input content, and serialization format. Pipeline position and upstream
+processing history do not affect lookup: equal intermediate content can reuse downstream work.
+The first backend is SQLite, with bounded background writes and skip-and-count admission by
+default. No large-scale performance comparison has been completed. Source/Chunk identity
+changes and end-to-end benchmark cache policy remain under review.

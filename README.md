@@ -13,7 +13,8 @@ The old benchmark runner, CLI examples and documentation are not working entry p
 checkout.
 
 The Python library includes data-loading utilities, source and chunk records, indexing steps,
-memory and SQL record stores, and a disk cache with an explicit cache directory. The package uses
+memory and SQL record stores, and optional computation caching with an explicitly owned SQLite
+backend. A separate file-cache utility remains available. The package uses
 `uv_build`. The Rust core remains in an independent Cargo workspace; installing the Python package
 does not build or link it.
 
@@ -46,6 +47,13 @@ incrementally. The indexing steps are `Protocol` contracts in `triplum.steps` (`
 `Chunker`, `EmbeddingText`, `Embedder` with batched numpy vectors), each with a trivial reference
 implementation. Storage mappings live separately from the records; see the
 [store guide](docs/infrastructure/store.md) for the current implementations and guarantees.
+
+**Cache implementation:** the owner authorized a first implementation for review.
+`triplum.cache` provides optional decorators, a `CachedStep` mixin and manual access;
+fingerprintable Pydantic outputs use the default serializer. Steps can share a cache while
+computation and input identities keep entries separate. See the
+[cache guide](docs/infrastructure/cache.md) and run `uv run python examples/cached_pipeline.py`
+for a reuse demonstration. Source/Chunk identity changes remain under review.
 
 Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
 preprocessing → `Source`. Its interfaces are deferred for a later discussion.

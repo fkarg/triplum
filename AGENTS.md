@@ -45,6 +45,12 @@ subsystems wholesale. Git history is reference material, not the current archite
 - Stop for the owner's review before implementing the contract or proceeding to the next
   interface. Agreement to this process is not blanket approval of future designs. Interface
   declarations and their documentation may be drafted for review; adapters and pipelines wait.
+- The owner authorized the first optional computation-cache implementation for review:
+  `triplum.cache` offers `cached`, `CachedStep`, manual access, a SQLite backend and default
+  Pydantic serialization. Cached inputs and outputs implement `fingerprint()`; callers select
+  semantic fields explicitly. Shared ownership, process/input/format keys and skip-and-count
+  background-write admission are implemented. This does not authorize Source/Chunk ID migration
+  or the remaining ingestion/indexing interfaces.
 - Prefer simple functions and independent protocols. Add records, classes, inheritance or
   metadata only for concrete needs. Do not rebuild the old object hierarchy by default.
 - Keep README's status and this review checkpoint current after approval. Record review outcomes
@@ -101,7 +107,9 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   with reference implementations; `store` one Protocol per storage capability (`RecordStore` with
   `MemoryStore` and the portable SQLModel-backed `SQLAlchemyStore` so far; SQL tables in
   `store.sql.tables`, backend-specific stores later); `utils.data` generic dataset/loading
-  utilities, `utils.cache` the disk cache and `utils.fingerprint` the `Fingerprinted` mixin;
+  utilities, `utils.cache` the independent file-cache utility and `utils.fingerprint` the
+  `Fingerprinted` mixin; `cache` optional computation caching with Pydantic codecs, explicit
+  ownership, background persistence and a SQLite backend;
   `datasets` `FrameDataset` and reference datasets. The CLI entry point and Rust extension bridge
   are removed. `crates/` holds the independent Rust workspace. Add modules only as their
   contracts are reviewed.

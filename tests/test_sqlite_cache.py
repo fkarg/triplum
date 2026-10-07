@@ -1,0 +1,44 @@
+from pathlib import Path
+
+import pytest
+
+from triplum.cache import CacheKey, SQLiteBackend
+
+
+def test_persistence_and_full_key_isolation(tmp_path: Path) -> None:
+    path = tmp_path / "cache.sqlite"
+    keys = [
+        CacheKey(b"p" * 32, b"i" * 32, "v1"),
+        CacheKey(b"q" * 32, b"i" * 32, "v1"),
+        CacheKey(b"p" * 32, b"j" * 32, "v1"),
+        CacheKey(b"p" * 32, b"i" * 32, "v2"),
+    ]
+    backend = SQLiteBackend(path)
+    assert backend.get(keys[0]) is None
+    backend.put_many(list(zip(keys, [b"", b"process", b"input", b"format"], strict=True)))
+    backend.close()
+    reopened = SQLiteBackend(path)
+    try:
+        assert [reopened.get(key) for key in keys] == [b"", b"process", b"input", b"format"]
+        reopened.put_many([(keys[0], b"replaced")])
+        assert reopened.get(keys[0]) == b"replaced"
+    finally:
+        reopened.close()
+
+
+def test_other_connection_sees_committed_writes(tmp_path: Path) -> None:
+    first = SQLiteBackend(tmp_path / "cache.sqlite")
+    second = SQLiteBackend(tmp_path / "cache.sqlite")
+    key = CacheKey(b"p" * 32, b"i" * 32, "v1")
+    try:
+        first.put_many([(key, b"shared")])
+        assert second.get(key) == b"shared"
+    finally:
+        first.close()
+        second.close()
+
+
+@pytest.mark.parametrize("process,input_id", [(b"short", b"i" * 32), (b"p" * 32, b"")])
+def test_key_rejects_truncated_digests(process: bytes, input_id: bytes) -> None:
+    with pytest.raises(ValueError):
+        CacheKey(process, input_id, "v1")
