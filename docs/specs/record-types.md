@@ -77,11 +77,22 @@ Everything else can arrive as new tables or optional fields.
   behavior for larger results remains to be specified.
 - Equivalent Source and Chunk records within the same collection should reproduce their IDs,
   provided this does not impose unreasonable costs. Exact equivalence and digest inputs remain
-  open. Cache identity is a separate, subsequent discussion; reusing record IDs is a weak
+  open. Cache identity is separate from record identity; reusing record IDs is a weak
   preference when appropriate, not a requirement driving this layout.
 - The owner confirmed that text changing A → B → A should recover the original Source ID.
   Creation/change timestamps do not contribute to this identity. The owner now prefers at least
   24 collection-tag bits for Source; this does not revise the agreed Chunk allocation.
+- Identical intermediate content may reuse downstream computation across different upstream
+  processes. Cache inputs use actual immediate data, excluding upstream computation history and
+  bookkeeping timestamps. The current process and its effective configuration still distinguish
+  computations. Bazel's separation of computation lookup and output content identity is the
+  approved orientation; the concrete cache contract remains under review.
+- Reusable payload identity does not merge record identity, provenance or permissions. Identical
+  embedding text can reuse computation across distinct Sources. Complete cached records must
+  preserve the correct parent references; identity-free payload reuse and binding to the current
+  record are separate concerns.
+- An explicit benchmarking bypass is intended separately from value identity. Its interface and
+  exact behavior remain deferred; timestamps should not be added to fingerprints to force misses.
 
 ## Remaining ID decisions
 

@@ -1,95 +1,260 @@
-# Small cached pipeline example — proposal
+# Cached pipeline: identity and reuse
 
-The owner wants a small example demonstrating pipeline composition and, particularly, cache
-reuse through input fingerprints and process fingerprints. Source identity should recover the
-original ID after text changes A → B → A. Query/benchmark reuse motivates the design but is not
-part of this first example. No new implementation contract is approved here.
+Status: the owner approved reuse of identical intermediate content across different upstream
+processes, excluding bookkeeping timestamps, with Bazel's cache design as orientation. The
+concrete encoding and example below are a draft for interface review, not an implemented API.
 
-## Identity direction
+## Purpose and identities
 
-- Source: proposed UUIDv8 payload `[collection tag 24][scoped fingerprint 98]`. The owner prefers
-  at least 24 collection bits; exact width is not finalized.
-- Proposed hash inputs: full collection ID, exact origin and exact prepared text, with an explicit
-  record-kind/encoding label. Creation/change times are excluded. Future fields need deliberate
-  identity decisions instead of automatically hashing the entire model.
-- Chunk's agreed `[tag 16][source prefix 42][ordinal 16][fingerprint 48]` allocation is unchanged.
-  Its short tag can use 16 bits of the same collection hash. Full collection identity participates
-  in Source's digest; full Source identity must participate in Chunk's digest. Tags alone never
-  establish scope or equality.
-- A repeated content state is the same identity, not a new observation event. Recording when
-  each state was current remains separate, deferred work.
+Reuse intermediate work while composing and changing pipelines. An input that changes A → B → A
+recovers A's fingerprint and can reuse its retained results. Changing an upstream process does
+not invalidate downstream work when its actual input is unchanged.
 
-UUIDv8 leaves 122 custom bits and permits application-specific layouts. Python's `uuid8` accepts
-48/12/62-bit payload fields; packing must account for reserved version/variant bits. Sources:
-[RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#section-5.8),
-[Python UUID docs](https://docs.python.org/3.14/library/uuid.html#uuid.uuid8).
+Three identities have different jobs:
 
-## Proposed demonstration
+| Identity | Contains | Purpose |
+| --- | --- | --- |
+| Data fingerprint | Value kind/encoding version and its semantic content | Recognize the same input or output, regardless of how it was produced. |
+| Process fingerprint | Implementation and effective configuration/dependencies | Identify the operation that will run. |
+| Computation key | Immediate input fingerprint, current process fingerprint and output encoding | Look up a previously computed result before executing the operation. |
 
-Use the existing step implementations in an ordinary example function:
+Use the existing full SHA-256 `content_key` digests for these fingerprints and keys. Record UUIDs
+remain storage identities with their separately reviewed layouts; short collection/source prefixes
+are never cache identities. A record reference may be part of an operation's semantic input, but
+its UUID is not a substitute for hashing additional values the operation reads.
+
+An output fingerprint does not include its producing computation key. Run/provenance records may
+retain that association separately. No new provenance record or graph executor is proposed here.
+
+## What counts as data
+
+Fingerprint an explicit, typed value, not an unrestricted dump of a runtime object:
+
+- Include all values affecting the result, including copied references when caching records.
+  List order and duplicates count. Strings are exact; there is no implicit whitespace, path,
+  Unicode or newline normalization.
+- Exclude creation, modification, access and execution timestamps used only as bookkeeping,
+  along with durations, cache-hit flags and the upstream process history. Keep those outside the
+  reusable value. A cache hit must not pretend the original execution happened again now.
+- Do not strip timestamp-looking fields recursively. A date in source text remains content.
+  An explicit temporal query constraint such as `as_of` affects the answer and therefore the
+  computation key. This semantic-time distinction is proposed for the later query interface.
+- Data kind and encoding labels define equality locally: source records, text batches and vectors
+  have different encodings. Change the label when that encoding or equality contract changes.
+- Encoded values use JSON-native shapes: string-keyed objects, lists, strings, booleans, null and
+  finite numbers. Other types require an explicit encoding. The existing JSON helper does not
+  enforce this restriction; concrete stage encoders own it. Do not silently equate an integer
+  object key with a string key, or an arbitrary tuple with a list.
+- Process identity must cover settings, relevant helper implementations, dependency/model revisions
+  and effective requests/seeds where applicable. Runtime clients and mutable counters are not
+  configuration. The current `Fingerprinted` mixin covers class/base code and instance state;
+  it does not automatically discover helpers or external revisions. Overrides must supply them.
+
+A step can receive an explicit projection of a record when it needs less information. Embedding
+receives text, so its input fingerprint need not include a Source's origin or collection. A step
+that actually reads provenance, visibility or source identity must include that context instead.
+Do not feed a whole record to an arbitrary step while claiming only its text determines the result.
+
+### Record identity remains separate
+
+The proposed Source UUIDv8 payload is `[collection tag 24][scoped fingerprint 98]`; the owner
+prefers at least 24 tag bits, with exact width still open. Proposed identity inputs are full
+collection ID, exact origin and prepared text, excluding bookkeeping times. The agreed Chunk
+layout remains `[tag 16][source prefix 42][ordinal 16][fingerprint 48]`. Full collection identity
+must enter Source's digest, and full Source identity must enter Chunk's digest; differing short
+tag widths do not remove scope from those hashes. These ID contracts are not implemented yet.
+
+Today's `Source.fingerprint` and `Chunk.fingerprint` properties are not the proposed full-record
+fingerprints: Source lacks collection membership, Chunk's fingerprint omits `source_id`, and its
+Path-to-string conversion can normalize spelling. A model dump also includes fresh UUIDv7 IDs
+and the computed fingerprint. Do not use these properties to key whole-record results under this
+contract. Their replacement remains part of the record-identity review; the text-batch example
+does not use them.
+
+Two different Sources may produce the same embedding input and reuse the same vector computation.
+That does not merge their record identity, provenance or permissions. Initially this is a local,
+single-user cache; a shared service's authorization contract is deferred.
+
+## Lookup and result contract
+
+Keep the existing storage declarations unchanged:
+
+```python
+class Cache:
+    def __init__(self, root: Path | str) -> None: ...
+    def get_json(self, key: str) -> Any | None: ...
+    def put_json(self, key: str, obj: Any) -> None: ...
+```
+
+`Path` is a filesystem path, `str` is also accepted for the explicit cache directory, and `Any`
+reflects the current untyped JSON helper API, not a proposal to broaden a new interface. Each
+concrete stage owns its value encoding and reconstruction. No generic cached-step wrapper is
+introduced by this draft.
+
+A cache entry is a JSON object with exactly these fields:
+
+```text
+{"output_fingerprint": <full digest>, "output": <encoded reusable value>}
+```
+
+For a single-input step, compute the input fingerprint from that value. For multiple inputs,
+fingerprint their named or ordered aggregate so argument roles, ordering and multiplicity remain
+part of the request. Then:
+
+1. Compute the current process fingerprint and computation key.
+2. Look up the key. A stored object is a hit; `None` means a miss. The envelope also permits an
+   output value of JSON null without confusing it with a missing entry.
+3. On a miss, execute, encode the result, fingerprint that encoded content and store the entry.
+4. On a hit, reconstruct the saved output without calling the step.
+5. For the next step, fingerprint the actual value it receives, including any projection or
+   assembly performed between stages. If it receives the unchanged output under the same value
+   kind/encoding, reuse the stored `output_fingerprint` directly. Otherwise recompute for the
+   projected/assembled input. Never substitute the producer's computation key.
+
+Equal computation keys permit reuse of a previous result under the declared process contract.
+For deterministic stages, cold and warm runs must have equivalent semantic outputs. Caching a
+stochastic operation reuses one realization; it does not establish that rerunning would reproduce
+it. Independent samples must execute explicitly. This first example uses deterministic steps only.
+Failed computations are not cached. Concurrent misses may compute twice; the existing atomic
+file replacement prevents partial reads but does not provide execution deduplication. No locking,
+eviction, remote service or second content-addressed blob store is added here.
+
+### Concrete key example
+
+This runnable example establishes key construction using existing interfaces. `text-batch-v1`
+identifies the ordered text-list encoding; `vectors-f32-v1` identifies a vector result encoded as
+an object containing its `dtype`, `shape` and row-major `values`. The demo uses finite float32
+vectors, reconstructed as float32 arrays. NumPy's revision is explicit because this implementation
+calls NumPy; automatic process fingerprinting does not include that dependency.
+Encoding and reconstruction code are outside the step fingerprint: a semantic change to either
+requires an explicit encoding-label bump. A constant containing the label does not automate that
+decision. This demo uses exact encoded finite float32 values, not tolerance-based equivalence.
+
+```python
+import numpy as np
+
+from triplum.steps.embedding import ZeroEmbedder
+from triplum.utils.cache import content_key
+
+texts = ["Returns are accepted within 30 days."]
+embedder = ZeroEmbedder(dimensions=3)
+input_fp = content_key("text-batch-v1", texts)
+process_fp = content_key(
+    "embedding-process-v1",
+    {"step": embedder.fingerprint(), "numpy": np.__version__},
+)
+computation_key = content_key(
+    "computation-v1",
+    {"input": input_fp, "process": process_fp, "output_kind": "vectors-f32-v1"},
+)
+
+vectors = embedder(texts)
+output = {"dtype": "float32", "shape": list(vectors.shape), "values": vectors.tolist()}
+output_fp = content_key("vectors-f32-v1", output)
+entry = {"output_fingerprint": output_fp, "output": output}
+restored = np.asarray(output["values"], dtype=np.float32).reshape(output["shape"])
+assert vectors.shape == (1, 3)
+assert np.array_equal(restored, vectors)
+assert len(computation_key) == len(output_fp) == 64
+```
+
+Origin, collection and earlier preprocessing identities do not enter this embedding request:
+`Embedder` receives only the ordered text batch. Keep caching at that existing batch boundary;
+per-text reuse for arbitrary embedders would require a separate batch-invariance guarantee.
+
+## Reuse policy and benchmarking
+
+Ordinary execution uses the supplied cache for reads and writes. Proposed bypass semantics:
+execute without reading or writing cached results, leaving previous entries intact. Bypass is
+execution policy, not an added timestamp, nonce or altered data fingerprint. Returning to ordinary
+execution can still reuse the original entry.
+
+For explicit benchmarking later, bypass must reach every cache within the measured work, including
+nested expensive calls. Warm-cache performance can be measured separately and labeled. Refreshing
+an existing entry is a different policy and is not needed for this example. The benchmark API,
+policy flags and propagation mechanism remain deferred; no new flag is added to every step.
+
+## Small example and verification
+
+Use the existing steps in a plain example function, with no pipeline executor:
 
 ```text
 Source → FixedSize → chunks → OriginalText → text batch → ZeroEmbedder → vectors
 ```
 
-Use the existing explicit-directory `Cache`, `content_key` and process `fingerprint()` methods.
-Cache complete results under computation keys; no second blob store or general pipeline executor
-is needed. Keep embedding caching at the existing batch boundary: the ordered text batch and
-embedder fingerprint determine the key. Per-text caching for arbitrary embedders is not approved.
+The first example caches only the embedding batch; chunking and embedding-text preparation run
+each time. In particular, `FixedSize(100)` and `FixedSize(200)` over a source shorter than 100
+characters produce the same text batch and should share the embedding entry. This exercises
+upstream process changes without putting upstream process fingerprints in the embedding key.
 
-A computation key identifies a requested computation:
+The example must distinguish value reuse from record reconstruction. Today's `FixedSize` produces
+chunks referencing the supplied Source and assigns fresh UUIDv7 IDs. A cache of complete chunks
+keyed only on source text would return stale parent links. Before caching that stage, either
+complete the deterministic record identity review, or cache identity-free slice payloads and bind
+them to the current Source afterward. Those alternatives belong to the next boundary review;
+neither is needed for this first text/vector reuse example.
 
-```text
-key = hash(stage kind, process fingerprint, input fingerprint)
-```
+Use a real temporary disk cache and show explicit HIT/MISS labels. Verify:
 
-The pending choice is what feeds the next stage:
+1. Cold run computes embeddings; an identical run with a newly opened Cache instance hits.
+2. A → B → A reuses the retained A result; restoring process configuration also restores lookup.
+3. Two upstream processes producing identical immediate inputs share downstream computation keys.
+4. Changed actual embedding input or embedder settings misses. Changing only dimensions preserves
+   the text-batch fingerprint but must miss the embedding entry. Ordered-batch changes miss.
+5. Equal text from different records reuses text-only computation without reusing the wrong parent
+   references. After deterministic IDs are implemented, cold/warm record identities also agree.
+6. Bypass executes without reading or writing the cache; subsequent ordinary lookup still hits
+   the original entry.
+7. Empty batches reconstruct with shape `(0, dimensions)`, not `(0,)`; reconstruction always
+   uses the saved shape.
 
-| Choice | Consequence |
-| --- | --- |
-| Previous computation key | Preserves the entire upstream process chain; upstream process changes invalidate downstream work even if output is identical. |
-| Actual output fingerprint | Identical outputs can reuse downstream work; provenance must separately retain which upstream process produced them. |
+Record actual execution counts outside fingerprinted step state. Zero-valued embeddings cannot
+by themselves demonstrate correct invalidation. The example must work from an empty cache.
 
-Recommendation for discussion: distinguish content identity from computation identity, and use
-actual input content/record identity for downstream lookup. Fingerprints must cover every value
-affecting the cached result, including copied parent references when caching whole records.
-Source/Chunk UUID work can precede the example, or complete cached records can be restored with
-their parent records; caching chunks from one random Source and attaching them to a fresh random
-Source is incorrect. The implementation sequence is still for owner review.
+## Orientation and independent review
 
-Demonstrate and test these behaviors with a real temporary disk cache:
+[Bazel remote caching](https://bazel.build/remote/caching) separates action lookup from output
+content addressing. We adopt that identity distinction while retaining one simple disk store;
+separate action/CAS storage is not required yet. Its
+[hermeticity guidance](https://bazel.build/basics/hermeticity) motivates explicit effective inputs.
+The [remote execution protocol](https://github.com/bazelbuild/remote-apis/blob/main/build/bazel/remote/execution/v2/remote_execution.proto)
+distinguishes skipping lookup from preventing storage; our proposed benchmark bypass deliberately
+disables both. These are project choices, not a claim of Bazel API compatibility.
 
-1. Cold run computes stages; an identical run using a newly opened Cache instance hits.
-2. A → B → A returns the original IDs and reuses A's retained results.
-3. Changing a chunker setting changes its computation key; restoring it reuses the old result.
-4. Changing only embedding dimensions reuses earlier stages and recomputes vectors.
-5. Cached chunks refer to the correct Source, including across distinct collections.
-6. Empty-cache and warm-cache runs agree on record identities under deterministic ID generation.
+### Initial review
 
-Print explicit HIT/MISS labels. Assert actual execution counts outside fingerprinted step state;
-ZeroEmbedder's zero-valued outputs alone cannot establish that reuse/invalidation worked.
-The existing process fingerprint covers class/base code and instance settings, but not called
-helper code or dependency versions automatically. The example must state that existing limit.
+Claude Opus 5.5 (`claude-opus-5-5`), review `638dc6908d9546fba7e060ff0630d79a`, tested cached
+parent references, A → B → A, cross-collection IDs, reverted process settings, zero-valued
+embeddings, record serialization and Path/string normalization.
 
-## Research and independent review
+- **Added verification:** cached parent linkage, cold/warm identity equivalence when IDs become
+  deterministic, configuration reversion and explicit execution counts.
+- **Changed the proposed design:** exposed the content-versus-process-chain choice. The owner
+  approved content-based downstream reuse; upstream process history stays outside value identity.
+- **Rejected as false positive:** its tag-width collision claim assumed hashes omitted full
+  scope identity. Differing tag widths do not force identical IDs when full identities enter the
+  remaining hashes. A registry and its claim of collision impossibility were not adopted.
+- **Deferred:** observation/validity records, notebook autoreload, origin-type cleanup, per-text
+  embedding caching and generalized provenance.
 
-[Hugging Face Datasets](https://huggingface.co/docs/datasets/about_cache) combines preceding
-fingerprints and transforms; [Bazel](https://bazel.build/remote/caching) distinguishes action
-lookup from output-content storage. Both inform the alternatives above; adopting their frameworks
-or separate stores is unnecessary for this example.
+### Contract review
 
-Claude Opus 5.5 (`claude-opus-5-5`), review `638dc6908d9546fba7e060ff0630d79a`, challenged the
-proposal. It examined cached parent references, A → B → A, cross-collection IDs, changed/reverted
-process settings, zero-valued embeddings, record serialization, and Path/string normalization.
+Claude Opus 5.5 (`claude-opus-5-5`), review `4eaaee85b41a4c398337ace4f728238c`, tested changed
+dimensions, current record fingerprints, JSON encoding ambiguities, fresh UUIDs, float32
+roundtrips, empty batches, equal outputs from different chunkers, kind/payload separation and
+bypass behavior.
 
-- **Added verification:** cached parent linkage, cold/warm identity equivalence, configuration
-  reversion and explicit execution counts. These target concrete failures in caching today's
-  records, whose IDs are generated randomly.
-- **Decision impact:** exposed the content-versus-process-chain choice explicitly. The peer
-  recommends content-based downstream keys; the owner's choice remains pending.
-- **Rejected as false positive:** differing tag widths do not force identical Chunk IDs across
-  collections when full collection/Source identities participate in the remaining hashes.
-  Its collision claim assumed content-only hashes omitting scope. Its registry proposal and
-  claim of collision impossibility are not adopted; finite hashed identities still admit collisions.
-- **Deferred:** observation/validity records, notebook autoreload behavior, origin-type cleanup,
-  per-text embedding caching and generalized provenance. These do not justify expanding the demo.
+- **Changed the draft:** made the first cached boundary explicitly text batch → vectors; identified
+  existing record fingerprints as insufficient for whole-record caching; specified JSON-native
+  payloads and when the saved output fingerprint can directly identify the next input.
+- **Found a unique defect / added verification:** an empty vector list loses its second dimension
+  unless reconstruction uses the saved shape. Added reconstruction and the empty-batch check.
+- **Added clarification:** changing dimensions misses embedding while preserving input identity;
+  the earlier phrase "reuses earlier work" did not mean reusing incompatible vectors. Encoding
+  changes require deliberate version bumps and fixed-value roundtrip verification.
+- **Rejected as unnecessary:** flattening input/process fingerprints into one key discards the
+  useful identities this example teaches; removing the output fingerprint defeats its explicit
+  chaining purpose. Moving an encoding label into a constant does not automatically invalidate
+  caches when codec code changes, so it does not solve that versioning responsibility.
+- **Deferred:** equivalence across hardware for real embedders and notebook autoreload. The
+  deterministic zero-vector example makes neither guarantee.

@@ -6,7 +6,9 @@ The owner confirmed A → B → A should recover the original Source ID and pref
 collection-tag bits for Source, with remaining bits a fingerprint excluding creation/change time.
 The Chunk UUID allocation is decided; the Source allocation and exact hash inputs are still under
 discussion. No new ID or pipeline implementation has been authorized through the interface review
-yet. See `docs/specs/cached-pipeline.md` for the proposed example and pending cache-key decision.
+yet. The owner approved reuse of identical intermediate content across different upstream
+processes, with Bazel's cache design as orientation. See `docs/specs/cached-pipeline.md` for the
+concrete contract and example under review.
 
 ## Implemented state
 
@@ -37,8 +39,8 @@ yet. See `docs/specs/cached-pipeline.md` for the proposed example and pending ca
 - Each Source belongs to exactly one collection; its derived records stay in that scope.
 - Collection scope is separate from permissions. Overlapping membership was rejected because
   it complicates indexing strategies and ownership of derived outputs.
-- Reusing computation across collections can be considered later; it does not require sharing
-  record identity across collections.
+- Reusable computation payloads can be shared when their actual inputs are identical, without
+  sharing record identity across collections. Scope, provenance and permissions remain distinct.
 
 ### Chunk IDs: agreed allocation
 
@@ -68,6 +70,26 @@ The UUIDv8 **122-bit payload** is:
 
 The layout provides ordering in the ID index. It does not automatically cluster table rows or
 replace the existing source lookup index. No database speedup has been measured.
+
+### Caching: approved direction
+
+- Identical intermediate values may reuse downstream computation even when different upstream
+  processes produced them. Cache inputs reflect the actual immediate data, not upstream
+  computation history. The current operation and its effective configuration still distinguish
+  computations.
+- Exclude bookkeeping timestamps from reusable value identity. A separate explicit benchmarking
+  bypass is intended; its API and exact behavior remain under review, rather than adding time to
+  fingerprints to force misses.
+- Use Bazel's separation of computation lookup and output content identity as orientation. The
+  concrete encoding, storage arrangement and example remain proposals, not implemented contracts.
+- Record IDs and reusable payloads serve different purposes. Equal embedding text can reuse a
+  vector computation without merging Sources or copying another Source's Chunk references.
+  Cache complete records only when the inputs account for the references they carry; otherwise
+  reuse an identity-free payload and bind it to the current record separately.
+- The concrete draft proposes caching only the embedding batch in the first pipeline example.
+  Existing chunking/preparation run each time; different chunker configurations that yield the
+  same text batch demonstrate downstream reuse. Record UUID changes and caching whole records
+  remain separate interface reviews. The draft includes both Opus review outcomes.
 
 ### Other earlier decisions
 
@@ -111,7 +133,7 @@ These are proposals and unresolved decisions, **not approved schema changes**.
    reusable; conflicting identity under the same ID is rejected rather than silently overwritten.
    Mutation, collision and overflow behavior still need approval.
 
-After Source/Chunk identity, discuss **caching**, then missing elements: representations and vector
+Continue the **identity/caching contract review**, then missing elements: representations and vector
 configuration, mentions/entities/relations, groups/summaries and any processing-result records.
 Do not force every future record into a single-source prefix: some records will combine sources.
 Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk.origin remain open.
@@ -132,8 +154,9 @@ Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk
 
 ## Working agreements and verification
 
-- Fast, focused design discussion; mostly skip peer reviews for now. Do not launch a long review
-  or implementation merely because the next design question is open.
+- Keep design discussions focused. The owner endorsed the independent peer review of the cache
+  proposal; the earlier blanket note to mostly skip reviews no longer applies. Reviews do not
+  authorize implementation of unapproved core interfaces.
 - Owner approves core interfaces; record assumptions as proposals. Implement only approved scope.
 - Keep hand-written docs synchronized; use a docs subagent after interface changes. Published
   pages must not link to specs/plans; these development records remain excluded from the site.
