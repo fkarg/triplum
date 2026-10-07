@@ -4,6 +4,12 @@ Status: the owner approved reuse of identical intermediate content across differ
 processes, excluding bookkeeping timestamps, with Bazel's cache design as orientation. The
 concrete encoding and example below are a draft for interface review, not an implemented API.
 
+The owner subsequently clarified the performance target: a cache of a few dozen to a few hundred
+GB, able to grow further; very low-overhead exact-key lookup; deferred background writes; and a
+decorator interface constrained to fingerprintable inputs/outputs. SQLite and bundled chunk/vector
+results are candidates, not selected contracts. The lookup-first extension below records the new
+tradeoffs. The JSON example illustrates identity only, not the proposed high-performance codec.
+
 ## Purpose and identities
 
 Reuse intermediate work while composing and changing pipelines. An input that changes A → B → A
@@ -88,8 +94,9 @@ class Cache:
 
 `Path` is a filesystem path, `str` is also accepted for the explicit cache directory, and `Any`
 reflects the current untyped JSON helper API, not a proposal to broaden a new interface. Each
-concrete stage owns its value encoding and reconstruction. No generic cached-step wrapper is
-introduced by this draft.
+concrete stage owns its value encoding and reconstruction. These are the current primitives;
+the requested fingerprintable decorator interface is still to be declared and reviewed. A
+fingerprint alone does not provide the result codec needed for disk persistence.
 
 A cache entry is a JSON object with exactly these fields:
 
@@ -182,10 +189,11 @@ Use the existing steps in a plain example function, with no pipeline executor:
 Source → FixedSize → chunks → OriginalText → text batch → ZeroEmbedder → vectors
 ```
 
-The first example caches only the embedding batch; chunking and embedding-text preparation run
+The initial example proposal caches only the embedding batch; chunking and embedding-text preparation run
 each time. In particular, `FixedSize(100)` and `FixedSize(200)` over a source shorter than 100
 characters produce the same text batch and should share the embedding entry. This exercises
 upstream process changes without putting upstream process fingerprints in the embedding key.
+The owner is now considering a bundled chunk result instead; final cache granularity is open.
 
 The example must distinguish value reuse from record reconstruction. Today's `FixedSize` produces
 chunks referencing the supplied Source and assigns fresh UUIDv7 IDs. A cache of complete chunks
@@ -258,3 +266,73 @@ bypass behavior.
   caches when codec code changes, so it does not solve that versioning responsibility.
 - **Deferred:** equivalence across hardware for real embedders and notebook autoreload. The
   deterministic zero-vector example makes neither guarantee.
+
+## Lookup-first extension under discussion
+
+New owner constraints and current recommendations, not yet an approved runtime interface:
+
+- Exact match on both configured process identity and actual input identity. A composite binary
+  key can store that pair directly; another hash is optional. Include output encoding revision in
+  process identity. IDs must account for the values actually consumed, not just a record name.
+- Keep fingerprints available before lookup. Recomputing process state/JSON hashes on every hit
+  works against the latency goal. Precomputed identities require immutable identity-bearing
+  inputs and configured processes, or explicit invalidation when they change.
+- Expose a typed decorator with fingerprintable input/output constraints plus a result codec.
+  Existing strings, lists and NumPy arrays lack a fingerprint method; wrappers or typed adapters
+  need their own narrow interface review. Decorating every existing step is not assumed.
+- Prefer an explicitly owned cache instance shared by decorated steps, with connection lifetime
+  spanning a run. Avoid a hidden global ORM session and per-lookup connection creation.
+- A background writer batches persistence. A bounded pending map/queue makes newly computed
+  results visible in-process before commit. Bound memory by bytes, not just entry count; retain
+  pending entries until their commit completes. Enqueue immutable snapshots, not mutable results
+  whose later edits could be stored under an old key. Normal close drains; crash recovery may
+  lose pending entries and require recomputation. Cross-process pending visibility is not promised.
+- Queue-full policy is a real tradeoff: blocking preserves insertion attempts but delays callers;
+  skipping new cache inserts protects foreground latency but may cause later recomputation.
+  Recommendation for the owner's stated priority: skip and count, not silently grow the queue.
+  Writer errors must be surfaced; they are not equivalent to an ordinary cache miss.
+- Measure SQLite and LMDB against the existing file cache, using the same binary values and key
+  widths. No winner is established. SQLite rowid versus WITHOUT ROWID is a layout variable,
+  especially with large result blobs. Do not load the whole cache into a Python dictionary.
+- A chunk result may contain vectors without forcing a single cache key for all internal work.
+  Caching an entire chunking/preparation/embedding block reduces lookups but couples invalidation;
+  caching the expensive suboperation preserves finer reuse. Measure both if the distinction matters.
+  Per-text embedding lookup needs a batch-invariance contract; the current batch Protocol does
+  not provide one.
+
+For the first comparison, separate precomputed-key lookup, full hit/decode, miss/compute/encode,
+queue admission and background drain. Measure p50/p95/p99 reads while writing, index/payload size,
+pending bytes and commit latency. Report memory residency and dataset size; a reopened connection
+is not proof of a cold disk. Use representative payload sizes and a meaningful entry count, with
+matched persistence guarantees. Do not populate hundreds of GB without agreeing resource limits.
+
+A small exploratory local probe found vector JSON encoding/decoding much costlier than warm
+storage reads: a 32×1536 float32 batch was 196,608 raw bytes versus 947,003 JSON bytes, with roughly
+14.7 ms encoding and 7.8 ms decoding. Backend populations were only 32 or 256 entries and warm;
+the probe omitted environment/version capture, writes and contention. It cannot establish a
+backend winner or large-cache scaling. It motivates binary payloads in the proper comparison.
+
+Primary references: [SQLite query planning](https://sqlite.org/queryplanner.html),
+[WITHOUT ROWID tradeoffs](https://sqlite.org/withoutrowid.html),
+[SQLite WAL](https://sqlite.org/wal.html),
+[Python connection behavior](https://docs.python.org/3/library/sqlite3.html), and
+[py-lmdb](https://lmdb.readthedocs.io/en/latest/). SQLite WAL and LMDB allow concurrent readers
+with a serialized writer. LMDB also requires deliberate map growth and transaction/buffer
+lifetimes; mmap does not make the entire database resident in RAM.
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `2f0bc747122245b2a62ef4d6c9541ddd`, tested hashing
+cost, repeated process fingerprinting, bundled-key invalidation, possible batch dependence,
+Protocol hashing and file-read/write races. Its own timings used in-memory SQLite and do not
+establish on-disk performance.
+
+- **Added verification / design detail:** separately measure hashing, serialization, value reads
+  and lookup; keep configured process identities stable; define pending visibility and lifecycle.
+- **Dissent retained:** it requires per-text embedding entries and rejects bundled computations.
+  Per-text caching is not sound for every current Embedder without batch invariance; bundling
+  trades reuse granularity for fewer lookups rather than being universally incorrect. No blanket
+  per-text wrapper is approved.
+- **Dissent retained:** it recommends blocking on a full queue; the current recommendation is to
+  skip new cache writes to protect foreground latency. Owner decision remains open.
+- **Rejected as unsupported:** predicted universal backend winners and a default WITHOUT ROWID
+  layout were not established by its in-memory timings; official SQLite guidance makes row size
+  relevant. Keep the comparison empirical.

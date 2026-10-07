@@ -10,6 +10,12 @@ yet. The owner approved reuse of identical intermediate content across different
 processes, with Bazel's cache design as orientation. See `docs/specs/cached-pipeline.md` for the
 concrete contract and example under review.
 
+Latest performance requirements: cache target is dozens to hundreds of GB with room to grow;
+lookup-first low overhead; deferred background writes; a typed decorator over fingerprintable
+inputs/outputs. The owner is considering deterministic compound keys, SQLite and chunk results
+that include embeddings. Those are design candidates. The spec now records SQLite/LMDB comparison,
+resource ownership, codecs, queue-full policy and cache granularity as the next review topics.
+
 ## Implemented state
 
 - `datatype.Collection`: plain Pydantic model with a generated UUIDv7 `id` and required string
