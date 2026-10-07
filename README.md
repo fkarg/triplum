@@ -6,8 +6,9 @@ Time, provenance and permissions remain design requirements; evidence must respe
 
 ## Current state
 
-The project is being rebuilt on `v2-rewrite`. Much of the earlier code and all of its documentation
-were deliberately removed because the architecture and its explanation had become too confusing.
+The rebuild continues on `main` after starting on `v2-rewrite`. Much of the earlier code and all
+of its documentation were deliberately removed because the architecture and its explanation had
+become too confusing.
 The old benchmark runner, CLI examples and documentation are not working entry points for this
 checkout.
 

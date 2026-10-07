@@ -5,9 +5,10 @@ Conventions for anyone (human or agent) working in this repository. Read the REA
 ## Current rebuild and review gate
 
 The owner deliberately removed the previous documentation and much of the code on `v2-rewrite`.
-The subsequent cleanup removes orphaned source and obsolete tests, retaining generic data utilities,
-`FrameDataset` and a disk cache with an explicit directory. The Python package uses `uv_build`;
-there is no PyO3 bridge or model extra. The Rust core remains independently in Cargo.
+The rebuild now continues on `main`. Cleanup removed orphaned source and obsolete tests, retaining
+generic data utilities, `FrameDataset` and a disk cache with an explicit directory. The Python
+package uses `uv_build`; there is no PyO3 bridge or model extra. The Rust core remains independently
+in Cargo.
 Do not describe the old pipelines as working, infer approval from surviving code, or restore deleted
 subsystems wholesale. Git history is reference material, not the current architecture contract.
 
@@ -106,9 +107,9 @@ benchmarks and the owner's own corpora. Consequences that decide arguments:
   contracts are reviewed.
 - `tests/`: covers data loading, caching, fingerprints, steps, stores and pre-commit behavior. Rust tests run
   with `cargo test`, independently of Python.
-- The working indexing prototype and its tests remain uncommitted under owner review. Do not
-  treat them as approved interfaces, describe them as working APIs in prose docs or include them
-  in cleanup commits. The generated API reference deliberately shows the live state of `src/`.
+- The indexing and ingestion prototypes, their example and tests are committed but remain under
+  owner review. Do not treat them as approved interfaces or describe them as working APIs in prose
+  docs. The generated API reference deliberately shows the live state of `src/`.
 
 ## Rules that are easy to get wrong
 
