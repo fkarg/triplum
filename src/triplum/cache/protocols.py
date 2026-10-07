@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Literal, Protocol
 
 
@@ -74,3 +75,7 @@ class CacheBackend(Protocol):
 
     @abstractmethod
     def close(self) -> None: ...
+
+
+class _DefaultCache(Enum):
+    SHARED = auto()

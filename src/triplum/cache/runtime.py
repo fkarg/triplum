@@ -2,12 +2,14 @@
 
 import logging
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from threading import Condition, Lock, Thread
+from traceback import format_exception
 from types import TracebackType
-from typing import Self
+from typing import Self, overload
 
-from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy
+from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy, Codec, Fingerprintable
 
 _DEFAULT_POLICY = CachePolicy()
 logger = logging.getLogger(__name__)
@@ -32,13 +34,17 @@ class Cache:
 
     def __init__(
         self,
-        backend: CacheBackend,
+        backend: CacheBackend | None = None,
         *,
-        pending_bytes: int,
+        pending_bytes: int = 64 * 1024 * 1024,
         policy: CachePolicy = _DEFAULT_POLICY,
     ) -> None:
         if pending_bytes <= 0:
             raise ValueError("pending_bytes must be positive")
+        if backend is None:
+            from triplum.cache.defaults import default_backend
+
+            backend = default_backend()
         self._backend = backend
         self._budget = pending_bytes
         self._policy = policy
@@ -145,7 +151,9 @@ class Cache:
                 self._pending.clear()
                 self._used = 0
                 self._condition.notify_all()
-            logger.exception("Cache background writer failed")
+            # Keep stack text, not traceback frames, in buffering log handlers.
+            traceback_text = "".join(format_exception(error))
+            logger.exception("Cache background writer failed\n%s", traceback_text, exc_info=False)
 
     def flush(self) -> None:
         """Wait for writes accepted before this call; surface any writer failure."""
@@ -168,10 +176,58 @@ class Cache:
                 self._condition.wait_for(lambda: self._readers == 0)
             try:
                 self._backend.close()
-            finally:
-                with self._condition:
-                    self._closed = True
+            except Exception as error:
+                if self._error is not None:
+                    raise ExceptionGroup(
+                        "cache writer and backend close failed",
+                        [RuntimeError(f"cache writer failed: {self._error}"), error],
+                    ) from None
+                raise
+            with self._condition:
+                self._closed = True
             self._check_error()
+
+    @overload
+    def cached[I: Fingerprintable, O: Fingerprintable](
+        self,
+        compute: Callable[[I], O],
+        /,
+        *,
+        process_id: str | None = None,
+        output_type: type[O] | None = None,
+        codec: Codec[O] | None = None,
+        policy: CachePolicy | None = None,
+    ) -> Callable[[I], O]: ...
+
+    @overload
+    def cached[I: Fingerprintable, O: Fingerprintable](
+        self,
+        compute: None = None,
+        /,
+        *,
+        process_id: str | None = None,
+        output_type: type[O] | None = None,
+        codec: Codec[O] | None = None,
+        policy: CachePolicy | None = None,
+    ) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+
+    def cached[I: Fingerprintable, O: Fingerprintable](
+        self,
+        compute: Callable[[I], O] | None = None,
+        /,
+        *,
+        process_id: str | None = None,
+        output_type: type[O] | None = None,
+        codec: Codec[O] | None = None,
+        policy: CachePolicy | None = None,
+    ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
+        """Decorate using this owner: @cache.cached, with optional overrides."""
+        from triplum.cache.steps import cached
+
+        decorate = cached(
+            cache=self, process_id=process_id, output_type=output_type, codec=codec, policy=policy
+        )
+        return decorate if compute is None else decorate(compute)
 
     def __enter__(self) -> Self:
         with self._condition:

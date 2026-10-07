@@ -26,6 +26,10 @@ contains check commands and hook setup.
   decorators, `CachedStep`, manual access, replaceable storage, default Pydantic serialization,
   fingerprintable inputs/outputs and skip-and-count background writes. This does not authorize
   Source/Chunk ID migration or the remaining ingestion/indexing interfaces.
+- The owner also requested bare `@cached` and `@cache.cached` convenience defaults. The shared
+  cache opens lazily, and concrete return annotations select Pydantic serialization. Automatic
+  function identity covers source/defaults/captures; external dependencies require explicit
+  process identity. Keep the detailed guarantees in the cache guide and interface spec.
 - Indexing/ingestion prototypes and their tests remain under owner review. Their appearance in
   generated API docs does not make them approved interfaces; do not describe them as working
   APIs in prose docs. The current handoff is

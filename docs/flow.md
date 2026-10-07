@@ -114,5 +114,7 @@ Choose the branches the experiment needs: basic text retrieval, enriched vectors
 or summaries. [Decision points](concepts/decisions.md) lists current replacement boundaries.
 
 [Optional caching](infrastructure/cache.md) lets selected steps or larger blocks reuse results.
+Use bare `@cached` with the lazy shared default, `@cache.cached` with an owned cache, or
+`CachedStep` for configured classes. Concrete return annotations select Pydantic serialization.
 Equal intermediate content can reuse downstream work even when different upstream processes
 produced it. Source/Chunk identity changes and benchmark cache policy remain under review.

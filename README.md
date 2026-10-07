@@ -56,8 +56,8 @@ uv run python examples/cached_pipeline.py
 
 It demonstrates reuse across equivalent inputs, different upstream computations and a reopened
 SQLite cache. The cache implementation is authorized for owner review; Source/Chunk identity
-changes remain under review. See the [cache guide](docs/infrastructure/cache.md) for usage
-and default Pydantic serialization.
+changes remain under review. See the [cache guide](docs/infrastructure/cache.md) for convenient
+`@cached` / `@cache.cached` usage and default Pydantic serialization.
 
 ## Where next?
 

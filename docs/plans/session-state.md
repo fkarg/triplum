@@ -12,9 +12,8 @@ The owner authorized the optional computation cache and a small reuse example fo
 - [Implementation plan](cache-implementation.md#progress-and-rulings) for progress and verification.
 - [Earlier identity/cache analysis](../specs/cached-pipeline.md) for research and tradeoffs.
 
-The owner requested convenience defaults (`@cached`, `@cache.cached`) as the next refinement.
-See the implementation plan for progress and the [cache guide](../infrastructure/cache.md)
-for the current usage contract.
+Convenience defaults (`@cached`, `@cache.cached`) are implemented; see the
+[cache guide](../infrastructure/cache.md) for usage and the implementation plan for review status.
 
 Source/Chunk identity changes remain unimplemented. Both still generate UUIDv7 IDs and expose
 computed fingerprint properties; there is no chunk ordinal or UUIDv8 generation. The agreed

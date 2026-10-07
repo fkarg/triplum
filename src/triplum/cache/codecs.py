@@ -12,10 +12,13 @@ class PydanticCodec[T: Fingerprintable](Codec[T]):
     The default namespace includes the qualified model name and both JSON schemas.
     Supply a versioned format_id when custom serializers or validators change behavior
     without changing those schemas. A format namespace is a compatibility promise.
+    Schema documentation edits can also change this conservative default namespace.
 
     Each encode verifies a semantic fingerprint round-trip before cache admission.
     This costs a decode on writes; reads only decode. Unsupported or lossy fields fail
     in the caller. Exact model types prevent silent top-level subclass truncation.
+    Nested subclasses need appropriate Pydantic annotations/serializers. Fingerprints
+    must include every semantic field; model_dump alone can omit nested subclass fields.
     """
 
     def __init__(self, model: type[T], *, format_id: str | None = None) -> None:

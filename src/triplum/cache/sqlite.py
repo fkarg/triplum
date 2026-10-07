@@ -14,6 +14,8 @@ class SQLiteBackend(CacheBackend):
     Supply a local filesystem path, not a SQLite URI or in-memory database. The caller
     owns the containing directory. timeout bounds SQLite lock contention, not queue
     admission. Multiple owners may share the file; their pending writes are private.
+    A lock timeout is a storage error and makes its owning Cache fail until closed;
+    it is not a skipped write. Set timeout for expected writer contention.
     """
 
     def __init__(self, path: str | Path, *, timeout: float = 30.0) -> None:

@@ -4,9 +4,13 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
+from threading import Lock
+from typing import get_type_hints, overload
 
 from triplum.cache.codecs import PydanticCodec
-from triplum.cache.protocols import CacheKey, CachePolicy, Codec, Fingerprintable
+from triplum.cache.defaults import default_cache
+from triplum.cache.identity import function_fingerprint
+from triplum.cache.protocols import CacheKey, CachePolicy, Codec, Fingerprintable, _DefaultCache
 from triplum.cache.runtime import Cache
 
 
@@ -33,69 +37,124 @@ def _call[I: Fingerprintable, O: Fingerprintable](
     return result
 
 
+def _codec[O: Fingerprintable](
+    compute: object, output_type: type[O] | None, codec: Codec[O] | None
+) -> Codec[O]:
+    if codec is not None:
+        return codec
+    if output_type is not None:
+        return PydanticCodec(output_type)
+    try:
+        model = get_type_hints(compute).get("return")
+    except (NameError, TypeError) as error:
+        raise TypeError("cannot resolve output annotation; supply output_type or codec") from error
+    if not isinstance(model, type):
+        raise TypeError("annotate a concrete output model or supply output_type/codec")
+    return PydanticCodec[O](model)
+
+
+@overload
 def cached[I: Fingerprintable, O: Fingerprintable](
+    compute: Callable[[I], O],
+    /,
     *,
-    cache: Cache | None,
-    process_id: str,
-    output_type: type[O],
+    cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+    process_id: str | None = None,
+    output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
-) -> Callable[[Callable[[I], O]], Callable[[I], O]]:
-    """Cache a one-input function/bound callable with Pydantic serialization by default.
+) -> Callable[[I], O]: ...
 
-    process_id must identify computation kind/revision and all effective configuration,
-    including relevant model/helper revisions. Equivalent instances share entries;
-    pipeline positions, instance IDs and policy must not enter it. Keep computation
-    configuration fixed while bound. A custom codec supports other fingerprintable
-    output types. cache=None bypasses fingerprints, serialization and lookup entirely.
+
+@overload
+def cached[I: Fingerprintable, O: Fingerprintable](
+    compute: None = None,
+    /,
+    *,
+    cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+    process_id: str | None = None,
+    output_type: type[O] | None = None,
+    codec: Codec[O] | None = None,
+    policy: CachePolicy | None = None,
+) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+
+
+def cached[I: Fingerprintable, O: Fingerprintable](
+    compute: Callable[[I], O] | None = None,
+    /,
+    *,
+    cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+    process_id: str | None = None,
+    output_type: type[O] | None = None,
+    codec: Codec[O] | None = None,
+    policy: CachePolicy | None = None,
+) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
+    """Use @cached or @cached(overrides...) for a one-input callable.
+
+    By default the shared cache opens on first use, the return annotation selects a
+    Pydantic model and function source/defaults/captures identify the computation.
+    Captured configuration must remain fixed after decoration. Explicit process_id is
+    required for dependencies outside that function (helpers, globals, model versions,
+    files, environment) and source-less callables. It must cover kind/revision/config.
+    cache=None bypasses identity, serialization and lookup entirely.
     """
-    process = _digest(process_id) if cache is not None else b""
-    selected = (
-        (PydanticCodec(output_type) if codec is None else codec) if cache is not None else None
-    )
+    process = _digest(process_id) if cache is not None and process_id is not None else None
 
-    def decorate(compute: Callable[[I], O]) -> Callable[[I], O]:
-        if cache is None or selected is None:
-            return compute
+    def decorate(function: Callable[[I], O]) -> Callable[[I], O]:
+        if cache is None:
+            return function
+        identity = process if process is not None else _digest(function_fingerprint(function))
+        selected: Codec[O] | None = None
+        lock = Lock()
 
-        @wraps(compute)
+        @wraps(function)
         def call(item: I, /) -> O:
-            return _call(cache, process, item, compute, selected, policy)
+            nonlocal selected
+            if selected is None:
+                with lock:
+                    if selected is None:
+                        selected = _codec(function, output_type, codec)
+            owner = default_cache() if cache is _DefaultCache.SHARED else cache
+            return _call(owner, identity, item, function, selected, policy)
 
         return call
 
-    return decorate
+    return decorate if compute is None else decorate(compute)
 
 
 class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
     """Opt-in cache mixin: implement compute and a semantic computation fingerprint.
 
-    Put this before domain Protocol bases. fingerprint must include a computation kind
-    and revision plus effective configuration; exclude cache/codec/policy resources.
-    The method is read on each enabled call, so immutable configs can precompute it.
-    This step borrows the cache and never closes it. Ordinary uncached steps need not
-    inherit anything here.
+    Defaults use the shared lazy cache and compute's return model annotation. Override
+    cache, output_type, codec or policy independently. Put this before domain Protocol
+    bases. fingerprint must include a computation kind/revision and effective config;
+    exclude cache/codec/policy resources. The step borrows its cache, never closes it.
     """
 
     def __init__(
         self,
         *,
-        cache: Cache | None,
-        output_type: type[O],
+        cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+        output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
     ) -> None:
         self._cache = cache
-        self._codec = (
-            (PydanticCodec(output_type) if codec is None else codec) if cache is not None else None
-        )
+        self._codec = codec
+        self._output_type = output_type
+        self._codec_lock = Lock()
         self._policy = policy
 
     def __call__(self, item: I, /) -> O:
-        if self._cache is None or self._codec is None:
+        if self._cache is None:
             return self.compute(item)
+        if self._codec is None:
+            with self._codec_lock:
+                if self._codec is None:
+                    self._codec = _codec(self.compute, self._output_type, None)
+        owner = default_cache() if self._cache is _DefaultCache.SHARED else self._cache
         return _call(
-            self._cache, _digest(self.fingerprint()), item, self.compute, self._codec, self._policy
+            owner, _digest(self.fingerprint()), item, self.compute, self._codec, self._policy
         )
 
     @abstractmethod

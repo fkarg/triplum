@@ -111,11 +111,23 @@ def test_oversize_never_waits_for_impossible_admission(tmp_path: Path) -> None:
 def test_writer_failure_wakes_blocked_put_and_surfaces_on_close(tmp_path: Path) -> None:
     backend = GatedSQLite(tmp_path / "cache.sqlite", fail=True)
     cache = Cache(backend, pending_bytes=4096, policy=CachePolicy(on_full="block"))
+    started, finished = Event(), Event()
+
+    def put() -> bool:
+        started.set()
+        try:
+            return cache.put(OTHER, b"b" * 3000)
+        finally:
+            finished.set()
+
     with ThreadPoolExecutor() as pool:
         cache.put(KEY, b"a" * 3000)
         backend.entered.get(timeout=5)
-        pending = pool.submit(cache.put, OTHER, b"b" * 3000)
+        pending = pool.submit(put)
         flushed = pool.submit(cache.flush)
+        assert started.wait(5)
+        assert not finished.wait(0.05)
+        assert not flushed.done()
         backend.release.release()
         for future in (pending, flushed):
             with pytest.raises(RuntimeError, match="writer"):
@@ -160,9 +172,8 @@ def test_failed_writer_does_not_retain_payload_in_sticky_error(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     import gc
-    import logging
 
-    caplog.set_level(logging.CRITICAL, logger="triplum.cache.runtime")
+    caplog.set_level("ERROR", logger="triplum.cache.runtime")
     released = Event()
 
     class Snapshot(bytes):
@@ -248,3 +259,30 @@ def test_two_cache_owners_can_write_same_database(tmp_path: Path) -> None:
             assert second.get(CacheKey(b"a" * 32, index.to_bytes(32), "v1")) == b"a" + bytes(
                 [index]
             )
+
+
+def test_close_reports_both_failures_and_allows_cleanup_retry(tmp_path: Path) -> None:
+    class FailingClose(GatedSQLite):
+        fail_close = True
+
+        def close(self) -> None:
+            if self.fail_close:
+                self.fail_close = False
+                raise OSError("cleanup failed")
+            super().close()
+
+    backend = FailingClose(tmp_path / "cache.sqlite", fail=True)
+    cache = Cache(backend, pending_bytes=4096)
+    cache.put(KEY, b"value")
+    backend.entered.get(timeout=5)
+    backend.release.release()
+    try:
+        with pytest.raises(ExceptionGroup) as caught:
+            cache.close()
+        assert "writer" in str(caught.value.exceptions[0])
+        assert "cleanup failed" in str(caught.value.exceptions[1])
+        with pytest.raises(RuntimeError, match="writer"):
+            cache.close()
+        cache.close()
+    finally:
+        backend.close()

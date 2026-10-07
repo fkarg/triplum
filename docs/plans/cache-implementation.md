@@ -25,33 +25,33 @@ custom codecs remain possible. No record-ID migration, embedding contract rewrit
 - Read-your-writes includes in-flight batches. Old batch completion cannot evict newer writes.
 - Writer failure wakes waiting callers; close stops admission and drains accepted writes.
 - Pydantic serialization is not universally lossless: codecs must round-trip semantic fields.
-- No new dependencies, global sessions, cross-process pending guarantees or duplicate-compute lock.
+- No new dependencies, cross-process pending guarantees or duplicate-compute lock.
 
 ## Task 1: Backend and coordinator
 
 Files: `src/triplum/cache/{__init__,protocols,sqlite,runtime}.py`,
 `tests/test_computation_cache.py`, `tests/test_sqlite_cache.py`.
 
-- [ ] Write public-API tests using temporary SQLite databases and event-controlled backend fakes:
+- [x] Write public-API tests using temporary SQLite databases and event-controlled backend fakes:
   persistence/reopen, all three key components, empty bytes, pending visibility, queue skip/block,
   oversized entries, duplicate keys during commit, failed writer wakeup, draining close.
-- [ ] Run tests and observe missing-feature failures.
-- [ ] Add validated CacheKey/CachePolicy and CacheBackend protocol; implement SQLite with binary
+- [x] Run tests and observe missing-feature failures.
+- [x] Add validated CacheKey/CachePolicy and CacheBackend protocol; implement SQLite with binary
   indexed keys, separate reader/writer connections and WAL; implement one bounded writer queue.
-- [ ] Run relevant tests, ty and Ruff. Check the shared identity/lifecycle contract independently.
+- [x] Run relevant tests, ty and Ruff. Check the shared identity/lifecycle contract independently.
 
 ## Task 2: Typed frontends and serialization
 
 Files: `src/triplum/cache/{codecs,steps}.py`, `tests/test_cached_steps.py`,
 `examples/cached_pipeline.py`.
 
-- [ ] Test Pydantic roundtrips, unsupported fields, semantic timestamps, changed input/config,
+- [x] Test Pydantic roundtrips, unsupported fields, semantic timestamps, changed input/config,
   equivalent step instances sharing results, decorator/mixin equivalence and cache=None bypass.
-- [ ] Observe missing-feature failures, then implement Fingerprintable/Codec, PydanticCodec,
+- [x] Observe missing-feature failures, then implement Fingerprintable/Codec, PydanticCodec,
   cached and CachedStep.compute. Preserve generic input/output types and explicit process identity.
-- [ ] Add a small two-step pipeline using fingerprintable Pydantic values. Demonstrate downstream
+- [x] Add a small two-step pipeline using fingerprintable Pydantic values. Demonstrate downstream
   reuse when different upstream computation yields the same value, A→B→A reuse, and reopen reuse.
-- [ ] Run the example and targeted tests. Commit a verified coherent implementation with docs.
+- [x] Run the example and targeted tests. Commit a verified coherent implementation with docs.
 
 ## Task 3: Documentation, review and verification
 
@@ -59,12 +59,12 @@ Files: README.md, AGENTS.md, docs/flow.md,
 `docs/infrastructure/cache.md`, docs/specs/cache-interfaces.md,
 docs/plans/session-state.md, the current cache spec (historical design/API pages are absent and are not recreated).
 
-- [ ] Delegate documentation synchronization; preserve distinction between current implementation
+- [x] Delegate documentation synchronization; preserve distinction between current implementation
   and unapproved record/embedding interfaces. Explain shared cache identity and per-step isolation.
-- [ ] Independent code/consistency review, plus required host Claude Opus review. Record findings,
+- [x] Independent code/consistency review, plus required host Claude Opus review. Record findings,
   attempted falsifications and dispositions; fix concrete defects with regression coverage.
-- [ ] Run pytest with branch coverage, ty, Ruff checks/format, Cargo check/test and strict MkDocs.
-- [ ] Commit coherent changes. Report actual implementation, verification and performance limits.
+- [x] Run pytest with branch coverage, ty, Ruff checks/format, Cargo check/test and strict MkDocs.
+- [x] Commit coherent changes. Report actual implementation, verification and performance limits.
 
 
 ## Progress and rulings
@@ -81,4 +81,20 @@ docs/plans/session-state.md, the current cache spec (historical design/API pages
 - Full Python verification after initial implementation: 89 passed, 92% total branch-aware
   coverage; two existing SQL store cleanup warnings. Type checks passed.
 - Consistency review found and tests reproduced both successful-batch and error-traceback payload
-  retention; fixed. Independent Opus implementation review remains in flight.
+  retention; fixed. Both independent Opus code reviews returned; findings and dispositions are in the spec.
+
+- Owner explicitly chose both bare @cached and @cache.cached convenience. Implemented inferred
+  Pydantic return models, optional per-binding overrides, documented lazy default ownership/path,
+  Cache/CachedStep defaults, and normalized source/default/capture identity for simple functions.
+- Convenience review found order-sensitive dict captures and custom builtin subclasses collapsed
+  in identity. Both reproduced with tests, then fixed. Dependency tracking remains explicit;
+  captured configuration is fixed after first use.
+- Core checkpoint committed as 0ed0bae; convenience APIs are a separate reviewed change.
+
+- Opus core review d255e8907b2d492881b7eaa06d382112 added grouped cleanup errors/retry and
+  text-only traceback logging. Both regressions reproduced before fixing.
+- Opus convenience review c1e067b6e066427b965267e5d7e74425 caught edited-source key poisoning;
+  automatic identity now binds at decoration. Added atexit no-reopen regression and documented
+  stop/join-before-close ownership. Cache I/O and codec creation remain lazy.
+- Concurrent documentation rewrites overlap README, AGENTS, flow and session handoff; preserve
+  their worktree state. Cache guide, this plan and the interface spec are staged independently.

@@ -1,6 +1,7 @@
 """Optional computation caching with explicit ownership and replaceable storage."""
 
 from triplum.cache.codecs import PydanticCodec
+from triplum.cache.defaults import close_default_cache, default_cache
 from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy, Codec, Fingerprintable
 from triplum.cache.runtime import Cache
 from triplum.cache.sqlite import SQLiteBackend
@@ -17,4 +18,6 @@ __all__ = [
     "PydanticCodec",
     "SQLiteBackend",
     "cached",
+    "close_default_cache",
+    "default_cache",
 ]

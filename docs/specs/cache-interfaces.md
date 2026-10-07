@@ -6,8 +6,7 @@ our intermediate value types should support that contract. Plain uncached user s
 Skip-and-count is the default when pending writes cannot be admitted; blocking is configurable.
 The cache target is tens to hundreds of GB with room to grow. The owner authorized a first runtime
 implementation in `triplum.cache`, including default Pydantic serialization. Benchmark policy and
-large-scale performance comparisons remain later work. The explicit API below is implemented;
-convenient defaults are the next refinement requested by the owner.
+large-scale performance comparisons remain later work. The explicit API and parameter-light defaults below are implemented for owner review.
 
 ## Recommended shape
 
@@ -99,6 +98,8 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Literal, Protocol, Self
 
+from triplum.cache.protocols import _DefaultCache
+
 
 class Fingerprintable(Protocol):
     @abstractmethod
@@ -139,9 +140,9 @@ class CacheBackend(Protocol):
 class Cache:
     def __init__(
         self,
-        backend: CacheBackend,
+        backend: CacheBackend | None = None,
         *,
-        pending_bytes: int,
+        pending_bytes: int = 64 * 1024 * 1024,
         policy: CachePolicy = CachePolicy(),
     ) -> None: ...
     def get(self, key: CacheKey, /) -> bytes | None: ...
@@ -162,21 +163,23 @@ class Cache:
 
 
 def cached[I: Fingerprintable, O: Fingerprintable](
+    compute: Callable[[I], O] | None = None,
+    /,
     *,
-    cache: Cache | None,
-    process_id: str,
-    output_type: type[O],
+    cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+    process_id: str | None = None,
+    output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
-) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
 
 class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
     def __init__(
         self,
         *,
-        cache: Cache | None,
-        output_type: type[O],
+        cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+        output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
     ) -> None: ...
@@ -229,13 +232,14 @@ accounts for keys, immutable payloads and an entry overhead allowance, not total
   interrupt cancellation and crash durability are not guaranteed by this interface.
 
 Pending visibility is in-process. Other processes may see only committed entries and recompute
-while a write is pending. No global SQLite session, distributed queue or cross-process promise is
-introduced. Normal lifecycle is explicit: create one Cache per run/owner, lend it to steps, close it.
+while a write is pending. The convenient shared default is lazy and process-local; there is no distributed queue or
+cross-process pending visibility. Explicit ownership remains available: create one Cache per
+run/owner, lend it to steps, close it.
 
 ## Decorator and mixin: one mechanism, two authoring styles
 
-`cached(...)` decorates a one-input function or an already bound callable. `process_id` is explicit
-and computed once when binding; it covers that callable's computation, effective configuration,
+`cached` decorates a one-input function, with or without parentheses. An explicitly identified
+bound callable is also supported. When supplied, process_id is validated once when binding; it covers that callable's computation, effective configuration,
 helpers and model/dependency revisions. Configuration affecting computation must not mutate while
 bound. Reconfigure by making a new binding. The decorator does not guess closures or hash cache
 handles. It returns the same input/output call shape, not a proxy for every attribute of a step
@@ -298,8 +302,8 @@ mixins do. Manual callers take responsibility for key/content correspondence.
 ## What does not need another option
 
 Explicit ownership, a bounded queue, pending-write visibility and immutable snapshots solve
-concrete lifecycle/consistency needs. A hidden global session, unbounded queue or storing mutable
-references for later encoding are not equivalent low-cost alternatives. No always-off benchmark
+concrete lifecycle/consistency needs. The shared process default has a documented location and explicit close function. An unbounded
+queue or mutable references for later encoding are not equivalent low-cost alternatives. No always-off benchmark
 rule is selected here; cache=None supports uncached execution, while benchmark methodology waits.
 
 ## Optional backend optimization and verification
@@ -400,3 +404,89 @@ Additional official sources: [Pydantic TypeAdapter](https://docs.pydantic.dev/la
 [SQLite WAL](https://www.sqlite.org/wal.html),
 [SQLite size limits](https://www.sqlite.org/limits.html),
 [WITHOUT ROWID tradeoffs](https://www.sqlite.org/withoutrowid.html).
+
+
+## Parameter-light defaults requested during implementation
+
+Both entry points are supported:
+
+```python
+@cached
+def transform(item: Text) -> Text:
+    return Text(text=item.text.lower())
+
+
+with Cache(SQLiteBackend(path)) as cache:
+
+    @cache.cached(policy=CachePolicy(on_full="block"))
+    def specialized(item: Text) -> Text:
+        return Text(text=item.text.upper())
+```
+
+The output model comes from the return annotation unless output_type or codec is supplied.
+Annotation resolution and codec creation happen lazily on first use. Explicit identity remains an
+independent override. Cache.cached exposes the same decorator overrides and borrows that owner.
+CachedStep also defaults its cache and infers the output from compute's return annotation; its
+computation fingerprint remains an explicit subclass method.
+
+The default cache opens only when used. Its SQLite file is
+`$XDG_CACHE_HOME/triplum/cache.sqlite`, falling back to `~/.cache/triplum/cache.sqlite`.
+Cache() uses that same default backend and a 64 MiB pending budget. default_cache() exposes the
+shared owner, close_default_cache() drains/releases it, and normal process exit provides an atexit
+fallback. Abrupt termination can lose pending writes. Initialize caches after worker creation;
+inherited default handles after fork are rejected rather than reused or closed in the child.
+
+Automatic function identity covers source AST (excluding the cache decorator/docstring), qualified
+function name, evaluated defaults and captured configuration. Captures must remain immutable after
+decoration. Source and capture identity freeze when the decorator is applied; only codec and
+database initialization wait for first use. Bind before editing the source, or supply an explicit
+process_id for an already-loaded callable whose on-disk source no longer matches it. The source-less/callable-object path needs explicit process_id. External helpers, module
+globals, model/library revisions, files and environment still require explicit identity; the default
+is not dependency tracking. Builtin scalar/container captures use exact supported types, mapping
+order is preserved, and custom captures need fingerprint() or an explicit process_id.
+
+Independent fresh-context review **found unique defects** in initial capture hashing: dictionary
+order was lost and custom builtin subclasses collapsed to their builtin value. Both were reproduced
+with cached-call regressions, then fixed. Official reference:
+[Python function data model](https://docs.python.org/3.14/reference/datamodel.html#user-defined-functions),
+[Python inspect](https://docs.python.org/3.14/library/inspect.html),
+[Python atexit](https://docs.python.org/3.14/library/atexit.html).
+
+
+### Implementation code reviews
+
+Claude Opus 5.5 (`claude-opus-5-5`), core review `d255e8907b2d492881b7eaa06d382112`:
+**Found unique defects:** simultaneous writer/cleanup errors could hide the writer failure and mark
+cleanup complete prematurely; buffered logging could retain failed payloads via exc_info. Tests
+reproduced both. Close now groups both errors and permits cleanup retry; logs retain formatted stack
+text without traceback frames. **Added verification:** capacity waiters demonstrably remain pending
+before the test releases a failing commit. **Documented tradeoffs:** schema documentation changes
+can conservatively cause misses; SQLite lock timeout remains sticky; nested subclass serialization
+requires suitable Pydantic annotations and semantic fingerprints that include all consumed fields.
+The automatic roundtrip check cannot repair an incomplete fingerprint. **No decision impact:**
+explicit owners still require close, disabled caching skips identity checks, sequence numbers and
+failure checks remain for readable lifecycle invariants; the backend Protocol intentionally permits
+partial batches even though SQLite transactions are atomic.
+
+Attacks included actual stale-read/overwrite probes (refuted), read/commit/removal and close/read
+interleavings (no violation found), blocked-put and flush ordering, empty values, schema description
+changes, nested subclass truncation, transaction rollback and unclosed-owner retention. The review
+was not a performance benchmark and did not run the complete repository suite.
+
+Claude Opus 5.5, convenience review `c1e067b6e066427b965267e5d7e74425`:
+**Found unique defect:** lazily reading source on first call could hash edited code while executing
+an older loaded function. A temporary-module regression reproduced a wrong hit. Source/capture
+identity now binds at decoration; codec resolution and database opening remain lazy. **Changed:**
+source parse errors and captured classes give explicit-identity guidance; a child with no inherited
+cache recreates the inherited default lock; interpreter shutdown forbids reopening the default.
+**Added verification:** a late atexit handler cannot reopen the database after cleanup.
+**Documented tradeoff:** stop/join borrowed computations before closing their default owner;
+in-flight computations are not silently converted to uncached results after close. Relative
+XDG_CACHE_HOME is ignored, following the official specification. **No decision impact:** generic
+return models require an explicit codec, cache=None bypasses validation, and mixin codec inference
+remains lazy for uniform forward-reference behavior.
+
+That peer reproduced source-file drift, shutdown reopening and source/capture error cases; attacked
+polymorphic/generic returns, wrapped functions, scalar/container tags and forked handles. Unsupported
+cases failed safely; it did not run our full tests or verify free-threaded CPython. XDG behavior was
+subsequently checked against the [official specification](https://specifications.freedesktop.org/basedir/latest/).
