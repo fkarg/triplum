@@ -4,7 +4,7 @@
 similarity to a query's vector. An embedder works on a batch of texts at once, because real
 models are much faster that way.
 
-The library provides only a placeholder, `ZeroEmbedder`, which returns zero vectors. It fixes
+The library provides only a placeholder, [`ZeroEmbedder`][triplum.steps.embedding.ZeroEmbedder], which returns zero vectors. It fixes
 the shape of the step; it does not embed anything meaningful.
 
 ## Example
@@ -26,18 +26,9 @@ print(vectors[0])  # [0. 0. 0. 0.]
 
 ## The contract
 
-`Embedder` is a `typing.Protocol`:
-
-```python
-type Vectors = NDArray[np.float32]  # shape (len(texts), dimensions)
-
-
-class Embedder(Protocol):
-    dimensions: int
-
-    @abstractmethod
-    def __call__(self, texts: list[str], /) -> Vectors: ...
-```
+[`Embedder`][triplum.steps.embedding.Embedder] takes `list[str]` and returns
+[`Vectors`][triplum.steps.embedding.Vectors], a NumPy float32 matrix. Its `dimensions`
+attribute gives the vector size without running the model.
 
 - Input: one batch of texts, usually produced by [chunk preprocessing](chunk-preprocessing.md).
   Forming batches (for example with a [`DataLoader`](datasets.md)) is the pipeline's job.
@@ -87,11 +78,5 @@ Unlike the other steps, a plain function does not fit `Embedder`: the protocol a
 
 How an embedder identifies itself (model, revision, settings) so that its vectors can be cached
 and recorded in a run's identity is not decided yet.
-
-## Reference
-
-- [`Embedder`][triplum.steps.embedding.Embedder] and
-  [`Vectors`][triplum.steps.embedding.Vectors]
-- [`ZeroEmbedder`][triplum.steps.embedding.ZeroEmbedder]
 
 Next: [Decision points](decisions.md), every place you choose an implementation.

@@ -4,7 +4,8 @@
 indexed and retrieved. Choosing the pieces is a retrieval decision. Keeping the whole text as one
 chunk is valid; so are fixed-size pieces, overlapping pieces, or pieces that follow sections.
 
-The library provides one naive chunker, `FixedSize`, which cuts the text every `n` characters.
+The library provides one naive chunker, [`FixedSize`][triplum.steps.chunking.FixedSize], which cuts
+the text every `n` characters.
 
 ## Example
 
@@ -35,13 +36,7 @@ for chunk in chunker(source):
 
 ## The contract
 
-`Chunker` is a `typing.Protocol`:
-
-```python
-class Chunker(Protocol):
-    @abstractmethod
-    def __call__(self, source: Source, /) -> list[Chunk]: ...
-```
+[`Chunker`][triplum.steps.chunking.Chunker] takes one `Source` and returns `list[Chunk]`.
 
 - Input: one `Source`.
 - Output: zero or more `Chunk`s with the source's `origin`, each satisfying
@@ -102,10 +97,5 @@ chunker: Chunker = whole_text  # accepted by the type checker
 
 Hierarchical chunking (sections containing passages) and how containment is represented are still
 open.
-
-## Reference
-
-- [`Chunker`][triplum.steps.chunking.Chunker]
-- [`FixedSize`][triplum.steps.chunking.FixedSize]
 
 Next: [Chunk preprocessing](chunk-preprocessing.md).

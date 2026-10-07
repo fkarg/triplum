@@ -1,8 +1,7 @@
 # Core Concepts
 
-Each page explains one concept: what it is, a small example, and a link into the API reference.
-[Decision points](concepts/decisions.md) lists every step where you choose or plug in an
-implementation, with what the library provides today.
+Follow these pages for small examples in pipeline order. [Decision points](concepts/decisions.md)
+compares the available implementations and explains how to plug in your own.
 
 ## Indexing
 
@@ -21,9 +20,8 @@ Indexing turns input material into searchable chunks. The concepts in pipeline o
    embedded.
 7. [Embedding](concepts/embedding.md): that text to one vector per chunk.
 
-Each step is a `typing.Protocol` with one naive reference implementation; you can subclass it or
-pass anything with a matching call signature. Datasets and loaders only provide and batch records.
-[Indexing and retrieval](flow.md) shows how these steps fit into the larger flow.
+[Indexing and retrieval](flow.md) shows the larger flow; [Decision points](concepts/decisions.md)
+explains the shared Protocol and configuration conventions.
 
 ## Retrieval
 

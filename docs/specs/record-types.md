@@ -5,7 +5,7 @@ recorded under "Decisions" as they are made.
 
 ## Research summary
 
-Primary sources, fetched and read for this draft (no peer review run):
+Primary sources fetched for the original draft (the research summary itself was not peer-reviewed):
 
 | System | Data model essentials | Sources |
 |---|---|---|
@@ -67,7 +67,8 @@ Everything else can arrive as new tables or optional fields.
   string `name`. Names are human-readable labels and need not be unique. `CollectionRow` maps
   the same fields, with `id` as primary key. These declarations are implemented; membership
   fields and collection store operations are deferred.
-- Peer review is skipped for the collection baseline at the owner's request for fast, small steps.
+- Peer review was skipped for the collection baseline only, at the owner’s request.
+  Later interfaces follow the review gate in AGENTS.md.
 - The agreed Chunk UUIDv8 payload allocation is `[collection tag 16][source prefix 42]
   [ordinal 16][identity fingerprint 48]`. Any later adjustment considered here moves bits from
   the source prefix to the fingerprint; the collection and ordinal allocations stay fixed.
@@ -78,40 +79,52 @@ Everything else can arrive as new tables or optional fields.
 - Equivalent Source and Chunk records within the same collection should reproduce their IDs,
   provided this does not impose unreasonable costs. Exact equivalence and digest inputs remain
   open. Cache identity is separate from record identity; reusing record IDs is a weak
-  preference when appropriate, not a requirement driving this layout.
+  preference when appropriate, not a requirement driving this layout. Reconstructing records
+  with their IDs from cache is also acceptable.
 - The owner confirmed that text changing A → B → A should recover the original Source ID.
   Creation/change timestamps do not contribute to this identity. The owner now prefers at least
   24 collection-tag bits for Source; this does not revise the agreed Chunk allocation.
-- Identical intermediate content may reuse downstream computation across different upstream
-  processes. Cache inputs use actual immediate data, excluding upstream computation history and
-  bookkeeping timestamps. The current process and its effective configuration still distinguish
-  computations. Bazel's separation of computation lookup and output content identity is the
-  approved orientation; the concrete cache contract remains under review.
-- Reusable payload identity does not merge record identity, provenance or permissions. Identical
-  embedding text can reuse computation across distinct Sources. Complete cached records must
-  preserve the correct parent references; identity-free payload reuse and binding to the current
-  record are separate concerns.
-- An explicit benchmarking bypass is intended separately from value identity. Its interface and
-  exact behavior remain deferred; timestamps should not be added to fingerprints to force misses.
+- Source-prefix collisions may affect locality, but complete-ID collisions must remain very
+  unlikely. Short prefixes are never authoritative identity or ACL checks. Collision protection
+  depends on the remaining bits distinguishing records, with full source identity in the digest.
+  UUID ordering does not cluster table rows or replace source indexes; no speedup has been measured.
+- Record `fingerprint` should become a plain method, with stores populating their column from it.
+  This is agreed but not implemented. Groups use many-to-many membership, allowing multiple parents;
+  graph/entity implications remain for their own review.
+- Computation reuse is separate from record identity, provenance and permissions. Identical
+  payloads may reuse work across Sources, but complete cached records must preserve the correct
+  parent references. The [identity/cache analysis](cached-pipeline.md) records the approved
+  Bazel-style computation/output identity separation. See [cache interfaces](cache-interfaces.md)
+  for the current contract. A benchmark bypass is intended; its interface remains deferred.
 
 ## Remaining ID decisions
 
 - Source identity inputs: collection, origin, prepared text, and the treatment of future fields.
   Origin normalization and the identity consequences of edited text remain open.
-- Chunk identity inputs: full source identity, ordinal, exact excerpt, and whether processing
-  configuration contributes. Multiple chunking results also need a way to identify their members;
-  distinct Chunk IDs alone do not distinguish which ordered result is being read.
+- Chunk identity inputs: full source identity, ordinal, character offset, exact excerpt, and
+  whether processing configuration contributes. Ordinals already distinguish equal excerpts
+  at different positions in a chunking result. Multiple results also need a way to identify their
+  members; distinct Chunk IDs alone do not distinguish which ordered result is being read.
 - Collection generation: UUIDv7 is implemented; optionally seeding a persisted collection ID
-  once from a suitable upstream dataset fingerprint remains a proposal.
+  once from a suitable upstream dataset fingerprint remains a proposal. The seed precedes
+  collection-scoped IDs to avoid circularity; independent copies need a distinct seed or fresh ID.
+  `RecordDataset.fingerprint()` includes generated record IDs, so is not automatically a stable seed.
 - Source UUIDv8 layout: `[collection tag 24][scoped source fingerprint 98]` is the current proposal
   following the owner's preference for at least 24 collection-tag bits. The exact width remains
   to be finalized. This replaces the earlier 16/106 proposal. It is the proposed
-  companion to the agreed Chunk layout. Prefix derivation and exact digest encoding need a
-  specification, including full scope identities in hashes so prefix collisions cannot erase scope.
+  companion to the agreed Chunk layout; the proposed Chunk prefix copies the leading 42 bits
+  of the scoped Source fingerprint. Canonical hash inputs, record-kind separation, prefix
+  derivation and packing around UUID version/variant bits need a specification, including full
+  collection identity in Source hashes and full Source identity in Chunk hashes. A proposed tag
+  hashes the collection UUID; copying leading UUIDv7 bits would
+  mostly copy timestamp bits. Prefix collisions must not erase scope.
 - Construction and storage: when IDs are generated, handling supplied IDs and later field edits,
   equal-ID/equal-record versus equal-ID/different-record writes, and oversized chunking results.
+  Reusing equal records and rejecting conflicting records/ordinal overflow is a recommendation,
+  not an approved contract.
 - IDs for additional record types follow their own interface reviews. Cache identity is discussed
   before those missing record types.
 
-The next proposed example and the independent review of identity/cache interactions are recorded
-in `docs/specs/cached-pipeline.md`.
+Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk.origin remain
+open. Additional record types need their own layouts: multi-source records must not be forced
+into a single-source prefix.

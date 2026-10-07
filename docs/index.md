@@ -1,20 +1,34 @@
 # triplum
 
-Triplum is a Python library being rebuilt for composable document search, knowledge graphs and
-GraphRAG experiments. The aim is to make basic baselines and advanced pipelines understandable,
-measurable and easy to customize with your own functions and classes.
+A Python library being rebuilt for composable document search, knowledge graphs and GraphRAG
+experiments. Combine small functions and classes to compare pipelines and their baselines.
 
-## Start here
+## Try the building blocks
 
-Read **[Indexing and retrieval](flow.md)** to follow source material into searchable evidence,
-then follow a question through retrieval to an answer.
+From a repository checkout, run `uv sync` to install (Python 3.14+), then `uv run python` to
+try this example:
 
-## Rebuild status
+```python
+from triplum.datatype import Source
+from triplum.steps.chunking import FixedSize
 
-The retained Python foundation provides generic data loading, dataframe batching and caching.
-The Rust core is separate; the Python package does not build or link a Rust extension. An
-end-to-end pipeline is not yet available.
+source = Source(origin="example", text="Alpha. Beta.")
+for chunk in FixedSize(7)(source):
+    print(chunk.start, repr(chunk.text))
+```
 
-The current focus is identified source text, initial chunks and preparation of embedding text.
-The overview explains those responsibilities and how they connect to retrieval. The indexing steps
-have first Protocol contracts with trivial reference implementations; see Core Concepts.
+```text
+0 'Alpha. '
+7 'Beta.'
+```
+
+Each chunk retains its source reference and character offset. Follow
+[chunking](concepts/chunking.md) to replace this naive splitter, or [Core concepts](concepts.md)
+for the full sequence of building blocks. For intermediate-result reuse, see the
+[cache guide](infrastructure/cache.md).
+
+## Project status
+
+[Indexing and retrieval](flow.md) distinguishes implemented foundations from the intended flow.
+Indexing prototypes remain under review; there is no supported end-to-end retrieval pipeline.
+The Python package and Rust workspace are independent, so the example requires no Rust build.

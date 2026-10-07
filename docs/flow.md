@@ -3,14 +3,19 @@
 **Indexing prepares source material for search. Retrieval selects evidence for a question.**
 This page follows the intended flow and shows where experiments can replace individual steps.
 
-Triplum is being rebuilt. Its retained Python data utilities and cache, plus a separate Rust core,
-are not a working end-to-end pipeline. The indexing steps (conversion, chunking, embedding text,
-embedding) have first Protocol contracts; the rest does not. These diagrams describe
-responsibilities, not a mandatory sequence of classes.
+## Implemented foundations
 
-A [collection](concepts/collection.md) is the logical corpus scope. Its baseline record and SQL
-mapping are implemented. Exclusive source membership and derived-record scope are decided, but
-membership fields and collection storage operations are not implemented yet.
+- [Datasets/loaders](concepts/datasets.md), [Source](concepts/source.md) and
+  [Chunk](concepts/chunk.md) records, and the four [indexing step contracts](concepts/decisions.md)
+  have initial implementations. `ZeroEmbedder` is a shape-only placeholder.
+- [Collection](concepts/collection.md) has a baseline record and SQL mapping; membership fields,
+  collection storage operations and derived-record scope enforcement are not implemented.
+- [Record stores](infrastructure/store.md) support memory and SQL persistence.
+  [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse.
+- Indexing/ingestion prototypes remain under review. Text/vector search, graph retrieval and
+  answer generation are intended responsibilities, not a supported end-to-end pipeline.
+
+The diagrams below show those responsibilities, not a mandatory sequence of classes.
 
 ## 1. Indexing: prepare searchable evidence
 
@@ -34,8 +39,8 @@ flowchart TD
 ### Obtain source text
 
 A loader obtains a document, webpage or other input. Parsing, optional OCR and preprocessing make
-its text available. The provisional name **`Source`** means identified text with links or external
-IDs. Its exact fields and the loader/OCR interfaces are not yet defined.
+its text available as a [Source](concepts/source.md). The basic record exists; richer provenance
+and loader/OCR interfaces remain open.
 
 ### Produce initial chunks
 
@@ -43,7 +48,8 @@ Chunking chooses the portions to retrieve. A simple approach keeps the whole tex
 others split it into smaller or overlapping pieces. Initial chunks need a relationship back to
 the source. Hierarchical chunking may also preserve sections and their contained passages.
 
-Which text version positions refer to, and how containment is represented, remain open questions.
+Current offsets address `Source.text`. Representing earlier text versions and hierarchical
+containment remains open.
 
 ### Optionally enrich and embed
 
@@ -102,24 +108,11 @@ Every store read must respect the permitted viewer and requested temporal view. 
 filtering belongs before ranking; graph traversal uses the visible graph. Derived summaries must
 preserve their supporting sources' access restrictions.
 
-## Composing a pipeline
+## Composing and reusing steps
 
-Choose the branches the experiment needs. A basic retrieval experiment can use unchanged chunk
-text and a text index. An enriched vector experiment adds preparation and embedding. A graph
-experiment also builds entities, facts or summaries. The goal is to let users replace individual
-transformations with their own functions or configured classes; the exact interfaces are still
-being defined.
+Choose the branches the experiment needs: basic text retrieval, enriched vectors, graph records
+or summaries. [Decision points](concepts/decisions.md) lists current replacement boundaries.
 
-## Reusing intermediate results
-
-Optional [computation caching](infrastructure/cache.md) is implemented independently of the
-indexing prototypes. Functions can use `cached`; configured classes can use `CachedStep`.
-Both consume fingerprintable values and return fingerprintable, serializable results. Ordinary
-steps remain uncached, and `cache=None` bypasses caching for an opted-in step.
-
-Several steps can share one explicitly owned cache. Entries match the current computation and
-configuration, immediate input content, and serialization format. Pipeline position and upstream
-processing history do not affect lookup: equal intermediate content can reuse downstream work.
-The first backend is SQLite, with bounded background writes and skip-and-count admission by
-default. No large-scale performance comparison has been completed. Source/Chunk identity
-changes and end-to-end benchmark cache policy remain under review.
+[Optional caching](infrastructure/cache.md) lets selected steps or larger blocks reuse results.
+Equal intermediate content can reuse downstream work even when different upstream processes
+produced it. Source/Chunk identity changes and benchmark cache policy remain under review.

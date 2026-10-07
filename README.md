@@ -1,80 +1,76 @@
 # triplum
 
 A composable, benchmark-first Python library for document search, knowledge graphs and GraphRAG.
-The library is the product: experiments should compose its capabilities directly.
-Time, provenance and permissions remain design requirements; evidence must respect source access.
+Experiments combine importable modules; the library is the product. Bi-temporal evidence and
+provenance-derived permissions remain design requirements; evidence must respect source access.
 
 ## Current state
 
-The rebuild continues on `main` after starting on `v2-rewrite`. Much of the earlier code and all
-of its documentation were deliberately removed because the architecture and its explanation had
-become too confusing.
-The old benchmark runner, CLI examples and documentation are not working entry points for this
-checkout.
+The rebuild continues on `main`, one owner-reviewed interface at a time. Historical code is
+reference material, not the current architecture contract. The old CLI and benchmark runner are
+not working entry points.
 
-The Python library includes data-loading utilities, source and chunk records, indexing steps,
-memory and SQL record stores, and optional computation caching with an explicitly owned SQLite
-backend. A separate file-cache utility remains available. The package uses
-`uv_build`. The Rust core remains in an independent Cargo workspace; installing the Python package
-does not build or link it.
+The Python foundation includes datasets/loaders, Source and Chunk records, step Protocols,
+memory/SQL record stores, and optional computation caching. Indexing prototypes remain under
+review; there is no supported end-to-end retrieval pipeline. The pure Python package uses
+`uv_build`; the independent Rust workspace is not built or linked during Python installation.
 
-Retaining a utility does not approve its interface for the rebuild. The previous implementation
-is available in Git history; it is reference material, not a restore list.
+## Try it
 
-## How we are rebuilding
+From a checkout, install with [uv](https://docs.astral.sh/uv/). Python 3.14 or newer is required;
+Rust is not needed for these Python examples.
 
-We review **one interface at a time**, keeping the owner closely involved:
+```sh
+git clone https://github.com/fkarg/triplum.git
+cd triplum
+uv sync
+```
 
-1. Explain the step's purpose and where it fits in the data flow.
-2. Draft its exact Python signature, input/output types and behavioral guarantees.
-3. Explain each necessary supporting type at first use and show a small usage example.
-4. Have Claude Opus critique the draft; record disagreements and what changed.
-5. Have the owner review the documentation and interface declaration in detail.
-6. Proceed to implementations or the next interface only after the owner's approval.
+Create a source and split its text into chunks:
 
-Keep drafts clearly marked as proposals. Prefer simple functions and independent protocols;
-add classes, records or inheritance only when a concrete requirement warrants them.
-Do not restore an entire subsystem to make one interface work. Commit coherent, verified changes
-periodically as the work progresses.
+```sh
+uv run python - <<'PYTHON'
+from triplum.datatype import Source
+from triplum.steps.chunking import FixedSize
 
-**Current review:** [indexing data and transformations](docs/specs/indexing.md), starting with
-source content and initial chunks. The owner proposes `Source` for identified input text, followed
-by chunking and independently replaceable preparation of embedding text; names and declarations
-remain open. A chunk can have separate original text, descriptions and generated questions, but
-has one embedding vector for a chosen configuration. The owner has decided to keep `Source` and
-`Chunk` in separate files as backend-agnostic Pydantic records and develop barebones pipelines
-incrementally. The indexing steps are `Protocol` contracts in `triplum.steps` (`Converter`,
-`Chunker`, `EmbeddingText`, `Embedder` with batched numpy vectors), each with a trivial reference
-implementation. Storage mappings live separately from the records; see the
-[store guide](docs/infrastructure/store.md) for the current implementations and guarantees.
+source = Source(origin="example", text="Alpha. Beta.")
+for chunk in FixedSize(7)(source):
+    print(chunk.start, repr(chunk.text))
+PYTHON
+```
 
-**Cache implementation:** the owner authorized a first implementation for review.
-`triplum.cache` provides optional decorators, a `CachedStep` mixin and manual access;
-fingerprintable Pydantic outputs use the default serializer. Steps can share a cache while
-computation and input identities keep entries separate. See the
-[cache guide](docs/infrastructure/cache.md) and run `uv run python examples/cached_pipeline.py`
-for a reuse demonstration. Source/Chunk identity changes remain under review.
+```text
+0 'Alpha. '
+7 'Beta.'
+```
 
-Keep the upstream flow in view: dataset → loader for documents/webpages/etc. → optional OCR or
-preprocessing → `Source`. Its interfaces are deferred for a later discussion.
+Each chunk retains its source reference and character offset. `FixedSize` is deliberately naive;
+replace it with another chunker as the experiment needs. Continue with
+[chunking](docs/concepts/chunking.md) or the [step-by-step concepts](docs/concepts.md).
 
-## Indexing and retrieval
+For a two-step example demonstrating cached intermediate results, run:
 
-[Indexing and retrieval](docs/flow.md) explains how source material becomes searchable and how
-queries become answers. It covers basic pipelines, optional enrichment, graph construction and
-summaries, and distinguishes the intended boundaries from implemented functionality.
+```sh
+uv run python examples/cached_pipeline.py
+```
 
-## Development
+It demonstrates reuse across equivalent inputs, different upstream computations and a reopened
+SQLite cache. The cache implementation is authorized for owner review; Source/Chunk identity
+changes remain under review. See the [cache guide](docs/infrastructure/cache.md) for usage
+and default Pydantic serialization.
 
-[AGENTS.md](AGENTS.md) records the review process and contributor constraints;
-[CONTRIBUTING.md](CONTRIBUTING.md) lists the checks. Use `uv sync` for Python, then run tests with
-coverage, type checking and Ruff. Check and test the independent Rust workspace with Cargo.
-Use the check output and CI results for current test counts, coverage and verification status.
+## Where next?
 
-Build the documentation with `uv run mkdocs build --strict`, or preview it with
-`uv run mkdocs serve`. New documentation and coverage accompany each reviewed interface.
+- [Indexing and retrieval](docs/flow.md): what exists and how the intended pipeline fits together.
+- [Decision points](docs/concepts/decisions.md): replaceable steps and their contracts.
+- [Store](docs/infrastructure/store.md): retain sources and chunks in memory or SQL.
+- [CONTRIBUTING.md](CONTRIBUTING.md): checks and hook setup; [AGENTS.md](AGENTS.md): contributor
+  rules and the interface review gate.
+
+Preview the documentation with `uv run mkdocs serve`; verify it with `uv run mkdocs build --strict`.
+Use check and CI output for current verification results.
 
 ## License
 
-[Apache-2.0](LICENSE) for this repository. Third-party datasets, models and code retain their own
-terms; record those terms when introducing or restoring a dependency.
+[Apache-2.0](LICENSE). Record third-party terms in [dependency licences](docs/licences.md)
+when introducing or restoring a dependency.

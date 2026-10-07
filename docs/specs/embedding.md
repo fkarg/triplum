@@ -1,33 +1,14 @@
 # Embedding: open interface discussion
 
-**Status: discussion draft. No replacement interface is approved or implemented.**
+**Status:** open advanced-interface questions. The initial `Embedder`/`ZeroEmbedder` contract is
+[documented separately](../concepts/embedding.md); this draft does not replace it.
 
-The current review starts with [source text and initial chunks](indexing.md). The owner proposes
-`Source` as the starting datatype and chunk-to-embedding-text preparation as an early boundary.
-Those names and declarations remain open. Return here once that boundary
-is settled; this page preserves the embedding questions without deciding the next interface early.
+## Scope
 
-## What embedding needs to do
-
-A chunk can have original text, a description, keywords and generated questions. The owner's
-requirement is **one indexed vector per chunk for a chosen embedding configuration**.
-Multiple associated strings do not mean multiple separately searchable vectors.
-
-The proposed separation is:
-
-```text
-Chunk text + selected context or enrichments
-    → prepare the embedding input
-    → encode
-    → one indexed chunk vector
-```
-
-For a basic pipeline, preparation passes the original text through unchanged. For an enriched
-pipeline, it may render the original text and generated context into one string. Combining
-intermediate embeddings is another possibility, not an approved design.
-
-Preparation should be independently replaceable. An ordinary function may be sufficient; we
-have not established a need for a preparation Protocol or new supporting record.
+The one-vector-per-chunk requirement and source/enrichment boundary are recorded in
+[the indexing draft](indexing.md). Basic preparation currently passes a chunk's text through
+`EmbeddingText`; richer preparation may render several strings into one input. Combining
+intermediate embeddings remains an alternative, not an approved design.
 
 ## Two boundaries to keep distinct
 

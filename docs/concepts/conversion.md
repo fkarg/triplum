@@ -4,7 +4,8 @@
 raw bytes, HTML pages or scanned images; chunking only understands `Source`. A converter is the
 step in between: reading and decoding a file, extracting text from HTML, or running OCR.
 
-The library provides one naive converter, `Utf8File`, which reads a file as text.
+The library provides one naive converter, [`Utf8File`][triplum.steps.conversion.Utf8File], which
+reads a file as text.
 
 ## Example
 
@@ -32,13 +33,8 @@ print(sources[0].origin, repr(sources[0].text))
 
 ## The contract
 
-`Converter[A]` is a `typing.Protocol` for converting items of type `A`:
-
-```python
-class Converter[A](Protocol):
-    @abstractmethod
-    def __call__(self, item: A, /) -> list[Source]: ...
-```
+[`Converter[A]`][triplum.steps.conversion.Converter] takes one item of type `A` and
+returns `list[Source]`. `Utf8File` is a `Converter[Path]`.
 
 - Input: one item, of whatever type the dataset yields. `Utf8File` is a `Converter[Path]`.
 - Output: zero or more `Source`s. Each `origin` should identify where its text came from, and be
@@ -78,15 +74,7 @@ for source in JsonLines()(path):
 # faq.jsonl#refunds 5 days.
 ```
 
-Subclassing is how triplum's own implementations are written: the type checker verifies the
-signature where the class is defined, and a subclass that forgets `__call__` cannot be
-instantiated. Code that does not inherit from `Converter` still fits wherever a converter is
-expected, as long as its call signature matches; a plain function works too. See
-[Decision points](decisions.md) for how this applies to every step.
-
-## Reference
-
-- [`Converter`][triplum.steps.conversion.Converter]
-- [`Utf8File`][triplum.steps.conversion.Utf8File]
+A matching plain function also fits. See [Decision points](decisions.md#how-the-pieces-fit)
+for the shared Protocol and configuration conventions.
 
 Next: [Chunking](chunking.md).

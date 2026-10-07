@@ -4,7 +4,9 @@
 The simplest choice is the chunk text unchanged. Richer choices add a generated description,
 questions the chunk answers, or context from its source.
 
-The library provides one naive choice, `OriginalText`, which uses the chunk text unchanged.
+The library provides one naive choice,
+[`OriginalText`][triplum.steps.chunk_preprocessing.OriginalText], which uses the chunk text
+unchanged.
 
 ## Example
 
@@ -25,13 +27,8 @@ print(embedding_text(chunk))  # Returns are accepted within 30 days.
 
 ## The contract
 
-`EmbeddingText` is a `typing.Protocol`:
-
-```python
-class EmbeddingText(Protocol):
-    @abstractmethod
-    def __call__(self, chunk: Chunk, /) -> str: ...
-```
+[`EmbeddingText`][triplum.steps.chunk_preprocessing.EmbeddingText] takes one `Chunk`
+and returns the string to embed.
 
 - Input: one `Chunk`.
 - Output: one string, the text to embed for that chunk.
@@ -65,23 +62,10 @@ A plain function `(chunk) -> str` also fits the protocol without subclassing.
 
 ## Open questions
 
-- How several representations combine into the one embedding input is undecided:
-
-  ```text
-  Original:    Returns are accepted within 30 days of purchase.
-  Description: This shop's returns policy.
-  Question:    How long do I have to return a purchase?
-                           ↓ preparation and embedding
-                      One chunk vector
-  ```
-
+- How to combine several representations into one embedding input is undecided; see the
+  [enrichment example](../flow.md#optionally-enrich-and-embed).
 - Generated text (descriptions, questions) must stay distinguishable from the original evidence.
   Which record holds it is still open.
 - Operations that filter or adjust chunks (chunk to chunk) have no contract yet.
-
-## Reference
-
-- [`EmbeddingText`][triplum.steps.chunk_preprocessing.EmbeddingText]
-- [`OriginalText`][triplum.steps.chunk_preprocessing.OriginalText]
 
 Next: [Embedding](embedding.md).

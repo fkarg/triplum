@@ -1,6 +1,7 @@
 # Indexing: data and transformations
 
-**Status: discussion draft. No replacement interface is approved or implemented.**
+**Status:** boundary discussion. Initial step contracts exist; broader replacements and enrichment
+interfaces remain under owner review.
 
 Start here to follow how source content becomes searchable. We are reviewing one boundary at a
 time, beginning with documents and chunks. The categories below explain the flow; they do not
@@ -21,86 +22,32 @@ imply a class or Protocol for every step.
 Source lineage and permissions remain project requirements. Generated content must account for
 all supporting sources; access cannot be inherited from just one convenient source.
 
-## Follow one chunk through indexing
+## Boundary under review
 
-1. **Read a source.** Obtain document text and identify where it came from.
-2. **Choose a chunk.** Keep the entire document or split it into smaller pieces.
-3. **Optionally enrich it.** Generate a description, keywords or questions using selected context.
-4. **Prepare and embed it.** Use the original text and any selected enrichments to produce one
-   vector. How multiple strings contribute to that vector is still open.
-5. **Index the result.** Make the vector searchable while retaining its relationship to the chunk.
+The [public overview](../flow.md) owns the indexing/retrieval walkthrough and enrichment example.
+Initial Source/Chunk models and conversion/chunking/embedding-text/embedding Protocols now exist;
+see [Decision points](../concepts/decisions.md) for their current contracts. This draft records the
+broader boundary discussion and does not approve the remaining pipeline.
 
-For example, a chunk might have these associated strings:
+- Source means identified input text. Upstream document/webpage loading, OCR and preprocessing
+  interfaces are deferred; do not infer their design from the converter baseline.
+- Initial chunks retain their relationship to source text. Exact immutable identity, earlier
+  text versions and hierarchical containment remain open; see [Record types](record-types.md).
+- Embedding preparation is independently replaceable. The initial `EmbeddingText` takes a Chunk
+  and returns a string; context/enrichment storage and combination remain future decisions.
+- Document containment and graph community membership are distinct. Generated content must
+  preserve all supporting inputs for provenance and access, including multi-source summaries.
 
-```text
-Original:    "Returns are accepted within 30 days of purchase."
-Description: "The returns policy for purchases from this shop."
-Question:    "How long do I have to return a purchase?"
-                         ↓ chosen preparation and embedding
-                    One chunk vector
-```
-
-A basic experiment uses only the original text. An enriched experiment also uses the description
-or question. Neither example specifies a record shape, generation prompt or vector-combination
-algorithm; those are later review decisions.
-
-## Where the other transformations fit
-
-| Transformation | Data in → data out | Relationship to the walkthrough |
-| --- | --- | --- |
-| Read/parse | Source → document text and source identity | Establishes the text being processed |
-| Split | Document → chunks | May preserve document sections and containment |
-| Enrich | Document/chunk plus context → associated generated text | Optional; document enrichment may precede splitting |
-| Prepare and embed | Selected text/context → one chunk vector | No enrichment required |
-| Extract | Selected source evidence → candidate entities and relations | Can branch from original chunks, independently of embedding preparation |
-| Resolve | Candidates → resolved entities and supported facts | May need evidence across the corpus |
-| Group and summarize | Chunks or graph → groups and generated summaries | Summary provenance may span several documents |
-| Store/index | Selected outputs → searchable text, vectors and/or graph | Persists the relationships needed to retrieve and cite evidence |
-
-A document's section hierarchy and a graph's community membership describe different
-relationships. We have not chosen how to represent either. Indexing summaries will also need an
-explicit distinction between the summary being retrieved and the sources supporting it.
-
-## Current review: source → initial chunks → embedding text
-
-The owner's current proposal is to call the starting datatype **`Source`**: identified text from a
-document, webpage or another origin, potentially carrying external IDs or links. A chunker produces
-initial chunks that refer back to it. `Source` versus `Document` naming and the exact fields are
-not finalized.
-
-Keep the upstream path in view: dataset → loader for documents/webpages/etc. → optional OCR or
-preprocessing → `Source`. The owner explicitly deferred this part for later discussion; no loader,
-OCR or preprocessing interface is proposed here.
-
-The next early boundary is independently replaceable preparation from chunk to embedding text:
-
-```text
-Source text → chunker → initial chunks with source references
-                              ↓ original text + selected descriptions/questions/source context
-                        embedding text preparation
-                              ↓
-                         embedding text
-```
-
-The basic preparation returns the chunk's text. Advanced preparation can use associated generated
-strings and source context. Its callable signature and the shape of the resulting embedding input
-remain open; the one-vector requirement still applies. No new record or Protocol is implied by
-these labels.
-
-Before drafting fields or a splitter signature, also settle what its chunk output means:
+One substantive type decision remains:
 
 | Option | Benefit | Cost |
 | --- | --- | --- |
-| A chunk is an excerpt of one document; generated summaries are separate | Source locations and citations have a straightforward meaning | Shared indexing must eventually accept both source and generated content |
-| A chunk is any retrievable text, including generated summaries | Downstream code can accept one general type | Consumers must distinguish source excerpts from generated, potentially multi-source content |
+| Chunk means a source excerpt; summaries are separate | Clear source locations and citations | Shared indexing eventually accepts source and generated content |
+| Chunk means any retrievable text, including summaries | A common downstream type | Consumers must distinguish excerpts from generated, potentially multi-source content |
 
-**Recommendation, awaiting owner review:** use “chunk” for a source excerpt and represent
-summaries separately. This does not yet commit us to separate classes or storage tables.
-
-Next, draft the exact source/chunk declarations and one chunking callable for review. Review
-source identity, the text version used by offsets and optional containment together with a small
-usage example. Chunk-to-embedding-text preparation is an early follow-up boundary; embedding and
-graph declarations still receive their own reviews.
+**Recommendation, awaiting owner review:** reserve Chunk for a source excerpt and represent
+summaries separately. This does not choose storage tables or the final summary declaration.
+Embedding's remaining numerical and compatibility questions are in [its draft](embedding.md).
 
 ## Research comparisons
 
