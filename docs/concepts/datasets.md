@@ -4,7 +4,34 @@ A **dataset** gives access to records of one type, such as `Source`. A **`DataLo
 a dataset one record or one batch at a time. The split is deliberate: the dataset decides *what*
 the records are, the loader only decides *how many at once*. A loader never converts records.
 
-## Example
+## Batch records without a download
+
+Start with an in-memory dataset to see the boundary between records and batching:
+
+```python
+from triplum.datatype import Source
+from triplum.utils.data import DataLoader, RecordDataset
+
+records = RecordDataset(
+    [
+        Source(origin="first", text="Hello"),
+        Source(origin="second", text="World"),
+        Source(origin="third", text="Again"),
+    ]
+)
+for batch in DataLoader(records, batch_size=2):
+    print([source.text for source in batch])
+```
+
+```text
+['Hello', 'World']
+['Again']
+```
+
+The loader keeps record order and includes the final, smaller batch. With `batch_size=None`, it
+yields individual records instead. Neither form converts or changes the records.
+
+## Load a benchmark corpus
 
 This loads the [MultiHop-RAG](https://huggingface.co/datasets/yixuantt/MultiHopRAG) corpus of
 609 news articles (licence: ODC-BY 1.0) and iterates over it as sources. The first run downloads
@@ -51,7 +78,7 @@ notes = MarkdownFolder(Path("notes"))
 print(len(notes))
 
 for source in DataLoader(notes, batch_size=None):
-    print(source.origin, repr(source.text[:20]))
+    print(Path(source.origin).name, repr(source.text[:20]))
 ```
 
 Output:
@@ -61,6 +88,8 @@ Output:
 returns.md '# Returns\n\nReturns a'
 shipping.md '# Shipping\n\nOrders s'
 ```
+
+The example prints only each file's name; `source.origin` retains its absolute path.
 
 - Only `.md` files directly in the folder count; subfolders are not searched. Files come in
   sorted name order.

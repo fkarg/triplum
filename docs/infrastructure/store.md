@@ -12,8 +12,8 @@ implementations:
   database through [SQLModel](https://sqlmodel.tiangolo.com/) (which is built on SQLAlchemy). By
   default it uses SQLite, which ships with Python and needs no server.
 
-All three are importable from `triplum.store`. `SQLAlchemyStore` is the generic store: it uses only
-portable SQL, so it works with any database SQLAlchemy can reach. Backend-specific stores (for
+All three are importable from `triplum.store`. `SQLAlchemyStore` uses SQLAlchemy for database
+access; only SQLite is covered by triplum's tests. Backend-specific stores (for
 SQLite or PostgreSQL) are planned where database-specific SQL is faster; they will share its
 tables, [`SourceRow`][triplum.store.sql.tables.SourceRow] and
 [`ChunkRow`][triplum.store.sql.tables.ChunkRow] in `triplum.store.sql.tables`.
@@ -22,6 +22,11 @@ A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also avai
 `id` and `name` of a [collection](../concepts/collection.md). `SQLAlchemyStore` does not yet create
 its table or manage collection records; `RecordStore` has no collection methods. Source and chunk
 rows do not yet carry collection membership.
+
+The current read methods take record IDs, with no Viewer or temporal-view argument. They do not
+filter access by principal or reconstruct historical state. Those are requirements of the
+[intended retrieval flow](../flow.md#2-retrieval-select-evidence-for-a-question), not guarantees
+of these stores. Adding a record with an existing ID replaces it rather than preserving history.
 
 ## Example
 

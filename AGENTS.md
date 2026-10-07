@@ -58,7 +58,7 @@ contains check commands and hook setup.
 - `utils.data`: datasets choose their record type and implement `fingerprint()`; loaders control
   consumption. Built-in datasets belong in `datasets/`, not `eval`. Corpus and optional QA or
   extraction inputs compose separately; there is no universal benchmark-task schema.
-- `cache/`: optional computation caching. `utils.cache` remains an independent file utility;
+- `cache/`: optional computation caching. `utils.cache` contains canonical JSON/content-key helpers only;
   `utils.fingerprint` holds configured-object fingerprinting. Select semantic identity fields
   explicitly; cache resources, policies and bookkeeping times do not enter value fingerprints.
 - LLM calls and dataset loading belong in Python. Use Rust for graph/index work only when Python

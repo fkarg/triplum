@@ -1,33 +1,17 @@
 # Fingerprints
 
-A **fingerprint** is a string that identifies *content*: equal content gives an equal fingerprint,
-and changed content gives a different one. Fingerprints are what cache keys are built from, and
-they let you recognise the same text or the same configured step across runs and machines.
-
-triplum has three kinds. They answer different questions and are computed differently:
-
-| Kind | Written as | Identifies | Used for |
-| --- | --- | --- | --- |
-| Record fingerprint | `source.fingerprint` (a property) | the content of one `Source` or `Chunk` | finding duplicate records, keying work done on one record |
-| Object fingerprint | `step.fingerprint()` (a method) | a configured step: its code and its settings | keying work done *by* a step |
-| Dataset fingerprint | `dataset.fingerprint()` (a method) | the ordered content of a whole dataset | keying work done on a whole dataset |
-
-All three are 64-character hexadecimal SHA-256 digests, produced by
-[`content_key`][triplum.utils.cache.content_key] (see [Cache](cache.md)).
-
-## Example
+A fingerprint identifies the content you chose to treat as equivalent. For caching, two questions
+matter: **is this the same input data?** and **is this the same computation?** The cache matches both.
+A record's storage ID answers a third question: which persisted record does this refer to?
 
 ```python
-from pathlib import Path
-
 from triplum.datatype import Source
 from triplum.steps.chunking import FixedSize
-from triplum.utils.data import RecordDataset
 
-a = Source(origin=Path("notes/returns.md"), text="Returns are accepted within 30 days.")
-b = Source(origin=Path("notes/returns.md"), text="Returns are accepted within 30 days.")
-print(a.id == b.id, a.fingerprint == b.fingerprint)
+first = Source(origin="notes/returns.md", text="Returns within 30 days.")
+second = Source(origin="notes/returns.md", text="Returns within 30 days.")
 
+print(first.id == second.id, first.fingerprint == second.fingerprint)
 print(FixedSize(20).fingerprint() == FixedSize(20).fingerprint())
 print(FixedSize(20).fingerprint() == FixedSize(30).fingerprint())
 ```
@@ -40,110 +24,178 @@ True
 False
 ```
 
-1. `a` and `b` have the same content, but each got its own random `id` when it was created. The
-   ids differ; the record fingerprints are equal.
-2. Two `FixedSize(20)` chunkers have the same code and the same setting, so their object
-   fingerprints are equal. Changing the setting to `30` changes the fingerprint.
+The sources contain equivalent data but have distinct UUIDv7 storage IDs. The chunkers identify
+configured computations: changing the chunk size changes their identity.
 
-## Record fingerprints
+## Choose semantic identity
 
-`Source.fingerprint` and `Chunk.fingerprint` are properties computed from the record's content
-each time you read them:
+Which fields count depends on what the computation uses. Text normalization might depend only on
+text; source-aware processing might also depend on origin. A retrieval result may depend on an
+as-of date. A bookkeeping timestamp recording when an object was loaded usually does not affect
+its meaning. Exclude a field only when computations sharing the identity do not depend on it.
 
-- a source's fingerprint covers `origin` and `text`;
-- a chunk's fingerprint covers `origin`, `start` and `text`.
-
-Neither covers `id`, and a chunk's does not cover `source_id`. The `id` says *which stored record*
-this is; the fingerprint says *what it contains*. The fingerprint is included when a record is
-serialised (`model_dump()`), and
-[`SQLAlchemyStore`][triplum.store.sql.generic.SQLAlchemyStore] stores it in an indexed column so
-records with equal content can be found.
-
-## Object fingerprints
-
-Steps such as [`FixedSize`][triplum.steps.chunking.FixedSize] and
-[`ZeroEmbedder`][triplum.steps.embedding.ZeroEmbedder] get a `fingerprint()` method by mixing in
-[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted]. You can do the same for your own
-steps:
+For custom cache values, implement the method-based
+[`Fingerprintable`][triplum.cache.Fingerprintable] contract. Select fields explicitly and include a
+value-kind/version tag so different meanings have different identities:
 
 ```python
-from triplum.datatype import Chunk, Source
-from triplum.steps.chunking import Chunker
-from triplum.utils.fingerprint import Fingerprinted
+from pydantic import BaseModel
+
+from triplum.utils.cache import content_key
 
 
-class Paragraphs(Chunker, Fingerprinted):
-    """Split on blank lines."""
+class TextValue(BaseModel):
+    text: str
+    loaded_at: int
 
-    def __init__(self, separator: str = "\n\n") -> None:
-        self.separator = separator
-
-    def __call__(self, source: Source, /) -> list[Chunk]:
-        chunks, start = [], 0
-        for part in source.text.split(self.separator):
-            chunks.append(Chunk(source_id=source.id, origin=source.origin, start=start, text=part))
-            start += len(part) + len(self.separator)
-        return chunks
+    def fingerprint(self) -> str:
+        return content_key("text-value-v1", {"text": self.text})
 
 
-print(Paragraphs().fingerprint()[:16])
-print(Paragraphs().fingerprint() == Paragraphs("\n").fingerprint())
+first = TextValue(text="Hello", loaded_at=100)
+second = TextValue(text="Hello", loaded_at=200)
+changed = TextValue(text="Goodbye", loaded_at=200)
+print(first.fingerprint() == second.fingerprint())
+print(first.fingerprint() == changed.fingerprint())
 ```
 
 Output:
 
 ```text
-70cd0f8326da1984
+True
 False
 ```
 
-The fingerprint hashes three things:
+Here `loaded_at` is deliberately bookkeeping. This identity is suitable only for computations
+whose results do not depend on that field. It does not guarantee that a cache hit carries the
+current call's timestamp. Serialization can retain fields excluded from identity.
 
-1. **The class name**, including its module (`__main__.Paragraphs` when run as a script, so the
-   same class imported from a module fingerprints differently).
-2. **The source code of the class and of each base class** it inherits from, here `Paragraphs`
-   and `Chunker`. Docstrings, comments and formatting are ignored; any other code change,
-   including a renamed variable, changes the fingerprint.
-3. **Every instance attribute**, here `separator`. Attributes are normally the settings passed to
-   `__init__`.
+[`content_key`][triplum.utils.cache.content_key] produces a 64-character hexadecimal SHA-256 digest
+from a namespace and JSON-serializable data. It cannot decide which fields are meaningful.
+Neither it nor the generic object utility automatically removes timestamps, IDs or resources.
+The [cache guide](cache.md) shows how to use these values as inputs and outputs.
 
-What it cannot see, and what you must handle yourself:
+## Existing record properties
 
-- **Code the class calls.** Helper functions, other modules and installed libraries are not
-  hashed. If `__call__` delegates to a function in another file, or the result depends on a
-  library version or a model's weights, override `fingerprint()` and add that information.
-- **Attributes that are not plain data.** Allowed are `str`, `int`, `float`, `bool`, `None`,
-  `Path`, lists, tuples and dicts of those, Pydantic models, and objects that have their own
-  `fingerprint()` method. Anything else, such as a network client, raises `TypeError` instead of
-  being silently left out:
+[`Source`][triplum.datatype.source.Source] and [`Chunk`][triplum.datatype.chunk.Chunk] expose
+`fingerprint` as a **property**, recomputed on access:
 
-  ```text
-  cannot fingerprint attribute of type object; use plain data, a pydantic model, or an object with fingerprint()
-  ```
+| Record | Included fields | Excluded identifiers |
+| --- | --- | --- |
+| Source | `origin`, `text` | `id` |
+| Chunk | `origin`, `start`, `text` | `id`, `source_id` |
 
-  Keep such resources out of the fingerprint by overriding `fingerprint()`, or wrap them in an
-  object with its own `fingerprint()` that names what matters (for example a model id).
-- **Classes without a source file.** A class whose source Python cannot find, for example one
-  created with `exec` or in a script piped to `python -`, raises `TypeError` with
-  `cannot fingerprint ...: its source is unavailable`. Define fingerprinted classes in `.py`
-  files. Other interactive environments (REPL, notebooks) are not tested.
+Equal record fingerprints therefore do not mean equal storage identity or provenance. Two chunks
+can have equal fingerprints while referring to different source records. The computed property
+is also included in `model_dump()`; SQL storage retains it in an indexed column.
 
-## Dataset fingerprints
+These properties are **not compatible with the new cache's `fingerprint()` method requirement**.
+Passing a Source or Chunk directly to a cached function does not make it a valid cache value.
+Their identity migration remains under review. Define an explicit value model for the data a
+computation needs, as above; do not assume an entire record is interchangeable merely because
+its content property matches.
 
-Every [dataset](../concepts/datasets.md) must implement `fingerprint()`. Equal fingerprints
-promise the same records in the same order. Each dataset decides how to compute it; for example
-[`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes each file's name and bytes,
-so editing a file changes the fingerprint, while re-reading an unchanged folder does not.
+## Configured-object identity
 
-A dataset fingerprint describes content, not stored records. A dataset that builds `Source`
-records on access, such as `MarkdownFolder`, gives them a fresh `id` each time; use the record
-fingerprint, not the `id`, to match them across runs.
+[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] in `triplum.utils.fingerprint` supplies
+a `fingerprint()` implementation used by steps such as
+[`FixedSize`][triplum.steps.chunking.FixedSize]. It hashes:
 
-## Reference
+1. The qualified class name, including its module.
+2. Source code for the class and its bases, excluding the mixin and typing scaffolding.
+3. Every instance attribute in `vars(self)`.
 
-- [`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] and
-  [`source_hash`][triplum.utils.fingerprint.source_hash]
-- [`Source`][triplum.datatype.source.Source] and [`Chunk`][triplum.datatype.chunk.Chunk]
-- [`Dataset`][triplum.utils.data.dataset.Dataset]
+Class source hashing ignores comments, formatting and docstrings. Other code edits, including
+renaming a local variable, affect the digest. Moving a class from a script into an imported
+module changes its qualified name and therefore its fingerprint. Compare identities in examples
+rather than relying on a literal digest remaining stable after edits.
+
+Run this example from a `.py` file: class source must be inspectable. Classes defined through
+`exec` or a script piped to `python -` cannot be fingerprinted this way. Other interactive
+execution environments are not tested.
+
+```python
+from triplum.utils.fingerprint import Fingerprinted
+
+
+class Prefix(Fingerprinted):
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+
+    def __call__(self, text: str) -> str:
+        return self.prefix + text
+
+
+print(Prefix("note: ").fingerprint() == Prefix("note: ").fingerprint())
+print(Prefix("note: ").fingerprint() == Prefix("warning: ").fingerprint())
+```
+
+Output:
+
+```text
+True
+False
+```
+
+Attribute handling is broader than the cache's explicit semantic contract:
+
+- Plain strings, numbers, booleans, `None`, paths, lists, tuples and dictionaries are supported.
+- Pydantic models use their entire `model_dump(mode="json")`, even if they also define a
+  `fingerprint()` method. IDs and bookkeeping fields in that dump enter the object identity.
+- Other objects can supply their own `fingerprint()` method.
+- Unsupported values, such as a raw network client, raise `TypeError`.
+
+Consequently, adding a bookkeeping attribute can change an object's fingerprint. For a step with
+resources or operational state, implement an explicit fingerprint selecting its effective
+configuration. Include revisions for external dependencies: this utility does not hash helper
+functions, imported library code or model weights merely because the class uses them.
+
+The cache decorator has a separate automatic **function** identity, covering source, qualified
+name, evaluated defaults and captured configuration. It does not discover globals or external
+dependencies either. See [computation identity](cache.md#decide-when-a-result-can-be-reused) for when
+to supply an explicit process digest; the configured-object mixin is not the decorator's algorithm.
+
+## Dataset identity
+
+[`Dataset`][triplum.utils.data.dataset.Dataset] and
+[`IterableDataset`][triplum.utils.data.dataset.IterableDataset] require `fingerprint()` methods.
+Their contract describes logical output: equal identities promise the same ordered logical data,
+including source revision and transformations. Computing identity must not consume iteration
+state. Physical loader batch size is not content, and identifying a one-shot stream does not
+make it replayable.
+
+Concrete implementations choose their own projection:
+
+- [`RecordDataset`][triplum.utils.data.dataset.RecordDataset] hashes the ordered, complete
+  `model_dump(mode="json")` of every record, recomputing on each call. It does **not** delegate to
+  each record's fingerprint property or method. Freshly created Source records with matching
+  content but different IDs therefore produce different RecordDataset identities.
+- [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes its fixed, sorted file
+  list by file name and bytes. Reading an unchanged folder again gives the same dataset identity,
+  although accessed Source records receive fresh IDs. Its fingerprint omits the absolute folder
+  path, while emitted `Source.origin` includes that path. Equal fingerprints across copied folders
+  therefore do not promise equal origins; account for location separately if a computation uses it.
+
+For example, record content equivalence and full-record dataset equivalence differ:
+
+```python
+from triplum.datatype import Source
+from triplum.utils.data import RecordDataset
+
+first = Source(origin="notes.md", text="Hello")
+second = Source(origin="notes.md", text="Hello")
+print(first.fingerprint == second.fingerprint)
+print(RecordDataset([first]).fingerprint() == RecordDataset([second]).fingerprint())
+```
+
+Output:
+
+```text
+True
+False
+```
+
+Choose the dataset's identity according to its concrete contract; a method named `fingerprint`
+alone does not establish that it excludes storage IDs or bookkeeping.
 
 Next: [Cache](cache.md).

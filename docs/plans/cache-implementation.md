@@ -7,9 +7,10 @@ pipeline example, with fingerprintable values and a Pydantic serialization optio
 receiving the draft. Execute inline in the current checkout, with independent research/review and
 a delegated documentation pass; no additional approval handoff is needed.
 
-**Architecture:** `triplum.cache` owns the new interface. Preserve the existing `utils.cache` file
-utility. One explicitly owned Cache can serve multiple steps, keyed by full process and immediate
-input digests plus codec format. A replaceable backend owns storage connections; Cache owns the
+**Architecture:** `triplum.cache` owns the interface. One explicitly owned Cache can serve multiple
+steps, keyed by full computation and immediate input digests. The subsequent table/CLI change
+removed codec format keys; owner-requested cleanup removed the unused `utils.cache.Cache` class
+while retaining its hashing helpers. A replaceable backend owns storage connections; Cache owns the
 bounded queue, pending visibility and background writer. Start with SQLite, without claiming a
 performance winner. A PydanticCodec provides JSON bytes and validation for fingerprintable models;
 custom codecs remain possible. No record-ID migration, embedding contract rewrite or Bloom filter.

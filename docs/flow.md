@@ -105,7 +105,8 @@ flowchart TD
    supporting passages travel together.
 4. **Answer.** Give the question and formatted evidence to the LLM.
 
-Every store read must respect the permitted viewer and requested temporal view. Permission
+The intended store contract requires every read to respect the permitted viewer and requested
+temporal view; current record stores do not yet implement these filters. Permission
 filtering belongs before ranking; graph traversal uses the visible graph. Derived summaries must
 preserve their supporting sources' access restrictions.
 
@@ -115,7 +116,5 @@ Choose the branches the experiment needs: basic text retrieval, enriched vectors
 or summaries. [Decision points](concepts/decisions.md) lists current replacement boundaries.
 
 [Optional caching](infrastructure/cache.md) lets selected steps or larger blocks reuse results.
-Use bare `@cached` with the lazy shared default, `@cache.cached` with an owned cache, or
-`CachedStep` for configured classes. Concrete return annotations select Pydantic serialization.
 Equal intermediate content can reuse downstream work even when different upstream processes
 produced it. Source/Chunk identity changes and benchmark cache policy remain under review.

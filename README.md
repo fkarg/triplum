@@ -55,11 +55,8 @@ uv run python examples/cached_pipeline.py
 ```
 
 It demonstrates reuse across equivalent inputs, different upstream computations and a reopened
-SQLite cache. The cache implementation is authorized for owner review; Source/Chunk identity
-changes remain under review. See the [cache guide](docs/infrastructure/cache.md) for convenient
-`@cached` / `@cache.cached` usage and default Pydantic serialization. Inspect the default database
-with `uv run triplum cache stats`; `--details` adds exact counts by scanning entries.
-`uv run triplum cache clear` drops its computation tables; stop writers first for lasting emptiness.
+SQLite cache. Follow the [cache guide](docs/infrastructure/cache.md) to cache your own functions,
+configure steps, and inspect or clear stored results.
 
 ## Where next?
 

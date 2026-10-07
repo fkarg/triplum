@@ -7,12 +7,10 @@ the source's `origin` and the character offset `start`.
 ## Example
 
 ```python
-from pathlib import Path
-
 from triplum.datatype import Chunk, Source
 
 source = Source(
-    origin=Path("notes/returns.md"),
+    origin="notes/returns.md",
     text="Returns are accepted within 30 days. Refunds take 5 days.",
 )
 chunk = Chunk(source_id=source.id, origin=source.origin, start=37, text="Refunds take 5 days.")

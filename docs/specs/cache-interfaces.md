@@ -333,8 +333,8 @@ roundtrips.
 
 The first implementation has no per-hit output rehash, eviction, Bloom filter, Source/Chunk
 migration or embedding-type rewrite. `examples/cached_pipeline.py` demonstrates content reuse
-across upstream computations, A→B→A and database reopening. Existing file-cache APIs remain in
-`utils.cache`. Tests exercise real temporary SQLite databases, including two simultaneous owners,
+across upstream computations, A→B→A and database reopening. The unused file-cache class was
+removed by owner request; `utils.cache` retains only identity helpers. Tests exercise real temporary SQLite databases, including two simultaneous owners,
 and controlled commit/read boundaries for queue, failure and close behavior.
 
 ## Independent review and sources

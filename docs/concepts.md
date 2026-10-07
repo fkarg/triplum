@@ -5,8 +5,9 @@ compares the available implementations and explains how to plug in your own.
 
 ## Indexing
 
-Start with a [Collection](concepts/collection.md) to identify the corpus scope. Its baseline
-record exists; source membership and scope enforcement are not implemented yet.
+The examples work directly with Sources. A [Collection](concepts/collection.md) identifies a
+corpus scope, but is not an executable prerequisite: its baseline record exists while source
+membership and scope enforcement remain unimplemented.
 
 Indexing turns input material into searchable chunks. The concepts in pipeline order:
 
