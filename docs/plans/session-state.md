@@ -1,137 +1,141 @@
-# Session state (2026-09-29)
+# Session state (2026-10-07)
 
-Hand-off note for continuing the v2 rewrite on branch `v2-rewrite`. The latest commit is a
-work-in-progress snapshot, but tests, ruff, ty and the strict docs build pass.
+Continue the rebuild on `main` in the existing checkout. The owner is moving to another machine.
+The next discussion is **Source equality and identity inputs**, then Chunk equality, then caching,
+then the missing record types. The UUID allocation is decided; its implementation is not authorized
+by that decision alone. Keep the owner involved one interface at a time.
 
-## Where things are
+## Implemented state
 
-- Records: `datatype/source.py` and `datatype/chunk.py` are Pydantic models.
-  - Both use a uuid7 `id`, plus a `fingerprint` computed field (`content_key` over the content).
-  - `Chunk` has `source_id`, `origin`, `start` and `text`.
-- Steps (`steps/`): a Protocol per step, and our implementations subclass it together with
+- `datatype.Collection`: plain Pydantic model with a generated UUIDv7 `id` and required string
+  `name`; names need not be unique. SQL `CollectionRow` maps those fields. Added in `7a2858f`.
+  Stores do not yet create or manage collections. Source/Chunk collection membership is not wired.
+- `datatype.Source` and `datatype.Chunk`: plain Pydantic models, still generating UUIDv7 IDs.
+  Both still expose `fingerprint` as a computed field. Source has `origin: str` and `text`;
+  Chunk has `source_id`, `origin: Path | str`, `start` (character offset) and `text`.
+  **There is no chunk ordinal field or UUIDv8 generation yet.**
+- Step Protocols and trivial implementations: Converter / `Utf8File`, Chunker / `FixedSize`,
+  EmbeddingText / `OriginalText`, Embedder / `ZeroEmbedder`. Our implementations also use
   `Fingerprinted`.
-  - Converter: `Utf8File`
-  - Chunker: `FixedSize`
-  - EmbeddingText: `OriginalText`
-  - Embedder: `ZeroEmbedder`
-- Store (`store/`):
-  - The `RecordStore` protocol, with two implementations: `MemoryStore` and
-    `SQLAlchemyStore(url="sqlite://")`.
-  - The SQLAlchemy tables are in `store/sql/tables.py`.
-  - `store/graph/` is an empty placeholder.
-- Utils: `utils/fingerprint.py` (`Fingerprinted`, `source_hash`) and `utils/cache.py`
-  (`content_key`, `Cache`).
-- Datasets:
-  - `MarkdownFolder` (reference dataset)
-  - `MultiHopRAGCorpus` with `download()`
-- Docs:
-  - `docs/concepts/*` covers the steps and records.
-  - `docs/infrastructure/{store,fingerprints,cache}.md`.
-  - `docs/specs/record-types.md` holds the record-type research and proposal. It is a draft and
-    records the collection decisions; the remaining types are proposals.
-- Owner prototypes, committed in this snapshot at the owner's request:
-  - `steps/indexing.py`
-  - `steps/ingestion.py` (an outline)
-  - `examples/naive.py`
-  - `tests/test_indexing_prototype.py`
+- `RecordStore`: `MemoryStore` and `SQLAlchemyStore`, with hand-written mappings in
+  `store/sql/tables.py`. Current writes replace records by ID. Current reads do not take a Viewer.
+  `store/graph/` is an empty placeholder.
+- Utilities: configured-object fingerprints; dataset/loading utilities; SHA-256 `content_key`;
+  a disk cache with an explicit directory and one file per entry (the current cache is not SQLite).
+- Datasets: `FrameDataset`, `MarkdownFolder`, `MultiHopRAGCorpus` with `download()`.
+- Owner prototypes `steps/indexing.py`, `steps/ingestion.py`, `examples/naive.py` and
+  `tests/test_indexing_prototype.py` are committed, but remain prototypes under owner review.
+- Python minimum is 3.14. Python packaging is independent of the Rust workspace.
 
-## Collection baseline
+## Decisions to carry forward
 
-- Exclusive Source membership and derived-record scope are decided; permissions stay separate.
-- `datatype.Collection` and SQL `CollectionRow` have a UUIDv7 `id` and required string `name`.
-  Names need not be unique. Stores do not yet create or manage collections, and Source/Chunk
-  membership fields are not implemented.
-- Identity is the next discussion. UUID encoding and revision semantics remain proposals.
-- The owner asked to mostly skip peer reviews and prioritize fast, small steps for now.
+### Collections
 
-## Just changed
+- Each Source belongs to exactly one collection; its derived records stay in that scope.
+- Collection scope is separate from permissions. Overlapping membership was rejected because
+  it complicates indexing strategies and ownership of derived outputs.
+- Reusing computation across collections can be considered later; it does not require sharing
+  record identity across collections.
 
-The owner changed `Source.origin` to `str`, and I carried the change through mechanically:
-- `Utf8File` and `MarkdownFolder` now pass `str(path)`.
-- `SourceRow` no longer has `origin_is_path`.
-- Tests and docs examples are updated.
+### Chunk IDs: agreed allocation
 
-Still open:
-- `Chunk.origin` is still `Path | str`. The proposal is to drop it, since the origin can be
-  reached through `source_id`.
-- Whether file origins should become `file://` URIs.
+The UUIDv8 **122-bit payload** is:
 
-## Decided so far (recent)
+```text
+[collection tag 16][source fingerprint prefix 42][chunk ordinal 16][identity fingerprint 48]
+```
 
-- Protocols define the step contracts; type aliases are used only for data shapes.
-- Store and cache are separate. The cache stays SQLite. Store backends will be benchmarked
-  later.
-- One Protocol per store capability (records, vectors, blobs, graph).
-  - Implementations are grouped by backend.
-  - `SQLAlchemyStore` is the generic variant; specialised ones come later where they are faster.
-- Row models are written by hand, maybe with automatic checks for field coverage and
-  serialisation, rather than generated.
-- The record `fingerprint` becomes a plain method instead of a computed field.
-  - Agreed, not yet implemented.
-  - Stores would fill the column from `record.fingerprint()`.
-- Record types: a many-to-many membership table for groups, which allows several parents.
-  - Entities will likely need the same (several relations/parents); revisit with the graph
-    types.
-- Python 3.14 is the minimum version.
+- The owner fixed this split. A later adjustment may move bits from the 42-bit source prefix
+  into the 48-bit fingerprint; collection and ordinal allocations remain fixed.
+- **Ordinal means chunk #0, #1, #2, ... contiguously within one chunking result.** It does not
+  mean character offset or a relative-position bucket. Earlier bucket proposals were an assistant
+  misunderstanding; do not revive them as the owner's intent.
+- Sixteen bits represent ordinals 0 through 65,535. Handling larger results is still open;
+  rejecting them explicitly is the current recommendation, not an approved contract.
+- Distinct ordinals distinguish chunks within one result. The tail distinguishes different
+  records at the same ordinal and protects against source-prefix collisions when its inputs
+  include full source identity. Exact hash inputs remain open.
+- The owner tolerates source-prefix collisions as a locality issue, while wanting complete-ID
+  collisions to be very unlikely. Short prefixes must not become authoritative identity or ACL
+  checks. Prefix collisions are harmless only if remaining bits adequately distinguish records.
+- Equivalent Source/Chunk records within the same collection should reproduce IDs when reasonably
+  achievable. Reconstructing records with their IDs from cache is also acceptable.
+- Caching/reproducibility is a separate concern. Reusing IDs as cache identities is welcome when
+  appropriate but only a weak constraint on this design.
 
-## Open, in suggested order
+The layout provides ordering in the ID index. It does not automatically cluster table rows or
+replace the existing source lookup index. No database speedup has been measured.
 
-The details for each item are in `docs/specs/record-types.md`.
+### Other earlier decisions
 
-1. **Collection level:** the search and permission boundary. Its name is open (collection / data
-   room / context / folder). `collection_id` goes on every row.
-2. **Reproducible UUIDv8 layout** for locality within the `source_id` indexes:
+- Step behavior uses Protocols; type aliases are only for data shapes.
+- Store and cache are separate. Store implementations are grouped by backend; one Protocol per
+  capability. SQL backends share hand-written row mappings; specialized stores can come later.
+- Record `fingerprint` should become a plain method; stores populate their column from that method.
+  Agreed but not implemented.
+- Groups use many-to-many membership, allowing multiple parents. Graph/entity implications remain
+  for the later record review.
 
-   ```
-   source: [collection 32][source hash 28][rest 62]
-   chunk:  [collection 32][source hash 28][start 32][hash 30]
-   ```
+## Resume here: open ID questions
 
-   - With a 32-bit collection prefix, two sources sharing a prefix becomes likely at about
-     20k sources.
-   - My recommendation is 16/44 instead.
-   - Prefix collisions only cost locality, not correctness.
-   - The layout also fixes the duplicates that appear on re-runs.
-3. **Source fields:**
-   - `acl`
-   - `reference_time` / `observed_at`
-   - `metadata`
-   - `supersedes`
-   - `origin` is now a str (done)
-4. **Chunk:** drop `origin`, add `parent_id` / `level`, and define that offsets index the
-   post-preprocessing `Source.text`.
-5. **Representations:** `ChunkText`, `EmbeddingConfig`, and `Vector` keyed by (owner, config).
-6. **Graph:**
-   - `Mention`, `Entity`
-   - `Relation`, with two time axes (valid time and recorded time) plus `invalidated_by`
-   - an optional `EntityLink`
-7. **Groups and summaries:** `Group` plus membership, and `Summary`.
-   - The ACL of derived content is the intersection of its inputs' ACLs.
-   - No community summaries until they are principal-scoped.
+These are proposals and unresolved decisions, **not approved schema changes**.
 
-These break things if added later:
-- `collection_id` on Source and Chunk
-- `acl` on Source
-- how vectors are keyed
-- the offset definition
+1. **Source equality.** Proposed identity inputs: full collection ID, origin and prepared text.
+   This would give changed text a new ID. Decide origin normalization and how future fields affect
+   identity. Source versioning/history semantics are not settled by the bit allocation.
+2. **Chunk equality.** Proposed inputs: full Source ID, ordinal, character offset and text.
+   Should otherwise identical outputs from different chunkers share an ID, or should configuration
+   also contribute? The ordinal already makes identical excerpts at different ordinals distinct.
+3. **Chunking-result membership.** Several strategies can produce distinct chunks at ordinals
+   #0, #1, etc. Distinct IDs do not tell `chunks(source_id)` which complete ordered result to return.
+   We need to decide how result membership is represented; this may involve a missing record type.
+4. **Collection initialization.** UUIDv7 is implemented. Optional one-time seeding of a UUIDv8
+   from an upstream dataset fingerprint is proposed. The chosen ID would then persist as the
+   collection grows. Same seed means same collection identity; independent copies need an explicit
+   distinguishing input or a fresh ID. The seed must exist before collection-scoped IDs, avoiding
+   circularity. Current `RecordDataset.fingerprint()` includes generated record IDs and is not
+   automatically a stable seed for reconstructed equivalent text.
+5. **Source layout and encoding.** Proposed Source payload: `[collection tag 16][scoped source
+   fingerprint 106]`, with the Chunk copying its first 42 fingerprint bits. Define canonical hash
+   inputs, record-kind separation, prefix derivation and packing around reserved UUID bits.
+   Hash the full collection ID into source identity and full source ID into chunk identity; using
+   shortened prefixes alone would conflate scopes. Hashing the collection UUID into a tag is
+   proposed; copying the leading bits of a UUIDv7 would mostly copy its timestamp.
+6. **Construction and writes.** When are IDs generated? Are supplied IDs validated? What happens
+   when identity-bearing fields change? Current recommendation: equivalent existing identity is
+   reusable; conflicting identity under the same ID is rejected rather than silently overwritten.
+   Mutation, collision and overflow behavior still need approval.
 
-## Known issues (later)
+After Source/Chunk identity, discuss **caching**, then missing elements: representations and vector
+configuration, mentions/entities/relations, groups/summaries and any processing-result records.
+Do not force every future record into a single-source prefix: some records will combine sources.
+Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk.origin remain open.
 
-- Re-running creates duplicates because ids are random; this is solved by (2).
-- `RecordDataset.fingerprint` includes the ids, so it is nondeterministic.
-- The `Dataset.fingerprint` contract needs rethinking. The owner leans towards lazy
-  fingerprints that are available only after the dataset has been consumed.
-- Replacing a source keeps its old chunks.
-- The `utils.data.Source` alias clashes with `datatype.Source`.
-- Add a composite index on `(source_id, start)`.
-- `SQLAlchemyStore.sources()` loads everything, and merging row by row is slow.
-- The examples in the docs are not tested automatically.
+## Known issues and deferred work
 
-## Working agreements
+- Reconstructed records currently get fresh IDs. Rerun insert behavior is not yet settled.
+- `RecordDataset.fingerprint()` includes record IDs. Dataset fingerprint semantics need rethinking;
+  the owner has expressed interest in lazy fingerprints available after consumption.
+- Replacing a source retains its old chunks and can break their source-text correspondence.
+  Replace-by-ID and reads without a Viewer do not meet the stated history/access requirements.
+- `utils.data.Source` is a dataset type alias that clashes in name with `datatype.Source`.
+- A `(source_id, start)` index was proposed before ordinal was clarified; revisit access/index
+  choices with the actual ordinal and result-selection contracts.
+- `SQLAlchemyStore.sources()` loads everything; row-by-row merging is slow.
+- Manual docs examples are not tested automatically. The owner considers the Collection guide
+  improvable and deferred further work on it.
 
-- The owner decides the core design one topic at a time. Implement only what has been decided,
-  and don't run ahead.
-- Keep the hand-written docs in sync: use a docs subagent after interface changes, spell out
-  practical usage, and add a licence row for every new dependency.
-- Commit only when asked.
-- Codex peer review is available again; use it where a design fork warrants the latency.
+## Working agreements and verification
+
+- Fast, focused design discussion; mostly skip peer reviews for now. Do not launch a long review
+  or implementation merely because the next design question is open.
+- Owner approves core interfaces; record assumptions as proposals. Implement only approved scope.
+- Keep hand-written docs synchronized; use a docs subagent after interface changes. Published
+  pages must not link to specs/plans; these development records remain excluded from the site.
+- Commit when asked. Preserve concurrent changes and stay in the existing branch/checkout.
+- The collection baseline passed 61 Python tests, ty, Ruff, Cargo check/test, strict MkDocs and
+  pre-commit gates at its commit. Python store tests emitted SQLite connection cleanup warnings.
+- Current handoff changes only this session note and `docs/specs/record-types.md`. Run strict
+  MkDocs and the staged pre-commit gates for the handoff; no new ID implementation is being tested.
+
+The record-type proposal and accepted decisions are in `docs/specs/record-types.md`.

@@ -67,5 +67,32 @@ Everything else can arrive as new tables or optional fields.
   string `name`. Names are human-readable labels and need not be unique. `CollectionRow` maps
   the same fields, with `id` as primary key. These declarations are implemented; membership
   fields and collection store operations are deferred.
-- Peer review is skipped for this baseline at the owner's request for fast, small steps.
-  Identity is the next design discussion; deterministic IDs and revision semantics remain open.
+- Peer review is skipped for the collection baseline at the owner's request for fast, small steps.
+- The agreed Chunk UUIDv8 payload allocation is `[collection tag 16][source prefix 42]
+  [ordinal 16][identity fingerprint 48]`. Any later adjustment considered here moves bits from
+  the source prefix to the fingerprint; the collection and ordinal allocations stay fixed.
+  This is a design decision, not implemented behavior.
+- The ordinal counts chunks in one chunking result contiguously from zero. It is neither a
+  character offset nor a relative-position bucket. The 16-bit field represents 0 through 65,535;
+  behavior for larger results remains to be specified.
+- Equivalent Source and Chunk records within the same collection should reproduce their IDs,
+  provided this does not impose unreasonable costs. Exact equivalence and digest inputs remain
+  open. Cache identity is a separate, subsequent discussion; reusing record IDs is a weak
+  preference when appropriate, not a requirement driving this layout.
+
+## Remaining ID decisions
+
+- Source identity inputs: collection, origin, prepared text, and the treatment of future fields.
+  Origin normalization and the identity consequences of edited text remain open.
+- Chunk identity inputs: full source identity, ordinal, exact excerpt, and whether processing
+  configuration contributes. Multiple chunking results also need a way to identify their members;
+  distinct Chunk IDs alone do not distinguish which ordered result is being read.
+- Collection generation: UUIDv7 is implemented; optionally seeding a persisted collection ID
+  once from a suitable upstream dataset fingerprint remains a proposal.
+- Source UUIDv8 layout: `[collection tag 16][scoped source fingerprint 106]` remains the proposed
+  companion to the agreed Chunk layout. Prefix derivation and exact digest encoding need a
+  specification, including full scope identities in hashes so prefix collisions cannot erase scope.
+- Construction and storage: when IDs are generated, handling supplied IDs and later field edits,
+  equal-ID/equal-record versus equal-ID/different-record writes, and oversized chunking results.
+- IDs for additional record types follow their own interface reviews. Cache identity is discussed
+  before those missing record types.
