@@ -8,8 +8,8 @@ import pytest
 
 from triplum.cache import Cache, CacheKey, CachePolicy, SQLiteBackend
 
-KEY = CacheKey(b"p" * 32, b"i" * 32, "v1")
-OTHER = CacheKey(b"p" * 32, b"j" * 32, "v1")
+KEY = CacheKey(b"p" * 32, b"i" * 32)
+OTHER = CacheKey(b"p" * 32, b"j" * 32)
 
 
 class GatedSQLite(SQLiteBackend):
@@ -247,7 +247,7 @@ def test_two_cache_owners_can_write_same_database(tmp_path: Path) -> None:
 
         def write(cache: Cache, tag: bytes) -> None:
             for index in range(30):
-                key = CacheKey(tag * 32, index.to_bytes(32), "v1")
+                key = CacheKey(tag * 32, index.to_bytes(32))
                 assert cache.put(key, tag + bytes([index]))
             cache.flush()
 
@@ -255,10 +255,8 @@ def test_two_cache_owners_can_write_same_database(tmp_path: Path) -> None:
         for future in futures:
             future.result(timeout=5)
         for index in range(30):
-            assert first.get(CacheKey(b"b" * 32, index.to_bytes(32), "v1")) == b"b" + bytes([index])
-            assert second.get(CacheKey(b"a" * 32, index.to_bytes(32), "v1")) == b"a" + bytes(
-                [index]
-            )
+            assert first.get(CacheKey(b"b" * 32, index.to_bytes(32))) == b"b" + bytes([index])
+            assert second.get(CacheKey(b"a" * 32, index.to_bytes(32))) == b"a" + bytes([index])
 
 
 def test_close_reports_both_failures_and_allows_cleanup_retry(tmp_path: Path) -> None:

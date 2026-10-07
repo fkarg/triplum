@@ -15,6 +15,11 @@ The owner authorized the optional computation cache and a small reuse example fo
 Convenience defaults (`@cached`, `@cache.cached`) are implemented; see the
 [cache guide](../infrastructure/cache.md) for usage and the implementation plan for review status.
 
+The owner selected per-computation SQLite tables with input-only row keys and removed codec
+format identity/migrations. Output-contract changes require process revision or clearing.
+`triplum cache stats` and `cache clear` are implemented; stats scans counts only with `--details`.
+The cache guide and interface spec record lifecycle guarantees and peer dissent.
+
 Source/Chunk identity changes remain unimplemented. Both still generate UUIDv7 IDs and expose
 computed fingerprint properties; there is no chunk ordinal or UUIDv8 generation. The agreed
 allocation, Source A→B→A requirement, proposals and unresolved decisions are authoritative in

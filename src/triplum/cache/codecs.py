@@ -3,16 +3,13 @@
 from pydantic import BaseModel, TypeAdapter
 
 from triplum.cache.protocols import Codec, Fingerprintable
-from triplum.utils.cache import content_key
 
 
 class PydanticCodec[T: Fingerprintable](Codec[T]):
     """Serialize a fingerprintable Pydantic model to JSON bytes.
 
-    The default namespace includes the qualified model name and both JSON schemas.
-    Supply a versioned format_id when custom serializers or validators change behavior
-    without changing those schemas. A format namespace is a compatibility promise.
-    Schema documentation edits can also change this conservative default namespace.
+    Encoding is not part of cache identity. For incompatible model/encoding changes,
+    revise the computation fingerprint or clear its table; cache rows are not migrated.
 
     Each encode verifies a semantic fingerprint round-trip before cache admission.
     This costs a decode on writes; reads only decode. Unsupported or lossy fields fail
@@ -21,31 +18,13 @@ class PydanticCodec[T: Fingerprintable](Codec[T]):
     must include every semantic field; model_dump alone can omit nested subclass fields.
     """
 
-    def __init__(self, model: type[T], *, format_id: str | None = None) -> None:
+    def __init__(self, model: type[T]) -> None:
         if not issubclass(model, BaseModel):
             raise TypeError("default cache serialization requires a Pydantic model")
         if not callable(getattr(model, "fingerprint", None)):
             raise TypeError("cached models must implement fingerprint()")
         self._model = model
         self._adapter: TypeAdapter[T] = TypeAdapter[T](model)
-        self._format = (
-            format_id
-            if format_id is not None
-            else content_key(
-                "pydantic-json-v1",
-                {
-                    "model": f"{model.__module__}.{model.__qualname__}",
-                    "validation": model.model_json_schema(mode="validation"),
-                    "serialization": model.model_json_schema(mode="serialization"),
-                },
-            )
-        )
-        if not self._format:
-            raise ValueError("codec format_id must not be empty")
-
-    @property
-    def format_id(self) -> str:
-        return self._format
 
     def encode(self, value: T, /) -> bytes:
         if type(value) is not self._model:

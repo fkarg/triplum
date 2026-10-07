@@ -120,14 +120,6 @@ def test_pydantic_codec_rejects_lossy_serialization_before_storage() -> None:
         PydanticCodec(Infinite).encode(Infinite(value=float("inf")))
 
 
-def test_codec_namespace_changes_for_schema_and_explicit_format() -> None:
-    class OtherText(TextValue):
-        suffix: str
-
-    assert PydanticCodec(TextValue).format_id != PydanticCodec(OtherText).format_id
-    assert PydanticCodec(TextValue, format_id="text-v2").format_id == "text-v2"
-
-
 def test_snapshot_isolated_from_mutating_result(tmp_path: Path) -> None:
     with Cache(SQLiteBackend(tmp_path / "cache.sqlite"), pending_bytes=65536) as cache:
         step = Uppercase(cache)
@@ -159,10 +151,6 @@ def test_custom_codec_for_fingerprintable_non_pydantic_value(tmp_path: Path) -> 
             return content_key("blob-v1", {"hex": self.value.hex()})
 
     class BinaryCodec(Codec[Blob]):
-        @property
-        def format_id(self) -> str:
-            return "blob-binary-v1"
-
         def encode(self, value: Blob, /) -> bytes:
             return value.value
 

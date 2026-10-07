@@ -99,7 +99,7 @@ class Cache:
         """
         if not isinstance(payload, bytes):
             raise TypeError("cache payload must be immutable bytes")
-        charge = 256 + len(key.process) + len(key.input) + len(key.format.encode()) + len(payload)
+        charge = 256 + len(key.process) + len(key.input) + len(payload)
         selected = self._policy if policy is None else policy
         with self._condition:
             self._check_open()

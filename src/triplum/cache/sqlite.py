@@ -1,4 +1,4 @@
-"""SQLite storage for exact compound-key lookups and batched writes."""
+"""SQLite storage with one input-keyed table per computation fingerprint."""
 
 import sqlite3
 from collections.abc import Sequence
@@ -26,35 +26,47 @@ class SQLiteBackend(CacheBackend):
             mode = self._writer.execute("PRAGMA journal_mode=WAL").fetchone()[0]
             if mode != "wal":
                 raise ValueError("SQLite cache requires a filesystem database supporting WAL")
-            self._writer.execute(
-                "CREATE TABLE IF NOT EXISTS cache_entries ("
-                "process BLOB NOT NULL, input BLOB NOT NULL, format TEXT NOT NULL, "
-                "value BLOB NOT NULL, PRIMARY KEY (process, input, format))"
-            )
-            self._writer.commit()
             self._reader = sqlite3.connect(path, timeout=timeout, check_same_thread=False)
         except BaseException:
             self._writer.close()
             raise
 
     def get(self, key: CacheKey, /) -> bytes | None:
-        """Fetch one complete value; None denotes absence, including for empty bytes."""
+        """Lookup by input ID in the computation table; absent tables are misses."""
+        table = "cache_" + key.process.hex()
         with self._read_lock:
-            row = self._reader.execute(
-                "SELECT value FROM cache_entries WHERE process=? AND input=? AND format=?",
-                (key.process, key.input, key.format),
-            ).fetchone()
+            try:
+                row = self._reader.execute(
+                    f'SELECT value FROM "{table}" WHERE input=?', (key.input,)
+                ).fetchone()
+            except sqlite3.OperationalError as error:
+                if str(error) == f"no such table: {table}":
+                    return None
+                raise
             return None if row is None else row[0]
 
     def put_many(self, entries: Sequence[tuple[CacheKey, bytes]], /) -> None:
-        """Commit a FIFO batch; later writes to the same key replace earlier ones."""
+        """Commit a batch, creating/recreating computation tables as needed.
+
+        Table names contain only validated digest hex. Inputs and payloads are bound
+        SQL parameters. All writes still share SQLite's single-writer transaction.
+        """
+        groups: dict[bytes, list[tuple[bytes, bytes]]] = {}
+        for key, value in entries:
+            groups.setdefault(key.process, []).append((key.input, value))
         with self._write_lock, self._writer:
             self._writer.execute("BEGIN IMMEDIATE")
-            self._writer.executemany(
-                "INSERT INTO cache_entries (process, input, format, value) VALUES (?, ?, ?, ?) "
-                "ON CONFLICT (process, input, format) DO UPDATE SET value=excluded.value",
-                ((key.process, key.input, key.format, value) for key, value in entries),
-            )
+            for process, values in groups.items():
+                table = "cache_" + process.hex()
+                self._writer.execute(
+                    f'CREATE TABLE IF NOT EXISTS "{table}" ('
+                    "input BLOB NOT NULL PRIMARY KEY, value BLOB NOT NULL)"
+                )
+                self._writer.executemany(
+                    f'INSERT INTO "{table}" (input, value) VALUES (?, ?) '
+                    "ON CONFLICT (input) DO UPDATE SET value=excluded.value",
+                    values,
+                )
 
     def close(self) -> None:
         """Close connections after the owning Cache has drained its writer."""

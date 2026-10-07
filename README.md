@@ -8,7 +8,7 @@ provenance-derived permissions remain design requirements; evidence must respect
 
 The rebuild continues on `main`, one owner-reviewed interface at a time. Historical code is
 reference material, not the current architecture contract. The old CLI and benchmark runner are
-not working entry points.
+not working entry points. The current CLI provides cache inspection and clearing.
 
 The Python foundation includes datasets/loaders, Source and Chunk records, step Protocols,
 memory/SQL record stores, and optional computation caching. Indexing prototypes remain under
@@ -57,7 +57,9 @@ uv run python examples/cached_pipeline.py
 It demonstrates reuse across equivalent inputs, different upstream computations and a reopened
 SQLite cache. The cache implementation is authorized for owner review; Source/Chunk identity
 changes remain under review. See the [cache guide](docs/infrastructure/cache.md) for convenient
-`@cached` / `@cache.cached` usage and default Pydantic serialization.
+`@cached` / `@cache.cached` usage and default Pydantic serialization. Inspect the default database
+with `uv run triplum cache stats`; `--details` adds exact counts by scanning entries.
+`uv run triplum cache clear` drops its computation tables; stop writers first for lasting emptiness.
 
 ## Where next?
 

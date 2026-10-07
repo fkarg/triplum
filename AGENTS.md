@@ -30,6 +30,10 @@ contains check commands and hook setup.
   cache opens lazily, and concrete return annotations select Pydantic serialization. Automatic
   function identity covers source/defaults/captures; external dependencies require explicit
   process identity. Keep the detailed guarantees in the cache guide and interface spec.
+- The owner selected one SQLite table per computation, input-only keys within each table and
+  no codec format identity/migrations. Incompatible output contracts require process revision or
+  clear. The cache stats/clear CLI is authorized; preserve unrelated tables and distinguish
+  committed snapshot counts from filesystem observations.
 - Indexing/ingestion prototypes and their tests remain under owner review. Their appearance in
   generated API docs does not make them approved interfaces; do not describe them as working
   APIs in prose docs. The current handoff is

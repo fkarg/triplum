@@ -1,7 +1,8 @@
 """Optional computation caching with explicit ownership and replaceable storage."""
 
+from triplum.cache.admin import CacheStats, ComputationStats, cache_stats, clear_cache
 from triplum.cache.codecs import PydanticCodec
-from triplum.cache.defaults import close_default_cache, default_cache
+from triplum.cache.defaults import close_default_cache, default_cache, default_cache_path
 from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy, Codec, Fingerprintable
 from triplum.cache.runtime import Cache
 from triplum.cache.sqlite import SQLiteBackend
@@ -12,12 +13,17 @@ __all__ = [
     "CacheBackend",
     "CacheKey",
     "CachePolicy",
+    "CacheStats",
     "CachedStep",
     "Codec",
+    "ComputationStats",
     "Fingerprintable",
     "PydanticCodec",
     "SQLiteBackend",
+    "cache_stats",
     "cached",
+    "clear_cache",
     "close_default_cache",
     "default_cache",
+    "default_cache_path",
 ]

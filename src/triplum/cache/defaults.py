@@ -14,14 +14,19 @@ _owner_pid = os.getpid()
 _shutting_down = False
 
 
-def default_backend() -> SQLiteBackend:
-    """Open $XDG_CACHE_HOME/triplum/cache.sqlite, or ~/.cache/triplum/cache.sqlite."""
+def default_cache_path() -> Path:
+    """Resolve the default database path without creating directories or files."""
     root = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     if not root.is_absolute():
         root = Path.home() / ".cache"
-    directory = root / "triplum"
-    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    return SQLiteBackend(directory / "cache.sqlite")
+    return root / "triplum" / "cache.sqlite"
+
+
+def default_backend() -> SQLiteBackend:
+    """Open the default cache, creating its containing directory if necessary."""
+    path = default_cache_path()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return SQLiteBackend(path)
 
 
 def default_cache() -> Cache:

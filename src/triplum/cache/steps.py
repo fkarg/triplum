@@ -28,7 +28,7 @@ def _call[I: Fingerprintable, O: Fingerprintable](
     codec: Codec[O],
     policy: CachePolicy | None,
 ) -> O:
-    key = CacheKey(process, _digest(item.fingerprint()), codec.format_id)
+    key = CacheKey(process, _digest(item.fingerprint()))
     payload = cache.get(key)
     if payload is not None:
         return codec.decode(payload)

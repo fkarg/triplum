@@ -20,17 +20,14 @@ class Fingerprintable(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class CacheKey:
-    """Full computation and input digests, separated by serialization format."""
+    """Full computation namespace and input data identity."""
 
     process: bytes
     input: bytes
-    format: str
 
     def __post_init__(self) -> None:
         if len(self.process) != 32 or len(self.input) != 32:
             raise ValueError("cache key digests must contain exactly 32 bytes")
-        if not self.format:
-            raise ValueError("cache format must not be empty")
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,12 +43,6 @@ class CachePolicy:
 
 class Codec[T: Fingerprintable](Protocol):
     """Serialize a value without changing its semantic content or fingerprint."""
-
-    @property
-    @abstractmethod
-    def format_id(self) -> str:
-        """Stable namespace; change it for incompatible serialization semantics."""
-        ...
 
     @abstractmethod
     def encode(self, value: T, /) -> bytes: ...

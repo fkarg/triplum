@@ -82,8 +82,7 @@ worker processes; an inherited shared default after `fork` is rejected.
 
 ## What identifies a computation?
 
-A lookup matches **all three** parts: computation fingerprint, immediate input fingerprint and
-serialization format. The computation fingerprint must include its kind/revision and effective
+A lookup matches **both** the computation fingerprint and immediate input fingerprint. The computation fingerprint must include its kind/revision and effective
 configuration, including relevant helper or model revisions. The automatic identity covers
 function source, module/qualified name, evaluated defaults and captured configuration. This identity
 freezes at decoration, so later source-file edits cannot change the key of the already-loaded
@@ -119,10 +118,11 @@ changing state. Both inputs and outputs must be fingerprintable; custom output t
 The concrete return annotation, or an explicit `output_type=Text`, selects [`PydanticCodec`][triplum.cache.PydanticCodec] by default. It serializes
 JSON bytes and validates them back into the model, checking on each write that the semantic
 fingerprint survives the round-trip. This adds a decode to the write path; reads only decode.
-The default format namespace includes the model's qualified name and its validation/serialization
-schemas, so schema documentation edits can conservatively cause misses. Custom serializers or validators whose behavior changes without a schema change need an
-explicit versioned `format_id`. Supply `codec=PydanticCodec(Text, format_id="text-json-v2")`, or a
-custom codec for another representation. Serialization performance has not been benchmarked.
+Encoding is not part of the lookup key. When output models, validators or serializers become
+incompatible, revise the computation identity or clear that computation's entries. There are no
+codec format namespaces or cache-row migrations. Automatic function identity does not detect
+external output-contract changes. Supply a custom codec for another representation; serialization
+performance has not been benchmarked.
 
 For configured classes, [`CachedStep`][triplum.cache.CachedStep] owns `__call__`; implement
 `compute(item)` and `fingerprint()` for the computation. Put the mixin before domain Protocol
@@ -155,6 +155,36 @@ Steps may share a cache across caller threads. SQLite uses separate reader/write
 multiple cache owners can share the database file, but only their own pending writes are immediately
 visible. Concurrent misses may compute twice. A crash can lose pending writes. There is no eviction,
 size cap for the database, or measured performance guarantee at hundreds of GB yet.
+
+## Inspect and clear
+
+SQLite stores each computation in `cache_<full computation fingerprint>`, with the input digest
+as its primary key and the encoded result as its value. Tables are created on the first committed
+write. Different computations still share the database's writer; separate tables make no speed
+claim.
+
+```sh
+uv run triplum cache stats
+uv run triplum cache stats --details --json
+uv run triplum cache clear
+```
+
+Both commands accept `--path /path/to/cache.sqlite` and `--computation` followed by an exact,
+full 64-character computation fingerprint. Without a computation selector, they cover all
+recognized computation tables. Missing database paths are reported without creating a database
+or its directory. Commands never prompt; `--no-input` is accepted for scripted callers.
+
+Default stats lists computation identities, database/WAL file bytes and reusable database bytes
+without scanning entries. `--details` scans the selected tables for exact committed entry counts
+and payload bytes; this can be expensive for a large cache. Counts share a database snapshot;
+file sizes are separate observations. Pending writes, hits and runtime skip counts are not
+available. Read-only inspection can still require SQLite WAL/SHM sidecars and a writable directory
+if those files are absent.
+
+`clear` drops selected computation tables, preserving unrelated tables. It does not run `VACUUM`
+or shrink the database file; freed pages remain reusable. Stop writers first for a lasting empty
+cache: pending or later writes can recreate the tables immediately. The importable equivalents
+are `cache_stats(...)` and `clear_cache(...)` in `triplum.cache.admin`.
 
 ## Cache versus store
 

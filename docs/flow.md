@@ -11,7 +11,8 @@ This page follows the intended flow and shows where experiments can replace indi
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; membership fields,
   collection storage operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence.
-  [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse.
+  [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
+  per-computation SQLite tables and CLI/library inspection and clearing.
 - Indexing/ingestion prototypes remain under review. Text/vector search, graph retrieval and
   answer generation are intended responsibilities, not a supported end-to-end pipeline.
 

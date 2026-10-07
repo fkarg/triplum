@@ -74,16 +74,15 @@ mutation. Cacheable functions must not mutate their inputs or rely on unrepresen
 ## Supporting types and exact declarations
 
 `CacheKey` contains the full configured-process digest and full input digest. Both must match.
-`format` is a separate codec/schema compatibility namespace: it keeps incompatible decoders apart
-without changing semantic data or process fingerprints. Different formats may miss independently.
+Encoding is not part of lookup identity. Incompatible output contracts require a new process
+revision or clearing the computation; there are no codec format namespaces or row migrations.
 Backend choice, file path, queue settings and policy never enter those semantic fingerprints.
 Process IDs are full 64-character SHA-256 hex digests, not arbitrary labels; enabled bindings
 validate them before use. CacheKey digest components are exactly 32 bytes. Input fingerprints
 are validated at the caching boundary. Malformed identities raise ValueError.
 
 `output_type=Model` selects Pydantic serialization by default. `Codec[T]` is an explicit override
-that converts a fingerprintable result to immutable bytes and back. Its `format_id` changes
-when its encoding or decode semantics become incompatible. Decoding preserves the result's
+that converts a fingerprintable result to immutable bytes and back. Decoding preserves the result's
 fingerprint and semantic content. A codec is not a storage backend; binary vector codecs can work
 with SQLite, LMDB or files. No pickle fallback or automatic serialization of arbitrary objects.
 
@@ -110,7 +109,6 @@ class Fingerprintable(Protocol):
 class CacheKey:
     process: bytes
     input: bytes
-    format: str
 
 
 @dataclass(frozen=True)
@@ -119,9 +117,6 @@ class CachePolicy:
 
 
 class Codec[T: Fingerprintable](Protocol):
-    @property
-    @abstractmethod
-    def format_id(self) -> str: ...
     @abstractmethod
     def encode(self, value: T, /) -> bytes: ...
     @abstractmethod
@@ -197,7 +192,8 @@ batch before returning. Readers must never see a partial individual value; no at
 keys is required. Backends may optimize a batch as one transaction. An error may leave some complete
 entries visible and is reported. Backend implementations own engine connections and their thread
 constraints: `get` may run concurrently with the Cache's one writer calling `put_many`. `close`
-runs after callers/writer stop. SQLite is the first implementation, using a rowid table with an indexed compound key and WAL.
+runs after callers/writer stop. SQLite is the first implementation, using one `cache_<full process hex>` table per computation, an input-digest primary key,
+encoded values and WAL. Tables are created on writes; absent tables are misses.
 LMDB and files remain comparison candidates; no performance winner has been established.
 
 Cache supports concurrent callers and one background writer. The Cache owner chooses an explicit
@@ -286,7 +282,6 @@ Manual use stays explicit and uses the same key/policy rules:
 key = CacheKey(
     process=bytes.fromhex(process_id),
     input=bytes.fromhex(item.fingerprint()),
-    format=result_codec.format_id,
 )
 payload = cache.get(key)
 if payload is None:
@@ -331,10 +326,10 @@ only decode. It rejects top-level subclass values rather than silently dropping 
 Unsupported fields, non-finite values that do not survive the model's JSON settings, and semantic
 roundtrip mismatches fail in the caller.
 
-Its default format namespace includes the qualified model name plus validation and serialization
-JSON schemas. Custom serializer/validator changes invisible in those schemas require an explicit
-versioned format_id. This is not automatic dependency tracking. Custom codecs remain responsible
-for their own fingerprint-preserving roundtrip.
+Encoding does not enter cache identity. Incompatible output model, serializer or validator changes
+require revising process identity or clearing its table; automatic function identity does not
+discover those external dependencies. Custom codecs remain responsible for fingerprint-preserving
+roundtrips.
 
 The first implementation has no per-hit output rehash, eviction, Bloom filter, Source/Chunk
 migration or embedding-type rewrite. `examples/cached_pipeline.py` demonstrates content reuse
@@ -382,8 +377,8 @@ Pydantic exact-type encoding and fingerprint roundtrips; use explicit SQLite loc
 BEGIN IMMEDIATE, WAL verification, FIFO replacement and concurrent-owner/read-close tests.
 **No decision impact:** duplicate-write sequence protection and rowid tables already followed the
 proposal. **Not adopted:** per-hit output digest verification would add hashing to every lookup;
-codec namespace compatibility remains an explicit contract, with schema-derived defaults and
-encode-time checking. A backend-wide maximum-entry API is deferred; SQLite size/engine errors
+the then-current codec namespace contract used schema-derived defaults and encode-time checking.
+That namespace was subsequently removed by explicit owner decision; see the table/CLI review below. A backend-wide maximum-entry API is deferred; SQLite size/engine errors
 surface through the documented writer failure path, and ordinary admission remains bounded.
 
 Attacks included actual Pydantic infinity/subclass/non-UTF8 serialization probes, a SQLite point-read
@@ -460,8 +455,8 @@ Claude Opus 5.5 (`claude-opus-5-5`), core review `d255e8907b2d492881b7eaa06d3821
 cleanup complete prematurely; buffered logging could retain failed payloads via exc_info. Tests
 reproduced both. Close now groups both errors and permits cleanup retry; logs retain formatted stack
 text without traceback frames. **Added verification:** capacity waiters demonstrably remain pending
-before the test releases a failing commit. **Documented tradeoffs:** schema documentation changes
-can conservatively cause misses; SQLite lock timeout remains sticky; nested subclass serialization
+before the test releases a failing commit. **Historical tradeoff:** schema documentation changes
+could cause misses under the now-removed format namespace. SQLite lock timeout remains sticky; nested subclass serialization
 requires suitable Pydantic annotations and semantic fingerprints that include all consumed fields.
 The automatic roundtrip check cannot repair an incomplete fingerprint. **No decision impact:**
 explicit owners still require close, disabled caching skips identity checks, sequence numbers and
@@ -490,3 +485,34 @@ That peer reproduced source-file drift, shutdown reopening and source/capture er
 polymorphic/generic returns, wrapped functions, scalar/container tags and forked handles. Unsupported
 cases failed safely; it did not run our full tests or verify free-threaded CPython. XDG behavior was
 subsequently checked against the [official specification](https://specifications.freedesktop.org/basedir/latest/).
+
+
+## Per-computation tables and administration
+
+The owner explicitly selected one SQLite table per full computation identity, keyed only by input
+identity. No codec format identity, hidden schema digest or migration layer remains. Fingerprint
+implementations select semantic fields and exclude bookkeeping timestamps; this is not an automatic
+field-name filter. Incompatible output contracts require a process revision or an explicit clear.
+
+`triplum cache stats` lists recognized computations and database/WAL/reusable bytes without scanning
+entries. `--details` scans selected tables for exact committed counts and payload sizes, using one
+snapshot; filesystem sizes are separate observations. `--path`, exact `--computation`, `--json`
+and `--no-input` are supported. `triplum cache clear` drops all recognized computation tables or
+the selected one, without VACUUM. Stop writers for lasting emptiness; accepted writes can recreate
+tables. Missing database paths are not created. Read-only stats can require WAL/SHM sidecars and
+write access to their containing directory. Unrelated/unrecognized tables are preserved. Library
+functions live in `triplum.cache.admin`; the CLI is a thin wrapper.
+
+Claude Opus 5.5 (`claude-opus-5-5`), design review `0055212ba7284728bf9314b6de79b8b9`:
+**Rejected dissent:** the peer preferred a single table and hidden format identity, conflicting with
+the owner's explicit per-table/no-format choice. **Changed/added verification:** snapshot statistics
+and clear semantics. Attacks covered schema coverage, CLI availability, counter feasibility and
+concurrency. No performance measurements were produced; table layout has no claimed speedup.
+
+Claude Opus 5.5, diff review `4f2c16a9319a4bbebd3c8d3e2c22c70b`:
+**Found unique defect:** legacy-table cleanup could drop an unrelated `cache_entries` table; cleanup
+was removed so only recognized computation tables are affected. **Added documentation:** read-only
+stats can manage SQLite sidecars. **No change to approved key design:** external output-contract
+changes still require explicit process revision or clear. Attempts included SQL injection,
+reader/clear races, old snapshots, multiple writers, corrupt files and read-only directories.
+Dynamic SQL and clear concurrency survived those probes; this was not a performance benchmark.

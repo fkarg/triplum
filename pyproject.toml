@@ -25,6 +25,9 @@ dependencies = [
   "sqlmodel>=0.0.47",
 ]
 
+[project.scripts]
+triplum = "triplum.cli:main"
+
 [project.urls]
 Repository = "https://github.com/fkarg/triplum"
 Documentation = "https://github.com/fkarg/triplum/tree/main/docs"
