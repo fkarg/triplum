@@ -30,6 +30,9 @@ contains check commands and hook setup.
   cache opens lazily, and concrete return annotations select Pydantic serialization. Automatic
   function identity covers source/defaults/captures; external dependencies require explicit
   process identity. Keep the detailed guarantees in the cache guide and interface spec.
+- Fingerprints should follow relevant data/structure and computation definitions, without requiring
+  manually maintained version numbers. Explicit field projections do not automatically detect
+  schema/code changes; the relevant-definition hashing rules are under identity-interface review.
 - The owner selected one SQLite table per computation, input-only keys within each table and
   no codec format identity/migrations. Incompatible output contracts require process revision or
   clear. The cache stats/clear CLI is authorized; preserve unrelated tables and distinguish

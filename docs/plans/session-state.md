@@ -5,6 +5,11 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 ## Current work
 
+The current task is an interface/concept audit, starting with identity and fingerprinting.
+[Identity interfaces](../specs/identity-interfaces.md) is the draft for owner review. This is
+documentation and contract review only; it does not authorize implementing a new contract or
+advancing to another interface. Existing approved record and cache decisions remain in force.
+
 The owner authorized the optional computation cache and a small reuse example for review.
 `triplum.cache` and `examples/cached_pipeline.py` are the first implementation. Read:
 
@@ -23,7 +28,8 @@ The cache guide and interface spec record lifecycle guarantees and peer dissent.
 Source/Chunk identity changes remain unimplemented. Both still generate UUIDv7 IDs and expose
 computed fingerprint properties; there is no chunk ordinal or UUIDv8 generation. The agreed
 allocation, Source A→B→A requirement, proposals and unresolved decisions are authoritative in
-[Record types](../specs/record-types.md#decisions). Resume those decisions after the cache review.
+[Record types](../specs/record-types.md#decisions). Review the shared fingerprint contract first;
+Source/Chunk identity inputs and migration still require their own owner approval.
 
 ## Other implementation boundaries
 

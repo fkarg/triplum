@@ -8,7 +8,7 @@ from typing import Literal, Protocol
 
 
 class Fingerprintable(Protocol):
-    """A semantic SHA-256 hex identity, including a value-kind/version tag.
+    """A semantic SHA-256 hex identity that distinguishes the declared value kind.
 
     Select identity-bearing fields explicitly. Bookkeeping timestamps, cache resources
     and execution policies do not belong in this digest.

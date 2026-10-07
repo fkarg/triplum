@@ -37,13 +37,15 @@ plugins:
             extensions:
               - griffe_fieldz:
                   add_fields_to: docstring-attributes
-                  remove_fields_from_members: true
+                  # Keep fields available for generated dataclass constructor signatures.
+                  remove_fields_from_members: false
             show_if_no_docstring: true
             show_source: true
             show_root_heading: true
             show_root_full_path: true
             members_order: source
             separate_signature: true
+            merge_init_into_class: true
             show_signature_annotations: true
             signature_crossrefs: true
             filters: ["!^_"]
@@ -75,7 +77,14 @@ nav:
   - Infrastructure:
       - Store: infrastructure/store.md
       - Fingerprints: infrastructure/fingerprints.md
-      - Cache: infrastructure/cache.md
+      - Cache:
+          - Getting started: infrastructure/cache.md
+          - Value fingerprints: infrastructure/cache/fingerprints.md
+          - Computation fingerprints: infrastructure/cache/computations.md
+          - Serialization: infrastructure/cache/serialization.md
+          - Storage backends: infrastructure/cache/storage.md
+          - Ownership and write policy: infrastructure/cache/policies.md
+          - Administration: infrastructure/cache/administration.md
   # Filled with one page per module by scripts/api_reference.py.
   - API reference: []
   - Dependency licences: licences.md

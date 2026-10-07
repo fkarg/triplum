@@ -5,8 +5,8 @@ from verified findings. These are estimates of reader needs and behavior, not hu
 measurements. A model cannot forget its expertise by being told to act like a beginner.
 
 This is a contributor workflow, excluded from the published site and search. It can be used
-manually now; it requires no triplum retrieval pipeline or evaluation runner. No reader trial
-has yet validated this workflow.
+manually now; it requires no triplum retrieval pipeline or evaluation runner. Initial [cache reader trials](runs/cache-documentation.md) have exercised the workflow; their
+limited outcomes do not establish human usability.
 
 ## Choose readers and tasks
 

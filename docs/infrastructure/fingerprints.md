@@ -27,53 +27,15 @@ False
 The sources contain equivalent data but have distinct UUIDv7 storage IDs. The chunkers identify
 configured computations: changing the chunk size changes their identity.
 
-## Choose semantic identity
+## Choose the identity question
 
-Which fields count depends on what the computation uses. Text normalization might depend only on
-text; source-aware processing might also depend on origin. A retrieval result may depend on an
-as-of date. A bookkeeping timestamp recording when an object was loaded usually does not affect
-its meaning. Exclude a field only when computations sharing the identity do not depend on it.
+Cacheable values implement an explicit `fingerprint()` method. Start with
+[Value fingerprints](cache/fingerprints.md) to select fields, exclude bookkeeping and define your
+own Pydantic or custom value. [Computation fingerprints](cache/computations.md) explains configured
+steps and automatic function inference. Those pages include complete extension examples.
 
-For custom cache values, implement the method-based
-[`Fingerprintable`][triplum.cache.Fingerprintable] contract. Select fields explicitly and include a
-value-kind/version tag so different meanings have different identities:
-
-```python
-from pydantic import BaseModel
-
-from triplum.utils.cache import content_key
-
-
-class TextValue(BaseModel):
-    text: str
-    loaded_at: int
-
-    def fingerprint(self) -> str:
-        return content_key("text-value-v1", {"text": self.text})
-
-
-first = TextValue(text="Hello", loaded_at=100)
-second = TextValue(text="Hello", loaded_at=200)
-changed = TextValue(text="Goodbye", loaded_at=200)
-print(first.fingerprint() == second.fingerprint())
-print(first.fingerprint() == changed.fingerprint())
-```
-
-Output:
-
-```text
-True
-False
-```
-
-Here `loaded_at` is deliberately bookkeeping. This identity is suitable only for computations
-whose results do not depend on that field. It does not guarantee that a cache hit carries the
-current call's timestamp. Serialization can retain fields excluded from identity.
-
-[`content_key`][triplum.utils.cache.content_key] produces a 64-character hexadecimal SHA-256 digest
-from a namespace and JSON-serializable data. It cannot decide which fields are meaningful.
-Neither it nor the generic object utility automatically removes timestamps, IDs or resources.
-The [cache guide](cache.md) shows how to use these values as inputs and outputs.
+This page describes existing record, object and dataset identities. They use related digest
+helpers but have different equality promises; the common name does not make them interchangeable.
 
 ## Existing record properties
 
@@ -91,8 +53,8 @@ is also included in `model_dump()`; SQL storage retains it in an indexed column.
 
 These properties are **not compatible with the new cache's `fingerprint()` method requirement**.
 Passing a Source or Chunk directly to a cached function does not make it a valid cache value.
-Their identity migration remains under review. Define an explicit value model for the data a
-computation needs, as above; do not assume an entire record is interchangeable merely because
+Their identity migration remains under review. Define an explicit [value model](cache/fingerprints.md) for the data a
+computation needs; do not assume an entire record is interchangeable merely because
 its content property matches.
 
 ## Configured-object identity
@@ -140,6 +102,9 @@ False
 Attribute handling is broader than the cache's explicit semantic contract:
 
 - Plain strings, numbers, booleans, `None`, paths, lists, tuples and dictionaries are supported.
+  The current normalizer collapses list/tuple distinctions, stringifies dictionary keys, and
+  ignores dictionary iteration order. Use an explicit method if the computation distinguishes
+  these cases; this helper is under review.
 - Pydantic models use their entire `model_dump(mode="json")`, even if they also define a
   `fingerprint()` method. IDs and bookkeeping fields in that dump enter the object identity.
 - Other objects can supply their own `fingerprint()` method.
@@ -152,7 +117,7 @@ functions, imported library code or model weights merely because the class uses 
 
 The cache decorator has a separate automatic **function** identity, covering source, qualified
 name, evaluated defaults and captured configuration. It does not discover globals or external
-dependencies either. See [computation identity](cache.md#decide-when-a-result-can-be-reused) for when
+dependencies either. See [computation identity](cache/computations.md) for when
 to supply an explicit process digest; the configured-object mixin is not the decorator's algorithm.
 
 ## Dataset identity

@@ -32,9 +32,11 @@ already has the method shape, but its automatic field selection is unsuitable fo
   another declaration to maintain and special cases still need overrides. Revisit when repetition
   exists. Do not infer identity by excluding attributes whose names look like timestamps.
 
-Fingerprint equality promises equal semantic content under a versioned value-kind definition.
-The digest must include that kind and version, so equal-looking fields in unrelated types cannot
-collide semantically. This is an explicit tag, not a hash of the data class implementation.
+Fingerprint equality promises equal semantic content under a declared value-kind definition.
+Distinguish unrelated meanings even when fields look equal. The owner clarified that manually
+maintained version numbers are not required; changes should follow relevant data, structure and
+computation definitions. Selecting those definitions is under review in identity-interfaces.md.
+Current explicit projections do not automatically hash a data class implementation or schema.
 Preserve meaningful dates inside text or explicit temporal inputs; exclude bookkeeping creation,
 modification and execution times. Keep bookkeeping outside the reusable payload where possible.
 A cached result is an earlier result, not a new observation event.
