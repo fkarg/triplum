@@ -79,6 +79,9 @@ Everything else can arrive as new tables or optional fields.
   provided this does not impose unreasonable costs. Exact equivalence and digest inputs remain
   open. Cache identity is a separate, subsequent discussion; reusing record IDs is a weak
   preference when appropriate, not a requirement driving this layout.
+- The owner confirmed that text changing A → B → A should recover the original Source ID.
+  Creation/change timestamps do not contribute to this identity. The owner now prefers at least
+  24 collection-tag bits for Source; this does not revise the agreed Chunk allocation.
 
 ## Remaining ID decisions
 
@@ -89,10 +92,15 @@ Everything else can arrive as new tables or optional fields.
   distinct Chunk IDs alone do not distinguish which ordered result is being read.
 - Collection generation: UUIDv7 is implemented; optionally seeding a persisted collection ID
   once from a suitable upstream dataset fingerprint remains a proposal.
-- Source UUIDv8 layout: `[collection tag 16][scoped source fingerprint 106]` remains the proposed
+- Source UUIDv8 layout: `[collection tag 24][scoped source fingerprint 98]` is the current proposal
+  following the owner's preference for at least 24 collection-tag bits. The exact width remains
+  to be finalized. This replaces the earlier 16/106 proposal. It is the proposed
   companion to the agreed Chunk layout. Prefix derivation and exact digest encoding need a
   specification, including full scope identities in hashes so prefix collisions cannot erase scope.
 - Construction and storage: when IDs are generated, handling supplied IDs and later field edits,
   equal-ID/equal-record versus equal-ID/different-record writes, and oversized chunking results.
 - IDs for additional record types follow their own interface reviews. Cache identity is discussed
   before those missing record types.
+
+The next proposed example and the independent review of identity/cache interactions are recorded
+in `docs/specs/cached-pipeline.md`.

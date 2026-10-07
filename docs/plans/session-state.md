@@ -1,9 +1,12 @@
 # Session state (2026-10-07)
 
 Continue the rebuild on `main` in the existing checkout. The owner is moving to another machine.
-The next discussion is **Source equality and identity inputs**, then Chunk equality, then caching,
-then the missing record types. The UUID allocation is decided; its implementation is not authorized
-by that decision alone. Keep the owner involved one interface at a time.
+The current discussion connects **Source identity and caching** to a small example pipeline.
+The owner confirmed A → B → A should recover the original Source ID and prefers at least 24
+collection-tag bits for Source, with remaining bits a fingerprint excluding creation/change time.
+The Chunk UUID allocation is decided; the Source allocation and exact hash inputs are still under
+discussion. No new ID or pipeline implementation has been authorized through the interface review
+yet. See `docs/specs/cached-pipeline.md` for the proposed example and pending cache-key decision.
 
 ## Implemented state
 
@@ -95,8 +98,10 @@ These are proposals and unresolved decisions, **not approved schema changes**.
    distinguishing input or a fresh ID. The seed must exist before collection-scoped IDs, avoiding
    circularity. Current `RecordDataset.fingerprint()` includes generated record IDs and is not
    automatically a stable seed for reconstructed equivalent text.
-5. **Source layout and encoding.** Proposed Source payload: `[collection tag 16][scoped source
-   fingerprint 106]`, with the Chunk copying its first 42 fingerprint bits. Define canonical hash
+5. **Source layout and encoding.** Current proposed Source payload: `[collection tag 24][scoped source
+   fingerprint 98]`, with the Chunk copying its first 42 fingerprint bits. The owner requested at
+   least 24 tag bits; the exact width remains open. Chunk's agreed 16-bit tag remains unchanged.
+   Define canonical hash
    inputs, record-kind separation, prefix derivation and packing around reserved UUID bits.
    Hash the full collection ID into source identity and full source ID into chunk identity; using
    shortened prefixes alone would conflate scopes. Hashing the collection UUID into a tag is
@@ -132,10 +137,11 @@ Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk
 - Owner approves core interfaces; record assumptions as proposals. Implement only approved scope.
 - Keep hand-written docs synchronized; use a docs subagent after interface changes. Published
   pages must not link to specs/plans; these development records remain excluded from the site.
-- Commit when asked. Preserve concurrent changes and stay in the existing branch/checkout.
+- Commit coherent, verified changes periodically, as the owner reiterated. Preserve concurrent
+  changes and stay in the existing branch/checkout.
 - The collection baseline passed 61 Python tests, ty, Ruff, Cargo check/test, strict MkDocs and
   pre-commit gates at its commit. Python store tests emitted SQLite connection cleanup warnings.
-- Current handoff changes only this session note and `docs/specs/record-types.md`. Run strict
-  MkDocs and the staged pre-commit gates for the handoff; no new ID implementation is being tested.
+- Branch/prototype status corrections were committed in `cbf6d7c`; strict MkDocs and staged
+  pre-commit gates passed. The cached-pipeline proposal adds no ID or caching implementation.
 
 The record-type proposal and accepted decisions are in `docs/specs/record-types.md`.
