@@ -1,0 +1,341 @@
+# Optional caching interfaces — draft for owner review
+
+The owner wants interchangeable storage, policies configurable per run/step, manual access,
+decorators and a CachedStep mixin. Cached calls require fingerprintable input AND output values;
+our intermediate value types should support that contract. Plain uncached user steps need not.
+Skip-and-count is the default when pending writes cannot be admitted; blocking is configurable.
+The cache target is tens to hundreds of GB with room to grow. No runtime implementation is approved
+by this interface draft. Benchmark policy remains a later discussion.
+
+## Recommended shape
+
+One explicitly owned Cache coordinates policy and background persistence over a CacheBackend.
+A decorator and a template-method CachedStep share the same lookup/compute/encode/submit path.
+Manual get/put uses the same pending visibility and policy. Steps never own database connections.
+Keep codecs separate from semantic fingerprints so storage representation does not redefine data.
+
+## Fingerprintable values: settled constraint, two implementation choices
+
+`Fingerprintable.fingerprint()` is a structural contract returning the current convention: a
+64-character SHA-256 hexadecimal digest. Cache backends use the binary digest for key storage.
+That conversion cost belongs in the benchmark; this draft does not change all existing fingerprint
+return types or settle UUID allocation. Existing data-record fingerprint properties must become
+methods through their own reviewed change. The existing configured-object `Fingerprinted` mixin
+already has the method shape, but its automatic field selection is unsuitable for these values.
+
+- **Recommended: explicit method per datatype.** Name the identity-bearing fields in the method.
+  Adding a timestamp or diagnostic field does not silently change identity. This is short for
+  our initial records, works without a common model base, and remains available to custom types.
+- **Reasonable alternative: declarative identity-field whitelist.** A shared implementation reads
+  named fields. Less repeated encoding code across many similar records, but field names become
+  another declaration to maintain and special cases still need overrides. Revisit when repetition
+  exists. Do not infer identity by excluding attributes whose names look like timestamps.
+
+Fingerprint equality promises equal semantic content under a versioned value-kind definition.
+The digest must include that kind and version, so equal-looking fields in unrelated types cannot
+collide semantically. This is an explicit tag, not a hash of the data class implementation.
+Preserve meaningful dates inside text or explicit temporal inputs; exclude bookkeeping creation,
+modification and execution times. Keep bookkeeping outside the reusable payload where possible.
+A cached result is an earlier result, not a new observation event.
+
+For example, this proposed intermediate value selects text as its content. Its observation time
+remains bookkeeping; a semantic query cutoff would instead need to enter the digest.
+
+```python
+from dataclasses import dataclass
+from triplum.utils import content_key
+
+
+@dataclass(frozen=True)
+class PreparedText:
+    text: str
+    observed_at: int
+
+    def fingerprint(self) -> str:
+        return content_key("prepared-text-v1", {"text": self.text})
+
+
+assert PreparedText("A", 1).fingerprint() == PreparedText("A", 2).fingerprint()
+assert PreparedText("A", 1).fingerprint() != PreparedText("B", 1).fingerprint()
+```
+
+This does not promise a fresh observed_at on a cache hit. If consumers need the current observation
+time, attach it outside the cached value. Consumers must not use excluded fields to change a cached
+computation's semantic result.
+
+Native `str`, `list` and NumPy arrays do not implement the protocol. Our pipeline will need reviewed
+fingerprintable text/batch/vector value types rather than weakening this cache boundary. This does
+not authorize rewriting existing step Protocols now. Custom users can implement the method, wrap
+their value, or leave that operation uncached. The method requirement alone does not prove a good
+fingerprint: the value author must cover every semantic field and avoid stale cached digests after
+mutation. Cacheable functions must not mutate their inputs or rely on unrepresented external state.
+
+## Supporting types and exact declarations
+
+`CacheKey` contains the full configured-process digest and full input digest. Both must match.
+`format` is a separate codec/schema compatibility namespace: it keeps incompatible decoders apart
+without changing semantic data or process fingerprints. Different formats may miss independently.
+Backend choice, file path, queue settings and policy never enter those semantic fingerprints.
+Process IDs are full 64-character SHA-256 hex digests, not arbitrary labels; enabled bindings
+validate them before use. CacheKey digest components are exactly 32 bytes. Input fingerprints
+are validated at the caching boundary. Malformed identities raise ValueError.
+
+`Codec[T]` converts a fingerprintable result to immutable bytes and back. Its `format_id` changes
+when its encoding or decode semantics become incompatible. Decoding preserves the result's
+fingerprint and semantic content. A codec is not a storage backend; binary vector codecs can work
+with SQLite, LMDB or files. No pickle fallback or automatic serialization of arbitrary objects.
+
+`CachePolicy` is immutable. A supplied policy replaces the cache default for that binding/write;
+with only `on_full` currently exposed there is no ambiguous partial merge. More flags wait for a
+concrete use case. `cache=None` on a cached binding bypasses lookup, fingerprinting and encoding.
+
+```python
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from types import TracebackType
+from typing import Literal, Protocol, Self
+
+
+class Fingerprintable(Protocol):
+    @abstractmethod
+    def fingerprint(self) -> str: ...
+
+
+@dataclass(frozen=True)
+class CacheKey:
+    process: bytes
+    input: bytes
+    format: str
+
+
+@dataclass(frozen=True)
+class CachePolicy:
+    on_full: Literal["skip", "block"] = "skip"
+
+
+class Codec[T: Fingerprintable](Protocol):
+    @property
+    @abstractmethod
+    def format_id(self) -> str: ...
+    @abstractmethod
+    def encode(self, value: T, /) -> bytes: ...
+    @abstractmethod
+    def decode(self, payload: bytes, /) -> T: ...
+
+
+class CacheBackend(Protocol):
+    @abstractmethod
+    def get(self, key: CacheKey, /) -> bytes | None: ...
+    @abstractmethod
+    def put_many(self, entries: Sequence[tuple[CacheKey, bytes]], /) -> None: ...
+    @abstractmethod
+    def close(self) -> None: ...
+
+
+class Cache:
+    def __init__(
+        self,
+        backend: CacheBackend,
+        *,
+        pending_bytes: int,
+        policy: CachePolicy = CachePolicy(),
+    ) -> None: ...
+    def get(self, key: CacheKey, /) -> bytes | None: ...
+    def put(
+        self, key: CacheKey, payload: bytes, /, *, policy: CachePolicy | None = None
+    ) -> bool: ...
+    @property
+    def skipped_writes(self) -> int: ...
+    def flush(self) -> None: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+
+
+def cached[I: Fingerprintable, O: Fingerprintable](
+    *,
+    cache: Cache | None,
+    process_id: str,
+    codec: Codec[O],
+    policy: CachePolicy | None = None,
+) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+
+
+class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
+    def __init__(
+        self,
+        *,
+        cache: Cache | None,
+        codec: Codec[O],
+        policy: CachePolicy | None = None,
+    ) -> None: ...
+    def __call__(self, item: I, /) -> O: ...
+    @abstractmethod
+    def fingerprint(self) -> str: ...
+    @abstractmethod
+    def compute(self, item: I, /) -> O: ...
+```
+
+## Backend and cache guarantees
+
+Backend `get` returns bytes or `None` for a miss; empty bytes are a value. `put_many` completes the
+batch before returning. Readers must never see a partial individual value; no atomicity across
+keys is required. Backends may optimize a batch as one transaction. An error may leave some complete
+entries visible and is reported. Backend implementations own engine connections and their thread
+constraints: `get` may run concurrently with the Cache's one writer calling `put_many`. `close`
+runs after callers/writer stop. SQLite, LMDB and files remain competing candidates.
+
+Cache supports concurrent callers and one background writer. The Cache owner chooses an explicit
+pending-byte budget. `get` checks accepted pending writes
+before storage. `put` returns True for accepted background persistence, False for a skipped write;
+acceptance is not a durability acknowledgement. `skipped_writes` exposes the count. The budget
+accounts for keys, immutable payloads and an entry overhead allowance, not total process RSS.
+
+- `skip`: a full budget returns False and increments the counter; the computed result still returns.
+- `block`: wait for capacity. An item larger than the entire budget cannot make progress: proposed
+  behavior is ValueError for block, and skip/count for skip. This remains an owner tradeoff:
+  a blocking cached call would raise after computing an oversized result. An alternative is a
+  coordinated synchronous handoff through the same writer, preserving the result but relaxing the
+  pending budget for one oversized entry. Neither choice may wait for impossible admission.
+- Accepted entries stay pending until commit completion, not merely until dequeue. Committing an
+  older write must not remove a newer pending value for the same key. Concurrent misses may compute
+  twice; there is no execution-deduplication promise.
+- Serialize a result to immutable bytes before admitting it. This snapshots it against caller
+  mutation. Encoding is foreground work in this first contract; only persistence is deferred.
+  Zero-copy or deferred encoding would require a separate ownership/lifetime contract.
+- `flush` waits for writes accepted before the call and reports writer failures. It does not
+  retroactively persist skipped entries or upgrade the backend's crash-durability settings.
+- `close` stops admission, drains, closes resources and reports failures. It is idempotent; use
+  after close raises. Context exit closes. Abrupt process loss may lose pending cache entries.
+- Queue saturation is not storage exhaustion. Disk-full/engine failures are surfaced on flush/close
+  and subsequent operations; `on_full='block'` must not wait forever for disk space to appear.
+  A writer failure becomes sticky: stop admission, release pending entries and wake all waiting
+  writers/flush callers. Subsequent get/put/flush raise the recorded failure; close cleans up before
+  reporting it. It is not counted as queue saturation. Normal draining close can wait on engine I/O;
+  interrupt cancellation and crash durability are not guaranteed by this interface.
+
+Pending visibility is in-process. Other processes may see only committed entries and recompute
+while a write is pending. No global SQLite session, distributed queue or cross-process promise is
+introduced. Normal lifecycle is explicit: create one Cache per run/owner, lend it to steps, close it.
+
+## Decorator and mixin: one mechanism, two authoring styles
+
+`cached(...)` decorates a one-input function or an already bound callable. `process_id` is explicit
+and computed once when binding; it covers that callable's computation, effective configuration,
+helpers and model/dependency revisions. Configuration affecting computation must not mutate while
+bound. Reconfigure by making a new binding. The decorator does not guess closures or hash cache
+handles. It returns the same input/output call shape, not a proxy for every attribute of a step
+object; for example a plain function wrapper does not expose `Embedder.dimensions`.
+
+A use sketch, with reviewed fingerprintable TextBatch/VectorBatch types still to be introduced:
+
+```python
+cached_embed = cached(
+    cache=cache,
+    process_id=plain_embed_step.fingerprint(),
+    codec=vector_batch_codec,
+    policy=CachePolicy(on_full="block"),
+)(plain_embed_step)
+result = cached_embed(text_batch)
+```
+
+For class authors, `CachedStep[I, O]` owns `__call__` and calls the subclass's `compute` on a miss
+(or with cache=None). The subclass implements `fingerprint()` from its computation and effective
+configuration, excluding cache/codec/policy resources. There is no separate process_id constructor
+argument to drift from those fields. The enabled call reads this method; immutable configurations
+can precompute their digest for cheap repeated access. It can be combined with a compatible domain step Protocol and retains
+ordinary attributes. Put CachedStep before domain Protocol bases so its concrete __call__ is
+selected. It borrows the Cache; destroying a step does not close a shared backend.
+
+- **Recommended: explicit `compute` hook**, as declared. Easy to read locally, no MRO-dependent
+  choice of the computation. Existing classes must move/delegate their body when opting in.
+- **Reasonable alternative: cooperative `super().__call__` mixin.** Can wrap existing classes
+  without moving their method, but correctness depends on mixin order and cooperative signatures.
+  Useful if many existing classes need retrofitting; currently that benefit is limited.
+
+Both forms use the same cache policy, codec, error behavior and key construction. They may wrap a
+large composed block; choosing a block boundary is the pipeline author's decision. A bundled
+result does not force every internal operation to have its own entry. Cache identity excludes
+upstream history that is absent from the immediate semantic input; larger boundaries deliberately
+trade finer internal reuse for fewer lookups. A batch embedder caches the complete ordered batch;
+changing batch membership misses even for overlapping texts. Per-text reuse requires a separately
+reviewed guarantee that embedding each text is independent of batch membership/order.
+
+Manual use stays explicit and uses the same key/policy rules:
+
+```python
+key = CacheKey(
+    process=bytes.fromhex(process_id),
+    input=bytes.fromhex(item.fingerprint()),
+    format=result_codec.format_id,
+)
+payload = cache.get(key)
+if payload is None:
+    result = compute(item)
+    accepted = cache.put(key, result_codec.encode(result))
+else:
+    result = result_codec.decode(payload)
+```
+
+The byte-level manual interface does not enforce fingerprintability itself; typed decorators and
+mixins do. Manual callers take responsibility for key/content correspondence.
+
+## What does not need another option
+
+Explicit ownership, a bounded queue, pending-write visibility and immutable snapshots solve
+concrete lifecycle/consistency needs. A hidden global session, unbounded queue or storing mutable
+references for later encoding are not equivalent low-cost alternatives. No always-off benchmark
+rule is selected here; cache=None supports uncached execution, while benchmark methodology waits.
+
+## Optional backend optimization and verification
+
+The owner accepted considering a Bloom filter below the public interfaces. It must cover the full
+lookup key. A definite-negative may avoid storage lookup only while filter coverage includes the
+backend read view; a maybe-positive still uses exact lookup. Pending accepted writes are checked
+first. Other-process writes, growth and rebuilding cannot silently invalidate coverage. This is
+an optional measured optimization, not an extra decorator requirement.
+
+Declaration checks: the current ty checker accepts the strict generic decorator and compute-hook
+mixin sketches, preserves example result types and rejects calls passing a non-fingerprintable int.
+These are type/interface probes, not implementation tests. Later behavior tests must cover changed
+inputs/config, policy/codec separation, input/output fingerprint roundtrips, empty values/vectors,
+read-your-writes while a commit is in flight, duplicate-key writes, queue overflow/oversized entries,
+worker errors and draining close. Real backend comparison uses the same binary codecs, policy and
+representative key/payload sizes, measuring reads during writes as well as idle reads.
+
+## Independent review and sources
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `7f21ce5134b344bab6762de2d3149eea`,
+challenged the initial declarations. **Changed the draft:** replaced the mixin's disconnected
+process_id argument with an abstract fingerprint method, required digest validation and explicit
+value-kind/version separation, and specified concurrent access and sticky writer failure behavior.
+**Added verification:** concurrent admissions, waking blocked callers on worker failure, and strict
+input/output type probes. **Unresolved dissent:** Opus prefers synchronous persistence for oversized
+blocking entries; this draft retains the bounded-budget error proposal and makes its consequence
+explicit for owner review. Per-text embedding reuse is deferred because it needs a separate semantic
+guarantee. Aggregate skip telemetry remains minimal; per-step metrics have no current contract.
+
+Attempted falsifications included deriving a safe mixin ID using existing automatic Fingerprinted
+(resource hashing prevents it), applying that criticism to a bound decorator (less applicable),
+old commits evicting newer pending values (already guarded), oversized admission hangs (prevented,
+but computed results can be lost to the error), codec namespace collisions (covered), and reversed
+mixin order (fails rather than transparently supplying the intended call). The peer did not run a
+type checker or measure batch reuse. Our ty probes accept the positive declarations and reject an
+actual non-fingerprintable input call; an annotated int-taking definition alone can type as an
+intersection and is not necessarily rejected until called.
+
+External research informed the single-input generic constraint, method-binding boundary and
+separation of queue saturation from worker/storage errors:
+
+- [Python typing specification: generics and bounds](https://typing.python.org/en/latest/spec/generics.html)
+- [Python descriptor guide: functions and methods](https://docs.python.org/3.14/howto/descriptor.html#functions-and-methods)
+- [Python queue semantics](https://docs.python.org/3.14/library/queue.html)
+- [Joblib Memory](https://joblib.readthedocs.io/en/stable/user_guide/memory.html)
+- [cachetools cached methods](https://cachetools.readthedocs.io/en/stable/#cachetools.cachedmethod)
+- [RocksDB Bloom filter guidance](https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter)

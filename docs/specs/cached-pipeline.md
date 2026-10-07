@@ -6,9 +6,18 @@ concrete encoding and example below are a draft for interface review, not an imp
 
 The owner subsequently clarified the performance target: a cache of a few dozen to a few hundred
 GB, able to grow further; very low-overhead exact-key lookup; deferred background writes; and a
-decorator interface constrained to fingerprintable inputs/outputs. SQLite and bundled chunk/vector
-results are candidates, not selected contracts. The lookup-first extension below records the new
-tradeoffs. The JSON example illustrates identity only, not the proposed high-performance codec.
+cache interface requiring fingerprintable input AND output values. Our intermediate types should
+support that contract; custom types may implement it or remain uncached. The owner requests both
+decorators and a `CachedStep` mixin, with manual get/put also available. Steps or larger composed
+blocks opt in; multiple backends are acceptable. SQLite and bundled chunk/vector results remain
+candidates. The proposed next review is [Optional caching interfaces](cache-interfaces.md), not
+an implemented API. The JSON example below illustrates identity using existing primitives, not
+the new typed boundary or a proposed high-performance codec.
+
+The final queue-full default is **skip and count**, configurable per run/task/step. The brief
+block-default choice was retracted; blocking remains an option. Cache handles, backend choice and
+queue/policy settings stay outside semantic fingerprints. Benchmark methodology, including any
+always-off rule, is explicitly deferred.
 
 ## Purpose and identities
 
@@ -83,7 +92,7 @@ single-user cache; a shared service's authorization contract is deferred.
 
 ## Lookup and result contract
 
-Keep the existing storage declarations unchanged:
+The earlier JSON example uses the existing storage declarations:
 
 ```python
 class Cache:
@@ -95,10 +104,10 @@ class Cache:
 `Path` is a filesystem path, `str` is also accepted for the explicit cache directory, and `Any`
 reflects the current untyped JSON helper API, not a proposal to broaden a new interface. Each
 concrete stage owns its value encoding and reconstruction. These are the current primitives;
-the requested fingerprintable decorator interface is still to be declared and reviewed. A
-fingerprint alone does not provide the result codec needed for disk persistence.
+the requested decorator and mixin declarations are proposed in `cache-interfaces.md`. A fingerprint
+alone does not provide the result codec needed for disk persistence.
 
-A cache entry is a JSON object with exactly these fields:
+In this earlier example, a cache entry is a JSON object with exactly these fields:
 
 ```text
 {"output_fingerprint": <full digest>, "output": <encoded reusable value>}
@@ -166,7 +175,7 @@ assert len(computation_key) == len(output_fp) == 64
 ```
 
 Origin, collection and earlier preprocessing identities do not enter this embedding request:
-`Embedder` receives only the ordered text batch. Keep caching at that existing batch boundary;
+`Embedder` receives only the ordered text batch. This example uses the existing batch boundary;
 per-text reuse for arbitrary embedders would require a separate batch-invariance guarantee.
 
 ## Reuse policy and benchmarking
@@ -176,14 +185,15 @@ execute without reading or writing cached results, leaving previous entries inta
 execution policy, not an added timestamp, nonce or altered data fingerprint. Returning to ordinary
 execution can still reuse the original entry.
 
-For explicit benchmarking later, bypass must reach every cache within the measured work, including
-nested expensive calls. Warm-cache performance can be measured separately and labeled. Refreshing
-an existing entry is a different policy and is not needed for this example. The benchmark API,
-policy flags and propagation mechanism remain deferred; no new flag is added to every step.
+Benchmark methodology, including whether caches should always be disabled, is deferred by the
+owner. A future uncached measurement would need bypass to reach nested caches in the measured
+work; warm-cache measurement is a separate possibility. Neither is a selected benchmark policy.
+Refreshing an existing entry is a different policy. The benchmark API and propagation mechanism
+remain deferred.
 
 ## Small example and verification
 
-Use the existing steps in a plain example function, with no pipeline executor:
+The earlier example option uses existing steps in a plain function, with no pipeline executor:
 
 ```text
 Source → FixedSize → chunks → OriginalText → text batch → ZeroEmbedder → vectors
@@ -193,7 +203,8 @@ The initial example proposal caches only the embedding batch; chunking and embed
 each time. In particular, `FixedSize(100)` and `FixedSize(200)` over a source shorter than 100
 characters produce the same text batch and should share the embedding entry. This exercises
 upstream process changes without putting upstream process fingerprints in the embedding key.
-The owner is now considering a bundled chunk result instead; final cache granularity is open.
+This is an example option, not the chosen boundary for every pipeline. The owner wants opt-in
+caching for steps or larger blocks, including the option of bundled chunk results.
 
 The example must distinguish value reuse from record reconstruction. Today's `FixedSize` produces
 chunks referencing the supplied Source and assigns fresh UUIDv7 IDs. A cache of complete chunks
@@ -226,8 +237,9 @@ content addressing. We adopt that identity distinction while retaining one simpl
 separate action/CAS storage is not required yet. Its
 [hermeticity guidance](https://bazel.build/basics/hermeticity) motivates explicit effective inputs.
 The [remote execution protocol](https://github.com/bazelbuild/remote-apis/blob/main/build/bazel/remote/execution/v2/remote_execution.proto)
-distinguishes skipping lookup from preventing storage; our proposed benchmark bypass deliberately
-disables both. These are project choices, not a claim of Bazel API compatibility.
+distinguishes skipping lookup from preventing storage; the earlier bypass proposal disables both.
+Benchmark methodology remains deferred. These are project proposals, not a claim of Bazel API
+compatibility.
 
 ### Initial review
 
@@ -277,9 +289,12 @@ New owner constraints and current recommendations, not yet an approved runtime i
 - Keep fingerprints available before lookup. Recomputing process state/JSON hashes on every hit
   works against the latency goal. Precomputed identities require immutable identity-bearing
   inputs and configured processes, or explicit invalidation when they change.
-- Expose a typed decorator with fingerprintable input/output constraints plus a result codec.
-  Existing strings, lists and NumPy arrays lack a fingerprint method; wrappers or typed adapters
-  need their own narrow interface review. Decorating every existing step is not assumed.
+- Expose both a typed decorator and a `CachedStep` mixin, with fingerprintable input AND output
+  constraints plus a result codec; retain manual get/put. Our intermediate types should implement
+  the fingerprint contract. Existing strings, lists and NumPy arrays lack that method; concrete
+  fingerprintable value types need review. Custom types may implement the protocol or remain
+  uncached. This does not authorize automatic adapters for arbitrary values or changing every
+  existing step.
 - Prefer an explicitly owned cache instance shared by decorated steps, with connection lifetime
   spanning a run. Avoid a hidden global ORM session and per-lookup connection creation.
 - A background writer batches persistence. A bounded pending map/queue makes newly computed
@@ -287,9 +302,10 @@ New owner constraints and current recommendations, not yet an approved runtime i
   pending entries until their commit completes. Enqueue immutable snapshots, not mutable results
   whose later edits could be stored under an old key. Normal close drains; crash recovery may
   lose pending entries and require recomputation. Cross-process pending visibility is not promised.
-- Queue-full policy is a real tradeoff: blocking preserves insertion attempts but delays callers;
-  skipping new cache inserts protects foreground latency but may cause later recomputation.
-  Recommendation for the owner's stated priority: skip and count, not silently grow the queue.
+- Queue-full policy is configurable per run/task/step: blocking preserves insertion attempts but
+  delays callers; skipping new cache inserts protects latency but may cause later recomputation.
+  The final owner decision is skip and count by default; the brief block-default choice was
+  retracted. Cache handles, backend choice and queue/policy settings are outside semantic fingerprints.
   Writer errors must be surfaced; they are not equivalent to an ordinary cache miss.
 - Measure SQLite and LMDB against the existing file cache, using the same binary values and key
   widths. No winner is established. SQLite rowid versus WITHOUT ROWID is a layout variable,
@@ -331,8 +347,17 @@ establish on-disk performance.
   Per-text caching is not sound for every current Embedder without batch invariance; bundling
   trades reuse granularity for fewer lookups rather than being universally incorrect. No blanket
   per-text wrapper is approved.
-- **Dissent retained:** it recommends blocking on a full queue; the current recommendation is to
-  skip new cache writes to protect foreground latency. Owner decision remains open.
+- **Dissent retained:** it recommends blocking on a full queue. The owner's latest decision is
+  configurable policy with skip-and-count as default; blocking remains available.
 - **Rejected as unsupported:** predicted universal backend winners and a default WITHOUT ROWID
   layout were not established by its in-memory timings; official SQLite guidance makes row size
   relevant. Keep the comparison empirical.
+
+### Optional Bloom filter
+
+The owner accepted considering a Bloom filter below the public interface, over the full
+computation key. A definite negative may avoid storage lookup only while the filter covers the
+backend read view; a possible match still requires exact lookup. Accepted pending writes must
+remain visible before commit. Other-process writes and rebuilds must not silently invalidate
+coverage. This remains an optional backend optimization, not an implemented feature or an extra
+requirement on decorators and steps. Its proposed contract is recorded in `cache-interfaces.md`.

@@ -8,13 +8,16 @@ The Chunk UUID allocation is decided; the Source allocation and exact hash input
 discussion. No new ID or pipeline implementation has been authorized through the interface review
 yet. The owner approved reuse of identical intermediate content across different upstream
 processes, with Bazel's cache design as orientation. See `docs/specs/cached-pipeline.md` for the
-concrete contract and example under review.
+identity discussion and earlier example; `docs/specs/cache-interfaces.md` is the proposed next
+interface review, not an implemented API.
 
 Latest performance requirements: cache target is dozens to hundreds of GB with room to grow;
-lookup-first low overhead; deferred background writes; a typed decorator over fingerprintable
-inputs/outputs. The owner is considering deterministic compound keys, SQLite and chunk results
-that include embeddings. Those are design candidates. The spec now records SQLite/LMDB comparison,
-resource ownership, codecs, queue-full policy and cache granularity as the next review topics.
+lookup-first low overhead and deferred background writes. Cached calls require fingerprintable
+input AND output values, and our intermediate types should provide that contract. Both decorators
+and a `CachedStep` mixin are requested; manual get/put remains available. Individual steps or
+larger blocks opt in, and multiple backends are acceptable. The final queue-full default is
+**skip and count**, configurable per run/task/step; the brief block-default choice was retracted.
+Exact declarations, codecs, resource ownership and backend selection remain under review.
 
 ## Implemented state
 
@@ -84,18 +87,26 @@ replace the existing source lookup index. No database speedup has been measured.
   computation history. The current operation and its effective configuration still distinguish
   computations.
 - Exclude bookkeeping timestamps from reusable value identity. A separate explicit benchmarking
-  bypass is intended; its API and exact behavior remain under review, rather than adding time to
-  fingerprints to force misses.
+  bypass is intended; benchmark methodology, including whether benchmarks should always disable
+  caching, is deferred. Do not add time to fingerprints to force misses.
 - Use Bazel's separation of computation lookup and output content identity as orientation. The
   concrete encoding, storage arrangement and example remain proposals, not implemented contracts.
 - Record IDs and reusable payloads serve different purposes. Equal embedding text can reuse a
   vector computation without merging Sources or copying another Source's Chunk references.
   Cache complete records only when the inputs account for the references they carry; otherwise
   reuse an identity-free payload and bind it to the current record separately.
-- The concrete draft proposes caching only the embedding batch in the first pipeline example.
-  Existing chunking/preparation run each time; different chunker configurations that yield the
-  same text batch demonstrate downstream reuse. Record UUID changes and caching whole records
-  remain separate interface reviews. The draft includes both Opus review outcomes.
+- Cached calls require fingerprintable inputs and outputs. Our intermediate types should support
+  the protocol; custom types may implement it or remain uncached. Concrete datatype changes still
+  need review. Cache handles, backend selection and queue/policy settings are outside semantic
+  fingerprints.
+- Decorators, a `CachedStep` mixin and manual access are requested. Steps and larger composed
+  blocks opt in. Embedding-only caching remains an earlier example option, not a universal
+  boundary. Record UUID changes and caching whole records remain separate interface reviews.
+- Queue-full policy is configurable per run/task/step. The latest owner decision is skip new
+  cache writes and count them by default; blocking remains an option, not the default.
+- An optional Bloom filter below the interface is accepted for consideration. It must use the
+  full computation key and have coverage of the backend read view before a negative can skip
+  lookup. Accepted pending writes must remain visible. No filter implementation is approved.
 
 ### Other earlier decisions
 
