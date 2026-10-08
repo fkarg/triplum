@@ -64,20 +64,18 @@ its content property matches.
 [`FingerprintedComputationMixin`][triplum.utils.fingerprint.FingerprintedComputationMixin] in `triplum.utils.fingerprint` supplies
 a `fingerprint()` implementation used by steps such as
 [`FixedSize`][triplum.steps.chunking.FixedSize]. It combines the qualified class name, loaded application method definitions,
-immutable class constants, explicit configuration and declared dependencies. It does not scan instance attributes.
+immutable class constants, selected configuration and statically resolved application helpers. It does not scan instance attributes.
 
 The initial `FixedSize` example uses this implementation: equal sizes identify equivalent
 chunkers, while different sizes identify different computations. Settings are selected explicitly;
 runtime counters and clients stay out. For cached functions with settings, start with a
 [function factory](cache/computations.md). The same guide shows `CachedStep` for existing classes.
 
-The [computation guide](cache/computations.md#select-settings-and-dependencies) explains dependency
-selection, `definition_hash`, supported class constants and the limits of automatic inference.
-
-The cache decorator has its own automatic **function** identity, covering source, qualified name,
-evaluated defaults and captured configuration at decoration. It does not gain the mixin's hooks.
-See [automatic function identity](cache/computations.md#use-automatic-function-identity-where-it-fits)
-for its boundaries and explicit `process_id` override.
+The [computation guide](cache/computations.md#select-settings-for-a-computation-class) explains
+configuration selection and supported class constants. Decorators and computation classes share
+loaded-definition hashing and bounded helper discovery. See the
+[automatic boundary](cache/computations.md#know-the-automatic-boundary) for external resources,
+dynamic dispatch and complete `process_id` overrides.
 
 ## Dataset identity
 

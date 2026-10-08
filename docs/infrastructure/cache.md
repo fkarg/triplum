@@ -53,9 +53,9 @@ the inherited `Text.fingerprint()` identifies its field values.
 The cache opens on the first call and is shared by decorated functions. For its location, explicit
 cleanup, or write policy, see [ownership and write policy](cache/policies.md).
 
-Function identity covers source, defaults and captures. Run the example from a file so the source
-is available. External helpers and model dependencies need explicit treatment; see
-[computation fingerprints](cache/computations.md) when the default is insufficient.
+Function identity covers loaded code, defaults, captures and statically resolved application
+helpers. External resources have their own identity boundaries; see
+[computation fingerprints](cache/computations.md).
 
 ## Specialize only the part you need
 

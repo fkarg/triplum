@@ -132,14 +132,12 @@ def helper(value):
 class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
-    def fingerprint_dependencies(self):
-        return (helper,)
     def __call__(self, value):
         return helper(value)
 """
 
 
-def test_explicit_helper_definition_changes_identity_without_revision_counter(
+def test_automatic_helper_definition_changes_identity_without_revision_counter(
     tmp_path: Path,
 ) -> None:
     first = load(DEPENDENT.format(delta=1), tmp_path / "first.py")()
@@ -290,10 +288,7 @@ class Depends(FingerprintedComputationMixin):
         self.dependency = dependency
 
     def fingerprint_config(self) -> dict[str, object]:
-        return {}
-
-    def fingerprint_dependencies(self) -> tuple[object, ...]:
-        return (self.dependency,)
+        return {"dependency": self.dependency}
 
 
 def test_dependency_values_follow_their_semantics_and_reject_opaque_resources() -> None:
@@ -304,7 +299,7 @@ def test_dependency_values_follow_their_semantics_and_reject_opaque_resources() 
     assert step.fingerprint() == identity
     value.text = "b"
     assert step.fingerprint() != identity
-    with pytest.raises(TypeError, match="dependency"):
+    with pytest.raises(TypeError, match="fingerprint"):
         Depends(object()).fingerprint()
 
 
@@ -325,14 +320,13 @@ def test_explicit_output_type_is_part_of_default_cached_step_identity(tmp_path: 
         assert first.fingerprint() != second.fingerprint()
 
 
-def test_recursive_function_capture_fails_without_recursing_forever() -> None:
+def test_recursive_function_capture_has_finite_identity() -> None:
     from triplum.utils.fingerprint import definition_hash
 
     def recursive():
         return recursive()
 
-    with pytest.raises(TypeError, match="recursive"):
-        definition_hash(recursive)
+    assert len(definition_hash(recursive)) == 64
 
 
 def test_unsupported_method_descriptor_requires_explicit_identity() -> None:
@@ -414,3 +408,317 @@ class Step(FingerprintedComputationMixin):
     assert first("12") is True
     assert second("12") is False
     assert first.fingerprint() != second.fingerprint()
+
+
+def test_global_helpers_recurse_through_module_attributes_and_cycles(tmp_path: Path) -> None:
+    from types import ModuleType
+
+    from triplum.utils.fingerprint import definition_hash
+
+    def make(delta: int):
+        module = ModuleType("application.helpers")
+        exec(  # noqa: S102 - controlled Python fixture
+            compile(
+                "def helper(n):\n    return helper(n-1) if n else " + str(delta),
+                str(tmp_path / "helper.py"),
+                "exec",
+            ),
+            vars(module),
+        )
+        namespace = {"__name__": "application.caller", "helpers": module}
+        exec(  # noqa: S102 - controlled Python fixture
+            compile(
+                "def call(n):\n    return helpers.helper(n)", str(tmp_path / "caller.py"), "exec"
+            ),
+            namespace,
+        )
+        return namespace["call"]
+
+    first, same, changed = make(1), make(1), make(2)
+    assert first(3) == same(3) == 1
+    assert changed(3) == 2
+    assert definition_hash(first) == definition_hash(same)
+    assert definition_hash(first) != definition_hash(changed)
+
+
+def test_decorated_function_reuses_only_matching_helper_definition(tmp_path: Path) -> None:
+    from triplum.cache import cached
+
+    source = """def helper(item):
+    calls.append(item.text)
+    return Text(text=item.text + {suffix!r})
+def operation(item):
+    return helper(item)
+"""
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "helpers.sqlite")) as cache:
+        results = []
+        for suffix in ("!", "?", "!"):
+            namespace = {"__name__": "application", "calls": calls, "Text": Text}
+            (tmp_path / "app.py").write_text(source.format(suffix=suffix))
+            exec(  # noqa: S102 - controlled Python fixture
+                compile(source.format(suffix=suffix), str(tmp_path / "app.py"), "exec"), namespace
+            )
+            function = namespace["operation"]
+            assert isinstance(function, FunctionType)
+            operation = cached(function, cache=cache, output_type=Text)
+            results.append(operation(Text(text="hello")).text)
+        assert results == ["hello!", "hello?", "hello!"]
+        assert calls == ["hello", "hello"]
+
+
+def test_nested_code_helpers_and_read_only_global_settings_are_tracked(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    def make(offset: int):
+        namespace = {"__name__": "application", "OFFSET": offset, "COUNTER": 0}
+        source = """def helper(x):
+    global COUNTER
+    COUNTER += 1
+    return x + OFFSET
+def operation():
+    return [helper(x) for x in range(2)]
+"""
+        exec(  # noqa: S102 - controlled Python fixture
+            compile(source, str(tmp_path / "app.py"), "exec"), namespace
+        )
+        function = namespace["operation"]
+        assert isinstance(function, FunctionType)
+        return function
+
+    first, same, changed = make(1), make(1), make(2)
+    assert first() == [1, 2]
+    assert first() == [1, 2]
+    assert definition_hash(first) == definition_hash(same)
+    assert definition_hash(first) != definition_hash(changed)
+
+
+def test_external_function_body_is_a_boundary(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    def make(delta: int):
+        library = {"__name__": "thirdparty"}
+        exec(  # noqa: S102 - controlled Python fixture
+            compile("def helper(x): return x + " + str(delta), "/external/thirdparty.py", "exec"),
+            library,
+        )
+        application = {"__name__": "application", "helper": library["helper"]}
+        exec(  # noqa: S102 - controlled Python fixture
+            compile("def operation(x): return helper(x)", str(tmp_path / "app.py"), "exec"),
+            application,
+        )
+        return application["operation"]
+
+    first, changed = make(1), make(2)
+    assert first(1) == 2
+    assert changed(1) == 3
+    assert definition_hash(first) == definition_hash(changed)
+
+
+def test_captured_recursive_helper_has_stable_identity() -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    def factory(delta: int):
+        def helper(n: int) -> int:
+            return helper(n - 1) if n else delta
+
+        def operation(n: int) -> int:
+            return helper(n)
+
+        return operation
+
+    assert definition_hash(factory(1)) == definition_hash(factory(1))
+    assert definition_hash(factory(1)) != definition_hash(factory(2))
+
+
+def test_module_dependency_lookup_never_calls_dynamic_getattr(tmp_path: Path) -> None:
+    from types import ModuleType
+
+    from triplum.utils.fingerprint import definition_hash
+
+    module = ModuleType("application.dynamic")
+
+    def forbidden(name: str) -> object:
+        raise AssertionError("fingerprinting executed dynamic module lookup")
+
+    vars(module)["__getattr__"] = forbidden
+    namespace = {"__name__": "application", "dynamic": module}
+    exec(  # noqa: S102 - controlled Python fixture
+        compile("def operation(): return dynamic.missing()", str(tmp_path / "app.py"), "exec"),
+        namespace,
+    )
+    with pytest.raises(TypeError, match="dynamic.missing"):
+        definition_hash(namespace["operation"])
+
+
+def test_cached_helpers_compose_without_hashing_cache_resources(tmp_path: Path) -> None:
+    from triplum.cache import cached
+
+    with Cache(SQLiteBackend(tmp_path / "nested.sqlite")) as cache:
+
+        def make(suffix: str):
+            @cached(cache=cache)
+            def helper(item: Text) -> Text:
+                return Text(text=item.text + suffix)
+
+            @cached(cache=cache)
+            def outer(item: Text) -> Text:
+                return helper(item)
+
+            return outer
+
+        assert make("!")(Text(text="hello")) == Text(text="hello!")
+        assert make("?")(Text(text="hello")) == Text(text="hello?")
+
+
+def test_decorator_resolves_helpers_declared_after_it(tmp_path: Path) -> None:
+    source = """from triplum.cache import cached
+@cached(cache=cache, output_type=Text)
+def operation(item):
+    return helper(item)
+def helper(item):
+    calls.append(item.text)
+    return Text(text=item.text + {suffix!r})
+"""
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "forward.sqlite")) as cache:
+        results = []
+        for suffix in ("!", "?", "!"):
+            namespace = {"__name__": "application", "calls": calls, "Text": Text, "cache": cache}
+            path = tmp_path / "forward.py"
+            path.write_text(source.format(suffix=suffix))
+            exec(  # noqa: S102 - controlled Python fixture
+                compile(source.format(suffix=suffix), str(path), "exec"), namespace
+            )
+            operation = namespace["operation"]
+            assert isinstance(operation, FunctionType)
+            results.append(operation(Text(text="hello")).text)
+        assert results == ["hello!", "hello?", "hello!"]
+        assert calls == ["hello", "hello"]
+
+
+def test_python_wrapper_behavior_is_not_discarded(tmp_path: Path) -> None:
+    source = """from functools import wraps
+from triplum.utils.fingerprint import FingerprintedComputationMixin
+def original(value):
+    return value
+@wraps(original)
+def helper(value):
+    return original(value) + {delta}
+class Step(FingerprintedComputationMixin):
+    def fingerprint_config(self): return {{}}
+    def __call__(self, value): return helper(value)
+"""
+    first = load(source.format(delta=1), tmp_path / "first.py")()
+    changed = load(source.format(delta=2), tmp_path / "changed.py")()
+    assert first(0) == 1
+    assert changed(0) == 2
+    assert first.fingerprint() != changed.fingerprint()
+
+
+def test_mutating_global_result_is_not_treated_as_instrumentation(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    namespace: dict[str, object] = {"__name__": "application", "queue": ["first", "second"]}
+    exec(  # noqa: S102 - controlled Python fixture
+        compile("def operation(): return queue.pop()", str(tmp_path / "app.py"), "exec"), namespace
+    )
+    with pytest.raises(TypeError, match="mutated global"):
+        definition_hash(namespace["operation"])
+
+
+def test_dependency_inspection_does_not_read_object_dict_property(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    class Resource:
+        @property
+        def __dict__(self):
+            raise AssertionError("executed resource property")
+
+    namespace = {"__name__": "application", "resource": Resource()}
+    exec(  # noqa: S102 - controlled Python fixture
+        compile("def operation(): return resource", str(tmp_path / "app.py"), "exec"), namespace
+    )
+    with pytest.raises(TypeError, match="cannot fingerprint"):
+        definition_hash(namespace["operation"])
+
+
+def test_parent_cache_includes_child_explicit_process_identity(tmp_path: Path) -> None:
+    from triplum.cache import cached
+
+    with Cache(SQLiteBackend(tmp_path / "child.sqlite")) as cache:
+
+        def make(suffix: str):
+            namespace: dict[str, object] = {
+                "__name__": "application",
+                "Text": Text,
+                "Settings": type("Settings", (), {"suffix": suffix}),
+            }
+            exec(  # noqa: S102 - controlled Python fixture
+                compile(
+                    "def child(item): return Text(text=item.text + Settings.suffix)",
+                    str(tmp_path / "app.py"),
+                    "exec",
+                ),
+                namespace,
+            )
+            function = namespace["child"]
+            assert isinstance(function, FunctionType)
+            child = cached(
+                function, cache=cache, output_type=Text, process_id=content_key("child", suffix)
+            )
+
+            @cached(cache=cache)
+            def outer(item: Text) -> Text:
+                return child(item)
+
+            return outer
+
+        assert [make(suffix)(Text(text="hello")).text for suffix in ("!", "?", "!")] == [
+            "hello!",
+            "hello?",
+            "hello!",
+        ]
+
+
+def test_captured_module_helpers_contribute_their_definition() -> None:
+    from types import ModuleType
+
+    from triplum.utils.fingerprint import definition_hash
+
+    def make(delta: int):
+        module = ModuleType(__name__ + ".helpers")
+        exec(  # noqa: S102 - controlled Python fixture
+            "def helper(x): return x + " + str(delta), vars(module)
+        )
+
+        def operation(value: int) -> int:
+            return module.helper(value)
+
+        return operation
+
+    first, changed = make(1), make(2)
+    assert first(1) == 2
+    assert changed(1) == 3
+    assert definition_hash(first) != definition_hash(changed)
+
+
+def test_module_defaults_and_dynamic_module_passing_are_rejected() -> None:
+    from types import ModuleType
+
+    from triplum.utils.fingerprint import definition_hash
+
+    module = ModuleType("application.helpers")
+
+    def defaulted(value=module):
+        return value
+
+    def forwarded():
+        return str(module)
+
+    for operation in (defaulted, forwarded):
+        with pytest.raises(TypeError, match="module"):
+            definition_hash(operation)
+
+    with pytest.raises(TypeError, match="module"):
+        Configured({"module": module}).fingerprint()

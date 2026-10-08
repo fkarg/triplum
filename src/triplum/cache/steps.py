@@ -94,10 +94,10 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     """Use @cached or @cached(overrides...) for a one-input callable.
 
     By default the shared cache opens on first use, the return annotation selects a
-    Pydantic model and function source/defaults/captures identify the computation.
-    Captured configuration must remain fixed after decoration. Explicit process_id is
-    required for dependencies outside that function (helpers, globals, model versions,
-    files, environment) and source-less callables. Hash the effective definitions and settings.
+    Pydantic model. Loaded code, settings and application helpers identify computation
+    on first use. Keep definitions and settings fixed afterwards. External libraries,
+    files, environment and resource state are outside automatic discovery; project their
+    content identities as settings or supply an explicit process_id.
     cache=None bypasses identity, serialization and lookup entirely.
     """
     process = _digest(process_id) if cache is not None and process_id is not None else None
@@ -105,20 +105,24 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     def decorate(function: Callable[[I], O]) -> Callable[[I], O]:
         if cache is None:
             return function
-        identity = process if process is not None else _digest(function_fingerprint(function))
+        identity = process
         selected: Codec[O] | None = None
         lock = Lock()
 
         @wraps(function)
         def call(item: I, /) -> O:
-            nonlocal selected
-            if selected is None:
+            nonlocal selected, identity
+            if selected is None or identity is None:
                 with lock:
+                    if identity is None:
+                        identity = _digest(function_fingerprint(function))
                     if selected is None:
                         selected = _codec(function, output_type, codec)
             owner = default_cache() if cache is _DefaultCache.SHARED else cache
             return _call(owner, identity, item, function, selected, policy)
 
+        vars(call)["_triplum_compute"] = function
+        vars(call)["_triplum_process_id"] = process_id
         return call
 
     return decorate if compute is None else decorate(compute)

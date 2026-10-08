@@ -15,7 +15,7 @@ A decorator and a template-method CachedStep share the same lookup/compute/encod
 Manual get/put uses the same pending visibility and policy. Steps never own database connections.
 Keep codecs separate from semantic fingerprints so storage representation does not redefine data.
 
-## Fingerprintable values: settled constraint, two implementation choices
+## Fingerprintable values
 
 `Fingerprintable.fingerprint()` is a structural contract returning the current convention: a
 64-character SHA-256 hexadecimal digest. Cache backends use the binary digest for key storage.
@@ -25,13 +25,11 @@ methods through their own reviewed change. The existing configured-object `Finge
 identifies configured computations through explicit settings and loaded code; it does not define
 value equality.
 
-- **Recommended: explicit method per datatype.** Name the identity-bearing fields in the method.
-  Adding a timestamp or diagnostic field does not silently change identity. This is short for
-  our initial records, works without a common model base, and remains available to custom types.
-- **Reasonable alternative: declarative identity-field whitelist.** A shared implementation reads
-  named fields. Less repeated encoding code across many similar records, but field names become
-  another declaration to maintain and special cases still need overrides. Revisit when repetition
-  exists. Do not infer identity by excluding attributes whose names look like timestamps.
+`FingerprintedDataModel` supplies semantic field-value identity and Pydantic serialization.
+`FingerprintedDataModelMixin` adds the same projection to an existing Pydantic model base.
+Bookkeeping exclusions and custom projections are explicit; see
+[data-model fingerprints](data-model-fingerprints.md). External types can implement the structural
+method themselves. Do not infer exclusions from names resembling timestamps.
 
 Fingerprint equality promises equal semantic content under a declared value-kind definition.
 Distinguish unrelated meanings even when fields look equal. The owner clarified that manually
@@ -182,7 +180,7 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         policy: CachePolicy | None = None,
     ) -> None: ...
     def __call__(self, item: I, /) -> O: ...
-    # fingerprint(), fingerprint_config() and fingerprint_dependencies() come from FingerprintedComputationMixin.
+    # fingerprint() and fingerprint_config() come from FingerprintedComputationMixin.
     @abstractmethod
     def compute(self, item: I, /) -> O: ...
 ```
@@ -257,7 +255,7 @@ result = cached_embed(text_batch)
 
 For class authors, `CachedStep[I, O]` owns `__call__` and calls the subclass's `compute` on a miss
 (or with cache=None). The subclass selects effective settings with `fingerprint_config()`; inherited `fingerprint()`
-combines those settings with loaded application code and declared dependencies. It may instead
+combines those settings with loaded application code and statically resolved application helpers. It may instead
 override `fingerprint()` with a complete identity. Cache/codec/policy resources are not selected
 automatically. There is no separate process_id constructor
 argument to drift from those fields. The enabled call reads this method; immutable configurations
@@ -437,14 +435,13 @@ shared owner, close_default_cache() drains/releases it, and normal process exit 
 fallback. Abrupt termination can lose pending writes. Initialize caches after worker creation;
 inherited default handles after fork are rejected rather than reused or closed in the child.
 
-Automatic function identity covers source AST (excluding the cache decorator/docstring), qualified
-function name, evaluated defaults and captured configuration. Captures must remain immutable after
-decoration. Source and capture identity freeze when the decorator is applied; only codec and
-database initialization wait for first use. Bind before editing the source, or supply an explicit
-process_id for an already-loaded callable whose on-disk source no longer matches it. The source-less/callable-object path needs explicit process_id. External helpers, module
-globals, model/library revisions, files and environment still require explicit identity; the default
-is not dependency tracking. Builtin scalar/container captures use exact supported types, mapping
-order is preserved, and custom captures need fingerprint() or an explicit process_id.
+Automatic function identity uses the shared loaded-definition algorithm described in
+[Automatic computation helpers](automatic-helper-identity.md), including bounded application helper
+discovery. Identity freezes on the first call, alongside lazy codec/database initialization.
+There is no manual dependency declaration. External resources need effective identities represented
+as inputs/settings, or a complete process_id supplied by the application.
+
+The following review findings concern the earlier source-based implementation:
 
 Independent fresh-context review **found unique defects** in initial capture hashing: dictionary
 order was lost and custom builtin subclasses collapsed to their builtin value. Both were reproduced
@@ -474,10 +471,11 @@ interleavings (no violation found), blocked-put and flush ordering, empty values
 changes, nested subclass truncation, transaction rollback and unclosed-owner retention. The review
 was not a performance benchmark and did not run the complete repository suite.
 
-Claude Opus 5.5, convenience review `c1e067b6e066427b965267e5d7e74425`:
+Claude Opus 5.5, historical source-based convenience review `c1e067b6e066427b965267e5d7e74425`:
 **Found unique defect:** lazily reading source on first call could hash edited code while executing
 an older loaded function. A temporary-module regression reproduced a wrong hit. Source/capture
-identity now binds at decoration; codec resolution and database opening remain lazy. **Changed:**
+identity was changed to bind at decoration. The current loaded-code implementation permits lazy
+first-call binding without reading edited source. **Changed in that review:**
 source parse errors and captured classes give explicit-identity guidance; a child with no inherited
 cache recreates the inherited default lock; interpreter shutdown forbids reopening the default.
 **Added verification:** a late atexit handler cannot reopen the database after cleanup.

@@ -129,12 +129,8 @@ class FingerprintedComputationMixin:
         """Select effective settings; required when using the default fingerprint."""
         raise NotImplementedError
 
-    def fingerprint_dependencies(self) -> tuple[object, ...]:
-        """Declare additional Python definitions or fingerprintable dependencies."""
-        return ()
-
     def fingerprint(self) -> str:
-        """Hash loaded definitions, explicit configuration and declared dependencies."""
+        """Hash loaded definitions, selected configuration and statically resolved application helpers."""
         ...
 ```
 
@@ -144,44 +140,23 @@ This requirement is checked when using default fingerprinting rather than making
 fingerprint overrides abstract. Configuration is re-evaluated per call, so A→B→A restores identity.
 Resources, locks, counters, policy and timing attributes are never traversed implicitly.
 
-The automatic code boundary is loaded Python method definitions in the concrete class and its
-ordinary bases. It covers functions, static/class methods and property accessors, including
-inherited definitions and nested code. Exact framework bases (`FingerprintedComputationMixin`, `CachedStep`,
-`object`, `ABC`, `Protocol`, `Generic`) and typing-generated Protocol helpers are excluded.
-Domain Protocol method bodies remain included because explicit subclasses inherit concrete defaults. It is deliberately
-conservative: unused or overridden application methods can invalidate a result. There is no
-heuristic classifying arbitrary third-party packages as computation or infrastructure.
+The shared loaded-definition algorithm, helper traversal and external boundaries are authoritative
+in [Automatic computation helpers](automatic-helper-identity.md). Both decorators and computation
+classes use that algorithm. There is no manual dependency hook or decorator parameter.
 
-Definition hashing uses loaded code rather than reading a possibly edited source file: bytecode,
-exception tables, argument counts, runtime flags, names and recursively typed constants, plus
-evaluated defaults and captured nonlocals. Source locations and filenames are excluded. Non-executable docstring
-text changes are ignored; a docstring literal referenced by executable bytecode remains semantic; adding/removing a docstring can conservatively change the digest because
-Python can change constant indexes and bytecode. Cross-interpreter/compiler stability is not
-promised. Definitions must not be monkeypatched after their first fingerprint: definition digests
-are retained for fast repeated lookups. Configuration/dependencies must not mutate during a call.
+Class identity includes ordinary application bases, methods and supported immutable class constants.
+Exact framework bases are excluded; unused or overridden application methods can still invalidate
+entries. Unsupported class attributes must be represented through selected effective configuration
+when they affect the answer. A Path identifies its spelling, not file bytes.
 
-Immutable own-class scalar/tuple/frozenset constants are included automatically, including prompts and
-templates. Other class attributes (including regexes, Enum members and nested classes), metaclass/descriptor state, global helpers, model weights, files
-and environment are not inferred: select their effective values and declare actual dependencies.
-An explicitly declared Python definition hashes its bounded loaded implementation; a fingerprintable
-object supplies its own semantic digest. A Path identifies its pathname only, not file bytes.
-The implicit `__class__` closure used by `super()` and Python 3.14
-`__classdict__` annotation namespace are covered by selected class ancestry rather than recursively
-fingerprinting the class object/namespace. Python function captures (including wrapped methods) are
-recursively identified; recursive capture cycles require an explicit fingerprint. Python 3.14 annotation
-definitions are hashed as loaded code. CachedStep additionally includes an explicit output_type name;
-this tracks type selection without claiming automatic schema equivalence.
+`definition_hash(function_or_class)` exposes the shared loaded-definition digest for applications
+composing a complete process identity. `source_hash` remains a separate AST/source utility; cache
+identity does not read potentially edited source files to identify already loaded code.
 
-`definition_hash(function_or_class)` exposes the same loaded-definition digest for composing an
-explicit process_id. `source_hash` remains the AST/source utility: it reads the current source file
-on first use, so it does not guarantee identity of previously loaded code after that file changes. Bare `@cached` retains its existing
-source/default/nonlocal-capture inference at decoration time; this change does not turn it into
-transitive dependency discovery. Explicit `process_id` can compose actual definition/content hashes
-when that convenience boundary is insufficient. Neither API requires manually bumped version labels.
-
-No automatic Pydantic schema or validator equivalence is claimed. An author whose computation depends
-on an output definition must select its relevant contract or dependency. Equal projected values remain
-interchangeable where the declared semantics permit that, regardless of creation or producer history.
+No automatic Pydantic schema or validator equivalence is claimed. Equal projected values remain
+interchangeable where their declared semantics permit that, regardless of creation or producer
+history. Incompatible output contracts need their relevant identity represented or the computation's
+table cleared. CachedStep includes an explicit output_type name without claiming schema equivalence.
 
 ## Configuration encoding is a local boundary
 

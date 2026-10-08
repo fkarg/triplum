@@ -7,7 +7,7 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 The current task is an interface/concept audit, starting with identity and fingerprinting.
 The owner authorized automatic configured-computation identity from code, selected configuration
-and declared dependencies, without manually bumped version labels.
+and statically resolved application helpers, without manual dependency declarations or version labels.
 [Identity interfaces](../specs/identity-interfaces.md) records that contract and its review.
 `FingerprintedComputationMixin` and `CachedStep` now use explicit configuration hooks; value projections remain
 independent of creation history and computation definitions. The owner also authorized the
@@ -15,8 +15,10 @@ independent of creation history and computation definitions. The owner also auth
 identity for use with bare decorators, with explicit exclusions and custom projections.
 `FingerprintedDataModelMixin` supplies the same data identity to existing Pydantic bases;
 `FingerprintedComputationMixin` names the separate computation helper.
-Automatic helper discovery and optional runtime tracing remain under design review; the current
-implementation still uses explicit dependency hooks and the existing decorator identity boundary.
+Automatic helper discovery uses the shared loaded-definition engine; decorators freeze identity on
+first use, permitting helpers defined later in a module. Optional runtime tracing remains pending
+implementation. See [computation dependencies](../specs/automatic-helper-identity.md) for its approved
+design and the bounded static inference guarantees.
 Record identity migration and further interfaces remain outside this approval.
 
 The dirty-serving API-link regression is fixed in `18c29ca`: the hook restores skipped module
@@ -26,7 +28,7 @@ The owner authorized the optional computation cache and a small reuse example fo
 `triplum.cache` and `examples/cached_pipeline.py` are the first implementation. Read:
 
 - [Cache interfaces](../specs/cache-interfaces.md) for declarations, guarantees and peer reviews.
-- [Automatic identity implementation](automatic-computation-identity.md) for the current slice.
+- [Automatic helper implementation](automatic-helper-identity.md) for the current slice.
 - [Initial implementation plan](cache-implementation.md#progress-and-rulings) for progress and verification.
 - [Earlier identity/cache analysis](../specs/cached-pipeline.md) for research and tradeoffs.
 

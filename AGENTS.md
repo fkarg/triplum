@@ -28,12 +28,13 @@ contains check commands and hook setup.
   Source/Chunk ID migration or the remaining ingestion/indexing interfaces.
 - The owner also requested bare `@cached` and `@cache.cached` convenience defaults. The shared
   cache opens lazily, and concrete return annotations select Pydantic serialization. Automatic
-  function identity covers source/defaults/captures; external dependencies require explicit
-  process identity. Keep the detailed guarantees in the cache guide and interface spec.
+  function identity covers loaded definitions, settings and statically resolved application helpers
+  on first use. External content needs effective identity in inputs/settings or a full process override. Keep the detailed guarantees in the cache guide and interface spec.
 - Fingerprints should follow relevant data/structure and computation definitions, without requiring
   manually maintained version numbers. Explicit field projections do not automatically detect
   schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
-  configuration for FingerprintedComputationMixin/CachedStep, with explicit external dependencies and no manual counters.
+  configuration for FingerprintedComputationMixin/CachedStep, with automatic bounded helper discovery
+  and no manual dependency declarations or counters.
   This does not approve record/dataset identity migration or whole-schema equivalence.
 - The owner approved `datatype.FingerprintedDataModel`: semantic field-value identity for Pydantic
   data, explicit bookkeeping exclusions and custom projections. Keep this separate from the
