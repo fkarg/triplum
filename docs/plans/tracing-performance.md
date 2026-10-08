@@ -53,6 +53,46 @@ validate manifests, serialize results or access a cache. Actual implementation m
 must distinguish traced misses, validated hits, ordinary cache hits and uncached execution.
 The primitive numbers cannot establish the final break-even point.
 
+## Production static-cache baseline
+
+```sh
+uv run python scripts/benchmark_tracing.py --suite cache > /tmp/cache-results.json
+```
+
+[Raw static-cache results](tracing-performance-static.json) record the baseline implementation
+at commit `66fe652`. Automatic helper discovery and tracing are not present in that revision.
+Re-running the script after those changes measures the new implementation instead.
+
+These timings use frozen `FingerprintedDataModel` inputs/outputs, default automatic function
+identity, Pydantic serialization and a real temporary SQLite database. Initial calls populate
+the cache and `Cache.flush()` drains pending writes before measurement, so hits actually
+read SQLite. Model construction of the inputs, decoration, codec initialization and opening
+the database are outside the measured paths. The computations have no side-effect counters.
+
+| Workload | Uncached | Static hit | Hit / uncached |
+| --- | ---: | ---: | ---: |
+| Normalize two words | 1.213 µs | 26.081 µs | 21.50× |
+| Normalize 800 words | 82.511 µs | 35.261 µs | 0.43× |
+| 10,000 arithmetic iterations | 270.175 µs | 22.597 µs | 0.084× |
+
+For these inputs, a warm hit must avoid roughly 23–35 µs of computation to pay for itself.
+Caching the tiny operation costs much more than recomputing it. The larger text transform
+saves about 47 µs per warm hit; the arithmetic operation saves about 248 µs. These are
+steady-state hit comparisons, not a full hit-rate break-even calculation: miss overhead and
+traced dependency validation are not measured yet.
+
+The same script independently times the actual production component methods. Key creation
+is outside the `get` measurements, and the component row is seeded through `Cache.put` and
+flushed. The numbers describe the methods in isolation; they should not be summed or
+subtracted to claim a precise breakdown of the complete hit.
+
+| Component | Two words | 800 words | Arithmetic input |
+| --- | ---: | ---: | ---: |
+| Input `fingerprint()` | 8.646 µs | 20.441 µs | 8.728 µs |
+| `SQLiteBackend.get` with prepared key | 2.462 µs | 2.929 µs | 2.587 µs |
+| `Cache.get` with prepared key | 8.378 µs | 9.154 µs | 8.635 µs |
+| `PydanticCodec.decode` | 0.557 µs | 2.639 µs | 0.565 µs |
+
 [PEP 669](https://peps.python.org/pep-0669/#performance) explains why callback frequency
 and work determine monitoring cost. The
 [Python monitoring API](https://docs.python.org/3.14/library/sys.monitoring.html)
