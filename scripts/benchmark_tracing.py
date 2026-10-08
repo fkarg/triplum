@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import CodeType
+from types import CodeType, FunctionType
 
 from pydantic import ConfigDict
 
@@ -31,6 +31,9 @@ class TextInput(FingerprintedDataModel):
     model_config = ConfigDict(frozen=True)
     text: str
     rounds: int = 0
+
+    def normalize(self) -> str:
+        return normalize_word(self.text)
 
 
 class TextOutput(FingerprintedDataModel):
@@ -47,6 +50,10 @@ def cached_compute_heavy(item: TextInput) -> TextOutput:
     for index in range(item.rounds):
         total += index % 13
     return TextOutput(text=f"{item.text.casefold()}:{total}")
+
+
+def cached_dynamic_dispatch(item: TextInput) -> TextOutput:
+    return TextOutput(text=item.normalize())
 
 
 def measure_calls(
@@ -79,7 +86,72 @@ def measure_calls(
     }
 
 
-def benchmark_cache(repeat: int, warmup: int, target_ms: float) -> dict[str, object]:
+def assert_cached_hit(
+    compute: FunctionType, wrapped: Callable[[TextInput], TextOutput], item: TextInput
+) -> None:
+    """Verify that a measured hit really skips execution, without mutating the computation."""
+    monitoring = sys.monitoring
+    tool_id = next(value for value in range(6) if value != 4 and monitoring.get_tool(value) is None)
+    entries = []
+
+    def observe(code: CodeType, offset: int) -> None:
+        entries.append(code)
+
+    monitoring.use_tool_id(tool_id, "benchmark-hit-verification")
+    try:
+        monitoring.register_callback(tool_id, monitoring.events.PY_START, observe)
+        monitoring.set_local_events(tool_id, compute.__code__, monitoring.events.PY_START)
+        wrapped(item)
+    finally:
+        monitoring.free_tool_id(tool_id)
+    assert not entries, "claimed cache hit executed the underlying computation"
+
+
+def measure_misses(
+    calls: dict[str, Callable[[TextInput], TextOutput]],
+    item: TextInput,
+    cache: Cache,
+    repeat: int,
+    batch_size: int,
+) -> dict[str, dict[str, object]]:
+    samples: dict[str, list[float]] = {name: [] for name in calls}
+    flush_samples: dict[str, list[float]] = {name: [] for name in calls}
+    names = tuple(calls)
+    for index in range(repeat):
+        for name in names[index % len(names) :] + names[: index % len(names)]:
+            inputs = [
+                item.model_copy(update={"text": f"{item.text} miss-{name}-{index}-{number}"})
+                for number in range(batch_size)
+            ]
+            compute = calls[name]
+
+            def batch(
+                inputs: list[TextInput] = inputs,
+                compute: Callable[[TextInput], TextOutput] = compute,
+            ) -> None:
+                for fresh_item in inputs:
+                    compute(fresh_item)
+
+            samples[name].append(timeit.Timer(batch).timeit(number=1) * 1e9 / batch_size)
+            flush_samples[name].append(
+                timeit.Timer(cache.flush).timeit(number=1) * 1e9 / batch_size
+            )
+    return {
+        name: {
+            "iterations_per_sample": batch_size,
+            "median_ns": statistics.median(values),
+            "median_us": statistics.median(values) / 1_000,
+            "samples_ns": values,
+            "flush_amortized_median_us": statistics.median(flush_samples[name]) / 1_000,
+            "flush_amortized_samples_ns": flush_samples[name],
+        }
+        for name, values in samples.items()
+    }
+
+
+def benchmark_cache(
+    repeat: int, warmup: int, target_ms: float, traced: bool, miss_batch: int
+) -> dict[str, object]:
     workloads = {
         "tiny_text": (cached_text_transform, TextInput(text="Alpha, beta!")),
         "text_800_words": (cached_text_transform, TextInput(text=TEXT)),
@@ -87,6 +159,11 @@ def benchmark_cache(repeat: int, warmup: int, target_ms: float) -> dict[str, obj
             cached_compute_heavy,
             TextInput(text="Alpha", rounds=10_000),
         ),
+        "compute_100000_iterations": (
+            cached_compute_heavy,
+            TextInput(text="Alpha", rounds=100_000),
+        ),
+        "dynamic_method_dispatch": (cached_dynamic_dispatch, TextInput(text="Alpha!")),
     }
     results = {}
     with TemporaryDirectory(prefix="triplum-benchmark-") as directory:
@@ -94,10 +171,19 @@ def benchmark_cache(repeat: int, warmup: int, target_ms: float) -> dict[str, obj
         with Cache(backend) as cache:
             for name, (compute, item) in workloads.items():
                 wrapped = cached(compute, cache=cache)
+                traced_wrapped = (
+                    cached(compute, cache=cache, dependency_mode="traced") if traced else None
+                )
                 expected = compute(item)
                 assert wrapped(item) == expected
+                if traced_wrapped is not None:
+                    assert traced_wrapped(item) == expected
                 cache.flush()
                 assert wrapped(item) == expected
+                assert_cached_hit(compute, wrapped, item)
+                if traced_wrapped is not None:
+                    assert traced_wrapped(item) == expected
+                    assert_cached_hit(compute, traced_wrapped, item)
                 codec = PydanticCodec(TextOutput)
                 payload = codec.encode(expected)
                 # A separate real row supports component timing without relying on private
@@ -106,30 +192,46 @@ def benchmark_cache(repeat: int, warmup: int, target_ms: float) -> dict[str, obj
                 assert cache.put(key, payload)
                 cache.flush()
                 assert backend.get(key) == payload
-                paths = measure_calls(
-                    {"uncached": partial(compute, item), "static_hit": partial(wrapped, item)},
-                    repeat,
-                    warmup,
-                    target_ms,
-                )
-                components = measure_calls(
-                    {
-                        "input_fingerprint": item.fingerprint,
-                        "sqlite_get_precomputed_key": partial(backend.get, key),
-                        "cache_get_precomputed_key": partial(cache.get, key),
-                        "pydantic_decode": partial(codec.decode, payload),
-                    },
-                    repeat,
-                    warmup,
-                    target_ms,
-                )
+                calls: dict[str, Callable[[], object]] = {
+                    "uncached": partial(compute, item),
+                    "static_hit": partial(wrapped, item),
+                }
+                if traced_wrapped is not None:
+                    calls["traced_hit"] = partial(traced_wrapped, item)
+                paths = measure_calls(calls, repeat, warmup, target_ms)
+                component_calls: dict[str, Callable[[], object]] = {
+                    "input_fingerprint": item.fingerprint,
+                    "sqlite_get_precomputed_key": partial(backend.get, key),
+                    "cache_get_precomputed_key": partial(cache.get, key),
+                    "pydantic_decode": partial(codec.decode, payload),
+                }
+                if traced:
+                    from triplum.utils.fingerprint import _snapshot
+
+                    component_calls["root_definition_snapshot"] = partial(_snapshot, compute)
+                components = measure_calls(component_calls, repeat, warmup, target_ms)
                 assert wrapped(item) == expected
+                misses = {}
+                if traced_wrapped is not None:
+                    assert_cached_hit(compute, traced_wrapped, item)
+                    misses = measure_misses(
+                        {
+                            "uncached": compute,
+                            "static_miss": wrapped,
+                            "traced_miss": traced_wrapped,
+                        },
+                        item,
+                        cache,
+                        repeat,
+                        miss_batch,
+                    )
                 assert cache.skipped_writes == 0
                 results[name] = {
                     "input_utf8_bytes": len(item.text.encode()),
                     "output_payload_bytes": len(payload),
                     "paths": paths,
                     "components": components,
+                    "misses": misses,
                 }
     return {
         "workloads": results,
@@ -140,6 +242,8 @@ def benchmark_cache(repeat: int, warmup: int, target_ms: float) -> dict[str, obj
             "gc": "disabled by timeit during each sample",
             "components": "actual production methods measured independently; not additive estimates",
             "exclusions": "decoration, first-use initialization, DB open and writes excluded from hits",
+            "misses": "disjoint prebuilt inputs; writer runs concurrently; flush separately timed",
+            "hit_verification": "PY_START on original compute must receive zero entries",
         },
     }
 
@@ -191,15 +295,33 @@ def collect(code: CodeType, offset: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=("primitive", "cache"), default="primitive")
+    parser.add_argument(
+        "--traced", action="store_true", help="include production traced hits/misses"
+    )
+    parser.add_argument("--miss-batch", type=int, default=50)
     parser.add_argument("--repeat", type=int, default=9)
     parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--target-ms", type=float, default=50)
     args = parser.parse_args()
-    if args.repeat < 3 or args.warmup < 1 or args.target_ms <= 0:
-        parser.error("repeat must be >= 3, warmup >= 1, and target-ms > 0")
+    if args.repeat < 3 or args.warmup < 1 or args.target_ms <= 0 or args.miss_batch < 1:
+        parser.error("repeat must be >= 3, warmup >= 1, target-ms > 0 and miss-batch >= 1")
 
     if args.suite == "cache":
-        report = benchmark_cache(args.repeat, args.warmup, args.target_ms)
+        source_paths = [
+            Path(__file__),
+            *Path("src/triplum/cache").glob("*.py"),
+            Path("src/triplum/utils/fingerprint.py"),
+            Path("src/triplum/datatype/fingerprint.py"),
+        ]
+        source_hashes = {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in source_paths
+        }
+        report = benchmark_cache(
+            args.repeat, args.warmup, args.target_ms, args.traced, args.miss_batch
+        )
+        assert source_hashes == {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in source_paths
+        }, "source files changed during measurement; rerun against a stable implementation"
         report.update(
             measured_at_utc=datetime.now(UTC).isoformat(),
             environment={
@@ -211,6 +333,7 @@ def main() -> None:
                 ).strip(),
             },
             parameters=vars(args),
+            source_sha256=source_hashes,
         )
         print(json.dumps(report, indent=2))
         return
