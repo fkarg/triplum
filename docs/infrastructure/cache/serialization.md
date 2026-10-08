@@ -2,7 +2,7 @@
 
 A [`Codec`][triplum.cache.Codec] converts a fingerprintable output value to bytes and reconstructs
 it without changing its semantic content or fingerprint. Storage sees only those bytes. Use a
-custom codec when your output is not a Pydantic model or needs another representation.
+custom codec when you need another representation, including for non-Pydantic values.
 
 ## Use the default
 
@@ -27,29 +27,21 @@ print(lowercase(Text(text="Hello")).text)
 ```
 
 Save it as a Python file and run it to print `hello`. The decorator opens the shared cache lazily.
-The following example replaces serialization for an external, non-Pydantic value type.
+The following example changes only how the text value is encoded.
 
 ## Implement a codec
 
-This codec stores the single text field of a frozen dataclass as UTF-8. Both the input and the
-output implement `fingerprint()`. Save the complete example as `cache_serialization.py` and run
-`uv run python cache_serialization.py` from a checkout:
+This codec stores `Text` as UTF-8 instead of JSON. The data model and decorator work as before;
+only `codec=` changes. Save this complete example as `cache_serialization.py` and run
+`uv run python cache_serialization.py`:
 
 ```python
-from dataclasses import dataclass
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-from triplum.cache import Cache, Codec, SQLiteBackend
-from triplum.utils.cache import content_key
+from triplum.cache import Codec, cached
+from triplum.datatype import FingerprintedModel
 
 
-@dataclass(frozen=True)
-class Text:
+class Text(FingerprintedModel):
     text: str
-
-    def fingerprint(self) -> str:
-        return content_key("example.Text", {"text": self.text})
 
 
 class TextCodec(Codec[Text]):
@@ -57,28 +49,26 @@ class TextCodec(Codec[Text]):
         return value.text.encode("utf-8")
 
     def decode(self, payload: bytes, /) -> Text:
-        return Text(payload.decode("utf-8"))
+        return Text(text=payload.decode("utf-8"))
 
 
 codec = TextCodec()
-sample = Text("Grüße")
+sample = Text(text="Grüße")
 assert codec.decode(codec.encode(sample)) == sample
 assert codec.decode(codec.encode(sample)).fingerprint() == sample.fingerprint()
 
-with TemporaryDirectory() as directory:
-    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
 
-        @cache.cached(codec=codec)
-        def lowercase(value: Text) -> Text:
-            print("Computing")
-            return Text(value.text.lower())
+@cached(codec=codec)
+def lowercase(value: Text) -> Text:
+    print("Computing")
+    return Text(text=value.text.lower())
 
-        print(lowercase(Text("Grüße")).text)
-        cache.flush()
-        print(lowercase(Text("Grüße")).text)
+
+print(lowercase(sample).text)
+print(lowercase(sample).text)
 ```
 
-Output:
+With an empty cache:
 
 ```text
 Computing
@@ -86,11 +76,13 @@ grüße
 grüße
 ```
 
-The first call computes and encodes a result. After `flush()`, the second call decodes the stored
-bytes without running the function. The temporary SQLite cache is owned by the context and closed
-before the directory is removed. The decorator derives computation identity from the function;
-changes to an external codec are not discovered automatically. See
-[computation identities](computations.md) for the boundary.
+The first call computes and encodes a result; the second decodes the cached bytes without running
+the function. Results persist, so another run may print no `Computing` line. The shared cache and
+its lifetime use the usual defaults; see [ownership](policies.md) to change them.
+
+The same codec interface supports [external value types](fingerprints.md#use-an-external-value-type)
+that supply their own fingerprint. Changes to an external codec are not discovered automatically;
+see [computation identities](computations.md) for that boundary.
 
 ## Choose the default or an override
 

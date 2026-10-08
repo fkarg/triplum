@@ -42,13 +42,11 @@ Declare fields that consumers do not use in `fingerprint_exclude`. Exclusions af
 not serialization, so the field remains available in stored results:
 
 ```python
-from typing import ClassVar
-
 from triplum.datatype import FingerprintedModel
 
 
 class Text(FingerprintedModel):
-    fingerprint_exclude: ClassVar[frozenset[str]] = frozenset({"observed_at"})
+    fingerprint_exclude = frozenset({"observed_at"})
 
     text: str
     observed_at: int
@@ -65,6 +63,8 @@ True
 2
 ```
 
+The base already declares this setting as a class variable; assigning it needs no new annotation.
+If you add an annotation, retain `ClassVar[frozenset[str]]` rather than declaring a data field.
 Subclasses inherit exclusions; assigning a new set replaces the inherited set. Exclusions must
 name declared model fields; unknown names fail when the class is defined. Allowed extra fields
 always contribute unless a custom projection removes them. There is no automatic timestamp filter:

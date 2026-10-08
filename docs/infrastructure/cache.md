@@ -50,11 +50,8 @@ may print no `Computing` lines. The `-> Text` annotation selects Pydantic serial
 the inherited `Text.fingerprint()` identifies its field values.
 [Value fingerprints](cache/fingerprints.md) explains that separate data contract.
 
-The default database is `$XDG_CACHE_HOME/triplum/cache.sqlite`, falling back to
-`~/.cache/triplum/cache.sqlite`. Importing and decorating do not open it. Accepted writes run in
-the background and remain readable immediately; normal process exit drains them. For explicit
-lifetime control, use [`close_default_cache()`][triplum.cache.close_default_cache] or an owned
-cache as described in [ownership and write policy](cache/policies.md).
+The cache opens on the first call and is shared by decorated functions. For its location, explicit
+cleanup, or write policy, see [ownership and write policy](cache/policies.md).
 
 Function identity covers source, defaults and captures. Run the example from a file so the source
 is available. External helpers and model dependencies need explicit treatment; see
@@ -64,14 +61,8 @@ is available. External helpers and model dependencies need explicit treatment; s
 
 Ordinary functions remain uncached, and several cached functions share the same default cache.
 Each computation has its own namespace. Use `@cache.cached` with an explicitly owned `Cache`
-when choosing storage or lifetime; use `CachedStep` when an operation already needs a configured
-class. Neither is required for the decorator above.
-
-| Part | Responsibility | Default |
-| --- | --- | --- |
-| Decorator or `CachedStep` | Identify a call and serialize its result | Pydantic output model from the return annotation |
-| `Cache` and storage backend | Look up results and persist accepted writes | SQLite, with a background writer |
-| Admission policy | Decide what happens when pending writes fill the budget | Skip the new write and count it |
+when choosing storage or lifetime. A [function factory](cache/computations.md) can capture settings;
+`CachedStep` is available for operations already implemented as classes.
 
 ## Choose the next concept
 
@@ -98,6 +89,3 @@ references. Equal text may reuse a vector computation without merging source ide
 another source's provenance. [Value fingerprints](cache/fingerprints.md#share-content-without-sharing-provenance)
 explain the boundary; current Source/Chunk fingerprint properties cannot be used directly as cache
 values.
-
-The former `triplum.utils.cache.Cache` file utility has been removed. Use `triplum.cache.Cache`;
-`triplum.utils.cache` contains only the `canonical_json` and `content_key` identity helpers.

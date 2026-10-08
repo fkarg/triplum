@@ -66,42 +66,10 @@ a `fingerprint()` implementation used by steps such as
 [`FixedSize`][triplum.steps.chunking.FixedSize]. It combines the qualified class name, loaded application method definitions,
 immutable class constants, explicit configuration and declared dependencies. It does not scan instance attributes.
 
-```python
-from triplum.utils.fingerprint import Fingerprinted
-
-
-class Prefix(Fingerprinted):
-    def __init__(self, prefix: str) -> None:
-        self.prefix = prefix
-        self.calls = 0
-
-    def fingerprint_config(self) -> dict[str, object]:
-        return {"prefix": self.prefix}
-
-    def __call__(self, text: str) -> str:
-        self.calls += 1
-        return self.prefix + text
-
-
-first = Prefix("note: ")
-first("hello")
-print(first.fingerprint() == Prefix("note: ").fingerprint())
-print(first.fingerprint() == Prefix("warning: ").fingerprint())
-```
-
-Output:
-
-```text
-True
-False
-```
-
-The counter does not change the result, so the configuration hook omits it. A stateless
-implementation returns `{}`. Adding a resource attribute does not change identity. A changed
-application method or selected setting does; inherited application methods are included too.
-Pure Python definitions do not need source files. The digest describes loaded code rather than
-rereading source files after import. Moving the
-class to another module changes its qualified name and therefore its identity.
+The initial `FixedSize` example uses this implementation: equal sizes identify equivalent
+chunkers, while different sizes identify different computations. Settings are selected explicitly;
+runtime counters and clients stay out. For cached functions with settings, start with a
+[function factory](cache/computations.md). The same guide shows `CachedStep` for existing classes.
 
 The [computation guide](cache/computations.md#select-settings-and-dependencies) explains dependency
 selection, `definition_hash`, supported class constants and the limits of automatic inference.

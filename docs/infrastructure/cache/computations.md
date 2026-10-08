@@ -33,9 +33,53 @@ Save it as a Python file to make the function source available. The
 [value fingerprint](fingerprints.md) answers which inputs are equivalent; the decorator handles
 which computation runs on them. No manually maintained version label is needed.
 
-The automatic function identity covers source, defaults and captures; [its boundaries](#use-automatic-function-identity-where-it-fits)
-are below. Most functions need no further configuration. The following sections cover configured
-classes and explicit dependencies when those are part of your application.
+## Configure a function with a factory
+
+Capture a setting in a function factory; the decorator includes its value in computation identity.
+Continue with the imports and `Text` model above:
+
+```python
+def make_append(suffix: str):
+    @cached
+    def append(value: Text) -> Text:
+        print("Computing", suffix)
+        return Text(text=value.text + suffix)
+
+    return append
+
+
+value = Text(text="Hello")
+for suffix in ("!", "!", "?", "!"):
+    print(make_append(suffix)(value).text)
+```
+
+With an empty cache:
+
+```text
+Computing !
+Hello!
+Hello!
+Computing ?
+Hello?
+Hello!
+```
+
+Each factory call creates a function, but equal captured settings select the same computation.
+Changing `!` to `?` selects another entry; returning to `!` reuses the earlier result.
+On later runs, persisted entries can also remove the `Computing` lines. Keep captured settings
+unchanged after decoration.
+
+## Use automatic function identity where it fits
+
+Bare `@cached` and `@cache.cached` hash the function's source, module/qualified name, evaluated
+defaults and nonlocal captures when decorated. Globals, called helpers, external files, model
+weights and environment settings are not discovered: use an explicit `process_id` for them.
+
+Defaults and captures can contain plain scalar values, lists, tuples, string-keyed dictionaries
+or objects with `fingerprint()`. List and tuple identities differ; dictionary iteration order is
+preserved. `Path` and Pydantic models without a fingerprint method are not directly supported.
+Lambdas, source-unavailable functions and callable objects need explicit identity. Save these
+examples as Python files; source-based inference cannot generally work from stdin or a REPL.
 
 ## Include a helper without introducing a class
 
@@ -80,69 +124,43 @@ or clear existing entries when that contract becomes incompatible. A JSON schema
 represent validator behavior. The fixed-schema example above tracks its two functions; it does
 not promise automatic invalidation for changes to the `Text` model.
 
-## When the operation needs a configured class
+## Use a class when the operation needs one
 
-[`CachedStep`][triplum.cache.CachedStep] implements the cache lookup and `__call__`. Implement two
-methods: `compute(value)` performs the work, and `fingerprint_config()` selects its effective
-settings. The inherited `fingerprint()` combines those settings with the loaded computation code. Save this complete example as a `.py` file and run it with `uv run python`:
+[`CachedStep`][triplum.cache.CachedStep] is optional. It supplies cache lookup and `__call__` for
+classes with a `compute(value)` method and a `fingerprint_config()` hook selecting effective
+settings. Continue with the `Text` model above:
 
 ```python
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-from triplum.cache import Cache, CachedStep, SQLiteBackend
-from triplum.datatype import FingerprintedModel
-
-
-class Text(FingerprintedModel):
-    text: str
+from triplum.cache import CachedStep
 
 
 class Append(CachedStep[Text, Text]):
-    def __init__(self, suffix: str, cache: Cache | None) -> None:
-        super().__init__(cache=cache)
+    def __init__(self, suffix: str) -> None:
+        super().__init__()
         self.suffix = suffix
 
     def fingerprint_config(self) -> dict[str, object]:
         return {"suffix": self.suffix}
 
     def compute(self, value: Text) -> Text:
-        print("Computing", self.suffix)
         return Text(text=value.text + self.suffix)
 
 
-with TemporaryDirectory() as directory:
-    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
-        value = Text(text="Hello")
-        for suffix in ("!", "!", "?", "!"):
-            print(Append(suffix, cache)(value).text)
+print(Append("!")(Text(text="Hello")).text)
 ```
 
-```text
-Computing !
-Hello!
-Hello!
-Computing ?
-Hello?
-Hello!
-```
+This prints `Hello!`. The inherited fingerprint combines loaded computation code with selected
+settings, so equivalent instances can reuse results. `super().__init__()` uses the shared cache;
+the `compute` return annotation selects serialization. Counters, clients, locks and cache resources
+stay outside identity unless explicitly selected. Return `{}` for a stateless class. Configuration
+is read on each call; do not change it while computation runs.
 
-Equivalent instances share the same computation code and `!` configuration; changing to `?`
-selects a different entry. Returning to `!` reuses its earlier result. The cache owner is not
-configuration and does not enter the fingerprint.
-
-The `compute` return annotation selects Pydantic serialization. The step borrows its cache and
-never closes it. Calling `super().__init__()` without arguments instead uses the lazy shared
-default; pass `cache=None` to bypass caching. If combining the mixin with a domain Protocol,
-put `CachedStep` first in the bases. It does not automatically adapt existing indexing steps'
-input/output shapes to fingerprintable values.
+Pass `cache=None` to the base initializer to bypass caching, or supply an explicit owner as
+shown in [cache ownership](policies.md). A step borrows its owner and never closes it.
+When combining with a domain Protocol, put `CachedStep` first in the bases. This does not adapt
+existing indexing steps' input/output shapes to fingerprintable values.
 
 ## Select settings and dependencies
-
-Return `{}` from `fingerprint_config()` for a stateless step. Select only settings that affect
-its result: the mixin never scans all instance attributes. Counters, clients, locks, cache owners
-and queue policies stay out unless you explicitly return them. Configuration is read on each call;
-do not mutate it while a computation is running.
 
 Supported configuration contains plain finite numbers, strings, booleans, `None`, lists, tuples,
 string-keyed dictionaries, paths and objects implementing `fingerprint()`. Mapping insertion order
@@ -150,15 +168,13 @@ does not affect this identity; use an ordered list of pairs when the computation
 A path identifies its spelling, not the contents of the file at that path. Fingerprint file bytes
 or the model's actual identity when they affect the result.
 
-The mixin hashes the qualified class name and loaded method definitions on the class and its
-ordinary bases, including properties, static/class methods, annotation definitions and immutable
-class constants (plain scalars and recursively immutable tuples/frozensets). Domain Protocol
-method bodies are included too; exact framework plumbing is excluded; overridden or unused application methods can
-conservatively invalidate entries too. Pure Python classes do not need inspectable source files.
-Editing those definitions changes computation identity without a manually bumped label. Comments and non-executed docstring text do not affect it. A literal also used by executable code
-still contributes; adding or removing a docstring can conservatively change the digest. Editing a source file does not change an already loaded class:
-reload the implementation to run and identify the new code. Identities are not guaranteed stable
-across Python interpreter versions.
+Loaded class identity covers the qualified name, application method definitions and supported
+immutable class constants, including ordinary bases. Unused or overridden methods can also
+invalidate entries. Comments and non-executed docstring text do not affect it; adding/removing
+a docstring can conservatively change it. Pure Python classes do not need inspectable source
+files. See [`definition_hash()`][triplum.utils.fingerprint.definition_hash] for the precise
+supported definitions and exclusions. Reload edited implementations to run and identify the new
+code; identities are not guaranteed stable across Python interpreter versions.
 
 Other class attributes, including compiled regexes, Enum members, mutable containers and nested
 classes, are not inferred. Neither are globals, helper functions or external models discovered by
@@ -219,25 +235,12 @@ consumers of those projected fields, even if upstream histories differ. That doe
 that another output model can decode an older stored payload. An explicit `output_type` contributes
 its qualified name to the default `CachedStep` identity, not its full schema.
 
-## Use automatic function identity where it fits
-
-Bare `@cached` and `@cache.cached` infer identity for ordinary Python functions. This convenience
-hashes source, module/qualified name, evaluated defaults and nonlocal captures at decoration.
-Keep captured configuration unchanged afterward. Globals, called helpers, external files, model
-weights and environment settings are not discovered: use an explicit `process_id` for them.
-
-Defaults and captures can contain plain scalar values, lists, tuples, string-keyed dictionaries
-or objects with `fingerprint()`. List and tuple identities differ; dictionary iteration order is
-preserved. `Path` and Pydantic models without a fingerprint method are not directly supported.
-Lambdas, source-unavailable functions and callable objects need explicit identity. Run source-based
-examples from files rather than stdin or a REPL.
-
 ## Use the same mixin without caching
 
 [`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] provides these configuration and
 dependency hooks independently of `CachedStep`. Use it for an ordinary callable that needs
-computation identity without cache lookup; [configured-object identity](../fingerprints.md#configured-object-identity)
-shows a small example. `CachedStep` already inherits it, so no extra mixin base is needed.
+computation identity without cache lookup, as in the `Normalize` example above.
+[Configured-object identity](../fingerprints.md#configured-object-identity) explains its use by reference steps. `CachedStep` already inherits it, so no extra mixin base is needed.
 
 The decorator's source/default/capture algorithm is separate. Supply `process_id` when composing
 its identity yourself; that replaces inference, so include relevant computation code as well as
