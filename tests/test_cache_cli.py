@@ -77,8 +77,22 @@ def test_stats_and_clear_real_cache(tmp_path: Path) -> None:
         result = run_cli(tmp_path, "cache", "stats", "--path", str(path), "--details", "--json")
         assert result.returncode == 0, result.stderr
         assert json.loads(result.stdout)["computations"] == [
-            {"computation": first.hex(), "entries": 1, "payload_bytes": 3},
-            {"computation": second.hex(), "entries": 1, "payload_bytes": 4},
+            {
+                "computation": first.hex(),
+                "entries": 1,
+                "payload_bytes": 3,
+                "name": None,
+                "source_path": None,
+                "source_line": None,
+            },
+            {
+                "computation": second.hex(),
+                "entries": 1,
+                "payload_bytes": 4,
+                "name": None,
+                "source_path": None,
+                "source_line": None,
+            },
         ]
         result = run_cli(
             tmp_path, "cache", "clear", "--path", str(path), "--computation", first.hex(), "--json"
@@ -124,7 +138,14 @@ def test_stats_text_and_metadata_only_json(
         assert output.err == ""
         assert main(["cache", "stats", "--path", str(path), "--json"]) == 0
         assert json.loads(capsys.readouterr().out)["computations"] == [
-            {"computation": process.hex(), "entries": None, "payload_bytes": None}
+            {
+                "computation": process.hex(),
+                "entries": None,
+                "payload_bytes": None,
+                "name": None,
+                "source_path": None,
+                "source_line": None,
+            }
         ]
     finally:
         backend.close()

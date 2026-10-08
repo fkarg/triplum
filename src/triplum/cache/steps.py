@@ -10,7 +10,14 @@ from typing import get_type_hints, overload
 from triplum.cache.codecs import PydanticCodec
 from triplum.cache.defaults import default_cache
 from triplum.cache.identity import function_fingerprint
-from triplum.cache.protocols import CacheKey, CachePolicy, Codec, Fingerprintable, _DefaultCache
+from triplum.cache.protocols import (
+    CacheKey,
+    CachePolicy,
+    Codec,
+    ComputationMetadata,
+    Fingerprintable,
+    _DefaultCache,
+)
 from triplum.cache.runtime import Cache
 from triplum.utils.cache import content_key
 from triplum.utils.fingerprint import _FRAMEWORK_BASES, FingerprintedComputationMixin
@@ -29,8 +36,9 @@ def _call[I: Fingerprintable, O: Fingerprintable](
     compute: Callable[[I], O],
     codec: Codec[O],
     policy: CachePolicy | None,
+    metadata: ComputationMetadata | None = None,
 ) -> O:
-    key = CacheKey(process, _digest(item.fingerprint()))
+    key = CacheKey(process, _digest(item.fingerprint()), metadata=metadata)
     payload = cache.get(key)
     if payload is not None:
         return codec.decode(payload)
@@ -106,6 +114,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
         if cache is None:
             return function
         identity = process
+        metadata = ComputationMetadata.from_callable(function)
         selected: Codec[O] | None = None
         lock = Lock()
 
@@ -119,7 +128,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
                     if selected is None:
                         selected = _codec(function, output_type, codec)
             owner = default_cache() if cache is _DefaultCache.SHARED else cache
-            return _call(owner, identity, item, function, selected, policy)
+            return _call(owner, identity, item, function, selected, policy, metadata)
 
         vars(call)["_triplum_compute"] = function
         vars(call)["_triplum_process_id"] = process_id
@@ -150,6 +159,7 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         self._output_type = output_type
         self._codec_lock = Lock()
         self._policy = policy
+        self._computation_metadata = ComputationMetadata.from_callable(self.compute)
 
     def __call__(self, item: I, /) -> O:
         if self._cache is None:
@@ -160,7 +170,13 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
                     self._codec = _codec(self.compute, self._output_type, None)
         owner = default_cache() if self._cache is _DefaultCache.SHARED else self._cache
         return _call(
-            owner, _digest(self.fingerprint()), item, self.compute, self._codec, self._policy
+            owner,
+            _digest(self.fingerprint()),
+            item,
+            self.compute,
+            self._codec,
+            self._policy,
+            self._computation_metadata,
         )
 
     def fingerprint(self) -> str:

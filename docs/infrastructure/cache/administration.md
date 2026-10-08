@@ -83,9 +83,9 @@ uv run triplum cache clear --path "$cache_demo_dir/cache.sqlite" \
 uv run triplum cache clear --path "$cache_demo_dir/cache.sqlite" --no-input
 ```
 
-Both commands accept `--path` and `--computation`. Leave off `--path` to administer the shared
-user cache; leave off `--computation` to select all recognized computation tables. A selector
-must be an exact full SHA-256 fingerprint, as shown by stats. Uppercase hexadecimal is accepted,
+Both commands accept `--path` and either `--computation` or `--name`. Leave off `--path` to
+administer the shared user cache; omit both selectors to select all recognized computation tables.
+The `--computation` selector requires an exact full SHA-256 fingerprint, as shown by stats. Uppercase hexadecimal is accepted,
 but abbreviated digests are not. This identity is the `process_id` used by a decorator or the
 computation's automatic fingerprint, represented as bytes in `CacheKey.process`.
 
@@ -93,6 +93,35 @@ Commands never prompt; `--no-input` is accepted for scripts. `--json` emits stru
 to stdout, and errors go to stderr. `clear --json` returns `cleared_computations`.
 A missing database is reported without creating either its file or its parent directory:
 stats reports `exists=False`, and clear returns zero. An absent computation selects no tables.
+
+## Find and clear a function's retained versions
+
+Decorators and `CachedStep` attach a qualified function/method name and, when available,
+its source path and line. `stats --details` shows these alongside each fingerprint:
+
+```sh
+uv run triplum cache stats --details
+uv run triplum cache stats --name my_pipeline.normalize --details
+uv run triplum cache clear --name my_pipeline.normalize
+```
+
+`--name` selects **all recorded computation fingerprints** for that name, including earlier
+implementations or configurations. Exact names win; a unique prefix, substring or typo match
+is accepted. Ambiguous and unknown names report choices without clearing anything. You can
+use `--computation` instead to select one exact fingerprint; the two options are exclusive.
+The Python functions accept `name="my_pipeline.normalize"` with exact matching only.
+
+Names and locations are descriptive, never part of key equality or fingerprints. SQLite stores
+one row per computation in `cache_computations`, indexed by name, with the first committed
+location. Result writes and their metadata commit together through the background writer.
+Clearing a computation removes its metadata too. Existing unnamed entries remain usable and
+show their fingerprint; they acquire metadata when a decorated computation writes them again.
+Synthetic source locations may be unavailable. JSON stats expose nullable `name`, `source_path`
+and `source_line` fields. The description table is not counted as a computation/result table.
+
+Manual writes can attach [`ComputationMetadata`][triplum.cache.ComputationMetadata] through
+`CacheKey(..., metadata=ComputationMetadata("my_pipeline.normalize", "pipeline.py", 24))`.
+Other storage backends can ignore this optional description.
 
 ## Read statistics correctly
 
@@ -123,7 +152,8 @@ The reported sizes do not include the SHM file.
 
 ## Clear without expecting file shrinkage
 
-Clearing drops selected recognized computation tables and preserves unrelated tables, including
+Clearing drops selected recognized computation tables and their descriptive metadata rows,
+while preserving unrelated tables, including
 older layouts not recognized by this interface. It does not unlink the database or run
 `VACUUM`. Freed pages remain available for reuse; the file need not shrink.
 

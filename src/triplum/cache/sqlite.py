@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from threading import Lock
 
-from triplum.cache.protocols import CacheBackend, CacheKey
+from triplum.cache.protocols import CacheBackend, CacheKey, ComputationMetadata
 
 
 class SQLiteBackend(CacheBackend):
@@ -52,10 +52,31 @@ class SQLiteBackend(CacheBackend):
         SQL parameters. All writes still share SQLite's single-writer transaction.
         """
         groups: dict[bytes, list[tuple[bytes, bytes]]] = {}
+        descriptions: dict[bytes, ComputationMetadata] = {}
         for key, value in entries:
             groups.setdefault(key.process, []).append((key.input, value))
+            if key.metadata is not None:
+                descriptions.setdefault(key.process, key.metadata)
         with self._write_lock, self._writer:
             self._writer.execute("BEGIN IMMEDIATE")
+            if descriptions:
+                self._writer.execute(
+                    "CREATE TABLE IF NOT EXISTS cache_computations ("
+                    "fingerprint BLOB NOT NULL PRIMARY KEY, name TEXT NOT NULL, "
+                    "source_path TEXT, source_line INTEGER)"
+                )
+                self._writer.execute(
+                    "CREATE INDEX IF NOT EXISTS cache_computations_name ON cache_computations(name)"
+                )
+                self._writer.executemany(
+                    "INSERT INTO cache_computations "
+                    "(fingerprint, name, source_path, source_line) VALUES (?, ?, ?, ?) "
+                    "ON CONFLICT (fingerprint) DO NOTHING",
+                    [
+                        (process, info.name, info.source_path, info.source_line)
+                        for process, info in descriptions.items()
+                    ],
+                )
             for process, values in groups.items():
                 table = "cache_" + process.hex()
                 self._writer.execute(

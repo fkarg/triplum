@@ -70,6 +70,9 @@ decorator or `CachedStep` works with the same `Cache(backend)` and supplies thos
 [`CacheKey`][triplum.cache.CacheKey] has two 32-byte digests: `process` identifies the computation,
 and `input` identifies its immediate input. Keep both in the backend key. See
 [computation identities](computations.md) and [value fingerprints](fingerprints.md).
+The optional `metadata` description does not participate in key equality or hashing. SQLite
+persists it for [inspection and clearing by function name](administration.md); other backends
+may ignore it.
 
 | Method | Required behavior |
 | --- | --- |

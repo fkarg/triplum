@@ -12,7 +12,8 @@ This page follows the intended flow and shows where experiments can replace indi
   collection storage operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
-  per-computation SQLite tables and CLI/library inspection and clearing.
+  per-computation SQLite tables and CLI/library inspection and clearing, including retained
+  function names and source locations for selecting multiple computation fingerprints.
   [Fingerprintable data models](infrastructure/cache/fingerprints.md) provide field-value identity
   for use with the cache decorators, with explicit bookkeeping exclusions; a separate mixin
   supports existing Pydantic bases.

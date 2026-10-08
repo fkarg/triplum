@@ -3,7 +3,14 @@
 from triplum.cache.admin import CacheStats, ComputationStats, cache_stats, clear_cache
 from triplum.cache.codecs import PydanticCodec
 from triplum.cache.defaults import close_default_cache, default_cache, default_cache_path
-from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy, Codec, Fingerprintable
+from triplum.cache.protocols import (
+    CacheBackend,
+    CacheKey,
+    CachePolicy,
+    Codec,
+    ComputationMetadata,
+    Fingerprintable,
+)
 from triplum.cache.runtime import Cache
 from triplum.cache.sqlite import SQLiteBackend
 from triplum.cache.steps import CachedStep, cached
@@ -16,6 +23,7 @@ __all__ = [
     "CacheStats",
     "CachedStep",
     "Codec",
+    "ComputationMetadata",
     "ComputationStats",
     "Fingerprintable",
     "PydanticCodec",

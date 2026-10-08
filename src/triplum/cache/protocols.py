@@ -2,8 +2,9 @@
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from types import BuiltinFunctionType, FunctionType, MethodType
 from typing import Literal, Protocol
 
 
@@ -19,11 +20,33 @@ class Fingerprintable(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class ComputationMetadata:
+    """Descriptive provenance, excluded from cache identity; location may be unavailable."""
+
+    name: str
+    source_path: str | None = None
+    source_line: int | None = None
+
+    @classmethod
+    def from_callable(cls, compute: object) -> ComputationMetadata:
+        """Describe a callable without reading source files or invoking user code."""
+        target = compute.__func__ if isinstance(compute, MethodType) else compute
+        if isinstance(target, (FunctionType, BuiltinFunctionType)):
+            name = f"{target.__module__}.{target.__qualname__}"
+        else:
+            name = f"{type(target).__module__}.{type(target).__qualname__}"
+        if isinstance(target, FunctionType) and not target.__code__.co_filename.startswith("<"):
+            return cls(name, target.__code__.co_filename, target.__code__.co_firstlineno)
+        return cls(name)
+
+
+@dataclass(frozen=True, slots=True)
 class CacheKey:
     """Full computation namespace and input data identity."""
 
     process: bytes
     input: bytes
+    metadata: ComputationMetadata | None = field(default=None, compare=False, hash=False)
 
     def __post_init__(self) -> None:
         if len(self.process) != 32 or len(self.input) != 32:

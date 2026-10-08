@@ -11,10 +11,10 @@ from pathlib import Path
 from triplum.cache.admin import cache_stats, clear_cache
 
 
-def match_selector(value: str, choices: Sequence[str]) -> str:
+def match_selector(value: str, choices: Sequence[str], *, kind: str = "command") -> str:
     """Resolve exact, prefix, substring, then typo matches; ambiguity is an error.
 
-    Only finite command names use this matching. Paths and computation identities
+    Only finite command/function names use this matching. Paths and computation identities
     pass through untouched to the library boundary.
     """
     if value in choices:
@@ -28,9 +28,9 @@ def match_selector(value: str, choices: Sequence[str]) -> str:
         return matches[0]
     if matches:
         raise argparse.ArgumentTypeError(
-            f"ambiguous command {value!r}; choices: {', '.join(matches)}"
+            f"ambiguous {kind} {value!r}; choices: {', '.join(matches)}"
         )
-    raise argparse.ArgumentTypeError(f"unknown command {value!r}; choices: {', '.join(choices)}")
+    raise argparse.ArgumentTypeError(f"unknown {kind} {value!r}; choices: {', '.join(choices)}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -47,7 +47,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--path", type=Path, help="cache database path (default: shared user cache)"
     )
-    parser.add_argument("--computation", help="exact full SHA-256 computation identity")
+    selector = parser.add_mutually_exclusive_group()
+    selector.add_argument("--computation", help="exact full SHA-256 computation identity")
+    selector.add_argument("--name", help="function name; selects all its recorded fingerprints")
     parser.add_argument(
         "--details", action="store_true", help="stats: scan exact entry/payload totals"
     )
@@ -63,8 +65,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.action == "clear" and args.details:
         parser.error("--details applies only to cache stats")
     try:
+        name = None
+        if args.name is not None:
+            choices = sorted({row.name for row in cache_stats(args.path).computations if row.name})
+            name = match_selector(args.name, choices, kind="function name")
         if args.action == "stats":
-            stats = cache_stats(args.path, computation=args.computation, details=args.details)
+            stats = cache_stats(
+                args.path, computation=args.computation, name=name, details=args.details
+            )
             if args.json:
                 data = asdict(stats)
                 data["path"] = str(stats.path)
@@ -80,15 +88,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                     line = computation.computation
                     if args.details:
                         line += f"  entries={computation.entries}  payload_bytes={computation.payload_bytes}"
+                        if computation.name:
+                            line += f"  {computation.name}"
+                        if computation.source_path:
+                            line += f"  {computation.source_path}"
+                            if computation.source_line is not None:
+                                line += f":{computation.source_line}"
                     print(line)
         else:
-            count = clear_cache(args.path, computation=args.computation)
+            count = clear_cache(args.path, computation=args.computation, name=name)
             if args.json:
                 print(json.dumps({"cleared_computations": count}))
             else:
                 print(
                     f"Cleared {count} computation table(s); running writers may repopulate the cache."
                 )
-    except (OSError, ValueError, sqlite3.Error) as error:
+    except (OSError, ValueError, sqlite3.Error, argparse.ArgumentTypeError) as error:
         parser.error(str(error))
     return 0
