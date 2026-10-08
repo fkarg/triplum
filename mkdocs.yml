@@ -1,5 +1,6 @@
 site_name: triplum
 site_description: Composable, benchmark-first sandbox for GraphRAG applications
+site_url: https://www.fkarg.me/triplum/
 repo_url: https://github.com/fkarg/triplum
 docs_dir: docs
 # Development records are not published or indexed by site search.

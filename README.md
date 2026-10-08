@@ -66,7 +66,8 @@ configure steps, and inspect or clear stored results.
 - [CONTRIBUTING.md](CONTRIBUTING.md): checks and hook setup; [AGENTS.md](AGENTS.md): contributor
   rules and the interface review gate.
 
-Preview the documentation with `uv run mkdocs serve`; verify it with `uv run mkdocs build --strict`.
+The documentation is published at <https://www.fkarg.me/triplum/> on every push to `main`.
+Preview it locally with `uv run mkdocs serve`; verify it with `uv run mkdocs build --strict`.
 Use check and CI output for current verification results.
 
 ## License
