@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
 from threading import Lock
-from typing import get_type_hints, overload
+from typing import Literal, get_type_hints, overload
 
 from triplum.cache.codecs import PydanticCodec
 from triplum.cache.defaults import default_cache
@@ -38,12 +38,17 @@ def _call[I: Fingerprintable, O: Fingerprintable](
     policy: CachePolicy | None,
     metadata: ComputationMetadata | None = None,
 ) -> O:
-    key = CacheKey(process, _digest(item.fingerprint()), metadata=metadata)
-    payload = cache.get(key)
-    if payload is not None:
-        return codec.decode(payload)
+    from triplum.cache.tracing import suspend_tracing, untraced_hit
+
+    with suspend_tracing():
+        key = CacheKey(process, _digest(item.fingerprint()), metadata=metadata)
+        payload = cache.get(key)
+        if payload is not None:
+            untraced_hit()
+            return codec.decode(payload)
     result = compute(item)
-    cache.put(key, codec.encode(result), policy=policy)
+    with suspend_tracing():
+        cache.put(key, codec.encode(result), policy=policy)
     return result
 
 
@@ -73,6 +78,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
+    dependency_mode: Literal["static", "traced"] = "static",
 ) -> Callable[[I], O]: ...
 
 
@@ -86,6 +92,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
+    dependency_mode: Literal["static", "traced"] = "static",
 ) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
 
@@ -98,6 +105,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
+    dependency_mode: Literal["static", "traced"] = "static",
 ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
     """Use @cached or @cached(overrides...) for a one-input callable.
 
@@ -108,6 +116,8 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     content identities as settings or supply an explicit process_id.
     cache=None bypasses identity, serialization and lookup entirely.
     """
+    if dependency_mode not in {"static", "traced"}:
+        raise ValueError("dependency_mode must be static or traced")
     process = _digest(process_id) if cache is not None and process_id is not None else None
 
     def decorate(function: Callable[[I], O]) -> Callable[[I], O]:
@@ -121,13 +131,26 @@ def cached[I: Fingerprintable, O: Fingerprintable](
         @wraps(function)
         def call(item: I, /) -> O:
             nonlocal selected, identity
-            if selected is None or identity is None:
-                with lock:
-                    if identity is None:
+            from triplum.cache.tracing import suspend_tracing, traced_call
+
+            if selected is None or (identity is None and dependency_mode == "static"):
+                with lock, suspend_tracing():
+                    if identity is None and dependency_mode == "static":
                         identity = _digest(function_fingerprint(function))
                     if selected is None:
                         selected = _codec(function, output_type, codec)
             owner = default_cache() if cache is _DefaultCache.SHARED else cache
+            if dependency_mode == "traced":
+                return traced_call(
+                    owner,
+                    item,
+                    function,
+                    selected,
+                    policy,
+                    process_id=process_id,
+                    metadata=metadata,
+                )
+            assert identity is not None
             return _call(owner, identity, item, function, selected, policy, metadata)
 
         vars(call)["_triplum_compute"] = function
@@ -153,7 +176,11 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
     ) -> None:
+        if dependency_mode not in {"static", "traced"}:
+            raise ValueError("dependency_mode must be static or traced")
+        self._dependency_mode = dependency_mode
         self._cache = cache
         self._codec = codec
         self._output_type = output_type
@@ -162,13 +189,40 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         self._computation_metadata = ComputationMetadata.from_callable(self.compute)
 
     def __call__(self, item: I, /) -> O:
+        from triplum.cache.tracing import suspend_tracing, traced_call
+
         if self._cache is None:
             return self.compute(item)
         if self._codec is None:
-            with self._codec_lock:
+            with self._codec_lock, suspend_tracing():
                 if self._codec is None:
                     self._codec = _codec(self.compute, self._output_type, None)
         owner = default_cache() if self._cache is _DefaultCache.SHARED else self._cache
+        if self._dependency_mode == "traced":
+            configuration = None
+            process_id = None
+            if type(self).fingerprint is CachedStep.fingerprint:
+                config = self.fingerprint_config()
+                if type(config) is not dict:
+                    raise TypeError("fingerprint_config() must return a string-keyed dictionary")
+                model = self._output_type
+                configuration = {
+                    "settings": config,
+                    "output_type": f"{model.__module__}.{model.__qualname__}" if model else None,
+                }
+            else:
+                process_id = _digest(self.fingerprint()).hex()
+            return traced_call(
+                owner,
+                item,
+                self.compute,
+                self._codec,
+                self._policy,
+                owner=self,
+                configuration=configuration,
+                metadata=self._computation_metadata,
+                process_id=process_id,
+            )
         return _call(
             owner,
             _digest(self.fingerprint()),

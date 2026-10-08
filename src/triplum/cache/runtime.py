@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from threading import Condition, Lock, Thread
 from traceback import format_exception
 from types import TracebackType
-from typing import Self, overload
+from typing import Literal, Self, overload
 
 from triplum.cache.protocols import CacheBackend, CacheKey, CachePolicy, Codec, Fingerprintable
 
@@ -197,6 +197,7 @@ class Cache:
         output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
     ) -> Callable[[I], O]: ...
 
     @overload
@@ -209,6 +210,7 @@ class Cache:
         output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
     ) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
     def cached[I: Fingerprintable, O: Fingerprintable](
@@ -220,12 +222,18 @@ class Cache:
         output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
     ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
         """Decorate using this owner: @cache.cached, with optional overrides."""
         from triplum.cache.steps import cached
 
         decorate = cached(
-            cache=self, process_id=process_id, output_type=output_type, codec=codec, policy=policy
+            cache=self,
+            process_id=process_id,
+            output_type=output_type,
+            codec=codec,
+            policy=policy,
+            dependency_mode=dependency_mode,
         )
         return decorate if compute is None else decorate(compute)
 

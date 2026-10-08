@@ -722,3 +722,15 @@ def test_module_defaults_and_dynamic_module_passing_are_rejected() -> None:
 
     with pytest.raises(TypeError, match="module"):
         Configured({"module": module}).fingerprint()
+
+
+@pytest.mark.parametrize("first,second", [("1", "1.0"), ("0.0", "-0.0"), ("True", "1")])
+def test_cached_code_projection_preserves_typed_constants(first: str, second: str) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    def make(literal: str):
+        namespace: dict[str, object] = {"__name__": "typed_code"}
+        exec("def operation(): return " + literal, namespace)  # noqa: S102 - controlled fixture
+        return namespace["operation"]
+
+    assert definition_hash(make(first)) != definition_hash(make(second))

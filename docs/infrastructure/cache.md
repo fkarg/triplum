@@ -73,6 +73,7 @@ own implementation. You can use each extension without adopting the others.
 | --- | --- | --- |
 | Define which input/output fields mean the same thing | [Value fingerprints](cache/fingerprints.md) | `FingerprintedDataModel`, `Fingerprintable` |
 | Identify an operation or write a configured cached step | [Computation fingerprints](cache/computations.md) | `cached`, `CachedStep` |
+| Follow application methods used at runtime | [Runtime dependency tracing](cache/tracing.md) | `dependency_mode="traced"` |
 | Use Pydantic output or supply another encoding | [Serialization](cache/serialization.md) | `Codec`, `PydanticCodec` |
 | Supply storage or use keys/bytes directly | [Storage backends](cache/storage.md) | `CacheBackend`, `SQLiteBackend`, `CacheKey` |
 | Choose skipping/blocking and manage lifetime | [Ownership and write policy](cache/policies.md) | `Cache`, `CachePolicy`, shared-default helpers |

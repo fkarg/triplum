@@ -16,8 +16,10 @@ identity for use with bare decorators, with explicit exclusions and custom proje
 `FingerprintedDataModelMixin` supplies the same data identity to existing Pydantic bases;
 `FingerprintedComputationMixin` names the separate computation helper.
 Automatic helper discovery uses the shared loaded-definition engine; decorators freeze identity on
-first use, permitting helpers defined later in a module. Optional runtime tracing remains pending
-implementation. See [computation dependencies](../specs/automatic-helper-identity.md) for its approved
+first use, permitting helpers defined later in a module. Optional `dependency_mode="traced"`
+refreshes root identity and validates manifests before reuse; tracing records supported application
+calls on misses. Unknown dependencies decline admission rather than forcing cached children to
+rerun. See [computation dependencies](../specs/automatic-helper-identity.md) for its approved
 design and the bounded static inference guarantees.
 Record identity migration and further interfaces remain outside this approval.
 

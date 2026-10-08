@@ -106,7 +106,8 @@ Semantic mutation of global settings is unsupported; keep counters and diagnosti
 separate from semantic settings.
 Consequently, changing an external library, file, model weight or hidden resource state is not
 automatically detected. Arbitrary calls through classes or input objects are also outside this
-static helper discovery boundary.
+static helper discovery boundary. Optional [runtime tracing](tracing.md) can record supported
+input/owner method calls and validate those dependencies on later lookups.
 
 Defaults and captures support finite scalars, lists, tuples, string-keyed mappings, paths and
 objects with `fingerprint()`. A path identifies its spelling, not file contents. Keep helper
@@ -228,4 +229,5 @@ The optional decorator `process_id` argument overrides inference with a complete
 digest. `CacheKey.process` stores its 32 bytes; `cache stats` displays the 64-character hexadecimal
 form accepted by `--computation`. These are representations of the same identity.
 
-Next: [Serialization and custom codecs](serialization.md).
+Next: [Runtime dependency tracing](tracing.md) for dynamic application calls, or
+[serialization and custom codecs](serialization.md) for output encoding.

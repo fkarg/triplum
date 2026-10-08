@@ -167,6 +167,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     output_type: type[O] | None = None,
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
+    dependency_mode: Literal["static", "traced"] = "static",
 ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
 
@@ -178,6 +179,7 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         output_type: type[O] | None = None,
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
     ) -> None: ...
     def __call__(self, item: I, /) -> O: ...
     # fingerprint() and fingerprint_config() come from FingerprintedComputationMixin.
@@ -437,7 +439,10 @@ inherited default handles after fork are rejected rather than reused or closed i
 
 Automatic function identity uses the shared loaded-definition algorithm described in
 [Automatic computation helpers](automatic-helper-identity.md), including bounded application helper
-discovery. Identity freezes on the first call, alongside lazy codec/database initialization.
+discovery. Static mode freezes identity on the first call, alongside lazy codec/database
+initialization. Optional `dependency_mode="traced"` refreshes root identity and validates observed
+dependency manifests before a result lookup; see that specification for supported receiver and
+composition boundaries.
 There is no manual dependency declaration. External resources need effective identities represented
 as inputs/settings, or a complete process_id supplied by the application.
 

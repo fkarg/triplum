@@ -127,6 +127,9 @@ Other storage backends can ignore this optional description.
 
 SQLite creates `cache_<full computation fingerprint>` on a computation's first committed write.
 Each table stores input digests and encoded payloads. See [storage](storage.md) for that layout.
+[Traced caching](tracing.md) also stores manifest indexes in these tables: computation/table counts,
+entry counts and payload sizes include metadata as well as results. A traced root can correspond
+to multiple tables; selecting one computation digest clears only that table.
 
 | Observation | Meaning |
 | --- | --- |

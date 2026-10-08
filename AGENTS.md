@@ -34,7 +34,9 @@ contains check commands and hook setup.
   manually maintained version numbers. Explicit field projections do not automatically detect
   schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
   configuration for FingerprintedComputationMixin/CachedStep, with automatic bounded helper discovery
-  and no manual dependency declarations or counters.
+  and no manual dependency declarations or counters. Optional `dependency_mode="traced"` refreshes
+  definitions/settings and validates observed dependency manifests before reuse. Tracing is bounded;
+  unsupported discovery declines admission, and cached child hits must not be forced to rerun.
   This does not approve record/dataset identity migration or whole-schema equivalence.
 - The owner approved `datatype.FingerprintedDataModel`: semantic field-value identity for Pydantic
   data, explicit bookkeeping exclusions and custom projections. Keep this separate from the

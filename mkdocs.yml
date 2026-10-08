@@ -83,6 +83,7 @@ nav:
           - Getting started: infrastructure/cache.md
           - Value fingerprints: infrastructure/cache/fingerprints.md
           - Computation fingerprints: infrastructure/cache/computations.md
+          - Runtime dependency tracing: infrastructure/cache/tracing.md
           - Serialization: infrastructure/cache/serialization.md
           - Storage backends: infrastructure/cache/storage.md
           - Ownership and write policy: infrastructure/cache/policies.md
