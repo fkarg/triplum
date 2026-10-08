@@ -26,5 +26,8 @@ class ZeroEmbedder(Embedder, Fingerprinted):
     def __init__(self, dimensions: int = 1536) -> None:
         self.dimensions = dimensions
 
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"dimensions": self.dimensions}
+
     def __call__(self, texts: list[str], /) -> Vectors:
         return np.zeros((len(texts), self.dimensions), dtype=np.float32)

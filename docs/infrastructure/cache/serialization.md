@@ -104,8 +104,10 @@ your implementation owns resources; closing `Cache` closes its backend, not its 
 
 Encoding is not part of the cache key. There is no separate format identity or migration of old
 rows. If an output model, validator or encoding change makes existing results incompatible,
-revise the computation identity or clear its entries before reuse. Automatic function identity
-does not discover changes to an external codec class.
+include the relevant changed definition in the computation identity or clear its entries before
+reuse. Neither automatic function identity nor the configured-step default discovers output
+schemas, validators or external codec definitions automatically. No manually bumped version
+string is required; the [computation guide](computations.md) explains dependency selection.
 
 Return to the [cache introduction](../cache.md) to compose these pieces, or see
 [storage backends](storage.md) to change where the encoded bytes live.

@@ -32,10 +32,13 @@ contains check commands and hook setup.
   process identity. Keep the detailed guarantees in the cache guide and interface spec.
 - Fingerprints should follow relevant data/structure and computation definitions, without requiring
   manually maintained version numbers. Explicit field projections do not automatically detect
-  schema/code changes; the relevant-definition hashing rules are under identity-interface review.
+  schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
+  configuration for Fingerprinted/CachedStep, with explicit external dependencies and no manual counters.
+  This does not approve record/dataset identity migration or whole-schema equivalence.
 - The owner selected one SQLite table per computation, input-only keys within each table and
-  no codec format identity/migrations. Incompatible output contracts require process revision or
-  clear. The cache stats/clear CLI is authorized; preserve unrelated tables and distinguish
+  no codec format identity/migrations. Incompatible output contracts must be represented in
+  computation identity or cleared. The cache stats/clear CLI is authorized; preserve unrelated tables
+  and distinguish
   committed snapshot counts from filesystem observations.
 - Indexing/ingestion prototypes and their tests remain under owner review. Their appearance in
   generated API docs does not make them approved interfaces; do not describe them as working

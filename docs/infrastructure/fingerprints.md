@@ -61,20 +61,8 @@ its content property matches.
 
 [`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] in `triplum.utils.fingerprint` supplies
 a `fingerprint()` implementation used by steps such as
-[`FixedSize`][triplum.steps.chunking.FixedSize]. It hashes:
-
-1. The qualified class name, including its module.
-2. Source code for the class and its bases, excluding the mixin and typing scaffolding.
-3. Every instance attribute in `vars(self)`.
-
-Class source hashing ignores comments, formatting and docstrings. Other code edits, including
-renaming a local variable, affect the digest. Moving a class from a script into an imported
-module changes its qualified name and therefore its fingerprint. Compare identities in examples
-rather than relying on a literal digest remaining stable after edits.
-
-Run this example from a `.py` file: class source must be inspectable. Classes defined through
-`exec` or a script piped to `python -` cannot be fingerprinted this way. Other interactive
-execution environments are not tested.
+[`FixedSize`][triplum.steps.chunking.FixedSize]. It combines the qualified class name, loaded application method definitions,
+immutable class constants, explicit configuration and declared dependencies. It does not scan instance attributes.
 
 ```python
 from triplum.utils.fingerprint import Fingerprinted
@@ -83,13 +71,20 @@ from triplum.utils.fingerprint import Fingerprinted
 class Prefix(Fingerprinted):
     def __init__(self, prefix: str) -> None:
         self.prefix = prefix
+        self.calls = 0
+
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"prefix": self.prefix}
 
     def __call__(self, text: str) -> str:
+        self.calls += 1
         return self.prefix + text
 
 
-print(Prefix("note: ").fingerprint() == Prefix("note: ").fingerprint())
-print(Prefix("note: ").fingerprint() == Prefix("warning: ").fingerprint())
+first = Prefix("note: ")
+first("hello")
+print(first.fingerprint() == Prefix("note: ").fingerprint())
+print(first.fingerprint() == Prefix("warning: ").fingerprint())
 ```
 
 Output:
@@ -99,26 +94,20 @@ True
 False
 ```
 
-Attribute handling is broader than the cache's explicit semantic contract:
+The counter does not change the result, so the configuration hook omits it. A stateless
+implementation returns `{}`. Adding a resource attribute does not change identity. A changed
+application method or selected setting does; inherited application methods are included too.
+Pure Python definitions do not need source files. The digest describes loaded code rather than
+rereading source files after import. Moving the
+class to another module changes its qualified name and therefore its identity.
 
-- Plain strings, numbers, booleans, `None`, paths, lists, tuples and dictionaries are supported.
-  The current normalizer collapses list/tuple distinctions, stringifies dictionary keys, and
-  ignores dictionary iteration order. Use an explicit method if the computation distinguishes
-  these cases; this helper is under review.
-- Pydantic models use their entire `model_dump(mode="json")`, even if they also define a
-  `fingerprint()` method. IDs and bookkeeping fields in that dump enter the object identity.
-- Other objects can supply their own `fingerprint()` method.
-- Unsupported values, such as a raw network client, raise `TypeError`.
+The [computation guide](cache/computations.md#select-settings-and-dependencies) explains dependency
+selection, `definition_hash`, supported class constants and the limits of automatic inference.
 
-Consequently, adding a bookkeeping attribute can change an object's fingerprint. For a step with
-resources or operational state, implement an explicit fingerprint selecting its effective
-configuration. Include revisions for external dependencies: this utility does not hash helper
-functions, imported library code or model weights merely because the class uses them.
-
-The cache decorator has a separate automatic **function** identity, covering source, qualified
-name, evaluated defaults and captured configuration. It does not discover globals or external
-dependencies either. See [computation identity](cache/computations.md) for when
-to supply an explicit process digest; the configured-object mixin is not the decorator's algorithm.
+The cache decorator has its own automatic **function** identity, covering source, qualified name,
+evaluated defaults and captured configuration at decoration. It does not gain the mixin's hooks.
+See [automatic function identity](cache/computations.md#use-automatic-function-identity-where-it-fits)
+for its boundaries and explicit `process_id` override.
 
 ## Dataset identity
 

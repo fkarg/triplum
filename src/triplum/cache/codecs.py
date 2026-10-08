@@ -9,7 +9,7 @@ class PydanticCodec[T: Fingerprintable](Codec[T]):
     """Serialize a fingerprintable Pydantic model to JSON bytes.
 
     Encoding is not part of cache identity. For incompatible model/encoding changes,
-    revise the computation fingerprint or clear its table; cache rows are not migrated.
+    include the changed contract in computation identity or clear its table; rows are not migrated.
 
     Each encode verifies a semantic fingerprint round-trip before cache admission.
     This costs a decode on writes; reads only decode. Unsupported or lossy fields fail

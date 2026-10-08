@@ -4,15 +4,92 @@ A computation fingerprint answers **“would the same operation run?”** It cov
 effective configuration and relevant external dependencies. Together with the
 [input value's fingerprint](fingerprints.md), it selects a cached result.
 
-The decorator's `process_id` argument supplies this digest explicitly. `CacheKey.process` holds
-its 32 bytes; `cache stats` displays its 64-character hexadecimal form, which `--computation`
-accepts. These are different API spellings for the same computation fingerprint.
+## Let the decorator identify the computation
 
-## Define a configured step
+Normally, add `@cached`. It derives computation identity, uses the shared cache, and chooses
+Pydantic serialization from the return annotation. This complete example uses a tiny value model
+so the data identity is explicit too:
+
+```python
+from pydantic import BaseModel
+
+from triplum.cache import cached
+from triplum.utils.cache import content_key
+
+
+class Text(BaseModel):
+    text: str
+
+    def fingerprint(self) -> str:
+        return content_key("example.Text", {"text": self.text})
+
+
+@cached
+def normalize(value: Text) -> Text:
+    return Text(text=value.text.casefold())
+
+
+print(normalize(Text(text="Straße")).text)
+print(normalize(Text(text="Straße")).text)
+```
+
+Both calls print `strasse`; the second can reuse the first result, including an accepted write
+that has not reached disk yet. Existing persisted entries may also be reused on the first call.
+Save it as a Python file to make the function source available. The
+[value fingerprint](fingerprints.md) answers which inputs are equivalent; the decorator handles
+which computation runs on them. No manually maintained version label is needed.
+
+The automatic function identity covers source, defaults and captures; [its boundaries](#use-automatic-function-identity-where-it-fits)
+are below. Most functions need no further configuration. The following sections cover configured
+classes and explicit dependencies when those are part of your application.
+
+## Include a helper without introducing a class
+
+When a function calls an external helper, compose `process_id` from both definitions. Keep the
+`Text` model from the first example; this continuation still uses the shared cache and automatic
+Pydantic serialization:
+
+```python
+from triplum.utils.fingerprint import definition_hash
+
+
+def fold(text: str) -> str:
+    return text.casefold()
+
+
+def transform(value: Text) -> Text:
+    return Text(text=fold(value.text))
+
+
+transform = cached(
+    transform,
+    process_id=content_key(
+        "example.transform",
+        {"compute": definition_hash(transform), "helper": definition_hash(fold)},
+    ),
+)
+
+print(transform(Text(text="Straße")).text)
+print(transform(Text(text="Straße")).text)
+```
+
+Both calls print `strasse`. Changing either loaded function definition changes this process ID;
+there is no label to bump. The explicit ID replaces inference, which is why it includes
+`transform` as well as `fold`. Include effective settings and further dependencies when present.
+
+`definition_hash()` supports ordinary Python function/class definitions within the boundaries
+below. It is **not an arbitrary model or schema hasher**: passing a Pydantic model such as
+`definition_hash(Text)` can raise `TypeError` for unsupported descriptors. For an output contract,
+select its relevant semantic fields/settings and supported validator/helper definitions explicitly,
+or clear existing entries when that contract becomes incompatible. A JSON schema alone does not
+represent validator behavior. The fixed-schema example above tracks its two functions; it does
+not promise automatic invalidation for changes to the `Text` model.
+
+## When the operation needs a configured class
 
 [`CachedStep`][triplum.cache.CachedStep] implements the cache lookup and `__call__`. Implement two
-methods: `compute(value)` performs the work, and `fingerprint()` identifies that work and its
-configuration. Save this complete example as a `.py` file and run it with `uv run python`:
+methods: `compute(value)` performs the work, and `fingerprint_config()` selects its effective
+settings. The inherited `fingerprint()` combines those settings with the loaded computation code. Save this complete example as a `.py` file and run it with `uv run python`:
 
 ```python
 from pathlib import Path
@@ -22,7 +99,6 @@ from pydantic import BaseModel
 
 from triplum.cache import Cache, CachedStep, SQLiteBackend
 from triplum.utils.cache import content_key
-from triplum.utils.fingerprint import source_hash
 
 
 class Text(BaseModel):
@@ -37,11 +113,8 @@ class Append(CachedStep[Text, Text]):
         super().__init__(cache=cache)
         self.suffix = suffix
 
-    def fingerprint(self) -> str:
-        return content_key(
-            "example.Append",
-            {"code": source_hash(type(self)), "suffix": self.suffix},
-        )
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"suffix": self.suffix}
 
     def compute(self, value: Text) -> Text:
         print("Computing", self.suffix)
@@ -64,8 +137,7 @@ Hello?
 Hello!
 ```
 
-Equivalent instances share the `example.Append` computation with the same class source and `!`
-configuration; changing to `?`
+Equivalent instances share the same computation code and `!` configuration; changing to `?`
 selects a different entry. Returning to `!` reuses its earlier result. The cache owner is not
 configuration and does not enter the fingerprint.
 
@@ -75,31 +147,87 @@ default; pass `cache=None` to bypass caching. If combining the mixin with a doma
 put `CachedStep` first in the bases. It does not automatically adapt existing indexing steps'
 input/output shapes to fingerprintable values.
 
-## Decide when to revise a computation
+## Select settings and dependencies
 
-No manually bumped version number is required. This example combines the existing `source_hash`
-helper with the selected suffix: editing the concrete class code or changing that setting changes
-its fingerprint. `source_hash` ignores comments, formatting and docstrings. It needs inspectable
-class source and does not discover called helpers, inherited behavior or external model definitions.
-Those dependencies must be represented explicitly when relevant. The broader automatic class
-interface is under review; this example uses existing primitives.
+Return `{}` from `fingerprint_config()` for a stateless step. Select only settings that affect
+its result: the mixin never scans all instance attributes. Counters, clients, locks, cache owners
+and queue policies stay out unless you explicitly return them. Configuration is read on each call;
+do not mutate it while a computation is running.
 
-For ordinary functions, `@cached` and `@cache.cached` provide the automatic function identity
-explained below. Supply `process_id` only when you compose the computation fingerprint yourself;
-it replaces inference, so relevant function/dependency code must then enter your explicit digest.
-A constant label plus settings alone does not detect implementation changes. Kind names distinguish
-meanings; a manually changed version label is neither required nor a substitute for represented
-code and data.
+Supported configuration contains plain finite numbers, strings, booleans, `None`, lists, tuples,
+string-keyed dictionaries, paths and objects implementing `fingerprint()`. Mapping insertion order
+does not affect this identity; use an ordered list of pairs when the computation observes order.
+A path identifies its spelling, not the contents of the file at that path. Fingerprint file bytes
+or the model's actual identity when they affect the result.
 
-| Change | What must happen |
+The mixin hashes the qualified class name and loaded method definitions on the class and its
+ordinary bases, including properties, static/class methods, annotation definitions and immutable
+class constants (plain scalars and recursively immutable tuples/frozensets). Domain Protocol
+method bodies are included too; exact framework plumbing is excluded; overridden or unused application methods can
+conservatively invalidate entries too. Pure Python classes do not need inspectable source files.
+Editing those definitions changes computation identity without a manually bumped label. Comments and non-executed docstring text do not affect it. A literal also used by executable code
+still contributes; adding or removing a docstring can conservatively change the digest. Editing a source file does not change an already loaded class:
+reload the implementation to run and identify the new code. Identities are not guaranteed stable
+across Python interpreter versions.
+
+Other class attributes, including compiled regexes, Enum members, mutable containers and nested
+classes, are not inferred. Neither are globals, helper functions or external models discovered by
+following calls. Select their effective values in `fingerprint_config()`. Loaded definitions and
+captured configuration must remain unchanged after their first hash; create a new definition
+instead of monkey-patching an already fingerprinted class or function. Override
+`fingerprint_dependencies()` to return a tuple of relevant Python function/class definitions or
+objects with `fingerprint()`. Their definitions or semantic fingerprints then enter the digest.
+A declared helper's own external dependencies must also be represented; this is not a recursive
+import scanner. See the generated [`Fingerprinted` reference][triplum.utils.fingerprint.Fingerprinted]
+for the hook declarations. For example, this ordinary callable declares the helper it uses:
+
+```python
+from triplum.utils.fingerprint import Fingerprinted
+
+
+def normalize(text: str) -> str:
+    return text.casefold()
+
+
+class Normalize(Fingerprinted):
+    def fingerprint_config(self) -> dict[str, object]:
+        return {}
+
+    def fingerprint_dependencies(self) -> tuple[object, ...]:
+        return (normalize,)
+
+    def __call__(self, text: str) -> str:
+        return normalize(text)
+
+
+print(Normalize()("Straße"))
+print(Normalize().fingerprint() == Normalize().fingerprint())
+```
+
+```text
+strasse
+True
+```
+
+`definition_hash()` is also available when composing a full `process_id` explicitly. It hashes
+the loaded definition with the same rules; a helper's supported closure captures contribute,
+including wrapped functions. Recursive definition captures are rejected. An explicit `fingerprint()` override remains available when an
+application already has a complete computation identity.
+
+| Change | How identity follows it |
 | --- | --- |
-| A setting changes the answer | Include it in the computation fingerprint |
-| A helper, model or library changes behavior | Include/revise its dependency identity |
-| Output schema or codec becomes incompatible with saved results | Revise the computation fingerprint or clear its table |
+| A setting changes the answer | Select it in `fingerprint_config()` |
+| Application method implementation changes | Loaded method definitions enter the automatic fingerprint |
+| A helper or model changes behavior | Declare the helper or select the model's actual identity |
+| Output schema or codec becomes incompatible | Represent its relevant definition explicitly, or clear the computation's table |
 | Backend, queue policy or pipeline position changes | Keep the same semantic computation fingerprint |
 
-There is no hidden serialization-format key or migration layer. An ordinary read decodes the
-saved value; it does not prove that your current code would compute that value again.
+There is no hidden serialization-format key or migration layer, and output schemas and validators
+are not automatically hashed. An ordinary read decodes the saved value; it does not prove that
+current code would compute that value again. Equal value projections remain interchangeable for
+consumers of those projected fields, even if upstream histories differ. That does not guarantee
+that another output model can decode an older stored payload. An explicit `output_type` contributes
+its qualified name to the default `CachedStep` identity, not its full schema.
 
 ## Use automatic function identity where it fits
 
@@ -114,17 +242,20 @@ preserved. `Path` and Pydantic models without a fingerprint method are not direc
 Lambdas, source-unavailable functions and callable objects need explicit identity. Run source-based
 examples from files rather than stdin or a REPL.
 
-## The existing object helper is different
+## Use the same mixin without caching
 
-[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] supplies automatic identity to several
-reference indexing steps. It hashes class/base source and **every instance attribute**. It does
-not implement the explicit-configuration example above, and does not share the function helper's
-state rules.
+[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] provides these configuration and
+dependency hooks independently of `CachedStep`. Use it for an ordinary callable that needs
+computation identity without cache lookup; [configured-object identity](../fingerprints.md#configured-object-identity)
+shows a small example. `CachedStep` already inherits it, so no extra mixin base is needed.
 
-Do not combine its default method with `CachedStep`: it encounters cache resources and locks.
-It can also collapse distinctions such as list versus tuple and integer versus string dictionary
-keys. Use an explicit computation method for types where these distinctions matter. The generic
-helper's implementation is under review; its current behavior is described in
-[configured-object identity](../fingerprints.md#configured-object-identity).
+The decorator's source/default/capture algorithm is separate. Supply `process_id` when composing
+its identity yourself; that replaces inference, so include relevant computation code as well as
+configuration and dependencies. Constant kind labels distinguish meanings; they do not detect
+code changes by themselves.
+
+The optional decorator `process_id` argument overrides inference with a complete computation
+digest. `CacheKey.process` stores its 32 bytes; `cache stats` displays the 64-character hexadecimal
+form accepted by `--computation`. These are representations of the same identity.
 
 Next: [Serialization and custom codecs](serialization.md).

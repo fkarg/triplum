@@ -22,7 +22,8 @@ Keep codecs separate from semantic fingerprints so storage representation does n
 That conversion cost belongs in the benchmark; this draft does not change all existing fingerprint
 return types or settle UUID allocation. Existing data-record fingerprint properties must become
 methods through their own reviewed change. The existing configured-object `Fingerprinted` mixin
-already has the method shape, but its automatic field selection is unsuitable for these values.
+identifies configured computations through explicit settings and loaded code; it does not define
+value equality.
 
 - **Recommended: explicit method per datatype.** Name the identity-bearing fields in the method.
   Adding a timestamp or diagnostic field does not silently change identity. This is short for
@@ -35,7 +36,7 @@ already has the method shape, but its automatic field selection is unsuitable fo
 Fingerprint equality promises equal semantic content under a declared value-kind definition.
 Distinguish unrelated meanings even when fields look equal. The owner clarified that manually
 maintained version numbers are not required; changes should follow relevant data, structure and
-computation definitions. Selecting those definitions is under review in identity-interfaces.md.
+computation definitions. The configured-computation rules are recorded in identity-interfaces.md.
 Current explicit projections do not automatically hash a data class implementation or schema.
 Preserve meaningful dates inside text or explicit temporal inputs; exclude bookkeeping creation,
 modification and execution times. Keep bookkeeping outside the reusable payload where possible.
@@ -55,7 +56,7 @@ class PreparedText:
     observed_at: int
 
     def fingerprint(self) -> str:
-        return content_key("prepared-text-v1", {"text": self.text})
+        return content_key("prepared-text", {"text": self.text})
 
 
 assert PreparedText("A", 1).fingerprint() == PreparedText("A", 2).fingerprint()
@@ -76,8 +77,8 @@ mutation. Cacheable functions must not mutate their inputs or rely on unrepresen
 ## Supporting types and exact declarations
 
 `CacheKey` contains the full configured-process digest and full input digest. Both must match.
-Encoding is not part of lookup identity. Incompatible output contracts require a new process
-revision or clearing the computation; there are no codec format namespaces or row migrations.
+Encoding is not part of lookup identity. Incompatible output contracts require their relevant definition in process
+identity or clearing the computation; there are no codec format namespaces or row migrations.
 Backend choice, file path, queue settings and policy never enter those semantic fingerprints.
 Process IDs are full 64-character SHA-256 hex digests, not arbitrary labels; enabled bindings
 validate them before use. CacheKey digest components are exactly 32 bytes. Input fingerprints
@@ -171,7 +172,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
 ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
 
-class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
+class CachedStep[I: Fingerprintable, O: Fingerprintable](Fingerprinted, ABC):
     def __init__(
         self,
         *,
@@ -181,8 +182,7 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
         policy: CachePolicy | None = None,
     ) -> None: ...
     def __call__(self, item: I, /) -> O: ...
-    @abstractmethod
-    def fingerprint(self) -> str: ...
+    # fingerprint(), fingerprint_config() and fingerprint_dependencies() come from Fingerprinted.
     @abstractmethod
     def compute(self, item: I, /) -> O: ...
 ```
@@ -238,9 +238,8 @@ run/owner, lend it to steps, close it.
 
 `cached` decorates a one-input function, with or without parentheses. An explicitly identified
 bound callable is also supported. When supplied, process_id is validated once when binding; it covers that callable's computation, effective configuration,
-helpers and model/dependency revisions. Configuration affecting computation must not mutate while
-bound. Reconfigure by making a new binding. The decorator does not guess closures or hash cache
-handles. It returns the same input/output call shape, not a proxy for every attribute of a step
+helpers and actual model/dependency identities. Configuration affecting computation must not mutate while
+bound. Reconfigure by making a new binding. Automatic identity includes supported nonlocal captures; it does not discover external dependencies. It returns the same input/output call shape, not a proxy for every attribute of a step
 object; for example a plain function wrapper does not expose `Embedder.dimensions`.
 
 A use sketch, with reviewed fingerprintable TextBatch/VectorBatch types still to be introduced:
@@ -257,8 +256,10 @@ result = cached_embed(text_batch)
 ```
 
 For class authors, `CachedStep[I, O]` owns `__call__` and calls the subclass's `compute` on a miss
-(or with cache=None). The subclass implements `fingerprint()` from its computation and effective
-configuration, excluding cache/codec/policy resources. There is no separate process_id constructor
+(or with cache=None). The subclass selects effective settings with `fingerprint_config()`; inherited `fingerprint()`
+combines those settings with loaded application code and declared dependencies. It may instead
+override `fingerprint()` with a complete identity. Cache/codec/policy resources are not selected
+automatically. There is no separate process_id constructor
 argument to drift from those fields. The enabled call reads this method; immutable configurations
 can precompute their digest for cheap repeated access. It can be combined with a compatible domain step Protocol and retains
 ordinary attributes. Put CachedStep before domain Protocol bases so its concrete __call__ is
@@ -329,7 +330,7 @@ Unsupported fields, non-finite values that do not survive the model's JSON setti
 roundtrip mismatches fail in the caller.
 
 Encoding does not enter cache identity. Incompatible output model, serializer or validator changes
-require revising process identity or clearing its table; automatic function identity does not
+require representing the relevant changed definition in process identity or clearing its table; automatic function identity does not
 discover those external dependencies. Custom codecs remain responsible for fingerprint-preserving
 roundtrips.
 
@@ -344,7 +345,7 @@ and controlled commit/read boundaries for queue, failure and close behavior.
 Claude Opus 5.5 (`claude-opus-5-5`), review `7f21ce5134b344bab6762de2d3149eea`,
 challenged the initial declarations. **Changed the draft:** replaced the mixin's disconnected
 process_id argument with an abstract fingerprint method, required digest validation and explicit
-value-kind/version separation, and specified concurrent access and sticky writer failure behavior.
+value-kind/version separation (manual version labels were subsequently rejected by the owner), and specified concurrent access and sticky writer failure behavior.
 **Added verification:** concurrent admissions, waking blocked callers on worker failure, and strict
 input/output type probes. **Unresolved dissent:** Opus prefers synchronous persistence for oversized
 blocking entries; this draft retains the bounded-budget error proposal and makes its consequence
@@ -374,7 +375,9 @@ separation of queue saturation from worker/storage errors:
 ### Implementation design review
 
 Claude Opus 5.5 (`claude-opus-5-5`), review `6e694fe8b7fb4f57b9939bda6b230c55`.
-**Changed/added verification:** require computation kind/revision in process fingerprints; enforce
+**Changed/added verification:** required computation kind/revision in process fingerprints at this
+review; the owner subsequently replaced manual revision labels with relevant code/configuration
+identity in identity-interfaces.md; enforce
 Pydantic exact-type encoding and fingerprint roundtrips; use explicit SQLite lock timeout,
 BEGIN IMMEDIATE, WAL verification, FIFO replacement and concurrent-owner/read-close tests.
 **No decision impact:** duplicate-write sequence protection and rowid tables already followed the
@@ -424,7 +427,8 @@ The output model comes from the return annotation unless output_type or codec is
 Annotation resolution and codec creation happen lazily on first use. Explicit identity remains an
 independent override. Cache.cached exposes the same decorator overrides and borrows that owner.
 CachedStep also defaults its cache and infers the output from compute's return annotation; its
-computation fingerprint remains an explicit subclass method.
+computation fingerprint now defaults to the configured-object implementation described in
+identity-interfaces.md; an explicit override remains supported.
 
 The default cache opens only when used. Its SQLite file is
 `$XDG_CACHE_HOME/triplum/cache.sqlite`, falling back to `~/.cache/triplum/cache.sqlite`.
@@ -494,7 +498,7 @@ subsequently checked against the [official specification](https://specifications
 The owner explicitly selected one SQLite table per full computation identity, keyed only by input
 identity. No codec format identity, hidden schema digest or migration layer remains. Fingerprint
 implementations select semantic fields and exclude bookkeeping timestamps; this is not an automatic
-field-name filter. Incompatible output contracts require a process revision or an explicit clear.
+field-name filter. Incompatible output contracts require a changed dependency identity or an explicit clear.
 
 `triplum cache stats` lists recognized computations and database/WAL/reusable bytes without scanning
 entries. `--details` scans selected tables for exact committed counts and payload sizes, using one
@@ -515,6 +519,6 @@ Claude Opus 5.5, diff review `4f2c16a9319a4bbebd3c8d3e2c22c70b`:
 **Found unique defect:** legacy-table cleanup could drop an unrelated `cache_entries` table; cleanup
 was removed so only recognized computation tables are affected. **Added documentation:** read-only
 stats can manage SQLite sidecars. **No change to approved key design:** external output-contract
-changes still require explicit process revision or clear. Attempts included SQL injection,
+changes still require a corresponding process identity change or clear. Attempts included SQL injection,
 reader/clear races, old snapshots, multiple writers, corrupt files and read-only directories.
 Dynamic SQL and clear concurrency survived those probes; this was not a performance benchmark.

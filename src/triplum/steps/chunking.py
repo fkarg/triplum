@@ -25,6 +25,9 @@ class FixedSize(Chunker, Fingerprinted):
             raise ValueError("size must be a positive integer")
         self.size = size
 
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"size": self.size}
+
     def __call__(self, source: Source, /) -> list[Chunk]:
         return [
             Chunk(

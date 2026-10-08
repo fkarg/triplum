@@ -6,22 +6,27 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 ## Current work
 
 The current task is an interface/concept audit, starting with identity and fingerprinting.
-[Identity interfaces](../specs/identity-interfaces.md) is the draft for owner review. This is
-documentation and contract review only; it does not authorize implementing a new contract or
-advancing to another interface. Existing approved record and cache decisions remain in force.
+The owner authorized automatic configured-computation identity from code, selected configuration
+and declared dependencies, without manually bumped version labels.
+[Identity interfaces](../specs/identity-interfaces.md) records that contract and its review.
+`Fingerprinted` and `CachedStep` now use explicit configuration hooks; value projections remain
+independent of creation history and computation definitions. Record identity migration and further
+interfaces remain outside this approval.
 
 The owner authorized the optional computation cache and a small reuse example for review.
 `triplum.cache` and `examples/cached_pipeline.py` are the first implementation. Read:
 
 - [Cache interfaces](../specs/cache-interfaces.md) for declarations, guarantees and peer reviews.
-- [Implementation plan](cache-implementation.md#progress-and-rulings) for progress and verification.
+- [Automatic identity implementation](automatic-computation-identity.md) for the current slice.
+- [Initial implementation plan](cache-implementation.md#progress-and-rulings) for progress and verification.
 - [Earlier identity/cache analysis](../specs/cached-pipeline.md) for research and tradeoffs.
 
 Convenience defaults (`@cached`, `@cache.cached`) are implemented; see the
 [cache guide](../infrastructure/cache.md) for usage and the implementation plan for review status.
 
 The owner selected per-computation SQLite tables with input-only row keys and removed codec
-format identity/migrations. Output-contract changes require process revision or clearing.
+format identity/migrations. Incompatible output contracts require representing their changed
+definition in process identity or clearing; there is no manually maintained version counter.
 `triplum cache stats` and `cache clear` are implemented; stats scans counts only with `--details`.
 The cache guide and interface spec record lifecycle guarantees and peer dissent.
 

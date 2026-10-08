@@ -117,4 +117,7 @@ or summaries. [Decision points](concepts/decisions.md) lists current replacement
 
 [Optional caching](infrastructure/cache.md) lets selected steps or larger blocks reuse results.
 Equal intermediate content can reuse downstream work even when different upstream processes
-produced it. Source/Chunk identity changes and benchmark cache policy remain under review.
+produced it. Configured computations select effective settings and dependencies explicitly while
+loaded application code contributes automatically to their identity; no manual version bump is
+required. See [computation fingerprints](infrastructure/cache/computations.md). Source/Chunk
+identity changes and benchmark cache policy remain under review.

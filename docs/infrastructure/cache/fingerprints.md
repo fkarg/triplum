@@ -42,7 +42,9 @@ True
 
 The label `example.Text` separates this meaning from other kinds of values. It is not a codec format
 identifier or a manually maintained version number. The text determines identity; `observed_at` records when it was seen. A→B→A restores
-A's fingerprint without retaining the intervening history.
+A's fingerprint without retaining the intervening history. Equal selected fields intentionally
+keep the same identity even when an unselected schema field changes; this method does not hash
+the Pydantic schema or class implementation.
 
 This definition is appropriate for operations that use only the text. An operation that uses
 `observed_at` to change its semantic result needs a different input contract that includes it.

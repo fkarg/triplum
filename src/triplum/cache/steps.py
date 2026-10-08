@@ -12,6 +12,8 @@ from triplum.cache.defaults import default_cache
 from triplum.cache.identity import function_fingerprint
 from triplum.cache.protocols import CacheKey, CachePolicy, Codec, Fingerprintable, _DefaultCache
 from triplum.cache.runtime import Cache
+from triplum.utils.cache import content_key
+from triplum.utils.fingerprint import _FRAMEWORK_BASES, Fingerprinted
 
 
 def _digest(value: str) -> bytes:
@@ -95,7 +97,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     Pydantic model and function source/defaults/captures identify the computation.
     Captured configuration must remain fixed after decoration. Explicit process_id is
     required for dependencies outside that function (helpers, globals, model versions,
-    files, environment) and source-less callables. It must cover kind/revision/config.
+    files, environment) and source-less callables. Hash the effective definitions and settings.
     cache=None bypasses identity, serialization and lookup entirely.
     """
     process = _digest(process_id) if cache is not None and process_id is not None else None
@@ -122,13 +124,13 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     return decorate if compute is None else decorate(compute)
 
 
-class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
-    """Opt-in cache mixin: implement compute and a semantic computation fingerprint.
+class CachedStep[I: Fingerprintable, O: Fingerprintable](Fingerprinted, ABC):
+    """Opt-in cache mixin: implement compute and fingerprint_config ({} if stateless).
 
-    Defaults use the shared lazy cache and compute's return model annotation. Override
-    cache, output_type, codec or policy independently. Put this before domain Protocol
-    bases. fingerprint must include a computation kind/revision and effective config;
-    exclude cache/codec/policy resources. The step borrows its cache, never closes it.
+    Defaults use automatic loaded-definition identity, the shared lazy cache and compute's
+    return model annotation. Override fingerprint for full identity control. Override cache,
+    output_type, codec or policy independently. Put this before domain Protocol bases.
+    Cache/codec/policy resources are excluded. The step borrows its cache, never closes it.
     """
 
     def __init__(
@@ -157,12 +159,21 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](ABC):
             owner, _digest(self.fingerprint()), item, self.compute, self._codec, self._policy
         )
 
-    @abstractmethod
     def fingerprint(self) -> str:
-        """Identify this computation and configuration, independently of its cache."""
-        ...
+        """Identify definitions/configuration and an explicitly selected output type."""
+        model = self._output_type
+        return content_key(
+            "cached-step",
+            {
+                "computation": super().fingerprint(),
+                "output_type": f"{model.__module__}.{model.__qualname__}" if model else None,
+            },
+        )
 
     @abstractmethod
     def compute(self, item: I, /) -> O:
         """Execute on a miss or when caching is disabled; do not mutate item."""
         ...
+
+
+_FRAMEWORK_BASES.add(CachedStep)

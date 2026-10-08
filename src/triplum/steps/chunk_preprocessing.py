@@ -16,5 +16,8 @@ class EmbeddingText(Protocol):
 class OriginalText(EmbeddingText, Fingerprinted):
     """Embed the chunk's own text, unchanged."""
 
+    def fingerprint_config(self) -> dict[str, object]:
+        return {}
+
     def __call__(self, chunk: Chunk, /) -> str:
         return chunk.text

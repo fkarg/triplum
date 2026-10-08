@@ -7,7 +7,7 @@ import pytest
 from triplum.datatype import Chunk, Source
 from triplum.steps.chunking import FixedSize
 from triplum.steps.embedding import ZeroEmbedder
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import Fingerprinted, source_hash
 
 
 def test_record_fingerprint_ignores_id_and_follows_content():
@@ -33,6 +33,9 @@ class _Uses(Fingerprinted):
     def __init__(self, inner: object) -> None:
         self.inner = inner
 
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"inner": self.inner}
+
 
 def test_nested_fingerprints_and_unsupported_state():
     assert _Uses(FixedSize(3)).fingerprint() != _Uses(FixedSize(4)).fingerprint()
@@ -52,24 +55,31 @@ def _load(path: Path, name: str, monkeypatch: pytest.MonkeyPatch):
 
 def test_code_changes_change_the_fingerprint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     template = (
-        "from triplum.utils.fingerprint import Fingerprinted\n\n"
+        "from triplum.utils.fingerprint import Fingerprinted, source_hash\n\n"
         "class Step(Fingerprinted):\n"
         '    """{doc}"""\n\n'
+        "    def fingerprint_config(self):\n"
+        "        return {{}}\n"
         "    def __call__(self):\n"
         "        return {value}  # {comment}\n"
     )
     fingerprints = []
+    sources = []
     for i, (doc, value, comment) in enumerate([("a", 1, "x"), ("b", 1, "y"), ("a", 2, "x")]):
         path = tmp_path / f"step_{i}.py"
         path.write_text(template.format(doc=doc, value=value, comment=comment))
-        fingerprints.append(_load(path, "step", monkeypatch).Step().fingerprint())
+        cls = _load(path, "step", monkeypatch).Step
+        fingerprints.append(cls().fingerprint())
+        sources.append(source_hash(cls))
     assert fingerprints[0] == fingerprints[1]  # docstrings and comments do not count
     assert fingerprints[0] != fingerprints[2]
+    assert sources[0] == sources[1]
+    assert sources[0] != sources[2]
 
 
-def test_class_without_source_is_refused():
+def test_source_hash_without_source_is_refused():
     namespace: dict = {}
     source = "class Step(Fingerprinted):\n    pass\n"
     exec(source, {"Fingerprinted": Fingerprinted}, namespace)  # noqa: S102 - a class with no file
     with pytest.raises(TypeError, match="source is unavailable"):
-        namespace["Step"]().fingerprint()
+        source_hash(namespace["Step"])

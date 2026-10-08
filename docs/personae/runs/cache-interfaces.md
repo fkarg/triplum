@@ -92,13 +92,38 @@ The strict build passed again. No further reader round is needed for this local 
 all material extension-task findings are resolved.
 
 
-## Subsequent owner clarification
+## Automatic identity and decorator-first retry
 
-After the retry, the owner rejected mandatory manual version numbers. The published examples now
-use semantic kind names without version counters. The configured-step example includes the
-existing source_hash helper and selected configuration; the codec example uses normal function
-inference. These examples were rerun by the maintainer, with identical observable output. The
-reader evidence above concerns the prior frozen examples, not this subsequent authoring choice.
-Documentation explicitly states source_hash's bounded scope and the current lack of automatic
-external schema/codec discovery. A revised API proposal remains under review; no automatic
-dependency-discovery guarantee was added.
+The owner subsequently authorized configured computation identity from loaded definitions and
+selected settings, without manual version labels. The cache landing page and computation guide
+now lead with bare `@cached`; configured classes and dependency hooks follow as extensions.
+This supersedes the earlier source_hash-based configured-step walkthrough, not the observations
+from those frozen reader trials.
+
+A fresh dependency-familiar reader used `/tmp/triplum-identity-docs-preview`, navigating from Home
+with embedded API source excluded. It copied the bare-decorator example and ran it twice against
+an isolated persistent cache. The first run computed twice; the second printed only results.
+No explicit cache owner, backend, codec, process ID or class wrapper was needed. The reader also
+correctly identified built-in Source as incompatible with the cache method requirement. Its report
+and scripts are in `/tmp/triplum-simple-cache-reader/`; the reader reported an inherited serving
+model without independent model identification. The report describes its access trace; this entry
+does not claim a separate tooling audit or human usability result.
+
+The reader composed a function/helper process ID successfully, but an attempted additional
+`definition_hash(Text)` failed on the Pydantic model's `__signature__` descriptor. Verified
+findings and dispositions:
+
+| Finding | Disposition |
+| --- | --- |
+| Only the class walkthrough demonstrated explicit helper dependencies | Added a plain-function continuation hashing both computation and helper definitions |
+| Advice about output-definition identity suggested arbitrary Pydantic class hashing might work | Explicitly documented the bounded definition hasher, unsupported model descriptors and the need for a semantic contract projection or clearing |
+| Bare decorator and persisted reuse | Verified by the reader; no repeat of this successful baseline requested |
+
+The repair does not add generic schema hashing or claim that JSON schema covers validators.
+The fixed-schema helper example deliberately promises invalidation for its declared functions.
+A fresh focused retry used `/tmp/triplum-helper-docs-reader/`. It composed the documented plain
+function/helper identity, verified reuse in a repeated process, and changed casefold to upper: the
+process identity changed and execution produced the changed result. The reader correctly understood
+that `definition_hash` is not arbitrary Pydantic schema hashing and that validator semantics require
+an explicit semantic contract or clearing. No further change was required for this fixed-schema task;
+a generic validator/schema convenience interface remains outside this implementation scope.

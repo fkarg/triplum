@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 from triplum.cache import Cache, CachedStep, SQLiteBackend, cached
 from triplum.utils.cache import content_key
+from triplum.utils.fingerprint import definition_hash
 
 
 class Text(BaseModel):
@@ -23,7 +24,7 @@ class Text(BaseModel):
     observed_at: int = 0
 
     def fingerprint(self) -> str:
-        return content_key("example-text-v1", {"text": self.text})
+        return content_key("example.Text", {"text": self.text})
 
 
 class Analysis(BaseModel):
@@ -31,7 +32,7 @@ class Analysis(BaseModel):
     words: tuple[str, ...]
 
     def fingerprint(self) -> str:
-        return content_key("example-analysis-v1", {"words": self.words})
+        return content_key("example.Analysis", {"words": self.words})
 
 
 class Normalize(CachedStep[Text, Text]):
@@ -40,8 +41,8 @@ class Normalize(CachedStep[Text, Text]):
         self.mode = mode
         self.calls = 0
 
-    def fingerprint(self) -> str:
-        return content_key("example-normalize-v1", {"mode": self.mode})
+    def fingerprint_config(self) -> dict[str, object]:
+        return {"mode": self.mode}
 
     def compute(self, item: Text, /) -> Text:
         self.calls += 1
@@ -49,9 +50,13 @@ class Normalize(CachedStep[Text, Text]):
         return Text(text=text.strip())
 
 
+def analyze_text(item: Text) -> Analysis:
+    return Analysis(words=tuple(item.text.split()))
+
+
 def demonstrate(path: Path) -> dict[str, int]:
     counts = {"analysis_computations": 0, "reopened_analysis_computations": 0}
-    process_id = content_key("example-analysis-v1", {"split": "whitespace"})
+    process_id = definition_hash(analyze_text)
     with Cache(SQLiteBackend(path), pending_bytes=1024 * 1024) as cache:
         lower = Normalize(cache, "lower")
         casefold = Normalize(cache, "casefold")
@@ -59,7 +64,7 @@ def demonstrate(path: Path) -> dict[str, int]:
         @cached(cache=cache, process_id=process_id, output_type=Analysis)
         def analyze(item: Text) -> Analysis:
             counts["analysis_computations"] += 1
-            return Analysis(words=tuple(item.text.split()))
+            return analyze_text(item)
 
         a = Text(text=" Hello World ", observed_at=1)
         b = Text(text=" A Different Input ", observed_at=2)
@@ -79,7 +84,7 @@ def demonstrate(path: Path) -> dict[str, int]:
         @cached(cache=cache, process_id=process_id, output_type=Analysis)
         def reopened(item: Text) -> Analysis:
             counts["reopened_analysis_computations"] += 1
-            return Analysis(words=tuple(item.text.split()))
+            return analyze_text(item)
 
         assert reopened(Text(text="hello world")) == first
     return counts

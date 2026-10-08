@@ -29,7 +29,7 @@ def function_fingerprint(compute: object) -> str:
     """Identify source, function kind, evaluated defaults and captured configuration.
 
     Bind once and keep captured configuration immutable. Globals, helper/library
-    revisions, files and environment are not tracked: use an explicit process_id
+    definitions, files and environment are not tracked: use an explicit process_id
     covering them. Source-less functions and callable objects need explicit identity.
     """
     if not isinstance(compute, FunctionType):
@@ -45,7 +45,7 @@ def function_fingerprint(compute: object) -> str:
     if ast.get_docstring(definition, clean=False) is not None:
         definition.body.pop(0)
     return content_key(
-        "python-function-v1",
+        "python-function",
         {
             "kind": f"{compute.__module__}.{compute.__qualname__}",
             "code": ast.dump(tree),

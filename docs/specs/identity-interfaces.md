@@ -1,8 +1,8 @@
 # Identity interfaces: first review
 
-Status: owner-review draft, not implemented. The owner requested an interface/concept audit,
-starting with identity, and cache subpages explaining how to implement each extension interface.
-The documentation describes current behavior; proposed API changes remain separate.
+Status: the owner authorized automatic configured-computation identity and documentation cleanup.
+The bounded definition/configuration rules below are implemented and independently reviewed.
+Record identities, dataset identities and schema equivalence remain separate review items.
 
 ## Direction from the owner
 
@@ -30,7 +30,7 @@ Settled decisions remain:
 - Record UUIDs must not change merely because processing code changed. Code belongs in computation
   identity; scoped semantic record data belongs in record identity.
 
-## What a change can and cannot affect automatically
+## Identity requirements and audit findings
 
 | Change | Necessary identity behavior | Current limitation |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ entire Pydantic JSON schema would also track descriptions and unrelated bookkeep
 The problem to solve is selecting relevant definitions, not adding a schema-version field.
 Serialization format remains independent; this is not approval to reintroduce a codec namespace.
 
-## Current interface inventory
+## Audit inventory before this change
 
 | Surface | Current identity | Consumer / mismatch |
 | --- | --- | --- |
@@ -59,7 +59,7 @@ Serialization format remains independent; this is not approval to reintroduce a 
 | Dataset/stream `fingerprint()` | Concrete source's chosen logical data or recipe | Full record dumps, bytes or source+selection composition differ |
 | Record `id` | Current UUIDv7 identity | Store references; UUIDv8 layouts remain under separate review |
 
-Reproduced findings:
+The pre-change audit reproduced these findings:
 
 - Configured-object hashing equates list/tuple and integer/string dictionary keys even when a
   computation distinguishes them. The JSON helper can make the same conflations, so replacing
@@ -119,63 +119,88 @@ This example does not claim automatic schema-change detection: that is precisely
 limitation under review. Consumers using observed_at in the semantic answer need a different
 projection. Serialization may retain old bookkeeping; attach current-event data after reuse.
 
-## Revised recommendation for configured computations
-
-Prefer relevant code plus explicitly selected effective configuration, instead of manual revision
-labels or all-instance introspection. Keep the public `fingerprint()` method and bare decorator
-convenience. A configuration hook is a reasonable implementation candidate:
+## Configured computations: approved direction and bounded implementation
 
 ```python
-from abc import ABC, abstractmethod
+class Fingerprinted:
+    def fingerprint_config(self) -> dict[str, object]:
+        """Select effective settings; required when using the default fingerprint."""
+        raise NotImplementedError
 
-
-type FingerprintData = (
-    None | bool | int | float | str | list[FingerprintData] | dict[str, FingerprintData]
-)
-
-
-class Fingerprinted(ABC):
-    @abstractmethod
-    def fingerprint_config(self) -> dict[str, FingerprintData]:
-        """Select effective settings and declared external dependency identities."""
-        ...
+    def fingerprint_dependencies(self) -> tuple[object, ...]:
+        """Declare additional Python definitions or fingerprintable dependencies."""
+        return ()
 
     def fingerprint(self) -> str:
-        """Hash relevant computation code and selected configuration."""
+        """Hash loaded definitions, explicit configuration and declared dependencies."""
         ...
 ```
 
-This is a candidate declaration, not an approved implementation. It still needs a precise rule
-for relevant code. Do not retain the current full-MRO scan: domain Protocols, CachedStep plumbing
-and ABC code would enter identity. Hashing only a method can instead miss helpers and inherited
-behavior. External model/file dependencies must identify actual content or another stable
-upstream identity, not an untracked mutable object. The owner should not maintain arbitrary
-counters to compensate for missing dependencies.
+`CachedStep` inherits this implementation. Existing overrides of `fingerprint()` retain complete
+control and need not implement the configuration hook. Stateless implementations return `{}`.
+This requirement is checked when using default fingerprinting rather than making old explicit
+fingerprint overrides abstract. Configuration is re-evaluated per call, so A→B→A restores identity.
+Resources, locks, counters, policy and timing attributes are never traversed implicitly.
 
-Keep the choice proportional: explicit declarations of dependencies can be simpler and safer
-than recursive discovery of every imported object. Unrestricted dependency tracing, a registry,
-new object hierarchy and whole-schema hashing are not implied. A final declaration and extension
-example require independent review before implementation.
+The automatic code boundary is loaded Python method definitions in the concrete class and its
+ordinary bases. It covers functions, static/class methods and property accessors, including
+inherited definitions and nested code. Exact framework bases (`Fingerprinted`, `CachedStep`,
+`object`, `ABC`, `Protocol`, `Generic`) and typing-generated Protocol helpers are excluded.
+Domain Protocol method bodies remain included because explicit subclasses inherit concrete defaults. It is deliberately
+conservative: unused or overridden application methods can invalidate a result. There is no
+heuristic classifying arbitrary third-party packages as computation or infrastructure.
 
-## Encoding is a separate decision
+Definition hashing uses loaded code rather than reading a possibly edited source file: bytecode,
+exception tables, argument counts, runtime flags, names and recursively typed constants, plus
+evaluated defaults and captured nonlocals. Source locations and filenames are excluded. Non-executable docstring
+text changes are ignored; a docstring literal referenced by executable bytecode remains semantic; adding/removing a docstring can conservatively change the digest because
+Python can change constant indexes and bytecode. Cross-interpreter/compiler stability is not
+promised. Definitions must not be monkeypatched after their first fingerprint: definition digests
+are retained for fast repeated lookups. Configuration/dependencies must not mutate during a call.
 
-Restricting a configuration hook to explicitly encoded finite JSON values avoids silent coercion
-at that boundary. Ordered lists retain order; dictionaries treated as mappings do not encode
-iteration order. A consumer that observes another distinction must represent it explicitly.
+Immutable own-class scalar/tuple/frozenset constants are included automatically, including prompts and
+templates. Other class attributes (including regexes, Enum members and nested classes), metaclass/descriptor state, global helpers, model weights, files
+and environment are not inferred: select their effective values and declare actual dependencies.
+An explicitly declared Python definition hashes its bounded loaded implementation; a fingerprintable
+object supplies its own semantic digest. A Path identifies its pathname only, not file bytes.
+The implicit `__class__` closure used by `super()` and Python 3.14
+`__classdict__` annotation namespace are covered by selected class ancestry rather than recursively
+fingerprinting the class object/namespace. Python function captures (including wrapped methods) are
+recursively identified; recursive capture cycles require an explicit fingerprint. Python 3.14 annotation
+definitions are hashed as loaded code. CachedStep additionally includes an explicit output_type name;
+this tracks type selection without claiming automatic schema equivalence.
 
-Do not silently tighten `content_key` in the same change: existing callers include tuples and
-records whose equivalence remains under review. Rejecting unsupported values versus supplying
-a typed canonical encoder needs a consumer audit. Likewise, dataset content identity versus
-source/selection recipe identity needs its own review before collection seeding.
+`definition_hash(function_or_class)` exposes the same loaded-definition digest for composing an
+explicit process_id. `source_hash` remains the AST/source utility: it reads the current source file
+on first use, so it does not guarantee identity of previously loaded code after that file changes. Bare `@cached` retains its existing
+source/default/nonlocal-capture inference at decoration time; this change does not turn it into
+transitive dependency discovery. Explicit `process_id` can compose actual definition/content hashes
+when that convenience boundary is insufficient. Neither API requires manually bumped version labels.
+
+No automatic Pydantic schema or validator equivalence is claimed. An author whose computation depends
+on an output definition must select its relevant contract or dependency. Equal projected values remain
+interchangeable where the declared semantics permit that, regardless of creation or producer history.
+
+## Configuration encoding is a local boundary
+
+Selected configuration accepts exact finite scalar values, string-keyed mappings, lists/tuples,
+Paths and nested values with `fingerprint()`. Nested fingerprint methods take priority; Pydantic
+serialization is never a fallback definition of semantic equality. Unsupported resources and
+non-finite floats fail clearly. Lists and tuples retain their distinction. Config dictionaries are
+mappings, so insertion order is irrelevant; a computation observing iteration order must project
+ordered pairs explicitly. Bare decorator captures retain their existing ordered-dictionary behavior.
+
+The generic `content_key` helper is unchanged: its callers include records/datasets with contracts
+still under review. Strictness at the new configuration boundary does not redefine their identities.
 
 ## Documentation and verification
 
-The cache parent now has subpages for value fingerprints, computation fingerprints, serialization,
-storage, ownership/policy and administration. Custom value, configured step, codec and backend
-examples describe current APIs; they are not a publication of this proposal. Record and dataset
+The cache parent has subpages for value fingerprints, computation fingerprints, serialization,
+storage, ownership/policy and administration. They lead with bare decorator use; configured step,
+codec and backend extension examples follow only when those concerns are needed. Record and dataset
 identity remain linked separate topics. One Protocol is not automatically a separate concept.
 
-Implementation acceptance should cover A→B→A, bookkeeping-only changes, automatic relevant-code
+Implementation acceptance covers A→B→A, bookkeeping-only changes, automatic relevant-code
 changes, explicit external-content changes, two upstream processes producing equal outputs,
 mutation timing, and provenance-safe binding. Test FixedSize's two-parent counterexample before
 making records cacheable. A Protocol cannot detect omitted semantic fields by itself.
@@ -202,5 +227,57 @@ configuration. Tests attempted JSON collisions/NaN, mixin composition, MRO inclu
 existing consumers and provenance. No performance measurements were made.
 
 Local audits and the owner-requested persona trials are recorded in
-[Cache interface trials](../personae/runs/cache-interfaces.md). The revised code-selection and
-structural-data rules remain for the next owner review; no production behavior has changed.
+[Cache interface trials](../personae/runs/cache-interfaces.md). The bounded computation implementation is authorized; structural-data rules and record migration
+remain separate owner-review work.
+
+
+### Automatic-definition design review
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `abca1b25fce349968e59215b7754fbb4`, challenged the
+bounded proposal. **Changed decision / added verification:** track Python 3.14 annotation definitions
+and explicit output type selection; recurse into captured wrapped Python functions with a cycle guard;
+exclude Protocols only when `_is_protocol is True`; include immutable own-class constants; expose
+`definition_hash` as the safe loaded-code building block. Tests cover these paths and loaded source drift.
+**Rejected reasoning with counterexample:** the peer considered docstring-constant deduplication only a
+false-miss risk. Two functions with docstring/returned literal respectively `a` and `b` have identical
+bytecode and use constant zero; stripping that slot would create a false hit. The implementation retains
+any executable reference to the slot, with a regression test.
+**Added verification:** a concrete Protocol can acquire `object.__init__` in its own namespace
+after instantiation. That exact framework initializer is excluded, preserving automatic identity
+for stateless Protocol implementations.
+
+Peer attacks inspected annotation-only changes, wrapper captures, Protocol flags, docstring slots,
+existing explicit overrides and in-repository Protocol bodies. The documented class hierarchy rule
+can conservatively include third-party ordinary base methods; no arbitrary dependency graph is inferred.
+External research confirmed explicit tokenization contracts in Dask, incidental-self-state pitfalls in
+Joblib, and untracked-input risks in Bazel. Joblib's development implementation also informed checking
+exception tables and recursive code constants, without treating it as a stable public API contract.
+
+
+### Implementation review
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `5066d2216f9a4772969f35bb51698784`, found one inherited
+behavior defect: skipping complete domain Protocols omitted their concrete default methods.
+**Unique defect / changed decision:** include domain Protocol definitions while excluding exact
+typing-generated helpers; a real default-method edit regression failed before the fix.
+**Changed decision / added verification:** include frozenset class constants using the existing
+canonical constant encoder. Both new false-hit regressions now pass.
+
+**Retained dissent, rejected broader recommendation:** the peer proposed rejecting every class
+attribute that cannot be automatically encoded. The owner retained the bounded rule and explicit
+configuration boundary: class-held clients/resources must remain usable without overriding the entire
+fingerprint when selected configuration already declares their semantics. Regexes, Enum members,
+mutable containers and nested classes require explicit projections/dependencies; silently claiming all
+immutable objects are covered would be wrong. A compiled-regex projection regression verifies that path.
+
+**Already addressed by independent reader / added documentation:** Pydantic model classes are not
+automatically hashable schemas. The fresh reader hit `Text.__signature__`, and a focused retry verified
+the explicit limitation and plain-function/helper composition after the documentation repair.
+**No decision impact:** retain the small exact framework exclusion set and fixed-capture requirement,
+rather than a new marker convention or prohibition on all captured mutable containers.
+**Simplification:** removed the uninformative digest-length print and duplicate implementation prose;
+clarified the error for captured classes.
+
+The peer tried annotation changes (including postponed annotations), adaptive bytecode specialization,
+docstring presence/content, abstract base bodies, unsupported descriptors and output-type selection.
+It did not run the full suite/build or measure hot-path performance; maintainer checks are separate.
