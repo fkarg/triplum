@@ -7,14 +7,14 @@ effective configuration and relevant external dependencies. Together with the
 ## Let the decorator identify the computation
 
 Normally, add `@cached`. It derives computation identity, uses the shared cache, and chooses
-Pydantic serialization from the return annotation. `FingerprintedModel` handles data identity:
+Pydantic serialization from the return annotation. `FingerprintedDataModel` handles data identity:
 
 ```python
 from triplum.cache import cached
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
 
 
@@ -184,18 +184,18 @@ instead of monkey-patching an already fingerprinted class or function. Override
 `fingerprint_dependencies()` to return a tuple of relevant Python function/class definitions or
 objects with `fingerprint()`. Their definitions or semantic fingerprints then enter the digest.
 A declared helper's own external dependencies must also be represented; this is not a recursive
-import scanner. See the generated [`Fingerprinted` reference][triplum.utils.fingerprint.Fingerprinted]
+import scanner. See the generated [`FingerprintedComputationMixin` reference][triplum.utils.fingerprint.FingerprintedComputationMixin]
 for the hook declarations. For example, this ordinary callable declares the helper it uses:
 
 ```python
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 
 
 def normalize(text: str) -> str:
     return text.casefold()
 
 
-class Normalize(Fingerprinted):
+class Normalize(FingerprintedComputationMixin):
     def fingerprint_config(self) -> dict[str, object]:
         return {}
 
@@ -237,7 +237,7 @@ its qualified name to the default `CachedStep` identity, not its full schema.
 
 ## Use the same mixin without caching
 
-[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] provides these configuration and
+[`FingerprintedComputationMixin`][triplum.utils.fingerprint.FingerprintedComputationMixin] provides these configuration and
 dependency hooks independently of `CachedStep`. Use it for an ordinary callable that needs
 computation identity without cache lookup, as in the `Normalize` example above.
 [Configured-object identity](../fingerprints.md#configured-object-identity) explains its use by reference steps. `CachedStep` already inherits it, so no extra mixin base is needed.

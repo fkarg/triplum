@@ -29,7 +29,7 @@ configured computations: changing the chunk size changes their identity.
 
 ## Choose the identity question
 
-For Pydantic data, inherit [`FingerprintedModel`][triplum.datatype.FingerprintedModel] to get a
+For Pydantic data, inherit [`FingerprintedDataModel`][triplum.datatype.FingerprintedDataModel] to get a
 `fingerprint()` method based on actual field values and qualified type name. Use `@cached` on the
 computation. Start with [Value fingerprints](cache/fingerprints.md) for the smallest example,
 bookkeeping exclusions and custom projections. External value types can implement the method
@@ -61,7 +61,7 @@ its content property matches.
 
 ## Configured-object identity
 
-[`Fingerprinted`][triplum.utils.fingerprint.Fingerprinted] in `triplum.utils.fingerprint` supplies
+[`FingerprintedComputationMixin`][triplum.utils.fingerprint.FingerprintedComputationMixin] in `triplum.utils.fingerprint` supplies
 a `fingerprint()` implementation used by steps such as
 [`FixedSize`][triplum.steps.chunking.FixedSize]. It combines the qualified class name, loaded application method definitions,
 immutable class constants, explicit configuration and declared dependencies. It does not scan instance attributes.

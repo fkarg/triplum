@@ -11,15 +11,15 @@ computation, chooses serialization from the return annotation and opens a shared
 when first called. No cache configuration or manual computation ID is needed.
 
 Save this complete example as `cache_example.py` and run `uv run python cache_example.py`.
-`FingerprintedModel` supplies data fingerprinting and Pydantic serialization; the decorator
+`FingerprintedDataModel` supplies data fingerprinting and Pydantic serialization; the decorator
 supplies computation identity and caching.
 
 ```python
 from triplum.cache import cached
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
 
 
@@ -71,7 +71,7 @@ own implementation. You can use each extension without adopting the others.
 
 | What you want to do | Read | Interface |
 | --- | --- | --- |
-| Define which input/output fields mean the same thing | [Value fingerprints](cache/fingerprints.md) | `FingerprintedModel`, `Fingerprintable` |
+| Define which input/output fields mean the same thing | [Value fingerprints](cache/fingerprints.md) | `FingerprintedDataModel`, `Fingerprintable` |
 | Identify an operation or write a configured cached step | [Computation fingerprints](cache/computations.md) | `cached`, `CachedStep` |
 | Use Pydantic output or supply another encoding | [Serialization](cache/serialization.md) | `Codec`, `PydanticCodec` |
 | Supply storage or use keys/bytes directly | [Storage backends](cache/storage.md) | `CacheBackend`, `SQLiteBackend`, `CacheKey` |

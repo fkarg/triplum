@@ -1,15 +1,16 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import ClassVar
 from uuid import UUID
 
 import pytest
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from triplum.cache import PydanticCodec, cached, close_default_cache
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel, FingerprintedDataModelMixin
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
     observed_at: int = 0
     fingerprint_exclude = frozenset({"observed_at"})
@@ -57,7 +58,7 @@ def test_bookkeeping_stays_serialized() -> None:
 
 
 def test_nested_identity_uses_selected_fields() -> None:
-    class Bundle(FingerprintedModel):
+    class Bundle(FingerprintedDataModel):
         values: list[Text]
 
     first = Bundle(values=[Text(text="A", observed_at=1)])
@@ -69,13 +70,13 @@ def test_nested_identity_uses_selected_fields() -> None:
 
 
 def test_actual_nested_subclass_values_expose_lossy_serialization() -> None:
-    class Parent(FingerprintedModel):
+    class Parent(FingerprintedDataModel):
         text: str
 
     class Child(Parent):
         language: str
 
-    class Bundle(FingerprintedModel):
+    class Bundle(FingerprintedDataModel):
         item: Parent
 
     first = Bundle(item=Child(text="A", language="en"))
@@ -87,7 +88,7 @@ def test_actual_nested_subclass_values_expose_lossy_serialization() -> None:
 
 
 def test_serialization_exclusion_does_not_exclude_semantics() -> None:
-    class Hidden(FingerprintedModel):
+    class Hidden(FingerprintedDataModel):
         visible: str
         semantic: int = Field(default=0, exclude=True)
 
@@ -100,7 +101,7 @@ def test_serialization_exclusion_does_not_exclude_semantics() -> None:
 
 
 def test_default_values_aliases_and_computed_fields() -> None:
-    class Value(FingerprintedModel):
+    class Value(FingerprintedDataModel):
         text: str = Field(default="A", alias="content")
 
         @computed_field
@@ -114,7 +115,7 @@ def test_default_values_aliases_and_computed_fields() -> None:
 
 
 def test_allowed_extra_values_enter_identity() -> None:
-    class Extra(FingerprintedModel):
+    class Extra(FingerprintedDataModel):
         model_config = ConfigDict(extra="allow")
         text: str
 
@@ -125,7 +126,7 @@ def test_allowed_extra_values_enter_identity() -> None:
 
 
 def test_type_and_container_distinctions() -> None:
-    class Value(FingerprintedModel):
+    class Value(FingerprintedDataModel):
         value: object
 
     assert (
@@ -140,7 +141,7 @@ def test_type_and_container_distinctions() -> None:
 
 
 def test_projection_supports_custom_semantic_values() -> None:
-    class Event(FingerprintedModel):
+    class Event(FingerprintedDataModel):
         occurred_at: datetime
 
         def fingerprint_data(self) -> dict[str, object]:
@@ -154,7 +155,7 @@ def test_projection_supports_custom_semantic_values() -> None:
 
 
 def test_unsupported_values_and_exclusion_typos_fail_explicitly() -> None:
-    class Value(FingerprintedModel):
+    class Value(FingerprintedDataModel):
         value: object
 
     with pytest.raises(TypeError, match="fingerprint"):
@@ -166,7 +167,7 @@ def test_unsupported_values_and_exclusion_typos_fail_explicitly() -> None:
 
     with pytest.raises(ValueError, match="observed_at"):
 
-        class Typo(FingerprintedModel):
+        class Typo(FingerprintedDataModel):
             text: str
             fingerprint_exclude = frozenset({"observed_at"})
 
@@ -174,13 +175,13 @@ def test_unsupported_values_and_exclusion_typos_fail_explicitly() -> None:
 def test_model_kind_and_field_projection_are_independent_of_schema_metadata() -> None:
     from pydantic import create_model
 
-    first = create_model("Projection", __base__=FingerprintedModel, text=(str, ...))
+    first = create_model("Projection", __base__=FingerprintedDataModel, text=(str, ...))
     revised = create_model(
         "Projection",
-        __base__=FingerprintedModel,
+        __base__=FingerprintedDataModel,
         text=(str, Field(description="Documentation does not change this value")),
     )
-    other_kind = create_model("OtherKind", __base__=FingerprintedModel, text=(str, ...))
+    other_kind = create_model("OtherKind", __base__=FingerprintedDataModel, text=(str, ...))
     assert (
         first.model_validate({"text": "A"}).fingerprint()
         == revised.model_validate({"text": "A"}).fingerprint()
@@ -202,7 +203,7 @@ def test_external_nested_fingerprint_is_honored() -> None:
         def fingerprint(self) -> str:
             return content_key("external-value", self.semantic)
 
-    class Envelope(FingerprintedModel):
+    class Envelope(FingerprintedDataModel):
         item: object
 
     assert (
@@ -219,7 +220,7 @@ def test_plain_nested_model_needs_an_explicit_projection() -> None:
     class Plain(BaseModel):
         text: str
 
-    class Envelope(FingerprintedModel):
+    class Envelope(FingerprintedDataModel):
         item: Plain
 
     with pytest.raises(TypeError, match="fingerprint"):
@@ -229,7 +230,7 @@ def test_plain_nested_model_needs_an_explicit_projection() -> None:
 def test_ambiguous_container_annotation_cannot_silently_lose_tuple_identity() -> None:
     from collections.abc import Sequence
 
-    class Value(FingerprintedModel):
+    class Value(FingerprintedDataModel):
         items: Sequence[int]
 
     with pytest.raises(ValueError, match="semantic fingerprint"):
@@ -239,13 +240,15 @@ def test_ambiguous_container_annotation_cannot_silently_lose_tuple_identity() ->
 def test_fingerprint_fields_cannot_shadow_identity_configuration() -> None:
     for name in ("fingerprint", "fingerprint_data", "fingerprint_exclude"):
         with pytest.warns(UserWarning, match="shadows"), pytest.raises(TypeError, match=name):
-            type("Shadow", (FingerprintedModel,), {"__annotations__": {name: str}, name: "value"})
+            type(
+                "Shadow", (FingerprintedDataModel,), {"__annotations__": {name: str}, name: "value"}
+            )
 
 
 def test_alias_and_same_named_extra_cannot_hide_a_changed_input(tmp_path: Path) -> None:
     from triplum.cache import Cache, SQLiteBackend
 
-    class Aliased(FingerprintedModel):
+    class Aliased(FingerprintedDataModel):
         model_config = ConfigDict(extra="allow")
         text: str = Field(alias="content")
 
@@ -263,6 +266,65 @@ def test_exclusion_setting_must_not_treat_a_string_as_field_names() -> None:
     with pytest.raises(TypeError, match="frozenset"):
         type(
             "Invalid",
-            (FingerprintedModel,),
+            (FingerprintedDataModel,),
             {"__annotations__": {"a": str, "b": str}, "fingerprint_exclude": "ab"},
         )
+
+
+def test_mixin_composes_with_existing_model_configuration_and_hooks() -> None:
+    from pydantic import field_validator
+
+    initialized: list[str] = []
+
+    class ExistingModel(BaseModel):
+        model_config = ConfigDict(extra="allow")
+        text: str
+        observed_at: int = 0
+
+        @field_validator("text")
+        @classmethod
+        def normalize_text(cls, value: str) -> str:
+            return value.strip()
+
+        @classmethod
+        def __pydantic_init_subclass__(cls, **kwargs: object) -> None:
+            super().__pydantic_init_subclass__(**kwargs)
+            initialized.append(cls.__name__)
+
+    class Value(FingerprintedDataModelMixin, ExistingModel):
+        fingerprint_exclude: ClassVar[frozenset[str]] = frozenset({"observed_at"})
+
+    class Child(Value):
+        language: str
+
+    assert initialized == ["Value", "Child"]
+    first = Value(text=" A ", observed_at=1, extra="one")
+    assert first.text == "A"
+    assert first.fingerprint() == Value(text="A", observed_at=2, extra="one").fingerprint()
+    assert first.fingerprint() != Value(text="A", extra="two").fingerprint()
+    assert PydanticCodec(Value).decode(PydanticCodec(Value).encode(first)) == first
+    assert (
+        Child(text="A", language="en").fingerprint() != Child(text="A", language="de").fingerprint()
+    )
+    with pytest.raises(ValueError, match="unknown fingerprint_exclude"):
+        type("Typo", (Value,), {"fingerprint_exclude": frozenset({"missing"})})
+
+
+def test_mixin_requires_composition_before_pydantic_base() -> None:
+    with pytest.raises(TypeError, match="before"):
+        type("WrongOrder", (BaseModel, FingerprintedDataModelMixin), {})
+
+
+def test_plain_mixin_requires_custom_projection() -> None:
+    class Value(FingerprintedDataModelMixin):
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+        def fingerprint_data(self) -> dict[str, object]:
+            return {"text": self.text}
+
+    assert not issubclass(FingerprintedDataModelMixin, BaseModel)
+    assert Value("A").fingerprint() == Value("A").fingerprint()
+    assert Value("A").fingerprint() != Value("B").fingerprint()
+    with pytest.raises(TypeError, match="override"):
+        FingerprintedDataModelMixin().fingerprint()

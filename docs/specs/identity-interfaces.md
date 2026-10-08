@@ -54,7 +54,7 @@ Serialization format remains independent; this is not approval to reintroduce a 
 | --- | --- | --- |
 | `content_key(kind, payload)` | Namespace plus sorted JSON | Shared helper; does not define arbitrary-Python equivalence |
 | Source/Chunk fingerprint properties | Origin/text, plus chunk offset | SQL columns; omit storage IDs and Chunk parent reference |
-| `Fingerprinted.fingerprint()` | Qualified class, class/base source and every attribute | Four reference steps; includes resources, collapses some type distinctions |
+| Historical `Fingerprinted.fingerprint()` | Qualified class, class/base source and every attribute | Four reference steps; includes resources, collapses some type distinctions |
 | `function_fingerprint()` | Function source/name/defaults/nonlocal captures | Frozen by the decorator; globals/helpers/model definitions not discovered |
 | `Fingerprintable.fingerprint()` | Author-declared semantic value | Cache input/output boundary |
 | `CachedStep.fingerprint()` | Author-declared computation | Re-evaluated per call; resources must stay out |
@@ -124,7 +124,7 @@ projection. Serialization may retain old bookkeeping; attach current-event data 
 ## Configured computations: approved direction and bounded implementation
 
 ```python
-class Fingerprinted:
+class FingerprintedComputationMixin:
     def fingerprint_config(self) -> dict[str, object]:
         """Select effective settings; required when using the default fingerprint."""
         raise NotImplementedError
@@ -146,7 +146,7 @@ Resources, locks, counters, policy and timing attributes are never traversed imp
 
 The automatic code boundary is loaded Python method definitions in the concrete class and its
 ordinary bases. It covers functions, static/class methods and property accessors, including
-inherited definitions and nested code. Exact framework bases (`Fingerprinted`, `CachedStep`,
+inherited definitions and nested code. Exact framework bases (`FingerprintedComputationMixin`, `CachedStep`,
 `object`, `ABC`, `Protocol`, `Generic`) and typing-generated Protocol helpers are excluded.
 Domain Protocol method bodies remain included because explicit subclasses inherit concrete defaults. It is deliberately
 conservative: unused or overridden application methods can invalidate a result. There is no

@@ -33,11 +33,13 @@ contains check commands and hook setup.
 - Fingerprints should follow relevant data/structure and computation definitions, without requiring
   manually maintained version numbers. Explicit field projections do not automatically detect
   schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
-  configuration for Fingerprinted/CachedStep, with explicit external dependencies and no manual counters.
+  configuration for FingerprintedComputationMixin/CachedStep, with explicit external dependencies and no manual counters.
   This does not approve record/dataset identity migration or whole-schema equivalence.
-- The owner approved `datatype.FingerprintedModel`: semantic field-value identity for Pydantic
+- The owner approved `datatype.FingerprintedDataModel`: semantic field-value identity for Pydantic
   data, explicit bookkeeping exclusions and custom projections. Keep this separate from the
-  computation `Fingerprinted` mixin. Source/Chunk and dataset migration remain deferred.
+  computation `FingerprintedComputationMixin`. `FingerprintedDataModelMixin` supplies the same data
+  identity to existing Pydantic bases (mixin first); the ready-made data model combines it with
+  BaseModel. Source/Chunk and dataset migration remain deferred.
 - The owner selected one SQLite table per computation, input-only keys within each table and
   no codec format identity/migrations. Incompatible output contracts must be represented in
   computation identity or cleared. The cache stats/clear CLI is authorized; preserve unrelated tables

@@ -197,7 +197,7 @@ def definition_hash(definition: object) -> str:
     return content_key("python-definition", _definition(definition, set()))
 
 
-class Fingerprinted:
+class FingerprintedComputationMixin:
     """Identify a configured computation by loaded definitions and selected settings.
 
     Implement fingerprint_config, returning {} for stateless computations. Use
@@ -244,4 +244,4 @@ class Fingerprinted:
         )
 
 
-_FRAMEWORK_BASES.add(Fingerprinted)
+_FRAMEWORK_BASES.add(FingerprintedComputationMixin)

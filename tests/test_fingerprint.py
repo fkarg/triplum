@@ -7,7 +7,7 @@ import pytest
 from triplum.datatype import Chunk, Source
 from triplum.steps.chunking import FixedSize
 from triplum.steps.embedding import ZeroEmbedder
-from triplum.utils.fingerprint import Fingerprinted, source_hash
+from triplum.utils.fingerprint import FingerprintedComputationMixin, source_hash
 
 
 def test_record_fingerprint_ignores_id_and_follows_content():
@@ -29,7 +29,7 @@ def test_object_fingerprint_covers_class_and_state():
     assert ZeroEmbedder(3).fingerprint() != FixedSize(3).fingerprint()
 
 
-class _Uses(Fingerprinted):
+class _Uses(FingerprintedComputationMixin):
     def __init__(self, inner: object) -> None:
         self.inner = inner
 
@@ -55,8 +55,8 @@ def _load(path: Path, name: str, monkeypatch: pytest.MonkeyPatch):
 
 def test_code_changes_change_the_fingerprint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     template = (
-        "from triplum.utils.fingerprint import Fingerprinted, source_hash\n\n"
-        "class Step(Fingerprinted):\n"
+        "from triplum.utils.fingerprint import FingerprintedComputationMixin, source_hash\n\n"
+        "class Step(FingerprintedComputationMixin):\n"
         '    """{doc}"""\n\n'
         "    def fingerprint_config(self):\n"
         "        return {{}}\n"
@@ -79,7 +79,7 @@ def test_code_changes_change_the_fingerprint(tmp_path: Path, monkeypatch: pytest
 
 def test_source_hash_without_source_is_refused():
     namespace: dict = {}
-    source = "class Step(Fingerprinted):\n    pass\n"
-    exec(source, {"Fingerprinted": Fingerprinted}, namespace)  # noqa: S102 - a class with no file
+    source = "class Step(FingerprintedComputationMixin):\n    pass\n"
+    exec(source, {"FingerprintedComputationMixin": FingerprintedComputationMixin}, namespace)  # noqa: S102 - a class with no file
     with pytest.raises(TypeError, match="source is unavailable"):
         source_hash(namespace["Step"])

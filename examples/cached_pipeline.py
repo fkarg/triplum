@@ -14,11 +14,11 @@ from typing import Literal
 from pydantic import ConfigDict
 
 from triplum.cache import Cache, CachedStep, SQLiteBackend, cached
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 from triplum.utils.fingerprint import definition_hash
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     model_config = ConfigDict(frozen=True)
     text: str
     observed_at: int = 0
@@ -26,7 +26,7 @@ class Text(FingerprintedModel):
     fingerprint_exclude = frozenset({"observed_at"})
 
 
-class Analysis(FingerprintedModel):
+class Analysis(FingerprintedDataModel):
     model_config = ConfigDict(frozen=True)
     words: tuple[str, ...]
 

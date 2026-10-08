@@ -40,8 +40,12 @@ def _value(value: object) -> object:
     )
 
 
-class FingerprintedModel(BaseModel):
-    """A Pydantic data value with semantic field identity and ordinary serialization.
+class FingerprintedDataModelMixin:
+    """Add semantic field identity to an existing Pydantic model base.
+
+    Place this mixin before the model base. Hooks in other bases must call super().
+    Annotate fingerprint_exclude as ClassVar when overriding it at first composition.
+    Other data types can use this mixin with an explicit fingerprint_data projection.
 
     All declared fields and allowed extras participate by default. Exclude bookkeeping
     with fingerprint_exclude, or override fingerprint_data for another projection.
@@ -53,9 +57,20 @@ class FingerprintedModel(BaseModel):
     fingerprint_exclude: ClassVar[frozenset[str]] = frozenset()
     """Declared field names omitted from identity, independently of serialization."""
 
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        if issubclass(cls, BaseModel) and cls.__mro__.index(
+            FingerprintedDataModelMixin
+        ) > cls.__mro__.index(BaseModel):
+            raise TypeError("place FingerprintedDataModelMixin before the Pydantic model base")
+
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: object) -> None:
-        super().__pydantic_init_subclass__(**kwargs)
+        hook = getattr(super(), "__pydantic_init_subclass__", None)
+        if hook is not None:
+            hook(**kwargs)
+        if not issubclass(cls, BaseModel):
+            return
         reserved = {
             "fingerprint",
             "fingerprint_data",
@@ -85,6 +100,11 @@ class FingerprintedModel(BaseModel):
         Paths (spelling only), and values with fingerprint(). Project other types explicitly.
         Mapping order is ignored; project ordered pairs if iteration order is semantic.
         """
+        if not isinstance(self, BaseModel):
+            raise TypeError(
+                "default fingerprint_data() requires a Pydantic BaseModel; "
+                "override it for another data type"
+            )
         return {
             "fields": {
                 name: getattr(self, name)
@@ -101,3 +121,7 @@ class FingerprintedModel(BaseModel):
             raise TypeError("fingerprint_data() must return a string-keyed dictionary")
         cls = type(self)
         return content_key(f"{cls.__module__}.{cls.__qualname__}", _value(data))
+
+
+class FingerprintedDataModel(FingerprintedDataModelMixin, BaseModel):
+    """Ready-made Pydantic base with semantic fingerprints and normal serialization."""

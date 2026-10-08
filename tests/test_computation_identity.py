@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from triplum.cache import Cache, CachedStep, SQLiteBackend
 from triplum.utils.cache import content_key
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 
 
 class Text(BaseModel):
@@ -55,7 +55,7 @@ def test_automatic_cached_step_reuses_config_without_runtime_resources(tmp_path:
         assert equivalent.calls == 0
 
 
-class Configured(Fingerprinted):
+class Configured(FingerprintedComputationMixin):
     def __init__(self, config: dict[str, object]) -> None:
         self.config = config
 
@@ -65,7 +65,7 @@ class Configured(Fingerprinted):
 
 def test_config_requires_explicit_projection_and_honors_nested_value_identity() -> None:
     with pytest.raises(NotImplementedError, match="fingerprint_config"):
-        Fingerprinted().fingerprint()
+        FingerprintedComputationMixin().fingerprint()
     assert (
         Configured({"value": Text(text="a", observed_at=1)}).fingerprint()
         == Configured({"value": Text(text="a", observed_at=2)}).fingerprint()
@@ -90,12 +90,12 @@ def load(source: str, path: Path) -> type:
     return cls
 
 
-TEMPLATE = '''from triplum.utils.fingerprint import Fingerprinted
+TEMPLATE = '''from triplum.utils.fingerprint import FingerprintedComputationMixin
 class Base:
     def transform(self, value={default}):
         """{doc}"""
         return [item + {delta} for item in value]  # {comment}
-class Step(Base, Fingerprinted):
+class Step(Base, FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
 '''
@@ -126,10 +126,10 @@ def test_editing_file_before_first_object_fingerprint_keeps_loaded_identity(tmp_
     assert original.fingerprint() != updated.fingerprint()
 
 
-DEPENDENT = """from triplum.utils.fingerprint import Fingerprinted
+DEPENDENT = """from triplum.utils.fingerprint import FingerprintedComputationMixin
 def helper(value):
     return value + {delta}
-class Step(Fingerprinted):
+class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     def fingerprint_dependencies(self):
@@ -152,8 +152,8 @@ def test_explicit_helper_definition_changes_identity_without_revision_counter(
 
 
 def test_exception_table_changes_loaded_behavior_and_identity(tmp_path: Path) -> None:
-    source = """from triplum.utils.fingerprint import Fingerprinted
-class Step(Fingerprinted):
+    source = """from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {}
     def __call__(self):
@@ -175,9 +175,9 @@ class Step(Fingerprinted):
 
 
 def test_definition_closure_configuration_is_not_lost(tmp_path: Path) -> None:
-    source = """from triplum.utils.fingerprint import Fingerprinted
+    source = """from triplum.utils.fingerprint import FingerprintedComputationMixin
 def factory(prefix):
-    class Step(Fingerprinted):
+    class Step(FingerprintedComputationMixin):
         def fingerprint_config(self):
             return {{}}
         def __call__(self):
@@ -202,7 +202,7 @@ Step = factory({prefix!r})
 )
 def test_class_constants_and_returned_literals_are_semantic(tmp_path: Path, body: str) -> None:
     source = (
-        "from triplum.utils.fingerprint import Fingerprinted\nclass Step(Fingerprinted):\n"
+        "from triplum.utils.fingerprint import FingerprintedComputationMixin\nclass Step(FingerprintedComputationMixin):\n"
         "    def fingerprint_config(self):\n        return {}\n"
     )
     first = load(source + body.format(value="a"), tmp_path / "first.py")()
@@ -214,13 +214,13 @@ def test_class_constants_and_returned_literals_are_semantic(tmp_path: Path, body
 
 def test_wrapped_method_body_changes_identity(tmp_path: Path) -> None:
     source = """from functools import wraps
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 def decorate(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         return fn(*args, **kwargs)
     return wrapped
-class Step(Fingerprinted):
+class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     @decorate
@@ -235,8 +235,8 @@ class Step(Fingerprinted):
 
 
 def test_annotation_only_change_changes_definition_identity(tmp_path: Path) -> None:
-    source = """from triplum.utils.fingerprint import Fingerprinted
-class Step(Fingerprinted):
+    source = """from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     def __call__(self) -> {annotation}:
@@ -259,7 +259,7 @@ def test_static_class_and_property_definitions_are_included(
     tmp_path: Path, implementation: str
 ) -> None:
     source = (
-        "from triplum.utils.fingerprint import Fingerprinted\nclass Step(Fingerprinted):\n"
+        "from triplum.utils.fingerprint import FingerprintedComputationMixin\nclass Step(FingerprintedComputationMixin):\n"
         "    def fingerprint_config(self):\n        return {}\n"
     )
     first = load(source + implementation.format(value="a"), tmp_path / "first.py")()
@@ -269,10 +269,10 @@ def test_static_class_and_property_definitions_are_included(
 
 def test_concrete_protocol_implementation_code_is_not_excluded(tmp_path: Path) -> None:
     source = """from typing import Protocol
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 class Operation(Protocol):
     def __call__(self): ...
-class Step(Operation, Fingerprinted):
+class Step(Operation, FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     def __call__(self):
@@ -285,7 +285,7 @@ class Step(Operation, Fingerprinted):
     assert first.fingerprint() != second.fingerprint()
 
 
-class Depends(Fingerprinted):
+class Depends(FingerprintedComputationMixin):
     def __init__(self, dependency: object) -> None:
         self.dependency = dependency
 
@@ -338,7 +338,7 @@ def test_recursive_function_capture_fails_without_recursing_forever() -> None:
 def test_unsupported_method_descriptor_requires_explicit_identity() -> None:
     from functools import cached_property
 
-    class Opaque(Fingerprinted):
+    class Opaque(FingerprintedComputationMixin):
         def fingerprint_config(self) -> dict[str, object]:
             return {}
 
@@ -352,8 +352,8 @@ def test_unsupported_method_descriptor_requires_explicit_identity() -> None:
 
 def test_postponed_annotation_change_changes_definition_identity(tmp_path: Path) -> None:
     source = """from __future__ import annotations
-from triplum.utils.fingerprint import Fingerprinted
-class Step(Fingerprinted):
+from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Step(FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     def __call__(self) -> {annotation}:
@@ -366,11 +366,11 @@ class Step(Fingerprinted):
 
 def test_inherited_protocol_default_behavior_changes_identity(tmp_path: Path) -> None:
     source = """from typing import Protocol
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 class Operation(Protocol):
     def helper(self):
         return {value!r}
-class Step(Operation, Fingerprinted):
+class Step(Operation, FingerprintedComputationMixin):
     def fingerprint_config(self):
         return {{}}
     def __call__(self):
@@ -384,8 +384,8 @@ class Step(Operation, Fingerprinted):
 
 
 def test_frozenset_class_constant_is_included(tmp_path: Path) -> None:
-    source = """from triplum.utils.fingerprint import Fingerprinted
-class Step(Fingerprinted):
+    source = """from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Step(FingerprintedComputationMixin):
     allowed = frozenset({values!r})
     def fingerprint_config(self):
         return {{}}
@@ -401,8 +401,8 @@ class Step(Fingerprinted):
 
 def test_opaque_class_configuration_can_be_projected_explicitly(tmp_path: Path) -> None:
     source = """import re
-from triplum.utils.fingerprint import Fingerprinted
-class Step(Fingerprinted):
+from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Step(FingerprintedComputationMixin):
     pattern = re.compile({pattern!r})
     def fingerprint_config(self):
         return {{"pattern": self.pattern.pattern, "flags": self.pattern.flags}}

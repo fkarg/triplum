@@ -13,7 +13,7 @@ from triplum.cache.identity import function_fingerprint
 from triplum.cache.protocols import CacheKey, CachePolicy, Codec, Fingerprintable, _DefaultCache
 from triplum.cache.runtime import Cache
 from triplum.utils.cache import content_key
-from triplum.utils.fingerprint import _FRAMEWORK_BASES, Fingerprinted
+from triplum.utils.fingerprint import _FRAMEWORK_BASES, FingerprintedComputationMixin
 
 
 def _digest(value: str) -> bytes:
@@ -124,7 +124,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     return decorate if compute is None else decorate(compute)
 
 
-class CachedStep[I: Fingerprintable, O: Fingerprintable](Fingerprinted, ABC):
+class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputationMixin, ABC):
     """Opt-in cache mixin: implement compute and fingerprint_config ({} if stateless).
 
     Defaults use automatic loaded-definition identity, the shared lazy cache and compute's

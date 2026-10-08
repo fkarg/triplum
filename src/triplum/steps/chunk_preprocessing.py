@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import Protocol
 
 from triplum.datatype import Chunk
-from triplum.utils.fingerprint import Fingerprinted
+from triplum.utils.fingerprint import FingerprintedComputationMixin
 
 
 class EmbeddingText(Protocol):
@@ -13,7 +13,7 @@ class EmbeddingText(Protocol):
     def __call__(self, chunk: Chunk, /) -> str: ...
 
 
-class OriginalText(EmbeddingText, Fingerprinted):
+class OriginalText(EmbeddingText, FingerprintedComputationMixin):
     """Embed the chunk's own text, unchanged."""
 
     def fingerprint_config(self) -> dict[str, object]:

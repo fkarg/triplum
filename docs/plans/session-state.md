@@ -9,10 +9,14 @@ The current task is an interface/concept audit, starting with identity and finge
 The owner authorized automatic configured-computation identity from code, selected configuration
 and declared dependencies, without manually bumped version labels.
 [Identity interfaces](../specs/identity-interfaces.md) records that contract and its review.
-`Fingerprinted` and `CachedStep` now use explicit configuration hooks; value projections remain
+`FingerprintedComputationMixin` and `CachedStep` now use explicit configuration hooks; value projections remain
 independent of creation history and computation definitions. The owner also authorized the
-[data-model base](../specs/data-model-fingerprints.md): `FingerprintedModel` supplies field-value
+[data-model base](../specs/data-model-fingerprints.md): `FingerprintedDataModel` supplies field-value
 identity for use with bare decorators, with explicit exclusions and custom projections.
+`FingerprintedDataModelMixin` supplies the same data identity to existing Pydantic bases;
+`FingerprintedComputationMixin` names the separate computation helper.
+Automatic helper discovery and optional runtime tracing remain under design review; the current
+implementation still uses explicit dependency hooks and the existing decorator identity boundary.
 Record identity migration and further interfaces remain outside this approval.
 
 The dirty-serving API-link regression is fixed in `18c29ca`: the hook restores skipped module

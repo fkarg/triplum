@@ -6,15 +6,15 @@ location and observation history do not have to match.
 
 ## Start with a data model
 
-Inherit [`FingerprintedModel`][triplum.datatype.FingerprintedModel] to get `fingerprint()` and
+Inherit [`FingerprintedDataModel`][triplum.datatype.FingerprintedDataModel] to get `fingerprint()` and
 Pydantic serialization. By default, the fingerprint includes the model's qualified type name and
 actual field values. You do not write a hash function or maintain a version string.
 
 ```python
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
 
 
@@ -36,16 +36,43 @@ producer identity or processing history. Model code, validators and the full sch
 data identity. Changing a selected value changes its fingerprint; changing only unselected
 structure does not. Different qualified model names identify different kinds of values.
 
+## Add identity to an existing model base
+
+Use [`FingerprintedDataModelMixin`][triplum.datatype.FingerprintedDataModelMixin] when your
+application already has a Pydantic base. Put the mixin first so its fingerprint hooks participate:
+
+```python
+from pydantic import BaseModel
+
+from triplum.datatype import FingerprintedDataModelMixin
+
+
+class ExistingModel(BaseModel):
+    pass
+
+
+class Text(FingerprintedDataModelMixin, ExistingModel):
+    text: str
+
+
+print(Text(text="Hello").fingerprint() == Text(text="Hello").fingerprint())
+```
+
+This prints `True`. The mixin supplies data identity; `ExistingModel` supplies validation and
+serialization. `FingerprintedDataModel` combines this same mixin with `BaseModel` for the usual
+case. Both support the exclusions and custom projections below. Other bases that define
+`__init_subclass__` or `__pydantic_init_subclass__` must call `super()` so these hooks cooperate.
+
 ## Exclude bookkeeping
 
 Declare fields that consumers do not use in `fingerprint_exclude`. Exclusions affect identity,
 not serialization, so the field remains available in stored results:
 
 ```python
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     fingerprint_exclude = frozenset({"observed_at"})
 
     text: str
@@ -63,8 +90,11 @@ True
 2
 ```
 
-The base already declares this setting as a class variable; assigning it needs no new annotation.
-If you add an annotation, retain `ClassVar[frozenset[str]]` rather than declaring a data field.
+`FingerprintedDataModel` already declares this setting as a class variable; assigning it needs no
+new annotation. When first composing `FingerprintedDataModelMixin` with an existing model base,
+an override needs an explicit annotation: import `ClassVar` from `typing` and write
+`fingerprint_exclude: ClassVar[frozenset[str]] = frozenset({"observed_at"})`.
+Keep that `ClassVar` annotation whenever you annotate this setting, rather than declaring a data field.
 Subclasses inherit exclusions; assigning a new set replaces the inherited set. Exclusions must
 name declared model fields; unknown names fail when the class is defined. Allowed extra fields
 always contribute unless a custom projection removes them. There is no automatic timestamp filter:
@@ -82,10 +112,10 @@ example projects a date explicitly into its ISO spelling:
 ```python
 from datetime import date
 
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class DatedText(FingerprintedModel):
+class DatedText(FingerprintedDataModel):
     text: str
     day: date
 
@@ -117,7 +147,7 @@ semantic data; see [serialization](serialization.md).
 Supported values are `None`, booleans, integers, finite floats, strings, bytes, UUIDs, paths,
 lists, tuples and string-keyed mappings. Lists and tuples remain distinct; mapping insertion order
 does not matter. A path identifies its spelling, not file contents. Nested values must implement `fingerprint()` themselves, normally by inheriting from
-`FingerprintedModel`, or be projected explicitly. A plain nested Pydantic model is not supported
+`FingerprintedDataModel`, or be projected explicitly. A plain nested Pydantic model is not supported
 automatically. Neither are arbitrary Pydantic field types: project dates, decimals and other
 unsupported values explicitly. Non-finite floats are rejected. Fingerprinting support does not
 guarantee a default JSON round trip: arbitrary binary bytes may need Pydantic serialization

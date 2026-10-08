@@ -21,7 +21,7 @@ Keep codecs separate from semantic fingerprints so storage representation does n
 64-character SHA-256 hexadecimal digest. Cache backends use the binary digest for key storage.
 That conversion cost belongs in the benchmark; this draft does not change all existing fingerprint
 return types or settle UUID allocation. Existing data-record fingerprint properties must become
-methods through their own reviewed change. The existing configured-object `Fingerprinted` mixin
+methods through their own reviewed change. The existing configured-object `FingerprintedComputationMixin` mixin
 identifies configured computations through explicit settings and loaded code; it does not define
 value equality.
 
@@ -172,7 +172,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
 ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]: ...
 
 
-class CachedStep[I: Fingerprintable, O: Fingerprintable](Fingerprinted, ABC):
+class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputationMixin, ABC):
     def __init__(
         self,
         *,
@@ -182,7 +182,7 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](Fingerprinted, ABC):
         policy: CachePolicy | None = None,
     ) -> None: ...
     def __call__(self, item: I, /) -> O: ...
-    # fingerprint(), fingerprint_config() and fingerprint_dependencies() come from Fingerprinted.
+    # fingerprint(), fingerprint_config() and fingerprint_dependencies() come from FingerprintedComputationMixin.
     @abstractmethod
     def compute(self, item: I, /) -> O: ...
 ```
@@ -352,7 +352,7 @@ blocking entries; this draft retains the bounded-budget error proposal and makes
 explicit for owner review. Per-text embedding reuse is deferred because it needs a separate semantic
 guarantee. Aggregate skip telemetry remains minimal; per-step metrics have no current contract.
 
-Attempted falsifications included deriving a safe mixin ID using existing automatic Fingerprinted
+Attempted falsifications included deriving a safe mixin ID using existing automatic FingerprintedComputationMixin
 (resource hashing prevents it), applying that criticism to a bound decorator (less applicable),
 old commits evicting newer pending values (already guarded), oversized admission hangs (prevented,
 but computed results can be lost to the error), codec namespace collisions (covered), and reversed

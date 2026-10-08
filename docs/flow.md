@@ -14,7 +14,8 @@ This page follows the intended flow and shows where experiments can replace indi
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   per-computation SQLite tables and CLI/library inspection and clearing.
   [Fingerprintable data models](infrastructure/cache/fingerprints.md) provide field-value identity
-  for use with the cache decorators, with explicit bookkeeping exclusions.
+  for use with the cache decorators, with explicit bookkeeping exclusions; a separate mixin
+  supports existing Pydantic bases.
 - Indexing/ingestion prototypes remain under review. Text/vector search, graph retrieval and
   answer generation are intended responsibilities, not a supported end-to-end pipeline.
 

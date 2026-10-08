@@ -6,15 +6,15 @@ custom codec when you need another representation, including for non-Pydantic va
 
 ## Use the default
 
-A return annotation selects Pydantic serialization. `FingerprintedModel` supplies both the
+A return annotation selects Pydantic serialization. `FingerprintedDataModel` supplies both the
 Pydantic model and its data fingerprint, so ordinary use needs no codec configuration:
 
 ```python
 from triplum.cache import cached
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
 
 
@@ -37,10 +37,10 @@ only `codec=` changes. Save this complete example as `cache_serialization.py` an
 
 ```python
 from triplum.cache import Codec, cached
-from triplum.datatype import FingerprintedModel
+from triplum.datatype import FingerprintedDataModel
 
 
-class Text(FingerprintedModel):
+class Text(FingerprintedDataModel):
     text: str
 
 
@@ -88,7 +88,7 @@ see [computation identities](computations.md) for that boundary.
 
 Without `codec=`, the concrete return annotation selects
 [`PydanticCodec`][triplum.cache.PydanticCodec]. The model must inherit from Pydantic `BaseModel`
-and implement `fingerprint()`; `FingerprintedModel` provides both. Supply `output_type=YourModel`
+and implement `fingerprint()`; `FingerprintedDataModel` provides both. Supply `output_type=YourModel`
 if the annotation cannot be resolved or does not name a concrete model. An explicit codec takes precedence over both options; it can
 also be passed to `CachedStep`.
 
@@ -99,7 +99,7 @@ silently converted into a cache miss.
 
 Returned values must have the **exact** configured model type; a top-level subclass is rejected
 rather than losing its extra fields. Nested subclasses require appropriate model annotations or
-serializers. Nested `FingerprintedModel` values contribute their own fingerprints, so losing their
+serializers. Nested `FingerprintedDataModel` values contribute their own fingerprints, so losing their
 semantic fields can fail the round-trip check. Plain nested Pydantic models need an explicit
 [fingerprint projection](fingerprints.md#select-a-custom-projection). With a custom fingerprint, account for all semantic fields
 independently: a round-trip check cannot detect a lost field that the fingerprint itself omitted. See

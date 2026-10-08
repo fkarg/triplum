@@ -1,18 +1,21 @@
 # Fingerprints for Pydantic data values
 
 The owner approved a data-model convenience base alongside computation decorators. The normal
-example is a `Text(FingerprintedModel)` declaration and a bare `@cached` function. Existing
+example is a `Text(FingerprintedDataModel)` declaration and a bare `@cached` function. Existing
 Source/Chunk records and dataset identities are not migrated by this change.
 
 ## Contract
 
 ```python
-class FingerprintedModel(BaseModel):
+class FingerprintedDataModelMixin:
     fingerprint_exclude: ClassVar[frozenset[str]] = frozenset()
 
     def fingerprint_data(self) -> dict[str, object]: ...
 
     def fingerprint(self) -> str: ...
+
+
+class FingerprintedDataModel(FingerprintedDataModelMixin, BaseModel): ...
 ```
 
 Import from `triplum.datatype`. Default identity consists of the qualified model kind and actual
@@ -34,7 +37,7 @@ heuristics or manually maintained version strings are required.
 Use actual field values rather than serialization output. Pydantic serialization can hide nested
 subclass fields or explicitly excluded fields; those values still affect identity by default.
 Nested values must supply their own `fingerprint()` semantic projection (usually by inheriting
-`FingerprintedModel`) or be projected explicitly. There is no fallback that silently serializes plain
+`FingerprintedDataModel`) or be projected explicitly. There is no fallback that silently serializes plain
 nested models. Nested subclass identity makes serialization loss visible to the existing cache codec's
 fingerprint round-trip check.
 
@@ -76,3 +79,23 @@ subclass semantic fields rather than forbid intentional narrow projections. Othe
 container round trips, extra/reserved names, private fields, scalar distinctions, generic kinds and
 nested digest collisions. The peer's assertion that byte serialization errors are skipped background
 writes was rejected: serialization happens in the caller and errors propagate there.
+
+## Composition split
+
+The owner approved both a standalone `FingerprintedDataModelMixin` and the convenient
+`FingerprintedDataModel` base, alongside the computation rename to
+`FingerprintedComputationMixin`. Compose the data mixin before an existing Pydantic base.
+Its cooperative Pydantic subclass hook preserves the existing base hook and validates
+reserved names and exclusion settings after fields exist. A normal subclass hook rejects
+reversed order, which would otherwise silently bypass validation. Default field projection
+requires a Pydantic instance; other types may override `fingerprint_data()` explicitly.
+No field identity or serialization behavior changes as part of this split.
+
+Composition review: Claude Opus 5.5 (`claude-opus-5-5`),
+`0eeeb6fab0ad4ff0aa14cffb7446e3db`, found that Pydantic does not inherit ClassVar metadata
+from a plain mixin at first composition. Changed the direct-composition example/test to
+annotate an overridden `fingerprint_exclude`; the ready base retains short assignments.
+Other bases' hooks must cooperate with `super()`; the MRO guard does not promise to detect
+non-cooperative hooks. Added verification for composition order. Attacks also covered
+forward references, generics, RootModel, multiple hooks, field shadowing and class kwargs.
+The proposed metaclass/late-validation machinery was unnecessary for this bounded contract.
