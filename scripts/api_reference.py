@@ -9,8 +9,12 @@ full build.
 import os
 from pathlib import Path
 
+from jinja2 import Environment
 from mkdocs.config.defaults import MkDocsConfig
+from mkdocs.plugins import event_priority
 from mkdocs.structure.files import File, Files
+from mkdocs_autorefs import AutorefsPlugin
+from mkdocstrings import Inventory, MkdocstringsPlugin
 
 SRC = Path(__file__).parent.parent / "src"
 
@@ -71,3 +75,33 @@ def on_files(files: Files, config: MkDocsConfig) -> None:
         assert isinstance(page, ModulePage)
         page.module = path
         files.append(page)
+
+
+@event_priority(0)
+def on_env(env: Environment, *, config: MkDocsConfig, files: Files) -> Environment:
+    """Restore object links for skipped API pages before inventory writing and resolution.
+
+    Dirty builds create new plugin instances, but do not render unchanged module pages.
+    Their public object inventory survives on disk; use it only for pages still served
+    unchanged. Freshly rendered targets take precedence over these fallback URLs.
+    """
+    skipped = {
+        file.page.url
+        for file in files
+        if isinstance(file, ModulePage) and file.page is not None and file.page.content is None
+    }
+    inventory_path = Path(config.site_dir) / "objects.inv"
+    if not skipped or not inventory_path.is_file():
+        return env
+    with inventory_path.open("rb") as stream:
+        previous = Inventory.parse_sphinx(stream)
+    autorefs = config.plugins["autorefs"]
+    mkdocstrings = config.plugins["mkdocstrings"]
+    assert isinstance(autorefs, AutorefsPlugin)
+    assert isinstance(mkdocstrings, MkdocstringsPlugin)
+    inventory = mkdocstrings.handlers.inventory
+    for name, item in previous.items():
+        if item.uri.partition("#")[0] in skipped:
+            autorefs.register_url(name, item.uri)
+            inventory.setdefault(name, item)
+    return env

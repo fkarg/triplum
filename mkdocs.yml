@@ -29,6 +29,8 @@ hooks: [scripts/api_reference.py]
 plugins:
   - search
   - mkdocstrings:
+      # Retain unchanged API targets across consecutive dirty builds.
+      enable_inventory: true
       handlers:
         python:
           paths: [src]

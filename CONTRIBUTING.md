@@ -48,6 +48,11 @@ for `uv run`, so verify the actual hook before claiming it passes.
 Keep its status accurate. Public MkDocs pages must not link to drafts, specs or plans; development
 records are excluded from both the built site and search. Run the strict build after docs changes.
 
+Use `uv run mkdocs serve --dirty` for incremental previews. Generated API pages refresh only
+when their own source module changes; references to unchanged API pages remain available through
+the object inventory. Re-exported and inherited member documentation can lag until a full build,
+so use `uv run mkdocs build --strict` for final verification.
+
 Use the [persona reader workflow](docs/personae/README.md) to probe whether readers can find
 answers and use the documentation. It includes reusable prompts, five reader profiles, and a
 small fix-and-retry loop; larger changes remain owner decisions.
