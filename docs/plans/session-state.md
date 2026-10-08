@@ -23,6 +23,51 @@ rerun. See [computation dependencies](../specs/automatic-helper-identity.md) for
 design and the bounded static inference guarantees.
 Record identity migration and further interfaces remain outside this approval.
 
+## Completed identity and tracing slice
+
+Implementation and documentation are committed; no tracing implementation task remains pending.
+Resume with the owner's next interface question rather than expanding dependency inference or
+migrating record identities automatically.
+
+- `64da08d`: completed computation naming and the separate data mixin/Pydantic model base.
+- `213d800`: automatic bounded static helper discovery, without manual dependency lists.
+- `d29105c`: optional runtime tracing for `@cached`, `@cache.cached` and `CachedStep`.
+- `1ba69ce`: production cache benchmark, raw measurements and performance report.
+- Concurrent session's `4b53547`: function-name/source metadata and name-based cache clearing;
+  this work is integrated and preserved.
+
+Static mode remains the default and freezes inferred function identity on first use. Traced mode
+refreshes root identity, records application calls on misses and validates dependency manifests
+on hits. A small input-addressed manifest index selects separately stored result blobs, preserving
+A→B→A reuse. Index and result tables carry the same function metadata for name-based clearing.
+Unsupported inference computes without admission; a static child cache hit is retained and
+prevents parent admission rather than being rerun. Unknown receivers, ambiguous aliases,
+semantic mutation, external memoization and nested configured computations have conservative
+limits. Other-thread activity can prevent admission. Native code, files and external services
+are not automatically covered. See the [tracing guide](../infrastructure/cache/tracing.md).
+
+Claude Opus 5.5 review `f13e7f0d5d1342fa91f2517db0db1601` found unique stale-hit defects involving
+receiver class constants, semantic mutation and equal code objects with different globals;
+these changed the implementation and have regressions. Follow-up probes added closure-binding
+identity, cross-helper mutation checks and empty-closure-cell coverage. Full review dispositions
+remain in the [dependency spec](../specs/automatic-helper-identity.md#independent-reviews).
+
+Verification at completion: 238 tests passed with 89% branch-inclusive coverage; typing, Ruff,
+formatting, strict MkDocs and staged pre-commit checks passed. All 19 teaching examples ran
+successfully with empty and populated caches. Rust checks/tests passed during this slice; Rust
+was unchanged. Existing SQL connection-cleanup warnings remain. The hook's newer `uvx ty`
+required `Generator[None]` return annotations for context managers; that correction is committed.
+No push or remote CI run was requested.
+
+[Measurements](tracing-performance.md): traced hits cost 0.66–1.23 ms, versus 39–72 µs for static
+hits in the measured workloads. The larger computation improved from 4.085 ms uncached to
+0.659 ms traced; tiny operations remain faster to recompute. Raw samples include source hashes
+and environment details; they precede only the annotation correction above. These are local
+microbenchmarks, not evidence of tens/hundreds-of-GB backend scaling. Further optimization and
+competing-backend comparisons remain future work.
+
+## Existing cache and record checkpoint
+
 The dirty-serving API-link regression is fixed in `18c29ca`: the hook restores skipped module
 object references from the previous inventory while retaining changed-module-only rendering.
 
@@ -41,6 +86,7 @@ The owner selected per-computation SQLite tables with input-only row keys and re
 format identity/migrations. Incompatible output contracts require representing their changed
 definition in process identity or clearing; there is no manually maintained version counter.
 `triplum cache stats` and `cache clear` are implemented; stats scans counts only with `--details`.
+Both support `--name` to select recorded function names across computation fingerprints.
 The cache guide and interface spec record lifecycle guarantees and peer dissent.
 
 Source/Chunk identity changes remain unimplemented. Both still generate UUIDv7 IDs and expose
