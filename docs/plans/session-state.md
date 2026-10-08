@@ -10,8 +10,13 @@ The owner authorized automatic configured-computation identity from code, select
 and declared dependencies, without manually bumped version labels.
 [Identity interfaces](../specs/identity-interfaces.md) records that contract and its review.
 `Fingerprinted` and `CachedStep` now use explicit configuration hooks; value projections remain
-independent of creation history and computation definitions. Record identity migration and further
-interfaces remain outside this approval.
+independent of creation history and computation definitions. The owner also authorized the
+[data-model base](../specs/data-model-fingerprints.md): `FingerprintedModel` supplies field-value
+identity for use with bare decorators, with explicit exclusions and custom projections.
+Record identity migration and further interfaces remain outside this approval.
+
+The dirty-serving API-link regression is fixed in `18c29ca`: the hook restores skipped module
+object references from the previous inventory while retaining changed-module-only rendering.
 
 The owner authorized the optional computation cache and a small reuse example for review.
 `triplum.cache` and `examples/cached_pipeline.py` are the first implementation. Read:

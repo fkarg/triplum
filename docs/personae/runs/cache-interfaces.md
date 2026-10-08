@@ -127,3 +127,19 @@ process identity changed and execution produced the changed result. The reader c
 that `definition_hash` is not arbitrary Pydantic schema hashing and that validator semantics require
 an explicit semantic contract or clearing. No further change was required for this fixed-schema task;
 a generic validator/schema convenience interface remains outside this implementation scope.
+
+## Data-model convenience follow-up
+
+A fresh dependency-familiar reader used the strict built site at
+`/tmp/triplum-data-model-docs`, starting at Home and following the cache/value pages. No API/source
+lookup was required. The reader defined `Text(FingerprintedModel)`, excluded its observation field,
+and used bare `@cached` without a handwritten fingerprint, storage owner or codec. Two process runs
+confirmed repeated-input and persisted reuse; a changed text computed separately. Serialized
+bookkeeping was retained, including the documented older timestamp on a cache hit.
+
+The reader also deliberately tried a plain nested BaseModel, observed the documented TypeError,
+and successfully used both supported adaptations: a nested FingerprintedModel or a parent projection.
+No material ambiguity blocked the task. The reader explicitly recognized that current-call metadata
+must be attached after reuse. This is a synthetic documentation trial, not a human usability result.
+Scratch evidence: `/tmp/triplum-data-model-reader/trial.py`; retrieval compliance is reader-reported
+because a separate access trace was not retained.

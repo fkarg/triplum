@@ -7,21 +7,15 @@ effective configuration and relevant external dependencies. Together with the
 ## Let the decorator identify the computation
 
 Normally, add `@cached`. It derives computation identity, uses the shared cache, and chooses
-Pydantic serialization from the return annotation. This complete example uses a tiny value model
-so the data identity is explicit too:
+Pydantic serialization from the return annotation. `FingerprintedModel` handles data identity:
 
 ```python
-from pydantic import BaseModel
-
 from triplum.cache import cached
-from triplum.utils.cache import content_key
+from triplum.datatype import FingerprintedModel
 
 
-class Text(BaseModel):
+class Text(FingerprintedModel):
     text: str
-
-    def fingerprint(self) -> str:
-        return content_key("example.Text", {"text": self.text})
 
 
 @cached
@@ -50,6 +44,7 @@ When a function calls an external helper, compose `process_id` from both definit
 Pydantic serialization:
 
 ```python
+from triplum.utils.cache import content_key
 from triplum.utils.fingerprint import definition_hash
 
 
@@ -95,17 +90,12 @@ settings. The inherited `fingerprint()` combines those settings with the loaded 
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pydantic import BaseModel
-
 from triplum.cache import Cache, CachedStep, SQLiteBackend
-from triplum.utils.cache import content_key
+from triplum.datatype import FingerprintedModel
 
 
-class Text(BaseModel):
+class Text(FingerprintedModel):
     text: str
-
-    def fingerprint(self) -> str:
-        return content_key("example.Text", {"text": self.text})
 
 
 class Append(CachedStep[Text, Text]):

@@ -29,9 +29,11 @@ configured computations: changing the chunk size changes their identity.
 
 ## Choose the identity question
 
-Cacheable values implement an explicit `fingerprint()` method. Start with
-[Value fingerprints](cache/fingerprints.md) to select fields, exclude bookkeeping and define your
-own Pydantic or custom value. [Computation fingerprints](cache/computations.md) explains configured
+For Pydantic data, inherit [`FingerprintedModel`][triplum.datatype.FingerprintedModel] to get a
+`fingerprint()` method based on actual field values and qualified type name. Use `@cached` on the
+computation. Start with [Value fingerprints](cache/fingerprints.md) for the smallest example,
+bookkeeping exclusions and custom projections. External value types can implement the method
+themselves. [Computation fingerprints](cache/computations.md) explains configured
 steps and automatic function inference. Those pages include complete extension examples.
 
 This page describes existing record, object and dataset identities. They use related digest

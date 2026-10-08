@@ -4,6 +4,31 @@ A [`Codec`][triplum.cache.Codec] converts a fingerprintable output value to byte
 it without changing its semantic content or fingerprint. Storage sees only those bytes. Use a
 custom codec when your output is not a Pydantic model or needs another representation.
 
+## Use the default
+
+A return annotation selects Pydantic serialization. `FingerprintedModel` supplies both the
+Pydantic model and its data fingerprint, so ordinary use needs no codec configuration:
+
+```python
+from triplum.cache import cached
+from triplum.datatype import FingerprintedModel
+
+
+class Text(FingerprintedModel):
+    text: str
+
+
+@cached
+def lowercase(value: Text) -> Text:
+    return Text(text=value.text.lower())
+
+
+print(lowercase(Text(text="Hello")).text)
+```
+
+Save it as a Python file and run it to print `hello`. The decorator opens the shared cache lazily.
+The following example replaces serialization for an external, non-Pydantic value type.
+
 ## Implement a codec
 
 This codec stores the single text field of a frozen dataclass as UTF-8. Both the input and the
@@ -43,10 +68,7 @@ assert codec.decode(codec.encode(sample)).fingerprint() == sample.fingerprint()
 with TemporaryDirectory() as directory:
     with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
 
-        @cache.cached(
-            codec=codec,
-            process_id=content_key("lowercase-example.Text", {}),
-        )
+        @cache.cached(codec=codec)
         def lowercase(value: Text) -> Text:
             print("Computing")
             return Text(value.text.lower())
@@ -74,8 +96,8 @@ changes to an external codec are not discovered automatically. See
 
 Without `codec=`, the concrete return annotation selects
 [`PydanticCodec`][triplum.cache.PydanticCodec]. The model must inherit from Pydantic `BaseModel`
-and implement `fingerprint()`. Supply `output_type=YourModel` if the annotation cannot be resolved
-or does not name a concrete model. An explicit codec takes precedence over both options; it can
+and implement `fingerprint()`; `FingerprintedModel` provides both. Supply `output_type=YourModel`
+if the annotation cannot be resolved or does not name a concrete model. An explicit codec takes precedence over both options; it can
 also be passed to `CachedStep`.
 
 The default codec writes JSON bytes and validates them back into the configured model. Every
@@ -85,9 +107,16 @@ silently converted into a cache miss.
 
 Returned values must have the **exact** configured model type; a top-level subclass is rejected
 rather than losing its extra fields. Nested subclasses require appropriate model annotations or
-serializers. A fingerprint must account for all semantic fields independently: a round-trip check
-cannot detect a lost field that the fingerprint itself omitted. See
+serializers. Nested `FingerprintedModel` values contribute their own fingerprints, so losing their
+semantic fields can fail the round-trip check. Plain nested Pydantic models need an explicit
+[fingerprint projection](fingerprints.md#select-a-custom-projection). With a custom fingerprint, account for all semantic fields
+independently: a round-trip check cannot detect a lost field that the fingerprint itself omitted. See
 [value fingerprints](fingerprints.md).
+
+Use concrete `list[...]` or `tuple[...]` annotations when their distinction matters. A broad
+sequence annotation or untyped extra field can deserialize a tuple as a list; their fingerprints
+differ, so the codec rejects that loss. Fields excluded only from identity still use normal
+Pydantic serialization; custom serializers or field exclusions may omit them from stored results.
 
 ## Responsibilities of a custom codec
 

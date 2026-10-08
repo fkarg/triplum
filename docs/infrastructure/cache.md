@@ -11,21 +11,16 @@ computation, chooses serialization from the return annotation and opens a shared
 when first called. No cache configuration or manual computation ID is needed.
 
 Save this complete example as `cache_example.py` and run `uv run python cache_example.py`.
-The small `Text` model declares what counts as the same data; if your application already has a
-fingerprintable Pydantic value, use that type directly.
+`FingerprintedModel` supplies data fingerprinting and Pydantic serialization; the decorator
+supplies computation identity and caching.
 
 ```python
-from pydantic import BaseModel
-
 from triplum.cache import cached
-from triplum.utils.cache import content_key
+from triplum.datatype import FingerprintedModel
 
 
-class Text(BaseModel):
+class Text(FingerprintedModel):
     text: str
-
-    def fingerprint(self) -> str:
-        return content_key("example.Text", {"text": self.text})
 
 
 @cached
@@ -52,8 +47,8 @@ hello
 The second call reuses the result. Changing the input to `WORLD` computes another result;
 returning to `Hello` reuses its earlier result. Results persist between runs, so subsequent runs
 may print no `Computing` lines. The `-> Text` annotation selects Pydantic serialization, while
-`Text.fingerprint()` identifies its content. [Value fingerprints](cache/fingerprints.md) explains
-that separate data contract.
+the inherited `Text.fingerprint()` identifies its field values.
+[Value fingerprints](cache/fingerprints.md) explains that separate data contract.
 
 The default database is `$XDG_CACHE_HOME/triplum/cache.sqlite`, falling back to
 `~/.cache/triplum/cache.sqlite`. Importing and decorating do not open it. Accepted writes run in
@@ -85,7 +80,7 @@ own implementation. You can use each extension without adopting the others.
 
 | What you want to do | Read | Interface |
 | --- | --- | --- |
-| Define which input/output fields mean the same thing | [Value fingerprints](cache/fingerprints.md) | `Fingerprintable` |
+| Define which input/output fields mean the same thing | [Value fingerprints](cache/fingerprints.md) | `FingerprintedModel`, `Fingerprintable` |
 | Identify an operation or write a configured cached step | [Computation fingerprints](cache/computations.md) | `cached`, `CachedStep` |
 | Use Pydantic output or supply another encoding | [Serialization](cache/serialization.md) | `Codec`, `PydanticCodec` |
 | Supply storage or use keys/bytes directly | [Storage backends](cache/storage.md) | `CacheBackend`, `SQLiteBackend`, `CacheKey` |

@@ -11,28 +11,24 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from triplum.cache import Cache, CachedStep, SQLiteBackend, cached
-from triplum.utils.cache import content_key
+from triplum.datatype import FingerprintedModel
 from triplum.utils.fingerprint import definition_hash
 
 
-class Text(BaseModel):
+class Text(FingerprintedModel):
     model_config = ConfigDict(frozen=True)
     text: str
     observed_at: int = 0
 
-    def fingerprint(self) -> str:
-        return content_key("example.Text", {"text": self.text})
+    fingerprint_exclude = frozenset({"observed_at"})
 
 
-class Analysis(BaseModel):
+class Analysis(FingerprintedModel):
     model_config = ConfigDict(frozen=True)
     words: tuple[str, ...]
-
-    def fingerprint(self) -> str:
-        return content_key("example.Analysis", {"words": self.words})
 
 
 class Normalize(CachedStep[Text, Text]):

@@ -2,7 +2,9 @@
 
 Status: the owner authorized automatic configured-computation identity and documentation cleanup.
 The bounded definition/configuration rules below are implemented and independently reviewed.
-Record identities, dataset identities and schema equivalence remain separate review items.
+The follow-up [data-model convenience contract](data-model-fingerprints.md) supplies default field
+projections without handwritten fingerprint methods. Record identities, dataset identities and
+schema equivalence remain separate review items.
 
 ## Direction from the owner
 

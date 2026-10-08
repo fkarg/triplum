@@ -35,6 +35,9 @@ contains check commands and hook setup.
   schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
   configuration for Fingerprinted/CachedStep, with explicit external dependencies and no manual counters.
   This does not approve record/dataset identity migration or whole-schema equivalence.
+- The owner approved `datatype.FingerprintedModel`: semantic field-value identity for Pydantic
+  data, explicit bookkeeping exclusions and custom projections. Keep this separate from the
+  computation `Fingerprinted` mixin. Source/Chunk and dataset migration remain deferred.
 - The owner selected one SQLite table per computation, input-only keys within each table and
   no codec format identity/migrations. Incompatible output contracts must be represented in
   computation identity or cleared. The cache stats/clear CLI is authorized; preserve unrelated tables
