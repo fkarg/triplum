@@ -232,5 +232,5 @@ The optional decorator `process_id` argument overrides inference with a complete
 digest. `CacheKey.process` stores its 32 bytes; `cache stats` displays the 64-character hexadecimal
 form accepted by `--computation`. These are representations of the same identity.
 
-Next: [Runtime dependency tracing](tracing.md) for dynamic application calls, or
-[serialization and custom codecs](serialization.md) for output encoding.
+Next: [Administration](administration.md) to inspect and clear stored results. The advanced
+pages cover [runtime dependency tracing](tracing.md) and [serialization](serialization.md).

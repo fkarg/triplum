@@ -55,6 +55,10 @@ planning work and whenever a decision depends on direction; do not edit it unles
   generated API docs does not make them approved interfaces; do not describe them as working
   APIs in prose docs. The current handoff is
   [session-state.md](docs/plans/session-state.md); follow its linked specs for open decisions.
+- Track owner questions in [open questions](docs/plans/open-questions.md), across sessions and
+  machines. Append new and leftover questions; after each answer, derive the answers and new
+  questions it implies. Before presenting a question, get a peer's independent answer with
+  `peer-review` and present both, naming who chose what. The owner's answers are authoritative.
 
 ## Module and interface boundaries
 
