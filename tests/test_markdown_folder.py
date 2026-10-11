@@ -27,6 +27,16 @@ def test_fingerprint_follows_content(tmp_path: Path):
     assert MarkdownFolder(tmp_path).fingerprint() != before
 
 
+def test_fingerprint_covers_location(tmp_path: Path):
+    for name in ("a", "b"):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "n.md").write_text("same", encoding="utf-8")
+
+    assert (
+        MarkdownFolder(tmp_path / "a").fingerprint() != MarkdownFolder(tmp_path / "b").fingerprint()
+    )
+
+
 def test_missing_folder(tmp_path: Path):
     with pytest.raises(NotADirectoryError):
         MarkdownFolder(tmp_path / "missing")

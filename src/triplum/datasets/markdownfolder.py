@@ -12,7 +12,8 @@ class MarkdownFolder(Dataset[Source]):
     """Top-level `.md` files of a folder, one `Source` per file, in sorted name order.
 
     The file list is fixed at construction; file contents are read on access, as UTF-8 with
-    newlines unchanged. `origin` is the absolute file path. The fingerprint reads every file.
+    newlines unchanged. `origin` is the absolute file path. The fingerprint covers each absolute
+    path and file content, so it reads every file.
     """
 
     def __init__(self, folder: Path) -> None:
@@ -31,5 +32,5 @@ class MarkdownFolder(Dataset[Source]):
     def fingerprint(self) -> str:
         return content_key(
             "markdown-folder",
-            [[p.name, hashlib.sha256(p.read_bytes()).hexdigest()] for p in self.paths],
+            [[str(p), hashlib.sha256(p.read_bytes()).hexdigest()] for p in self.paths],
         )

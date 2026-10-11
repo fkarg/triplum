@@ -93,10 +93,9 @@ Concrete implementations choose their own projection:
   each record's fingerprint property or method. Freshly created Source records with matching
   content but different IDs therefore produce different RecordDataset identities.
 - [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes its fixed, sorted file
-  list by file name and bytes. Reading an unchanged folder again gives the same dataset identity,
-  although accessed Source records receive fresh IDs. Its fingerprint omits the absolute folder
-  path, while emitted `Source.origin` includes that path. Equal fingerprints across copied folders
-  therefore do not promise equal origins; account for location separately if a computation uses it.
+  list by absolute path and bytes, matching the emitted `Source.origin` and `text`. Reading an
+  unchanged folder again gives the same dataset identity, although accessed Source records receive
+  fresh IDs. A copy of the folder elsewhere has a different identity, because its origins differ.
 
 For example, record content equivalence and full-record dataset equivalence differ:
 
