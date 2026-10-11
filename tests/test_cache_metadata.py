@@ -91,7 +91,10 @@ def test_cli_name_selection_details_and_ambiguity(tmp_path: Path, capsys) -> Non
     assert "ambiguous" in capsys.readouterr().err
     assert len(cache_stats(path).computations) == 4
     assert main(["cache", "clear", "--path", str(path), "--name", "normalize", "--json"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"cleared_computations": 2}
+    output = capsys.readouterr()
+    resolved = f"{normalize.__module__}.{normalize.__qualname__}"
+    assert json.loads(output.out) == {"cleared_computations": 2, "name": resolved}
+    assert f"function name 'normalize' matched {resolved!r}" in output.err
     with pytest.raises(SystemExit):
         main(["cache", "clear", "--path", str(path), "--name", "unknown"])
     assert "choices:" in capsys.readouterr().err

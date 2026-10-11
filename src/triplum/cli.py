@@ -3,6 +3,7 @@
 import argparse
 import json
 import sqlite3
+import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 from difflib import get_close_matches
@@ -19,6 +20,8 @@ def match_selector(value: str, choices: Sequence[str], *, kind: str = "command")
     """
     if value in choices:
         return value
+    if not choices:
+        raise argparse.ArgumentTypeError(f"unknown {kind} {value!r}; none are recorded")
     matches = [choice for choice in choices if choice.startswith(value)]
     if not matches:
         matches = [choice for choice in choices if value in choice]
@@ -33,6 +36,14 @@ def match_selector(value: str, choices: Sequence[str], *, kind: str = "command")
     raise argparse.ArgumentTypeError(f"unknown {kind} {value!r}; choices: {', '.join(choices)}")
 
 
+def _resolve(value: str, choices: Sequence[str], kind: str) -> str:
+    """Match a selector and report any non-exact resolution on stderr."""
+    resolved = match_selector(value, choices, kind=kind)
+    if resolved != value:
+        print(f"triplum: {kind} {value!r} matched {resolved!r}", file=sys.stderr)
+    return resolved
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run cache stats or clear; explicit clear commands require no confirmation."""
     parser = argparse.ArgumentParser(
@@ -40,10 +51,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Inspect or clear computation caches: cache stats | cache clear.",
         allow_abbrev=False,
     )
-    parser.add_argument("command", nargs="?", type=lambda value: match_selector(value, ("cache",)))
-    parser.add_argument(
-        "action", nargs="?", type=lambda value: match_selector(value, ("stats", "clear"))
-    )
+    parser.add_argument("command", nargs="?")
+    parser.add_argument("action", nargs="?")
     parser.add_argument(
         "--path", type=Path, help="cache database path (default: shared user cache)"
     )
@@ -62,14 +71,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("missing command; choices: cache")
     if args.action is None:
         parser.error("missing cache command; choices: stats, clear")
-    if args.action == "clear" and args.details:
-        parser.error("--details applies only to cache stats")
     try:
+        _resolve(args.command, ("cache",), "command")
+        action = _resolve(args.action, ("stats", "clear"), "cache command")
+        if action == "clear" and args.details:
+            parser.error("--details applies only to cache stats")
         name = None
         if args.name is not None:
             choices = sorted({row.name for row in cache_stats(args.path).computations if row.name})
-            name = match_selector(args.name, choices, kind="function name")
-        if args.action == "stats":
+            name = _resolve(args.name, choices, "function name")
+        if action == "stats":
             stats = cache_stats(
                 args.path, computation=args.computation, name=name, details=args.details
             )
@@ -98,7 +109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             count = clear_cache(args.path, computation=args.computation, name=name)
             if args.json:
-                print(json.dumps({"cleared_computations": count}))
+                print(json.dumps({"cleared_computations": count, "name": name}))
             else:
                 print(
                     f"Cleared {count} computation table(s); running writers may repopulate the cache."

@@ -90,7 +90,9 @@ but abbreviated digests are not. This identity is the `process_id` used by a dec
 computation's automatic fingerprint, represented as bytes in `CacheKey.process`.
 
 Commands never prompt; `--no-input` is accepted for scripts. `--json` emits structured output
-to stdout, and errors go to stderr. `clear --json` returns `cleared_computations`.
+to stdout, and errors go to stderr. `clear --json` returns `cleared_computations` and the
+resolved `name` (or `null`). Command names may be abbreviated or misspelt; a non-exact match is
+reported on stderr, for example `triplum: cache command 'c' matched 'clear'`.
 A missing database is reported without creating either its file or its parent directory:
 stats reports `exists=False`, and clear returns zero. An absent computation selects no tables.
 
@@ -107,7 +109,8 @@ uv run triplum cache clear --name my_pipeline.normalize
 
 `--name` selects **all recorded computation fingerprints** for that name, including earlier
 implementations or configurations. Exact names win; a unique prefix, substring or typo match
-is accepted. Ambiguous and unknown names report choices without clearing anything. You can
+is accepted and reported on stderr. Ambiguous and unknown names report choices without clearing
+anything. You can
 use `--computation` instead to select one exact fingerprint; the two options are exclusive.
 The Python functions accept `name="my_pipeline.normalize"` with exact matching only.
 

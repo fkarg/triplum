@@ -26,7 +26,10 @@ def test_missing_cache_stats_do_not_create_files(tmp_path: Path, command: tuple[
     path = tmp_path / "absent" / "cache.sqlite3"
     result = run_cli(tmp_path, *command, "--path", str(path), "--json", "--no-input")
     assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
+    exact = command == ("cache", "stats")
+    assert (result.stderr == "") == exact
+    if not exact:
+        assert "matched 'stats'" in result.stderr
     assert json.loads(result.stdout) == {
         "path": str(path),
         "exists": False,
@@ -98,7 +101,7 @@ def test_stats_and_clear_real_cache(tmp_path: Path) -> None:
             tmp_path, "cache", "clear", "--path", str(path), "--computation", first.hex(), "--json"
         )
         assert result.returncode == 0, result.stderr
-        assert json.loads(result.stdout) == {"cleared_computations": 1}
+        assert json.loads(result.stdout) == {"cleared_computations": 1, "name": None}
         assert backend.get(CacheKey(first, b"i" * 32)) is None
         assert backend.get(CacheKey(second, b"j" * 32)) == b"four"
         result = run_cli(tmp_path, "cache", "clear", "--path", str(path), "--no-input")
@@ -216,7 +219,7 @@ def test_main_empty_cache_and_storage_errors(
         assert main(["cache", "clear", "--path", str(path), *extra]) == 0
         output = capsys.readouterr()
         if extra:
-            assert json.loads(output.out) == {"cleared_computations": 0}
+            assert json.loads(output.out) == {"cleared_computations": 0, "name": None}
         else:
             assert "Cleared 0 computation" in output.out
         assert output.err == ""
@@ -227,3 +230,23 @@ def test_main_empty_cache_and_storage_errors(
     output = capsys.readouterr()
     assert "error:" in output.err
     assert output.out == ""
+
+
+def test_name_on_empty_cache_reports_no_recorded_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from triplum.cli import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["cache", "clear", "--path", str(tmp_path / "cache.sqlite3"), "--name", "foo"])
+    assert exc.value.code == 2
+    assert "unknown function name 'foo'; none are recorded" in capsys.readouterr().err
+
+
+def test_inexact_destructive_command_reports_its_resolution(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from triplum.cli import main
+
+    assert main(["cache", "c", "--path", str(tmp_path / "cache.sqlite3")]) == 0
+    assert "cache command 'c' matched 'clear'" in capsys.readouterr().err
