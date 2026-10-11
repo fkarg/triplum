@@ -64,6 +64,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Home: index.md
+  - Goals: goals.md
   - Overview and Core Concepts:
       - Indexing and retrieval: flow.md
   - Core Concepts:

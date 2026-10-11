@@ -4,6 +4,9 @@ Read [README.md](README.md) first. This file governs contribution and review; th
 [overview](docs/flow.md) describes implementation state, and [CONTRIBUTING.md](CONTRIBUTING.md)
 contains check commands and hook setup.
 
+[Goals](docs/goals.md) states the project's direction and is owner-maintained. Read it before
+planning work and whenever a decision depends on direction; do not edit it unless the owner asks.
+
 ## Rebuild and review gate
 
 - Work in the existing checkout and branch. Preserve concurrent edits; do not switch branches
@@ -121,8 +124,10 @@ Re-establish missing contracts through the review gate.
   affected examples. Update flow.md in the same commit when modules, stages, pipelines or CLI
   commands are added or move from planned to implemented. Delegate docs sync after interface
   changes, then inspect the edits and strict build yourself.
-- Teach one concept per page: purpose, a small runnable example, then the needed fields and
-  behavior. Put exhaustive signatures in generated API reference. Link to the next concept.
+- Teach one concept per page, modelled on the FastAPI tutorial: purpose, a small runnable example,
+  then the needed fields and behavior. Do not fold concepts into one long page to save pages; an
+  advanced section may combine concepts or go deeper. Put exhaustive signatures in generated API
+  reference. Link to the next concept.
 - `docs/specs/` and `docs/plans/` are development records, excluded from the built site and
   search. Published pages must not link to drafts/specs/plans. Remove superseded detail once
   its replacement lands; use Git history for provenance, not editorial timestamps.
