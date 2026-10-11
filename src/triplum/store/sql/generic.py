@@ -1,7 +1,6 @@
 """Records in a relational database through SQLModel: SQLite, PostgreSQL, or any SQLAlchemy URL."""
 
 from collections.abc import Iterable, Iterator
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy.pool import StaticPool
@@ -12,16 +11,11 @@ from triplum.store.protocols import RecordStore
 from triplum.store.sql.tables import ChunkRow, SourceRow
 
 
-def _origin(value: str, is_path: bool) -> Path | str:
-    return Path(value) if is_path else value
-
-
 class SQLAlchemyStore(RecordStore):
     """Records in the database at `url` (any SQLAlchemy URL); missing tables are created.
 
     The default URL is an in-memory SQLite database, private to this store instance and shared
-    by all threads using it. `Path` and `str` chunk origins are kept apart with an
-    `origin_is_path` column. Backend-specific stores may subclass this where specific SQL is faster.
+    by all threads using it. Backend-specific stores may subclass this where specific SQL is faster.
     """
 
     def __init__(self, url: str = "sqlite://") -> None:
@@ -60,8 +54,7 @@ class SQLAlchemyStore(RecordStore):
                     ChunkRow(
                         id=c.id,
                         source_id=c.source_id,
-                        origin=str(c.origin),
-                        origin_is_path=isinstance(c.origin, Path),
+                        origin=c.origin,
                         start=c.start,
                         text=c.text,
                         fingerprint=c.fingerprint,
@@ -93,7 +86,7 @@ class SQLAlchemyStore(RecordStore):
             Chunk(
                 id=row.id,
                 source_id=row.source_id,
-                origin=_origin(row.origin, row.origin_is_path),
+                origin=row.origin,
                 start=row.start,
                 text=row.text,
             )

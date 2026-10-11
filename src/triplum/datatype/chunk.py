@@ -1,4 +1,3 @@
-from pathlib import Path
 from uuid import UUID, uuid7
 
 from pydantic import BaseModel, Field, computed_field
@@ -21,9 +20,9 @@ class Chunk(BaseModel):
         description="Storage identity of this record: a time-ordered UUIDv7, not derived from content.",
     )
     source_id: UUID = Field(description="The `id` of the source this chunk was taken from.")
-    origin: Path | str = Field(
+    origin: str = Field(
         description="The `origin` of the source this chunk was taken from.",
-        examples=[Path("notes/intro.md"), "https://example.org/page"],
+        examples=["notes/intro.md", "https://example.org/page"],
     )
     start: int = Field(
         ge=0,
@@ -35,4 +34,4 @@ class Chunk(BaseModel):
     @property
     def fingerprint(self) -> str:
         """Content hash of `origin`, `start` and `text`; independent of `id` and `source_id`."""
-        return content_key("chunk", [str(self.origin), self.start, self.text])
+        return content_key("chunk", [self.origin, self.start, self.text])

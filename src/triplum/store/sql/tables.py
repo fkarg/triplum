@@ -27,7 +27,6 @@ class ChunkRow(SQLModel, table=True):
     id: UUID = Field(primary_key=True)
     source_id: UUID = Field(foreign_key="source.id", index=True)
     origin: str
-    origin_is_path: bool
     start: int
     text: str
     fingerprint: str = Field(index=True)

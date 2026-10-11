@@ -123,8 +123,7 @@ column types, but this has not been verified.
 - **Reads**: `source(id)` raises `KeyError` for an unknown id. `sources()` yields every source in
   no particular order. `chunks(source_id)` returns a list ordered by `start`, empty if the source
   has no chunks.
-- **Round trip**: a record read back equals the one you stored, including whether a chunk's `origin`
-  was a `Path` or a `str`.
+- **Round trip**: a record read back equals the one you stored.
 
 ## Capabilities, not one big store
 
