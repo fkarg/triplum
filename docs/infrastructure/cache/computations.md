@@ -101,9 +101,12 @@ chains are resolved without executing properties or descriptors.
 Application helpers belong to the same top-level package, or the same source directory for a
 standalone script. Calls outside that boundary contribute the callable's qualified name, not
 its implementation. Supported referenced global settings contribute too, including mappings of
-application helpers. Discarded append-only instrumentation on plain lists or sets is excluded.
-Semantic mutation of global settings is unsupported; keep counters and diagnostic collections
-separate from semantic settings.
+application helpers. Discarded append-only instrumentation on plain lists or sets, and counters
+updated only by `NAME += constant`, are excluded. Semantic mutation of global settings is
+unsupported: a global that the computation assigns and otherwise reads raises `TypeError`. Keep
+counters and diagnostic collections separate from semantic settings. Import application helpers
+at module level; a function-local import of application code raises `TypeError`, while local
+imports of external libraries are outside identity like other external calls.
 Consequently, changing an external library, file, model weight or hidden resource state is not
 automatically detected. Arbitrary calls through classes or input objects are also outside this
 static helper discovery boundary. Optional [runtime tracing](tracing.md) can record supported

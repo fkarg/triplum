@@ -4,6 +4,7 @@ import ast
 import dis
 import functools
 import hashlib
+import importlib.util
 import inspect
 import math
 import textwrap
@@ -190,6 +191,22 @@ class _Definitions:
             and Path(function.__code__.co_filename).parent == self.directory
         )
 
+    def contains_module(self, name: str) -> bool:
+        top = name.partition(".")[0]
+        if top == self.package:
+            return True
+        try:
+            spec = importlib.util.find_spec(top)
+        except ImportError, ValueError:
+            return False
+        if self.directory is None or spec is None or spec.origin is None:
+            return False
+        origin = Path(spec.origin).parent
+        return self.directory in (
+            origin,
+            origin.parent if spec.submodule_search_locations else None,
+        )
+
 
 def _codes(code: CodeType):
     yield code
@@ -237,6 +254,18 @@ def _discarded_call(block: tuple[dis.Instruction, ...], start: int) -> bool:
     return False
 
 
+def _counter_increment(block: tuple[dis.Instruction, ...], index: int, name: str) -> bool:
+    """`NAME += constant`: a read that only feeds the global's own update."""
+    return (
+        index + 3 < len(block)
+        and block[index + 1].opname in {"LOAD_SMALL_INT", "LOAD_CONST"}
+        and block[index + 2].opname == "BINARY_OP"
+        and block[index + 2].argrepr.endswith("=")
+        and block[index + 3].opname == "STORE_GLOBAL"
+        and block[index + 3].argval == name
+    )
+
+
 def _captures(function: FunctionType) -> dict[str, object]:
     try:
         return dict(inspect.getclosurevars(function).nonlocals)
@@ -264,8 +293,19 @@ def _globals(function: FunctionType, active: _Definitions) -> object:
     )
     if active.strict_mutation and (writes or stores):
         raise UnsupportedFingerprint("traced identity does not support semantic global writes")
+    if not active.strict_mutation:
+        for block in instructions:
+            for index, instruction in enumerate(block):
+                if instruction.opname == "IMPORT_NAME" and (
+                    block[index - 2].argval != 0 or active.contains_module(instruction.argval)
+                ):
+                    raise UnsupportedFingerprint(
+                        f"cannot fingerprint function-local import of {instruction.argval}; "
+                        "import application helpers at module level"
+                    )
     # Append-only instrumentation may be skipped; a second semantic read is rejected.
     reads: dict[str, int] = {}
+    counters: dict[str, int] = {}
     mutations: dict[str, int] = {}
     instrumentation_sites: set[int] = set()
     for block in instructions:
@@ -283,6 +323,8 @@ def _globals(function: FunctionType, active: _Definitions) -> object:
             ):
                 continue
             reads[name] = reads.get(name, 0) + 1
+            if _counter_increment(block, index, name):
+                counters[name] = counters.get(name, 0) + 1
             if (
                 index + 1 < len(block)
                 and block[index + 1].opname == "LOAD_ATTR"
@@ -311,6 +353,12 @@ def _globals(function: FunctionType, active: _Definitions) -> object:
         for instruction in block
     ):
         raise UnsupportedFingerprint("traced identity cannot infer indirect mutable state")
+    if assigned := sorted(
+        name for name in writes & reads.keys() if reads[name] != counters.get(name)
+    ):
+        raise UnsupportedFingerprint(
+            f"cannot fingerprint global {assigned[0]} that the computation also assigns"
+        )
     for name, count in mutations.items():
         if reads[name] != count:
             raise UnsupportedFingerprint(

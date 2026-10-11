@@ -734,3 +734,43 @@ def test_cached_code_projection_preserves_typed_constants(first: str, second: st
         return namespace["operation"]
 
     assert definition_hash(make(first)) != definition_hash(make(second))
+
+
+def test_global_read_and_assigned_by_computation_is_rejected(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    source = """def operation(x):
+    global SCALE
+    if SCALE is None:
+        SCALE = 1
+    return x * SCALE
+"""
+    namespace: dict[str, object] = {"__name__": "application", "SCALE": 2}
+    exec(compile(source, str(tmp_path / "app.py"), "exec"), namespace)  # noqa: S102 - controlled Python fixture
+    with pytest.raises(TypeError, match="global SCALE that the computation also assigns"):
+        definition_hash(namespace["operation"])
+
+
+@pytest.mark.parametrize(
+    ("statement", "rejected"),
+    [
+        ("from local_helpers import fold", True),
+        ("from .local_helpers import fold", True),
+        ("from json import dumps as fold", False),
+    ],
+)
+def test_function_local_application_imports_are_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statement: str, rejected: bool
+) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    (tmp_path / "local_helpers.py").write_text("def fold(s): return s.lower()\n")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    source = f"def operation(x):\n    {statement}\n    return fold(x)\n"
+    namespace: dict[str, object] = {"__name__": "application"}
+    exec(compile(source, str(tmp_path / "app.py"), "exec"), namespace)  # noqa: S102 - controlled Python fixture
+    if rejected:
+        with pytest.raises(TypeError, match="function-local import"):
+            definition_hash(namespace["operation"])
+    else:
+        definition_hash(namespace["operation"])
