@@ -54,8 +54,10 @@ the inherited `Text.fingerprint()` identifies its field values.
 The cache opens on the first call and is shared by decorated functions. For its location, explicit
 cleanup, or write policy, see [ownership and write policy](cache/policies.md).
 
-Function identity covers loaded code, defaults, captures and statically resolved application
-helpers. External resources have their own identity boundaries; see
+Function identity rereads loaded code, defaults, captures, supported globals and statically resolved
+application helpers before each lookup. Keep
+[inputs and context stable during each call](cache/computations.md#keep-inputs-and-context-stable-during-a-call).
+External resources have their own identity boundaries; see
 [computation fingerprints](cache/computations.md).
 
 ## Pass text and context directly

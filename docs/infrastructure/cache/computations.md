@@ -68,8 +68,67 @@ Hello!
 
 Each factory call creates a function, but equal captured settings select the same computation.
 Changing `!` to `?` selects another entry; returning to `!` reuses the earlier result.
-On later runs, persisted entries can also remove the `Computing` lines. Keep captured settings
-unchanged after the first call.
+On later runs, persisted entries can also remove the `Computing` lines. Captured settings are
+read again before each lookup; keep them stable throughout each call.
+
+## Change context between calls
+
+A supported global setting is reread for each lookup on the same decorated function. This complete
+example uses a temporary owner so each run starts empty:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from triplum.cache import Cache, SQLiteBackend
+from triplum.datatype import FingerprintedDataModel
+
+DESCRIPTION = "Collection A"
+
+
+class Rendered(FingerprintedDataModel):
+    text: str
+
+
+with TemporaryDirectory() as directory:
+    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
+
+        @cache.cached
+        def render(text: str) -> Rendered:
+            print("Computing", DESCRIPTION)
+            return Rendered(text=DESCRIPTION + ": " + text)
+
+        for description in ("Collection A", "Collection B", "Collection A"):
+            DESCRIPTION = description
+            print(render("Evidence").text)
+```
+
+Output:
+
+```text
+Computing Collection A
+Collection A: Evidence
+Computing Collection B
+Collection B: Evidence
+Collection A: Evidence
+```
+
+The original function and input stay the same. A→B→A performs two computations and then reuses
+the retained A result. The shared `definition_hash()` also rereads its bounded loaded-definition
+projection on every request; computation mixins and `CachedStep` refresh definitions and selected
+configuration. Immutable code/disassembly work remains cached. Codec selection and opening the
+shared cache remain lazy; their lifecycle is separate from identity refresh.
+
+## Keep inputs and context stable during a call
+
+Keep effective inputs and context stable while identity is calculated and throughout computation.
+The cache does not provide snapshot consistency or detect mutations during that interval. If
+context changes from A to B while a call runs, its result can mix A and B; neither fingerprint
+necessarily identifies that result. There is no post-computation identity check or mutation
+tracking. Even a final check could not establish consistent execution or detect change-and-restore.
+Between-call changes to represented context are supported; changes during a call are outside the
+guarantee. This applies to both static and traced mode.
+Existing discovery rejects some recognized mutation patterns; it does not enforce context stability.
 
 ## Call helpers normally
 
@@ -89,9 +148,9 @@ print(transform(Text(text="Straße")).text)
 print(transform(Text(text="Straße")).text)
 ```
 
-Both calls print `strasse`. Editing `fold` and loading the new decorated function changes its
-computation identity, even if `transform` itself is unchanged. No dependency list or version
-string is needed.
+Both calls print `strasse`. Rebinding `fold` to a new loaded implementation changes the next
+lookup's computation identity, even if the original decorated `transform` is unchanged. No
+dependency list or version string is needed.
 
 Ordinary application classes can be helpers too. Continue with the same imports and `Text` model:
 
@@ -119,8 +178,8 @@ value when that instance is an input or configuration.
 ## Know the automatic boundary
 
 Bare `@cached` and `@cache.cached` identify loaded Python definitions, evaluated defaults,
-nonlocal captures and statically resolved application helpers on the first call. Helpers may be
-defined later in the module, provided they exist when the function is first called. Referenced helpers
+nonlocal captures, supported globals and statically resolved application helpers before every
+lookup. Helpers may be defined later in the module, provided they exist when called. Referenced helpers
 can call further helpers; recursive calls are supported. Direct global names and module attribute
 chains are resolved without executing properties or descriptors.
 
@@ -146,13 +205,18 @@ Optional [runtime tracing](tracing.md) can record supported
 input/owner method calls and validate those dependencies on later lookups.
 
 Defaults and captures support finite scalars, lists, tuples, string-keyed mappings, paths and
-objects with `fingerprint()`. A path identifies its spelling, not file contents. Keep helper
-bindings and captured settings fixed after the first call; reload edited implementations to run and
-identify the new code. Loaded-code identity also works without inspectable source, including
-functions defined interactively. It is not guaranteed stable across Python interpreter versions.
+objects with `fingerprint()`. A path identifies its spelling, not file contents. Between-call
+changes to represented settings or helper bindings change identity on the next lookup. Reload
+edited implementations to run and identify the new loaded code; editing a source file alone
+does not change a function already in memory. Loaded-code identity also works without inspectable
+source, including functions defined interactively. It is not guaranteed stable across Python interpreter versions.
 Module references work through statically resolved attributes; module-valued defaults/configuration
 and dynamic module passing are unsupported. Unsupported identity projections raise `TypeError`
-rather than silently omitting state.
+rather than silently omitting state. If supported state becomes unsupported or a referenced
+binding disappears, the existing error is raised on the next lookup, before reuse.
+
+Each static lookup walks and hashes the represented definitions/settings, so identity cost grows
+with that state. Cache expensive composite operations where avoided work justifies this cost.
 
 When external state affects an answer, make its effective identity part of the input or captured
 configuration. An explicit `process_id` remains available for applications that already have a
@@ -212,8 +276,9 @@ attributes, so resources and counters remain outside identity.
 
 Other class attributes, including compiled regexes, Enum members, mutable containers and nested
 classes, are not inferred. Select their effective values in `fingerprint_config()` when needed.
-Keep loaded definitions and helper bindings unchanged after their first hash; recreate a class
-rather than monkey-patching it after fingerprinting.
+Loaded definitions and helper bindings are read on each fingerprint request. Changes to supported
+methods and immutable constants therefore change the next identity; unsupported attributes still
+need an explicit configuration projection.
 
 ## Use the computation mixin without caching
 
@@ -258,8 +323,7 @@ Automatic identity is a useful aid for quick experiments, with bounded discovery
 complete correctness for arbitrary Python code. Mutable or opaque class attributes and hidden
 state are not inferred. Unsupported referenced class definitions fall back to name-only identity;
 explicit root class hashing with `definition_hash()` or the computation mixin can still reject
-unsupported descriptors. Static definitions and bindings freeze on first use, so reload edited
-code instead of monkey-patching a warmed computation.
+unsupported descriptors. Fresh observation does not widen these discovery limits.
 Output-model schema, validator and default changes are not automatically hashed: stop writers and
 use `triplum cache clear --name my_pipeline.normalize` for the affected computation, or
 supply a complete `process_id` that includes those definitions. See

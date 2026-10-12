@@ -14,8 +14,12 @@ identifiers can be selected configuration. Computation definitions and settings 
 
 ## Static discovery
 
-Freeze lazily on first invocation (standalone definition_hash on first request), allowing
-helpers defined later in a module. Read loaded code, defaults, captures and referenced globals.
+Refresh the existing bounded projection before each lookup (standalone definition_hash on every
+request), allowing helpers defined later in a module. Read loaded code, defaults, captures and
+referenced globals. Static means static dependency discovery, not frozen settings.
+[Fresh effective computation context](cache-context-refresh.md) owns refresh timing and the
+stable-input/context precondition; immutable code/disassembly caches remain. Codec selection and
+cache opening remain lazy and separate from identity refresh.
 Follow Python helpers in the root computation’s top-level application package or standalone source directory;
 resolve module attribute chains through dictionaries without descriptor execution. Include
 nested code and terminate cycles with object-ID visitation and ordinal references. Hash ordinary
@@ -33,7 +37,8 @@ objects and semantic global mutation are outside static discovery. Unsupported
 semantic projections raise TypeError in static mode; traced mode will bypass only dedicated
 unsupported-dependency failures, preserving exceptions from user fingerprint implementations. External functions stop at
 qualified-name boundary; external implementation changes are not covered. Pydantic/data schemas
-remain outside this bounded inference. Keep frozen bindings/settings unchanged after first use.
+remain outside this bounded inference. Keep inputs and effective context stable during identity
+calculation and the entire computation; between-call changes to represented state are supported.
 
 ## Traced discovery and storage
 
@@ -56,7 +61,8 @@ not incorrect hits. Missing result blobs also cause misses. Candidate validation
 to retained variants/dependencies, not constant-time. Per-input indexes constrain unrelated
 branch growth; shared-per-root indexes could reduce metadata but amplify candidate sets.
 
-Traced mode refreshes the root settings projection at each lookup. Unknown root state,
+Both modes refresh root definitions/settings at each lookup; traced mode additionally validates
+observed dependency manifests. Unknown root state,
 unknown application dependencies, unavailable tracing, or unresolvable
 stored manifests cause recomputation without admission. Ordinary exceptions propagate and
 tracing is released. Traced child hits contribute their dependency manifest to parent traces. A static child hit
@@ -82,7 +88,8 @@ Traced inference rejects semantic global/nonlocal writes and attribute/subscript
 removals. This is intentionally conservative, including local-container stores when locality
 is not proven. Constructors inspected as class definitions use the static projection; executed
 constructors are still subject to traced resolution. Selected configuration containing another
-computation mixin currently declines traced admission, avoiding frozen nested definitions.
+computation mixin currently declines traced admission: fresh bounded identity does not supply an
+observed dependency manifest.
 Known input/owner receiver class constants referenced through attribute reads are refreshed.
 Append-only instrumentation is rejected if its object is also semantic state anywhere in the
 root/helper/observed dependency graph. Other known mutating method sites decline traced

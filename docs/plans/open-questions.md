@@ -99,31 +99,24 @@ fingerprinting and later item reading are separate observations. Decide the snap
 and effective input for cached parsing/OCR without assuming that a dataset-wide fingerprint
 pins later reads. Held for upstream interface review; main session owns preparation.
 
+## Answered
+
 ### Q20. Refreshing changed effective global context
 
-Owner requires changed effective globals/configuration (collection/community descriptions, for
-example) to change computation identity. Default static decorators freeze identity on first use;
-traced mode refreshes roots/dependencies. A bounded implementation proposal for static context
-refresh is drafted in [context refresh](../specs/cache-context-refresh.md) and its
-[P3 plan](cache-context-refresh.md); do not treat argument normalization as solving it.
-Owner requested proceeding with P3 preparation. Main session owns the contract review;
-production implementation of the exact draft awaits owner approval.
+Owner requires changed effective globals/configuration to change computation identity, and
+approved P3 option A. Implemented and verified: automatic static decorators and the computation
+mixin reread the existing bounded definition/settings projection each lookup. Code/disassembly
+caches remain; overrides and discovery limits are unchanged. Q21 defines the stable-during-call
+boundary. [Context refresh](../specs/cache-context-refresh.md) owns the resulting contract.
 
 ### Q21. Post-computation context validation
 
-Derived from the independent P3 critique. Refreshing before lookup covers between-call changes;
-context stability during the call remains a precondition. Session recommends A: enforce that
-contract without an extra admission mechanism. Claude Opus 5.5 recommends B: refresh again after
-an automatic static miss and skip saving if identity changed, mitigating durable wrong-key writes
-from mid-call changes. B costs an extra walk/admission branch/accounting and still cannot catch
-change-and-restore during execution. Neither gives an atomic snapshot.
-
-Review `cdf47cadbb9c4b89821f95251cb40a8e`; exact scope/options live in
-[P3 contract](../specs/cache-context-refresh.md#q21--post-computation-validation). Choosing B
-requires updating the bounded plan before implementation; the automatic refresh requirement
-itself is settled and should not be re-asked.
-
-## Answered
+Owner selects A: context remains stable during identity calculation and execution; no second
+identity check after a miss. A computation observing intermediate changes may mix A and B, so
+neither fingerprint describes it fully. Document this limit; do not expand into dynamic mutation
+tracking. Session favored A, Claude Opus 5.5 favored a partial after-miss guard (review
+cdf47cadbb9c4b89821f95251cb40a8e); owner rejected that extra mechanism.
+[P3 contract](../specs/cache-context-refresh.md) records the authoritative boundary.
 
 ### Q19. Multiargument cache decorator
 

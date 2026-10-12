@@ -520,3 +520,56 @@ This remains a real owner tradeoff rather than being folded into refresh silentl
 
 P3 exact contract/plan are drafted in cache-context-refresh pages. No production edits.
 Next: owner review of draft option A or direction to add B, per repository review gate.
+
+### P3 option A accepted
+
+Owner: "A is sufficient"; mid-call changes can produce a mixture of A and B that neither
+fingerprint fully identifies. Do not enter dynamic/intermediate mutation tracking. Explicitly
+document stable context during identity calculation and execution and mixed-result limitations.
+This accepts the exact option A contract/plan and settles Q21; no after-miss validation/skip
+accounting. Proceed through scoped implementation, delegated docs, fresh/Opus review, full
+verification and local commit. Preserve concurrent benchmark drafts/questions.
+
+### P3 implementation, verification and peer dispositions
+
+Removed complete-definition memoization and the decorator's first-use nonlocal digest. Automatic
+static identity is local to each lookup under suspended tracing; configured steps inherit fresh
+definitions. Existing hash namespaces, projections, immutable-code caches, override control,
+lazy codec and traced admission policies remain. No post-miss check or mutation tracking.
+
+New regression suite had 19 expected failures before the fix, then passed. Fresh spec review
+added verification for module.helper rebinding on the same caller; two parameterized cases
+closed that gap. Fresh quality/consistency reviews found no remaining defects. Full result:
+312 tests passed, 90% branch-inclusive coverage/durations; typing, Ruff/format, Cargo check/test
+and strict MkDocs passed. Twelve affected guide blocks ran, including two-compute A→B→A reuse.
+Existing seven SQL connection-cleanup warnings remain; no remote CI/push authorized.
+
+Claude Opus 5.5 (claude-opus-5-5), diff review 9f84c22bddaf4beea2d22bce9229b6ac, complete JSON read.
+Attacks tried: unchanged digest/projection equivalence, other digest caches, thread/call-local
+state, traced branching, error ordering, internal memo/class-counter mutation and static-step
+fingerprint exposure to enclosing tracing.
+
+Dispositions:
+- Internal memo/class-counter mutation can silently churn keys; confirmed phenomenon but rejected
+  as grounds for new mutation enforcement. It changes represented state during execution, outside
+  the owner-approved boundary. Added docs clarification: existing mutation recognizers are partial;
+  unsupported means an execution precondition, not an exhaustive promised runtime rejection.
+- Static CachedStep fingerprint work was outside suspension. Independent real SQLite/monitoring
+  probe saw about 41 records versus 10 under memoization, but both versions already declined
+  parent admission with identical results/reuse. Added verification and changed preparation
+  suspension locally; compute remains observable. Regression reproduced red then green; fresh
+  reviewers confirmed the fix. No claimed admission defect beyond the demonstrated pollution.
+- Redundant cache=None assertion removed; existing bypass coverage retained. No decision impact.
+- Unused traced-branch identity initialization retained: one shared assignment is simpler than
+  another branch and is not a semantic/performance defect. No decision impact.
+- Additional end-to-end helper variant deferred as redundant: wrappers have real SQLite
+  global/dict mutation/reopen coverage; direct/mixin helper-binding cases pin the fresh projection.
+
+Same-machine decorator-hit probe: archived P2 17.628 µs median versus P3 252.482 µs
+(7×2,000 warmed hits, CPython3.14.8/macOSarm64, identical small description/options/helper setup).
+Both actually computed once across 14k hits, zero skips. Cost increase is recorded, with no
+portable claim or invented threshold. Measurement preceded the sibling static-step suspension
+fix; the measured decorator path did not change. Contract includes the durable summary.
+
+P3 contract, handoff and Q20/Q21 are current; docs explain mixed-context results can match
+neither fingerprint. This coherent verified change proceeds to its scoped local commit.

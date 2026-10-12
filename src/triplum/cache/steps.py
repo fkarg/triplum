@@ -170,7 +170,7 @@ def cached[**P, O: Fingerprintable](
 
     By default the shared cache opens on first use, the return annotation selects a
     Pydantic model. Loaded code, settings and application helpers identify computation
-    on first use. Keep definitions and settings fixed afterwards. External libraries,
+    before each lookup. Keep definitions and settings stable during each call. External libraries,
     files, environment and resource state are outside automatic discovery; project their
     content identities as settings or supply an explicit process_id.
     cache=None bypasses identity, serialization and lookup entirely.
@@ -182,14 +182,13 @@ def cached[**P, O: Fingerprintable](
     def decorate(function: Callable[P, O]) -> Callable[P, O]:
         if cache is None:
             return function
-        identity = process
         metadata = ComputationMetadata.from_callable(function)
         selected: Codec[O] | None = None
         lock = Lock()
 
         @wraps(function)
         def call(*args: P.args, **kwargs: P.kwargs) -> O:
-            nonlocal selected, identity
+            nonlocal selected
             from triplum.cache.tracing import suspend_tracing, traced_call
 
             with suspend_tracing():
@@ -197,10 +196,11 @@ def cached[**P, O: Fingerprintable](
                 bound = effective_signature.bind(*args, **kwargs)
                 bound.apply_defaults()
                 data_id, receivers = _arguments(effective_signature, bound.arguments)
-            if selected is None or (identity is None and dependency_mode == "static"):
+                identity = process
+                if identity is None and dependency_mode == "static":
+                    identity = _digest(function_fingerprint(function))
+            if selected is None:
                 with lock, suspend_tracing():
-                    if identity is None and dependency_mode == "static":
-                        identity = _digest(function_fingerprint(function))
                     if selected is None:
                         selected = _codec(function, output_type, codec)
             owner = default_cache() if cache is _DefaultCache.SHARED else cache
@@ -303,9 +303,11 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
                 metadata=self._computation_metadata,
                 process_id=process_id,
             )
+        with suspend_tracing():
+            process = _digest(self.fingerprint())
         return _call(
             owner,
-            _digest(self.fingerprint()),
+            process,
             data_id,
             lambda: self.compute(item),
             self._codec,

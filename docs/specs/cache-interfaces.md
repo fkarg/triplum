@@ -445,10 +445,13 @@ inherited default handles after fork are rejected rather than reused or closed i
 
 Automatic function identity uses the shared loaded-definition algorithm described in
 [Automatic computation helpers](automatic-helper-identity.md), including bounded application helper
-discovery. Static mode freezes identity on the first call, alongside lazy codec/database
-initialization. Optional `dependency_mode="traced"` refreshes root identity and validates observed
+discovery. Both modes refresh the bounded root definition/settings projection before each lookup;
+static means static dependency discovery, not frozen settings. Lazy codec/database initialization
+is independent of this refresh. Optional `dependency_mode="traced"` additionally validates observed
 dependency manifests before a result lookup; see that specification for supported receiver and
-composition boundaries.
+composition boundaries. [Fresh effective computation context](cache-context-refresh.md) owns refresh
+timing and the stable-input/context precondition throughout identity calculation and computation.
+There is no post-miss revalidation or mutation tracking.
 There is no manual dependency declaration. External resources need effective identities represented
 as inputs/settings, or a complete process_id supplied by the application.
 

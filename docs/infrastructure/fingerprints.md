@@ -67,7 +67,9 @@ Define an explicit [value model](cache/fingerprints.md) when the computation nee
 [`FingerprintedComputationMixin`][triplum.utils.fingerprint.FingerprintedComputationMixin] in `triplum.utils.fingerprint` supplies
 a `fingerprint()` implementation used by steps such as
 [`FixedSize`][triplum.steps.chunking.FixedSize]. It combines the qualified class name, loaded application method definitions,
-immutable class constants, selected configuration and statically resolved application helpers. It does not scan instance attributes.
+immutable class constants, selected configuration and statically resolved application helpers,
+rereading this bounded projection on every request. It does not scan instance attributes. Keep
+[inputs and context stable during each call](cache/computations.md#keep-inputs-and-context-stable-during-a-call).
 
 The initial `FixedSize` example uses this implementation: equal sizes identify equivalent
 chunkers, while different sizes identify different computations. Settings are selected explicitly;

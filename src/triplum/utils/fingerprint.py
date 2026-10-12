@@ -525,7 +525,6 @@ def _snapshot(
     return identity, context
 
 
-@functools.cache
 def definition_hash(definition: object) -> str:
     """Hash loaded Python methods, constants, defaults, captures and annotation definitions.
 
@@ -533,8 +532,8 @@ def definition_hash(definition: object) -> str:
     Application helpers and their referenced settings are followed statically. Referenced
     application classes use the same class projection when supported, otherwise only their name;
     traced snapshots retain their existing class boundary. External libraries, mutable class
-    attributes and Pydantic schemas are not inferred. Definitions and
-    settings must remain fixed after the first hash. Filename and
+    attributes and Pydantic schemas are not inferred. Each hash observes current
+    definitions and settings; keep them stable during hashing and execution. Filename and
     source positions are ignored; interpreter/compiler upgrades can change the digest.
     """
     return content_key("python-definition", _definition(definition, _Definitions(definition)))

@@ -1,8 +1,7 @@
 # Fresh effective computation context
 
-Status: P3 draft for owner review. The owner requires changed effective globals/context to
-change computation identity. This draft specifies the bounded refresh behavior; production
-implementation has not started.
+Status: P3 option A approved, implemented and verified. The owner requires changed effective globals/context to
+change computation identity. This contract specifies the approved bounded refresh behavior.
 
 ## Purpose and declaration
 
@@ -32,8 +31,9 @@ those in [call arguments](cache-call-arguments.md).
 
 - Every call to these automatic fingerprint functions rereads supported loaded definitions and
   effective settings. Default static decorators calculate a call-local computation identity
-  before each lookup, under suspended dependency tracing. CachedStep keeps calling its existing
-  fingerprint method; its inherited class-definition digest is now fresh too.
+  before each lookup, under suspended dependency tracing. CachedStep calls its existing
+  fingerprint method under suspended tracing for static preparation; its inherited
+  class-definition digest is now fresh too. Computation itself remains observable.
 - Refresh uses the existing static, non-strict discovery projection: code, defaults, keyword
   defaults, captures, statically resolved globals/module attributes, bounded application helpers
   and supported ordinary application classes. It changes observation time, not discovery scope.
@@ -93,6 +93,7 @@ class/Pydantic schema state retain the existing limits. A Path still identifies 
 file bytes. Effective external content requires input/configuration identity or a complete
 override. Recognized bookkeeping instrumentation remains excluded. Between-call mutation of
 represented data is covered; computation-internal semantic mutation remains unsupported.
+This is a precondition, not a promise that every violating mutation is detected or rejected.
 
 Refreshing costs a dependency/settings walk and canonical hashing on each static lookup,
 proportional to represented state. Existing immutable-code caches reduce this cost. The intended
@@ -101,7 +102,7 @@ reduce cost but introduces rebinding/invalidation machinery; it is deferred abse
 
 ## Review and evidence
 
-Current local probe: changing DESCRIPTION from A to B on the same cached function returns A;
+Pre-implementation local probe: changing DESCRIPTION from A to B on the same cached function returns A;
 standalone definition_hash also stays unchanged. Both freeze layers must change.
 
 Read-only local measurement at P2 commit `472b3a4`: CPython 3.14.8, macOS 26.7.1 arm64,
@@ -130,19 +131,46 @@ Its additional local probe found roughly 10.7 ms for a 20,000-entry represented 
 not an end-to-end hit measurement. This reinforces the cost boundary; compiled readers remain
 deferred. Full attempted falsifications and dispositions are recorded in the ingress/cache capture.
 
-## Q21 — post-computation validation
+## Q21 decision — stable context during execution
 
-Owner review must settle this additional admission behavior before implementation:
+Owner selected A: one automatic identity walk before lookup, with stable context during the
+entire invocation as a precondition. No post-computation check or admission reason is added.
 
-- A: draft above. Stable context during a call is a required precondition; one automatic
-  identity walk before lookup. This is the session recommendation: trust the supported
-  computation boundary and keep this refresh change local.
-- B: after an automatic static miss, recompute identity before saving; skip saving on mismatch,
-  returning the computed result. This is Opus's recommendation: mitigate persistent wrong-key
-  writes when another thread changes context. Costs one additional walk per miss plus an
-  admission branch and observable skip accounting. Hits and full identity overrides are unchanged.
+If context changes while the computation runs, its result may depend on a mixture of old and
+new values. Neither the initial nor final fingerprint necessarily identifies that mixed result.
+An end-of-call check cannot establish consistent execution, and may miss change-and-restore.
+This behavior is outside the cache guarantee; callers keep inputs/context stable during a call.
 
-B still requires stable context: it misses A→B→A changes and unrepresented state. It detects
-violations rather than providing atomic snapshots. If selected, the plan must include
-deterministic thread/barrier coverage for a changed-context miss and a separately defined
-skip reason; do not silently report it as background-queue pressure.
+Opus favored post-miss revalidation to mitigate durable wrong-key writes. Session favored A's
+simpler boundary; owner accepted A and explicitly requested the limitation in published docs.
+
+## End-to-end hit measurement
+
+Same-machine comparison used the identical temporary SQLite probe with Pydantic values, a
+global description, small options mapping and helper. Seven samples of 2,000 warmed hits;
+initialization/first miss excluded. P2 was archived at be042db, isolating the baseline from edits.
+
+| Implementation | Static-hit median | Sample range |
+| --- | ---: | ---: |
+| P2 | 17.628 µs | 16.748–18.246 µs |
+| P3 | 252.482 µs | 244.362–256.883 µs |
+
+Both runs executed the computation once across 14,000 timed hits, with zero skipped writes.
+The observed increase is 234.854 µs per hit for this fixture. No portable throughput claim
+or performance threshold follows; large represented context costs more. Immutable-code caching
+does not eliminate the current-value walk. This supports expensive composite caching, while
+a compiled dependency-reader representation remains deferred.
+
+## Implementation verification and diff review
+
+312 tests passed with 90% branch-inclusive coverage and durations; ty, Ruff/format, Cargo
+check/test and strict MkDocs passed. All 12 affected published-guide Python blocks ran, including
+the same-function A→B→A example with two computations. Existing SQL cleanup warnings remain.
+Fresh spec, quality and consistency reviews found no unresolved defects.
+
+Claude Opus 5.5 diff review 9f84c22bddaf4beea2d22bce9229b6ac supported the implementation.
+Its tracing-preparation finding added verification and changed the static CachedStep path:
+identity work is suspended, computation remains observable. A real-monitoring regression was
+red before the correction and green afterwards. Its mutation-churn observation added wording
+that stability is a precondition, not comprehensive runtime enforcement; mutation detection
+was not expanded. Full attacks/dispositions are in the ingress/cache capture.

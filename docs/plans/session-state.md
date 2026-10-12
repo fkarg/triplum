@@ -22,19 +22,23 @@ are committed in `472b3a4` and verified: 288 tests passed with 90% branch-inclus
 formatting, Cargo and strict MkDocs passed. Eight affected teaching snippets ran. Opus 5.5 found
 annotation evaluation and stale-default execution defects; both and the resulting key mismatch
 were fixed with regressions. Fresh reviews have no remaining findings. No remote CI requested.
-Q20 tracks required effective-global refresh, which is not solved by P2. Owner requested P3;
-the [refresh contract](../specs/cache-context-refresh.md) and [plan](cache-context-refresh.md)
-are drafted for exact-contract review before production edits. Q21 records the session/Opus
-disagreement about post-computation revalidation. Source identity
+Owner approved P3 option A; [effective-context refresh](../specs/cache-context-refresh.md)
+is implemented and verified: 312 tests passed with 90% branch-inclusive coverage; typing,
+Ruff/format, Cargo and strict MkDocs passed. All 12 affected guide Python blocks ran. Automatic static identity now rereads its existing
+bounded projection each lookup; immutable code/disassembly caches remain. Inputs/context must
+stay stable during identity calculation and execution; mixed-context execution is outside the
+guarantee, with no post-miss validation. The [plan](cache-context-refresh.md) owns verification.
+Q20/Q21 are answered; fresh and Opus reviews have no unresolved findings. No push/remote CI
+requested. Source identity
 is independent of physical Q13 table layout. See the capture for peer dispositions.
 
-The latest session resolved Q4 with a bounded referenced-class identity improvement. The wider
+Earlier work resolved Q4 with a bounded referenced-class identity improvement. The wider
 library audit against the owner-maintained [goals](../goals.md) remains the context for the
 remaining decisions.
 
 - Working agreement: slow, step by step, with owner review. Do what follows directly from the goals
   and instructions; put everything else to the owner as questions.
-- Next: prepare the bounded Q20 effective-global refresh proposal; then resume remaining
+- Next: resume remaining
   record/interface questions in [open questions](open-questions.md), one decision at a time. The owner
   deferred Q7's exact span counting/partial-credit choices until benchmark design. Earlier peer
   summaries for Q7 and Q9–Q12 are recorded there (review `4e752214c2144f13b6021c9dcbb48679`);
@@ -68,8 +72,8 @@ independent of creation history and computation definitions. The owner also auth
 identity for use with bare decorators, with explicit exclusions and custom projections.
 `FingerprintedDataModelMixin` supplies the same data identity to existing Pydantic bases;
 `FingerprintedComputationMixin` names the separate computation helper.
-Automatic helper discovery uses the shared loaded-definition engine; decorators freeze identity on
-first use, permitting helpers defined later in a module. Optional `dependency_mode="traced"`
+Automatic helper discovery uses the shared loaded-definition engine; decorators refresh its bounded
+projection before each lookup, permitting helpers defined later in a module. Optional `dependency_mode="traced"`
 refreshes root identity and validates manifests before reuse; tracing records supported application
 calls on misses. Unknown dependencies decline admission rather than forcing cached children to
 rerun. See [computation dependencies](../specs/automatic-helper-identity.md) for its approved
@@ -89,7 +93,7 @@ migrating record identities automatically.
 - Concurrent session's `4b53547`: function-name/source metadata and name-based cache clearing;
   this work is integrated and preserved.
 
-Static mode remains the default and freezes inferred function identity on first use. Traced mode
+Static mode remains the default; P3 refreshes its bounded inferred function identity each lookup. Traced mode
 refreshes root identity, records application calls on misses and validates dependency manifests
 on hits. A small input-addressed manifest index selects separately stored result blobs, preserving
 A→B→A reuse. Index and result tables carry the same function metadata for name-based clearing.

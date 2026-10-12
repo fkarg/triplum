@@ -140,7 +140,10 @@ Resources, locks, counters, policy and timing attributes are never traversed imp
 
 The shared loaded-definition algorithm, helper traversal and external boundaries are authoritative
 in [Automatic computation helpers](automatic-helper-identity.md). Both decorators and computation
-classes use that algorithm. There is no manual dependency hook or decorator parameter.
+classes use that algorithm. [Fresh effective computation context](cache-context-refresh.md) owns
+per-request refresh timing and the stable-input/context precondition. Definitions and selected
+configuration are reread; immutable code/disassembly caches remain. There is no manual dependency
+hook or decorator parameter.
 
 Class identity includes ordinary application bases, methods and supported immutable class constants.
 Ordinary application helper classes statically referenced through globals or module attributes
@@ -162,7 +165,7 @@ The owner accepts bounded inference as a useful aid to quick experimentation, ra
 guarantee of complete cache correctness. No automatic Pydantic schema, validator or default
 equivalence is claimed. Mutable/opaque attributes and hidden state are not inferred;
 unsupported referenced definitions fall back to qualified names. Explicit root class hashing can
-still reject unsupported descriptors, and static identity freezes on first use. This best-effort
+still reject unsupported descriptors. Fresh observation does not widen discovery. This best-effort
 refinement does not extend traced class discovery.
 Equal projected values remain interchangeable where their declared semantics permit that,
 regardless of creation or producer

@@ -8,7 +8,8 @@ from triplum.utils.fingerprint import definition_hash
 def function_fingerprint(compute: object) -> str:
     """Hash loaded code, defaults, captures and statically resolvable application helpers.
 
-    Freeze on first use. Keep definitions and captured/global settings fixed afterwards.
+    Refresh represented definitions and captured/global settings on each call.
+    Keep them stable while preparing identity and executing the computation.
     External libraries and hidden resource state remain outside automatic discovery.
     """
     if not isinstance(compute, FunctionType):

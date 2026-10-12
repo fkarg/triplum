@@ -46,8 +46,10 @@ A's earlier result. Missing metadata or result bytes cause computation again. Th
 write policy applies to both records; a skipped metadata write can lose reuse without changing the
 computed answer.
 
-Unlike static mode's first-use snapshot, traced mode refreshes root definitions/settings on each
-lookup and validates observed dependencies. This costs more than a direct result lookup: work
+Both static and traced mode refresh root definitions/settings on each lookup. Traced mode also
+validates observed dependencies; their difference is discovery and admission scope, rather than
+root freshness. Keep [inputs and context stable throughout each call](computations.md#keep-inputs-and-context-stable-during-a-call).
+Manifest validation costs more than a direct result lookup: work
 grows with the retained manifest shapes and their dependencies. Tracing also adds overhead while a
 miss computes. Cache larger operations where avoided work can justify these costs; a cheap string
 operation makes a readable example, not a performance recommendation.
@@ -90,8 +92,8 @@ result is not saved. The cache does not rerun the child merely to discover depen
 
 Recognized `functools.cache` and `functools.lru_cache` wrappers also prevent traced admission:
 their hits hide executed dependencies, while their own reuse remains intact. A computation mixin
-nested in selected settings currently prevents admission of the parent too, because its cached
-definition fingerprint does not establish fresh dependency identity.
+nested in selected settings currently prevents admission of the parent too, because fresh bounded
+definition identity does not establish a runtime dependency manifest.
 
 Tracing metadata uses the same backend as result bytes. [Cache statistics](administration.md)
 therefore count metadata tables, entries and payloads as well as computational results.
