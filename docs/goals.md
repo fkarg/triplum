@@ -32,11 +32,13 @@ pipelines are composed in Python, not configured through command-line options.
 
 ## Benchmarks and baselines
 
-Comparisons run on public benchmarks first, especially multi-hop question answering, and later
-on the owner's own corpora (papers, then podcast and video transcripts). Baselines come before
-novelty: results are compared against closed-book, BM25, dense, fusion, oracle-passage and
-non-LLM extraction baselines where applicable. Results report answer quality, retrieval quality
-and indexing cost, with everything that can change an answer recorded in the run's identity.
+Comparisons run on public benchmarks first, especially multi-hop question answering, but it
+should be similarly straightforward to run on user-specified areas of interest, like a
+collection of papers or to build the pipeline for (temporal) knowledge graph construction
+over meeting transcriptions. Baselines come before novelty: results are compared against
+closed-book, BM25, dense, fusion, oracle-passage and non-LLM extraction baselines where
+applicable. Results report answer quality, retrieval quality and indexing cost, with
+everything that can change an answer recorded in the run's identity.
 
 ## Rapid experimentation and benchmark runs
 
@@ -54,10 +56,11 @@ These are two different modes with different requirements:
 
 ## Requirements that shape the design
 
-- Every expensive step works with an empty cache, and caching never changes a result.
+- Every expensive step works with an empty cache, and caching never changes a result. This also means that we don't need to cache fast and cheap steps, like just chunking or embedding - however we might cache composite steps like the entire 'source to chunk' pipeline.
 - Evidence respects access: reads are made for a viewer, and derived content never widens the
   access of its sources.
-- Facts carry time: history is retained rather than overwritten.
+- Facts carry time: history is retained rather than overwritten. Some questions have a _timeframe_ dependency or are only true for a period of time. The library must support time-aware retrieval and reasoning.
+- Provenance is everything: every (search) result needs to be traceable to the source span, and each source needs provenance to the original document. Provenance is not optional, but rather fundamental to user-trust and delivered value.
 - Provider calls go through one LLM interface; pipeline code does not call provider SDKs directly.
 - Python is the user surface. Rust is used only where Python is a measured bottleneck.
 
