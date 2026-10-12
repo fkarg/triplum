@@ -145,6 +145,13 @@ in [Automatic computation helpers](automatic-helper-identity.md). Both decorator
 classes use that algorithm. There is no manual dependency hook or decorator parameter.
 
 Class identity includes ordinary application bases, methods and supported immutable class constants.
+Ordinary application helper classes statically referenced through globals or module attributes
+try this same projection in static mode. UnsupportedFingerprint restores traversal state and
+falls back to the referenced class's qualified name. Class-valued defaults, captures and selected
+configuration still require explicit projections. External classes, Pydantic BaseModel subclasses
+and referenced classes in traced mode contribute their qualified names only. This hashes
+loaded definitions without calling a class fingerprint method or Python hash. Instance
+fingerprint projections continue to select semantic input/configuration values.
 Exact framework bases are excluded; unused or overridden application methods can still invalidate
 entries. Unsupported class attributes must be represented through selected effective configuration
 when they affect the answer. A Path identifies its spelling, not file bytes.
@@ -153,10 +160,18 @@ when they affect the answer. A Path identifies its spelling, not file bytes.
 composing a complete process identity. `source_hash` remains a separate AST/source utility; cache
 identity does not read potentially edited source files to identify already loaded code.
 
-No automatic Pydantic schema or validator equivalence is claimed. Equal projected values remain
-interchangeable where their declared semantics permit that, regardless of creation or producer
+The owner accepts bounded inference as a useful aid to quick experimentation, rather than a
+guarantee of complete cache correctness. No automatic Pydantic schema, validator or default
+equivalence is claimed. Mutable/opaque attributes and hidden state are not inferred;
+unsupported referenced definitions fall back to qualified names. Explicit root class hashing can
+still reject unsupported descriptors, and static identity freezes on first use. This best-effort
+refinement does not extend traced class discovery.
+Equal projected values remain interchangeable where their declared semantics permit that,
+regardless of creation or producer
 history. Incompatible output contracts need their relevant identity represented or the computation's
-table cleared. CachedStep includes an explicit output_type name without claiming schema equivalence.
+table cleared (including retained versions with cache clear --name). A complete process_id can
+represent such definitions explicitly. CachedStep includes an explicit output_type name without
+claiming schema equivalence.
 
 ## Configuration encoding is a local boundary
 

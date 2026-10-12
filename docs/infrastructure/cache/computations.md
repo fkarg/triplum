@@ -3,6 +3,9 @@
 A computation fingerprint answers **“would the same operation run?”** It covers the implementation,
 effective configuration and relevant external dependencies. Together with the
 [input value's fingerprint](fingerprints.md), it selects a cached result.
+Automatic discovery is a bounded aid for quick experimentation: it does not guarantee that
+every change affecting a result invalidates the cache. The limits below explain when to reload
+definitions, provide an explicit identity or clear retained entries.
 
 ## Let the decorator identify the computation
 
@@ -90,6 +93,29 @@ Both calls print `strasse`. Editing `fold` and loading the new decorated functio
 computation identity, even if `transform` itself is unchanged. No dependency list or version
 string is needed.
 
+Ordinary application classes can be helpers too. Continue with the same imports and `Text` model:
+
+```python
+class Folder:
+    def run(self, text: str) -> str:
+        return text.casefold()
+
+
+@cached
+def transform_with_class(value: Text) -> Text:
+    return Text(text=Folder().run(value.text))
+
+
+print(transform_with_class(Text(text="Straße")).text)
+print(transform_with_class(Text(text="Straße")).text)
+```
+
+Both calls print `strasse`. In the default static mode, editing `Folder.run` and loading the
+new definitions changes the computation identity. Supported referenced application classes use
+loaded-definition hashing: methods, bases and supported immutable constants contribute. This
+does not call a class's `fingerprint()` or Python's `hash()`; an instance's `fingerprint()` still defines its selected
+value when that instance is an input or configuration.
+
 ## Know the automatic boundary
 
 Bare `@cached` and `@cache.cached` identify loaded Python definitions, evaluated defaults,
@@ -107,9 +133,16 @@ unsupported: a global that the computation assigns and otherwise reads raises `T
 counters and diagnostic collections separate from semantic settings. Import application helpers
 at module level; a function-local import of application code raises `TypeError`, while local
 imports of external libraries are outside identity like other external calls.
-Consequently, changing an external library, file, model weight or hidden resource state is not
-automatically detected. Arbitrary calls through classes or input objects are also outside this
-static helper discovery boundary. Optional [runtime tracing](tracing.md) can record supported
+In static mode, ordinary application classes referenced through global names or module attributes
+follow the same boundary on a best-effort basis. If the existing class projection cannot handle
+a definition, such as a generated class with unsupported descriptors or native bases, that
+reference falls back to its qualified name. External classes, Pydantic model classes and class
+references in traced mode also contribute their qualified names, not their definitions.
+Class-valued defaults, captures and selected configuration still require an explicit projection.
+Changing an external library, file, model weight or hidden resource state is therefore not
+automatically detected.
+Arbitrary dynamic dispatch through input objects also remains outside static helper discovery.
+Optional [runtime tracing](tracing.md) can record supported
 input/owner method calls and validate those dependencies on later lookups.
 
 Defaults and captures support finite scalars, lists, tuples, string-keyed mappings, paths and
@@ -221,10 +254,21 @@ loaded-definition digest when an application needs to compose its own identity. 
 | Output schema or codec becomes incompatible | Represent its relevant definition explicitly, or clear the computation's table |
 | Backend, queue policy or pipeline position changes | Keep the same semantic computation fingerprint |
 
-There is no hidden serialization-format key or migration layer, and output schemas and validators
-are not automatically hashed. An ordinary read decodes the saved value; it does not prove that
-current code would compute that value again. Equal value projections remain interchangeable for
-consumers of those projected fields, even if upstream histories differ. That does not guarantee
+Automatic identity is a useful aid for quick experiments, with bounded discovery rather than
+complete correctness for arbitrary Python code. Mutable or opaque class attributes and hidden
+state are not inferred. Unsupported referenced class definitions fall back to name-only identity;
+explicit root class hashing with `definition_hash()` or the computation mixin can still reject
+unsupported descriptors. Static definitions and bindings freeze on first use, so reload edited
+code instead of monkey-patching a warmed computation.
+Output-model schema, validator and default changes are not automatically hashed: stop writers and
+use `uv run triplum cache clear --name my_pipeline.normalize` for the affected computation, or
+supply a complete `process_id` that includes those definitions. See
+[administration](administration.md#find-and-clear-a-functions-retained-versions) for name selection.
+
+There is no hidden serialization-format key or migration layer. An ordinary read decodes the
+saved value; it does not prove that current code would compute that value again. Equal value
+projections remain interchangeable for consumers of those projected fields, even if upstream
+histories differ. That does not guarantee
 that another output model can decode an older stored payload. An explicit `output_type` contributes
 its qualified name to the default `CachedStep` identity, not its full schema.
 

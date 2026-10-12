@@ -5,20 +5,31 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 ## Resume here
 
-The latest session reviewed the whole library against the new owner-maintained
-[goals](../goals.md), fixed the unambiguous defects and recorded the remaining decisions.
+The latest session resolved Q4 with a bounded referenced-class identity improvement. The wider
+library audit against the owner-maintained [goals](../goals.md) remains the context for the
+remaining decisions.
 
 - Working agreement: slow, step by step, with owner review. Do what follows directly from the goals
   and instructions; put everything else to the owner as questions.
-- Next: present the open questions in [open questions](open-questions.md), starting with Q4 and Q7,
-  which the owner asked to have explained, then Q9–Q15. Peer answers for Q4, Q7 and Q9–Q12 are recorded
-  there (review `4e752214c2144f13b6021c9dcbb48679`).
-- Fixed in this session: `Chunk.origin` is a plain string; `MarkdownFolder` fingerprints cover
+- Next: present Q9–Q15 in [open questions](open-questions.md), one decision at a time. The owner
+  deferred Q7's exact span counting/partial-credit choices until benchmark design. Earlier peer
+  summaries for Q7 and Q9–Q12 are recorded there (review `4e752214c2144f13b6021c9dcbb48679`);
+  its saved full response is unavailable on this machine.
+- Q4: the owner accepts bounded inference for quick experimentation. Static discovery now tries
+  existing loaded-definition hashing for referenced application classes, falling back to their
+  qualified names when unsupported. Traced references, external classes and Pydantic model
+  contracts retain their limits. No Python hash or class fingerprint hook is invoked.
+  [Implementation and review](referenced-class-identity.md) record the slice. Verification:
+  257 tests passed with 89% branch-inclusive coverage; typing, Ruff, Cargo checks/tests and strict
+  MkDocs passed. The new class-helper guide example and existing cache reuse example ran.
+  Existing SQL connection-cleanup warnings remain. No push or remote CI run was requested.
+- Earlier audit fixes: `Chunk.origin` is a plain string; `MarkdownFolder` fingerprints cover
   absolute paths; the CLI reports inexact selector matches and handles `--name` on an empty
   cache; static identity rejects globals that are both assigned and read, and function-local
   imports of application code. Cache docs now have an Advanced section.
-- Known: static identity still ignores edits to application classes and output models (Q4).
-  Source/Chunk fingerprints are still properties, so records cannot be cache inputs yet (Q9–Q11).
+- Known: unsupported class definitions and output-model contracts can still require clearing
+  affected cache entries. Source/Chunk fingerprints are still properties, so records cannot be
+  cache inputs yet (Q9–Q11).
 - Command-line scope is recorded in [the CLI contract](../specs/cli-selection.md).
 
 ## Background: identity and fingerprinting audit

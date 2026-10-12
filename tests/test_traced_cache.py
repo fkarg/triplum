@@ -47,6 +47,36 @@ def test_traced_method_changes_reuse_a_b_a_across_reopened_sqlite(
     assert calls == ["hello", "hello"]
 
 
+def test_unused_mutating_class_method_does_not_disable_traced_reuse(
+    tmp_path: Path, monkeypatch
+) -> None:
+    # Static class expansion must not add unrelated method stores to strict traced discovery.
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "unused-class.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled application definitions
+            compile(
+                """class Folder:
+    def update(self):
+        self.text = 'changed'
+@cached(cache=cache, dependency_mode="traced")
+def uses_class(value: Value) -> Value:
+    calls.append(value.text)
+    if Folder is None:
+        raise AssertionError
+    return value
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        value = module.Value(text="hello")
+        assert module.uses_class(value) == value
+        assert module.uses_class(value) == value
+        assert calls == ["hello"]
+
+
 @pytest.mark.parametrize("owned", [False, True])
 def test_traced_selector_state_is_refreshed_before_lookup(
     tmp_path: Path, monkeypatch, owned: bool

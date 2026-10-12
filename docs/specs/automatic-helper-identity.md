@@ -19,11 +19,18 @@ resolve module attribute chains through dictionaries without descriptor executio
 nested code and terminate cycles with object-ID visitation and ordinal references. Hash ordinary
 plain global configuration including registry mappings; global names written by computation
 are outside the supported pure-computation contract. Discarded append-only instrumentation
-on exact lists/sets may be excluded when there are no other reads. Arbitrary class/input method
-calls and semantic global mutation are outside static discovery. Unsupported
+on exact lists/sets may be excluded when there are no other reads. Statically referenced ordinary
+application classes reached through global names or module attributes try the existing
+loaded-definition projection in static mode: methods, bases and supported immutable constants.
+If that projection raises UnsupportedFingerprint, restore traversal state and retain qualified-name
+identity for the reference. External classes, Pydantic BaseModel subclasses and referenced classes
+in traced mode retain qualified-name identity only. Class-valued defaults, captures and selected configuration still require explicit
+projections. No class fingerprint method or Python hash is invoked; instance fingerprint
+projections remain the data/configuration boundary. Arbitrary dynamic dispatch through input
+objects and semantic global mutation are outside static discovery. Unsupported
 semantic projections raise TypeError in static mode; traced mode will bypass only dedicated
 unsupported-dependency failures, preserving exceptions from user fingerprint implementations. External functions stop at
-qualified-name boundary; external implementation changes are not covered. Class/data schemas
+qualified-name boundary; external implementation changes are not covered. Pydantic/data schemas
 remain outside this bounded inference. Keep frozen bindings/settings unchanged after first use.
 
 ## Traced discovery and storage
@@ -56,8 +63,14 @@ dependencies propagate only when the object is the parent input or owner. No exp
 
 ## Limits
 
-This is bounded invalidation, not proof that an arbitrary Python execution is pure. Captured or
-global state determining dynamic dispatch must enter the static projection; resources requiring
+This supports quick experimentation through bounded invalidation, not complete correctness or
+proof that an arbitrary Python execution is pure. Mutable or opaque class attributes remain
+outside automatic class identity. Unsupported referenced class definitions fall back to name-only
+identity in static mode; explicit root class hashing can still reject unsupported descriptors.
+This best-effort static refinement does not extend traced class discovery. Pydantic output
+schema, validator and default changes can require clearing the affected computation by name
+or supplying a complete process_id; no schema equivalence or output-value lookup key is inferred.
+Captured or global state determining dynamic dispatch must enter the static projection; resources requiring
 external identity need fingerprintable settings. Python interpreter/compiler changes can alter
 code digests. Source filenames/timestamps are not fingerprint data.
 
@@ -78,6 +91,21 @@ results or missing result references, which produce misses. User identity/config
 still propagate; only dedicated unsupported-inference failures bypass caching.
 
 ## Independent reviews
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `ff86122b6d0f4fb8a75d89e095cd4fba`,
+critiqued the owner-approved referenced-class extension. **Changed decision / unique defects:**
+naive class traversal broke application exceptions, generated dataclasses/NamedTuples/Enums,
+cached-property classes and strict tracing. Referenced class expansion is static-only and falls
+back to qualified-name identity on UnsupportedFingerprint; it restores visited definitions,
+code records and receiver bookkeeping before discarding an unsupported subtree. Class-valued
+captures/configuration retain their existing rejection. **Added verification:** real reopened
+SQLite tests cover method/inherited-method/constant edits and equivalent A→B→A reuse; focused
+tests cover unsupported classes, shared-helper rollback and function/class cycles. The peer tried
+these class kinds, native bases, STORE_ATTR methods, receiver attribute-name collisions, Dataset
+inheritance, recursive graphs, custom hash definitions and source relocation. It ran the naive
+patch, not the final fallback, and did not run the repository suite. Its whole-MRO allowlist concern
+supports reusing the existing encoder rather than adding a new base restriction. Generated-class
+fallback and the static-only limit are deliberate best-effort behavior, not complete invalidation.
 
 Claude Opus 5.5 (`edbd7b891661425d960158b4fd7b0a2a`) found forward references at
 decoration unavailable: changed decision to first-use inference. Added ordinal cycle

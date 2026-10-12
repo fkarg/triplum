@@ -18,27 +18,6 @@ records the questions and answers, and links to the spec that takes over.
 
 ## Open
 
-### Q4. Application classes and output models in computation identity
-
-Static identity follows functions in the application, but an application **class** used by a
-cached function contributes only its name. Example: a cached function calls `Folder().run(x)`,
-with `Folder` defined in the same package. Editing `Folder.run` leaves the fingerprint unchanged,
-so the cache keeps returning results computed by the old `run` (reproduced). The return model is
-the same case: adding a field to the output Pydantic model leaves identity unchanged; old results
-decode with the new default, or raise a raw `ValidationError` for a new required field.
-
-- (a) Classes referenced by the computation, and its effective output model, contribute their
-  definitions: methods (including inherited application methods), validators, serializers,
-  default factories, and field contracts including nested models.
-- (b) Raise `UnsupportedFingerprint` for application classes. Breaks every function that
-  constructs its own output model.
-- (c) Document the limit only.
-
-Claude: (a). Peer (gpt-6.1-sol, review `4e752214c2144f13b6021c9dcbb48679`): (a), and stresses that
-field schema alone misses behavior (validators, default factories), and that an explicit
-`output_type` must select the same output contract as the annotation, for decorators and
-`CachedStep` alike.
-
 ### Q7. Representing gold evidence in benchmarks
 
 "Gold evidence" is a benchmark's annotation of which passages support each answer. HotpotQA marks
@@ -56,6 +35,10 @@ Claude: (a) with any-overlap matching, falling back to (b) for datasets without 
 document covers it **completely** (complementary chunks may cover it jointly). Any-overlap would
 credit a one-character sliver. Keep unresolvable annotations in the denominator. **Divergence:**
 Claude now prefers the peer's complete-coverage rule.
+
+Owner agrees with span-based evidence and wants the full (or mostly full) span retrieved, and
+raised proportional partial credit as a possibility. Owner deferred exact counting until benchmark
+design; Q7 is not a blocker for the current cache work. No partial-credit metric is approved.
 
 ### Q9. What Source and Chunk fingerprints cover
 
@@ -125,6 +108,40 @@ once ids are deterministic (Q12)? Not yet put to a peer.
 `CachedStep` remains depends on Q11. Not yet put to a peer.
 
 ## Answered
+
+### Q4. Application classes and output models in computation identity
+
+Owner: use existing class-definition hashing for referenced application classes and document
+the limits. The cache is intended to help quick experimentation, not guarantee discovery of
+every behavior change. Comprehensive output-model contract hashing is not required.
+Python `__hash__` was raised as a possible fallback; it is not a persistent definition identity.
+Implementation details and verification are tracked in
+[referenced class identity](referenced-class-identity.md).
+
+Owner requested clarification of the current mechanism before deciding: computation selects
+the table, input fingerprint selects the row, and the value is the computed result. The output
+fingerprint is not a lookup key. The open issue is incomplete computation dependency discovery,
+not a proposed change to this key structure.
+
+Original question: static identity followed functions in the application, but an application
+**class** used by a cached function contributed only its name. Example: a cached function calls
+`Folder().run(x)`, with `Folder` defined in the same package. Editing `Folder.run` left the fingerprint
+unchanged, so the cache kept returning results computed by the old `run` (reproduced). The return model is
+the same case: adding a field to the output Pydantic model leaves identity unchanged; old results
+decode with the new default, or raise a raw `ValidationError` for a new required field.
+
+- (a) Classes referenced by the computation, and its effective output model, contribute their
+  definitions: methods (including inherited application methods), validators, serializers,
+  default factories, and field contracts including nested models.
+- (b) Raise `UnsupportedFingerprint` for application classes. Breaks every function that
+  constructs its own output model.
+- (c) Document the limit only.
+
+Claude: (a). Peer (gpt-6.1-sol, review `4e752214c2144f13b6021c9dcbb48679`): (a), and stresses that
+field schema alone misses behavior (validators, default factories), and that an explicit
+`output_type` must select the same output contract as the annotation, for decorators and
+`CachedStep` alike. The owner chose a narrower best-effort class extension, retaining documented
+output-model limits; this supersedes both earlier comprehensive-hashing recommendations.
 
 ### Q1. Records returned from the cache
 

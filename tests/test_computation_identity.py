@@ -467,6 +467,134 @@ def operation(item):
         assert calls == ["hello", "hello"]
 
 
+@pytest.mark.parametrize("dependency", ["method", "inherited", "constant"])
+def test_cached_function_tracks_referenced_class_definitions(
+    tmp_path: Path, dependency: str
+) -> None:
+    # Name-only class identity reused the old result after an application method edit.
+    from triplum.cache import cached
+
+    bodies = {
+        "method": "class Folder:\n    def run(self, text): return text + {suffix!r}\n",
+        "inherited": (
+            "class Base:\n    def run(self, text): return text + {suffix!r}\n"
+            "class Folder(Base): pass\n"
+        ),
+        "constant": (
+            "class Folder:\n    SUFFIX = {suffix!r}\n"
+            "    def run(self, text): return text + self.SUFFIX\n"
+        ),
+    }
+    source = bodies[dependency] + (
+        "def operation(item):\n"
+        "    calls.append(item.text)\n"
+        "    return Text(text=Folder().run(item.text))\n"
+    )
+    calls: list[str] = []
+    path = tmp_path / "classes.sqlite"
+    for suffix in ("!", "?", "!"):
+        namespace = {"__name__": "application", "calls": calls, "Text": Text}
+        exec(  # noqa: S102 - fresh loaded application definitions
+            compile(source.format(suffix=suffix), str(tmp_path / "app.py"), "exec"), namespace
+        )
+        function = namespace["operation"]
+        assert isinstance(function, FunctionType)
+        with Cache(SQLiteBackend(path)) as cache:
+            operation = cached(function, cache=cache, output_type=Text)
+            assert operation(Text(text="hello")) == Text(text="hello" + suffix)
+    assert calls == ["hello", "hello"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "class Helper(Exception): pass\n",
+        "from dataclasses import dataclass\n@dataclass\nclass Helper:\n    text: str\n",
+        (
+            "from functools import cached_property\nclass Helper:\n"
+            "    @cached_property\n    def text(self): return 'hello'\n"
+        ),
+    ],
+)
+def test_unsupported_referenced_classes_keep_name_only_identity(tmp_path: Path, body: str) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    namespace = {"__name__": "application"}
+    exec(  # noqa: S102 - loaded application class fixture
+        compile(body + "def operation(): return Helper\n", str(tmp_path / "app.py"), "exec"),
+        namespace,
+    )
+    assert len(definition_hash(namespace["operation"])) == 64
+
+
+def test_class_fallback_does_not_hide_a_shared_helper(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    source = """from functools import cached_property
+def helper(text): return text + {suffix!r}
+class Broken:
+    def run(self, text): return helper(text)
+    @cached_property
+    def z(self): return 'unsupported'
+def operation(text): return Broken().run(text) + helper(text)
+"""
+    functions = []
+    for suffix in ("!", "?", "!"):
+        namespace = {"__name__": "application"}
+        exec(  # noqa: S102 - freshly loaded dependency definitions
+            compile(source.format(suffix=suffix), str(tmp_path / "app.py"), "exec"), namespace
+        )
+        functions.append(namespace["operation"])
+    assert definition_hash(functions[0]) == definition_hash(functions[2])
+    assert definition_hash(functions[0]) != definition_hash(functions[1])
+
+
+def test_function_class_dependency_cycles_keep_definition_identity(tmp_path: Path) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    source = """def helper(n): return Folder().run(n)
+class Folder:
+    def run(self, n): return helper(n - 1) if n else {result}
+def operation(n): return helper(n)
+"""
+    identities = []
+    for result in (1, 2, 1):
+        namespace = {"__name__": "application"}
+        exec(  # noqa: S102 - loaded cyclic dependency definitions
+            compile(source.format(result=result), str(tmp_path / "app.py"), "exec"), namespace
+        )
+        identities.append(definition_hash(namespace["operation"]))
+    assert identities[0] == identities[2]
+    assert identities[0] != identities[1]
+
+
+@pytest.mark.parametrize(
+    "hook",
+    [
+        "def __hash__(cls): raise AssertionError('class hash executed')",
+        "def __eq__(cls, other): raise AssertionError('class equality executed')",
+    ],
+)
+def test_class_discovery_does_not_execute_custom_hash_or_fingerprint(
+    tmp_path: Path, hook: str
+) -> None:
+    from triplum.utils.fingerprint import definition_hash
+
+    source = """class Meta(type):
+    {hook}
+class Folder(metaclass=Meta):
+    def __hash__(self): raise AssertionError('instance hash executed')
+    def fingerprint(self): raise AssertionError('instance fingerprint executed')
+    def run(self, text): return text.casefold()
+def operation(text): return Folder().run(text)
+"""
+    namespace = {"__name__": "application"}
+    exec(  # noqa: S102 - loaded class with user-defined hash hooks
+        compile(source.format(hook=hook), str(tmp_path / "app.py"), "exec"), namespace
+    )
+    assert len(definition_hash(namespace["operation"])) == 64
+
+
 def test_nested_code_helpers_and_read_only_global_settings_are_tracked(tmp_path: Path) -> None:
     from triplum.utils.fingerprint import definition_hash
 

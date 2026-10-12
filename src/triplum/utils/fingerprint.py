@@ -14,6 +14,8 @@ from pathlib import Path
 from types import BuiltinFunctionType, CodeType, FunctionType, ModuleType
 from typing import Generic, Protocol
 
+from pydantic import BaseModel
+
 from triplum.utils.cache import canonical_json, content_key
 
 
@@ -225,7 +227,27 @@ def _reference(value: object, active: _Definitions) -> object:
         if active.contains(value):
             return _definition(value, active)
         return {"external": f"{value.__module__}.{value.__qualname__}"}
-    if isinstance(value, (type, BuiltinFunctionType)):
+    if isinstance(value, type):
+        name = {"external": f"{value.__module__}.{value.__qualname__}"}
+        if (
+            active.strict_mutation
+            or any(base is BaseModel for base in value.__mro__)
+            or not active.contains_module(value.__module__)
+        ):
+            return name
+        # Unsupported generated/native definitions retain the previous name-only boundary.
+        # A discarded walk must not leave references to definitions absent from the projection.
+        visited, codes, receivers = (
+            active.visited.copy(),
+            active.codes.copy(),
+            active.receivers.copy(),
+        )
+        try:
+            return _definition(value, active)
+        except UnsupportedFingerprint:
+            active.visited, active.codes, active.receivers = visited, codes, receivers
+            return name
+    if isinstance(value, BuiltinFunctionType):
         return {"external": f"{value.__module__}.{value.__qualname__}"}
     return _state(value, active, ordered=True)
 
@@ -451,7 +473,7 @@ def _definition(value: object, active: _Definitions) -> object:
     if isinstance(value, type):
         bases = []
         for base in value.__mro__:
-            if base in _FRAMEWORK_BASES:
+            if any(base is framework for framework in _FRAMEWORK_BASES):
                 continue
             members = {}
             for name, member in sorted(vars(base).items()):
@@ -508,8 +530,10 @@ def definition_hash(definition: object) -> str:
     """Hash loaded Python methods, constants, defaults, captures and annotation definitions.
 
     Includes inherited methods and domain Protocol bodies; excludes exact framework helpers.
-    Application helpers and their referenced settings are followed statically. External
-    libraries, mutable class attributes and schemas are not inferred. Definitions and
+    Application helpers and their referenced settings are followed statically. Referenced
+    application classes use the same class projection when supported, otherwise only their name;
+    traced snapshots retain their existing class boundary. External libraries, mutable class
+    attributes and Pydantic schemas are not inferred. Definitions and
     settings must remain fixed after the first hash. Filename and
     source positions are ignored; interpreter/compiler upgrades can change the digest.
     """

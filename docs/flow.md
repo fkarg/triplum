@@ -16,6 +16,9 @@ This page follows the intended flow and shows where experiments can replace indi
   function names and source locations for selecting multiple computation fingerprints. Optional
   [runtime dependency tracing](infrastructure/cache/tracing.md) validates observed application
   helpers before reusing results.
+  Static computation identity also follows supported referenced application class definitions;
+  [its documented limits](infrastructure/cache/computations.md#know-the-automatic-boundary)
+  include name-only fallback for unsupported classes and Pydantic models.
   [Fingerprintable data models](infrastructure/cache/fingerprints.md) provide field-value identity
   for use with the cache decorators, with explicit bookkeeping exclusions; a separate mixin
   supports existing Pydantic bases.
