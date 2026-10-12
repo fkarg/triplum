@@ -33,15 +33,17 @@ IDs reference `docs/plans/open-questions.md`; avoid renumbering existing questio
 
 | ID | Decision | Prerequisites | Status |
 | --- | --- | --- | --- |
-| Q11 | Ownership of record construction after cached computation | Q1, Q3 settled; exploration/research completed | Ready, presented in round 1 |
+| Q11 | Practical cached output/binding direction | Owner correction | Answered; concrete record contracts remain Q12 |
 | Q9 | Source/Chunk semantic fingerprint fields | Existing Q2; input boundary review | Ready, held for focused round |
-| Q10 | Complete effective input and binding identity of cached blocks | Current cache contract; owner direction | Ready, next recommended round |
+| Q10 | Normal function arguments express effective inputs | Owner correction | Answered; implementation Q19/P2 |
 | Q12 | Source semantic identity, then construction and Chunk identity | Settled collection scope / A→B→A; separate declaration review | Source inputs ready; later contracts blocked |
 | Q13 | Collection storage layout | Dedicated storage review | Ready, outside first round |
 | Q14 | Dataset identity semantics | Promise can be decided now; projection may depend on Q9/Q12 | Ready promise; projection held |
 | Q15 | CachedStep versus decorator entry points | Ergonomics review | Ready, held |
 | Q16 | Which text chunk spans address across preprocessing | Q11 and exact payload review | Blocked |
 | Q17 | Snapshot boundary for mutable file/URL conversion inputs | Upstream interface review | Held |
+| Q19 | Multiargument decorator implementation | Settled owner requirements, peer-reviewed proposal | P2 ready for acceptance |
+| Q20 | Changed effective-global context refresh | Settled owner requirement; bounded implementation design | Follow-up after P2 |
 
 Additional candidates: laziness and converter cardinality. Assign stable new IDs only after investigations establish the questions.
 
@@ -281,3 +283,192 @@ Claude Opus diff review addressed; no unresolved production findings. SQL cleanu
 existing tests remain. Local delivery commit subject: `Make Source and Chunk fingerprints callable`.
 No push/remote CI requested. The workstream remains open: next frontier Q10, then scoped Q12
 Source identity/construction; no identity implementation proposal is accepted.
+
+## Round 2 preparation — Q10: expressing effective block inputs
+
+Owner reply checkpoint: asks to present actual design questions with context rather than another
+inventory. P1 remains complete (`70cae3f`); sequential mode continues. No new implementation
+acceptance. Round focuses Q10 only; Source ID/fingerprint fields are later questions.
+
+Known facts: a cached callable takes one fingerprintable item; lookup uses computation identity
+and item.fingerprint(); a hit decodes unchanged output. Source origin/text identity excludes id;
+Chunk identity excludes id/source_id. Equal fingerprints may have different source bindings.
+Selected collection/settings can already contribute to configured computation identity.
+The owner prioritizes later record-facing blocks and practical reuse, not cheap chunking or
+maximal cross-origin reuse. Complete effective input data is still needed for bound results.
+
+Session pre-peer assessment and options:
+
+1. Block-specific typed input supplies its own fingerprint over consumed content/context and
+   any IDs copied into outputs. Existing generic cache contract unchanged. Recommended initial
+   approach: explicit local identity, works with current APIs; cost is an extra input value for
+   blocks whose needs differ from record fingerprints. No universal request class proposed.
+2. A block-specific key callback on the cache decorator lets the block keep a Source/Chunk
+   argument while selecting its effective key. Less wrapper boilerplate; new key-selection API,
+   consistency between key and compute depends on the block author. Not implemented/approved.
+3. Change record fingerprints or introduce a cache-specific automatic record rule to cover all
+   bindings by default. Convenient record-facing calls, but universal equality policy overlaps
+   Q9 and adds special behavior; selected context still must enter somewhere. Not recommended
+   without a concrete requirement.
+
+Detached values remain available per block, but are not offered as a mandatory pipeline rewrite
+because the owner already leans toward practical bound-record reuse. IDs alone are insufficient
+while records remain mutable; exact field choices remain declaration review, not this round.
+Neutral peer brief will omit session options/recommendation and request independent Q10 options,
+tradeoffs and falsifications, including whether this asks a meaningful interface question rather
+than restating 'complete keys'. No P2 ready until the chosen interface is declared and reviewed.
+
+### Round 2 peer and prepared presentation
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `522fdf405d5b4afbb3169a53dabf2e85`;
+full JSON read. Peer options: explicit bound-input type with binding IDs; detached payload
+then uncached binding; new key-projection callback; new hit-time rebind hook. Rejected collection
+scoping alone as insufficient. Recommends existing API with explicit bound-input type when
+IDs are stable/persisted, detached values otherwise; defer new generic APIs until real blocks
+demonstrate wrapper burden.
+
+Attempted falsifications: nested Source-only wrapper still collapses equal-content different-ID
+sources (verified); explicit binding ID separates them; no current generic key hook; same-collection
+duplicates; mutable text under unchanged ID; experimentation reuse with fresh UUIDv7 records.
+Impact: added verification for nested-projection omission and identified the need to distinguish
+binding semantics from the projection declaration mechanism. Main recommendation remains a
+block-specific typed input using current API; no universal wrapper class or automatic rule.
+
+Dissent: peer wants experiment reload-versus-re-ingest behavior answered before Q10 can close.
+Main does not impose that prerequisite on the target interface choice: owner already prefers
+mostly deterministic identities and practical bound-record reuse. Current fresh-ID hit rate is
+a disclosed interim limitation; implementation of useful cross-run bound reuse still requires
+the relevant Q12 contracts. Do not re-ask settled preferences as new factual requirements.
+
+Prepared question uses the owner's bound-record direction and asks how to express effective
+identity: existing per-block typed input versus a new cache key callback, with detached values
+still available if the owner reconsiders the boundary. It does not reopen Q9's global record
+fields or impose collection-only scoping as a fix. Input identity must include all consumed
+data/context plus references copied into bound output, in input or selected config as appropriate.
+No P2 offered; exact declaration and smallest example follow owner choice. User answer pending.
+
+## Owner correction and next proposal checkpoint
+
+Owner rejected repeating the cross-source cache question: equal text may reuse computation and
+IDs/records can be reconstructed with current context; this is generally rare and not worth
+optimizing for. This supersedes the pending Round 2 interview; do not pose it again.
+Functions with multiple inputs should have deterministic input-data identity from named arguments.
+Changed effective globals/configuration, including collection/community descriptions, must change
+computation identity. Fingerprints and database IDs remain separate. No new wrapper-type decision
+is needed to adopt multiargument decorators.
+
+Follow-up: underlying cache accepting one input digest is fine; decorator should handle multiple
+args/kwargs and produce that digest. Session agrees canonical combined hashing, not XOR, and
+acknowledged multiargument support is absent. Owner now asks to propose implementation; this
+authorizes exploration/spec/plan, not production edits.
+
+### P2 pre-peer assessment — multiargument decorators
+
+Preferred approach: inspect signature once; bind args/kwargs by parameter name and apply defaults;
+encode using existing typed data-value encoding; SHA-256 hash the combined named values for one
+cache input digest. Fingerprintable argument values delegate to their selected fingerprint;
+primitives use existing supported typed encoding. Preserve callable type shape with ParamSpec.
+Retain the existing direct digest for a sole fingerprintable input: decorator/CachedStep entry
+sharing is an approved, tested contract, not a hypothetical legacy requirement.
+
+Alternative uniform call-map hash for every call is one simpler rule but breaks tested existing
+decorator/CachedStep sharing; not preferred. XOR rejected because it loses association/order and
+can cancel duplicate components. No cache/backend schema change or user-authored argument wrapper.
+
+Exploration: cache agent mapped static/traced integration. Tracing must receive original function,
+actual args and stable named object receivers; wrapping invocation in an opaque synthetic object
+would lose existing input-method invalidation. Static identity remains attached to original
+function, not an adapter closure. Supported-value validation remains at decorator boundary.
+
+Official research: Signature.bind/apply_defaults normalize named calls/defaults; ParamSpec keeps
+call shape; functools.wraps keeps metadata. Unmatched **kwargs preserves Python-observable order
+(PEP 468), unlike spelling order of named parameters. Plan preserves residual **kwargs order and
+*args order; named-parameter keyword order does not affect identity.
+
+Scope: @cached and Cache.cached argument handling, existing CachedStep/public backend shape,
+both static/traced modes, tests and documentation. Dynamic static-global identity refresh is a
+separate bounded follow-up; the owner's requirement is recorded, not silently treated as solved.
+No implementation accepted; concrete spec/plan and independent peer review follow.
+
+### P2 independent review and disposition
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `48b121d8b31043c6a617af49de3d4d1b`;
+complete JSON read. Supports bound named-argument hashing with preserved sole-input digest,
+ParamSpec and original-function tracing. Probed primitive receiver settings (string.lower/split
+caused UnsupportedFingerprint), receiver namespace gates, observer dispatch, canonical named
+key ordering, thunk behavior, distinct key domains, malformed nested fingerprints and unsupported
+classes/functions. No implementation tested; typing/default snapshots and alias cases unverified.
+
+Impact: added verification/constraints on excluding primitives from receiver registration,
+suspended fingerprint work, original root snapshots, top-level digest validation, receiver role
+namespaces and same-object aliases. Shared-method records must cover every known bound receiver,
+not silently reuse a manifest that only names the first argument. Existing nested discovery limits
+remain; do not generalize arbitrary graph discovery for this change.
+
+Dissent rejected with reasons:
+
+- Peer recommends rejecting **kwargs initially. Encoding residual ordered key/value pairs is
+  small, preserves observable semantics and avoids an unnecessary function-shape restriction.
+- Peer expects a parent to remain admitted after a static child hit. Approved behavior instead
+  preserves the child hit and declines unsupported parent admission; test suspension separately
+  without contradicting that rule.
+- Peer treats importing the private typed encoder as requiring owner design approval. This is
+  a routine internal reuse choice; existing internal modules share private helpers. Reuse it
+  rather than exposing/moving a public helper for this task.
+- Peer suggests pyright/mypy as repo commands; CONTRIBUTING uses ty. Preserve signature probes
+  with the actual repository checker, no new checker dependency.
+
+P2 proposal saved to `docs/specs/cache-call-arguments.md` and `docs/plans/cache-call-arguments.md`.
+One scoped worker will own coupled decorator/tracing/types/tests; docs sync separately delegated.
+Full checks, fresh/cross-model review and local commit are the stopping point. No production
+edits, no accepted P2 kickoff. Q10/Q11 direction moved to Answered; Q19 tracks this proposal and
+Q20 the outstanding required global-context refresh. The user should not be asked those settled
+policy questions again.
+
+### P2 acceptance and execution checkpoint
+
+Owner explicitly accepts P2: "P2 sounds good, proceed." Implement the approved spec/plan via
+one scoped worker, docs sync delegated, main verification/review/local commit. No further routine
+kickoff or execution-choice question. Existing checkout policy remains unchanged. Preserve
+concurrent goals.md, benchmark brainstorm and plans/questions files; they are not P2 ownership.
+
+Owner feedback on working style: be proactive like a colleague, not a questionnaire facilitator.
+Resolve routine choices and carry authorized steps through; only bring consequential tradeoffs,
+concrete evidence and recommendations. Do not reopen settled questions or repeatedly ask for
+the next obvious action. Interview policy is close oversight of consequential decisions.
+
+### P2 implementation and review outcome
+
+Both decorators support multiple positional/keyword arguments with named deterministic identity,
+current defaults, typed values and ordered variadics. Sole fingerprintable input entries continue
+to share with CachedStep/manual access. Original functions remain trace roots; every known receiver
+role is validated, including shared methods and equal-value aliases. Backend and codecs unchanged.
+
+Fresh spec review found no contract blockers; consistency review found no state/concurrency defect
+after SQLite alias/role/child-hit/reopen and threaded probes. Quality review added verification for
+independent class constants on two receivers sharing method code; the resulting regression covers
+mutations, repeat hits and A→B→A reuse.
+
+Claude Opus 5.5 (`claude-opus-5-5`), diff review `767fed9ff81341249e50e5e204c03093`, full JSON read.
+Attempted falsifications: unresolved parameter annotations, mutated defaults, inference without
+the third overload, receiver-role collisions, sole-input trace shape, free-function method guards,
+encoded-value collisions, nested fingerprint normalization and zero/plain-input key routing.
+Unique defects changed implementation: FORWARDREF signature inspection avoids evaluating missing
+TYPE_CHECKING imports; execution forwards original caller args/kwargs. Quality follow-up found that
+frozen binding defaults could still store live-default results under old keys. Current signatures
+now bind every call in both modes; a red/green regression covers explicit old/default new reuse.
+This refreshes input binding metadata, not the static computation-definition policy (Q20).
+
+The peer's exact-overload and status/prose drift findings changed docs. Its redundant fingerprint
+detection nit had no decision impact: separate raw-key and combined-value paths remain small;
+an extra helper would add indirection. Its signature-lock nit is superseded by current per-call
+binding with no signature memo or lock. New wrapped-function miss tests added verification of
+original spelling. All reported correctness defects were reproduced before fixes; no remaining
+fresh-review findings. Peer did not run full checks or concurrency; main/fresh reviewers supplied
+those checks rather than attributing them to Opus.
+
+Verification: 288 tests passed, 90% branch-inclusive coverage with durations; ty, Ruff/format,
+Cargo check/test and strict MkDocs passed. Eight affected guide snippets ran. Existing seven
+SQL connection-cleanup warnings remain. Local commit is the stopping point; no push or remote
+CI authorized. Q19 is answered; Q20 remains the next bounded proposal, with no implementation
+authority for global-context refresh yet.

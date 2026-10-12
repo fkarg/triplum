@@ -866,3 +866,230 @@ empty.__qualname__ = "empty"
     assert sys.monitoring.get_tool(4) is None
     with pytest.raises(UnsupportedFingerprint, match="closure"):
         _snapshot(module.empty)
+
+
+@pytest.mark.parametrize("aliased", [False, True])
+def test_multiargument_receivers_and_native_values_admit_and_refresh(
+    tmp_path: Path, monkeypatch, aliased: bool
+) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "multi.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled fixture
+            compile(
+                """@cached(cache=cache, dependency_mode="traced")
+def combined(input: Value, owner: Value, label: str = "X") -> Value:
+    return Value(text=input.render() + owner.render() + label.lower())
+class Other(Value):
+    def render(self):
+        calls.append(self.text)
+        return self.text + "?"
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        first = module.Value(text="a")
+        second = first if aliased else module.Value(text="b")
+        expected = "a!a!x" if aliased else "a!b!x"
+        assert module.combined(first, second).text == expected
+        assert module.combined(owner=second, input=first, label="X").text == expected
+        assert len(calls) == 2
+        different = module.Other(text=second.text)
+        assert module.combined(first, different).text == "a!" + second.text + "?x"
+        assert len(calls) == 4
+        assert module.combined(first, different).text == "a!" + second.text + "?x"
+        assert len(calls) == 4
+
+
+def test_equal_value_receivers_keep_method_identity_associated_with_parameter(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "roles.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled fixture
+            compile(
+                """class Plain:
+    def fingerprint(self): return "a" * 64
+    def render(self):
+        calls.append("plain")
+        return "!"
+class Other:
+    def fingerprint(self): return "a" * 64
+    def render(self):
+        calls.append("other")
+        return "?"
+@cached(cache=cache, dependency_mode="traced")
+def combined(left, right) -> Value:
+    return Value(text=left.render() + right.render())
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        first, second = module.Plain(), module.Other()
+        assert module.combined(first, second).text == "!?"
+        assert module.combined(second, first).text == "?!"
+        assert module.combined(first, second).text == "!?"
+        assert calls == ["plain", "other", "other", "plain"]
+
+
+def test_variadic_receivers_child_hits_and_live_defaults(tmp_path: Path, monkeypatch) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "variadic-traced.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled fixture
+            compile(
+                """@cached(cache=cache, dependency_mode="traced")
+def child(*values, **named) -> Value:
+    return Value(text="".join(value.render() for value in values) +
+                      "".join(value.render() for value in named.values()))
+@cached(cache=cache, dependency_mode="traced")
+def parent(first: Value, second: Value, suffix="!") -> Value:
+    return Value(text=child(first, last=second).text + suffix)
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        first, second = module.Value(text="a"), module.Value(text="b")
+        assert module.child(first, last=second).text == "a!b!"
+        assert module.parent(first, second).text == "a!b!!"
+        assert module.parent(first, second).text == "a!b!!"
+        assert calls == ["a", "b"]
+        module.parent.__wrapped__.__defaults__ = ("?",)
+        assert module.parent(first, second).text == "a!b!?"
+        assert calls == ["a", "b"]
+        module.SUFFIX = "#"
+        assert module.parent(first, second).text == "a#b#?"
+        assert module.parent(first, second).text == "a#b#?"
+        assert calls == ["a", "b", "a", "b"]
+
+
+def test_multiargument_fingerprint_helpers_are_suspended(tmp_path: Path, monkeypatch) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "hash-suspended.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled fixture
+            compile(
+                """def make_hash():
+    def hidden_hash():
+        return "b" * 64
+    return hidden_hash
+HASH = make_hash()
+class Plain:
+    def fingerprint(self): return HASH()
+@cached(cache=cache, dependency_mode="traced")
+def child(first, second) -> Value:
+    calls.append("child")
+    return Value(text="ok")
+@cached(cache=cache, dependency_mode="traced")
+def parent(first, second) -> Value:
+    calls.append("parent")
+    return child(first, second)
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        first, second = module.Plain(), module.Plain()
+        assert module.parent(first, second).text == "ok"
+        assert module.parent(first, second).text == "ok"
+        assert calls == ["parent", "child"]
+
+
+def test_both_argument_methods_refresh_independently_and_reuse_old_results(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "independent-methods.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        source = """class Left:
+    def fingerprint(self): return "a" * 64
+    def render(self):
+        calls.append("left")
+        return "LEFT"
+class Right:
+    def fingerprint(self): return "b" * 64
+    def render(self):
+        calls.append("right")
+        return "RIGHT"
+@cached(cache=cache, dependency_mode="traced")
+def combined(left, right) -> Value:
+    return Value(text=left.render() + right.render())
+"""
+        exec(compile(source, "/application/traced_application.py", "exec"), vars(module))  # noqa: S102 - controlled fixture
+        left, right = module.Left(), module.Right()
+        original_left, original_right = module.Left.render.__code__, module.Right.render.__code__
+        assert module.combined(left, right).text == "LEFTRIGHT"
+        assert module.combined(left, right).text == "LEFTRIGHT"
+        replacement = compile(
+            source.replace('"LEFT"', '"L"').replace('"RIGHT"', '"R"'),
+            "/application/traced_application.py",
+            "exec",
+        )
+        namespace = dict(vars(module))
+        exec(replacement, namespace)  # noqa: S102 - controlled fixture
+        module.Left.render.__code__ = namespace["Left"].render.__code__
+        assert module.combined(left, right).text == "LRIGHT"
+        module.Right.render.__code__ = namespace["Right"].render.__code__
+        assert module.combined(left, right).text == "LR"
+        module.Left.render.__code__, module.Right.render.__code__ = original_left, original_right
+        assert module.combined(left, right).text == "LEFTRIGHT"
+        assert calls == ["left", "right"] * 3
+
+
+def test_both_receiver_class_constants_refresh_with_shared_method_and_equal_values(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: list[str] = []
+    with Cache(SQLiteBackend(tmp_path / "receiver-constants.sqlite")) as cache:
+        module = application(cache, "!", calls, monkeypatch)
+        exec(  # noqa: S102 - controlled fixture
+            compile(
+                """from typing import ClassVar
+from triplum.utils.cache import content_key
+class Shared(FingerprintedDataModel):
+    text: str
+    SUFFIX: ClassVar[str] = "!"
+    def fingerprint(self):
+        return content_key("shared-text", self.text)
+    def render(self):
+        calls.append(self.SUFFIX)
+        return self.text + self.SUFFIX
+class Left(Shared):
+    SUFFIX: ClassVar[str] = "!"
+class Right(Shared):
+    SUFFIX: ClassVar[str] = "?"
+@cached(cache=cache, dependency_mode="traced")
+def combined(left, right) -> Value:
+    return Value(text=left.render() + right.render())
+""",
+                "/application/traced_application.py",
+                "exec",
+            ),
+            vars(module),
+        )
+        left, right = module.Left(text="a"), module.Right(text="a")
+        assert left.fingerprint() == right.fingerprint()
+        assert module.Left.render is module.Right.render
+        assert module.combined(left, right).text == "a!a?"
+        assert module.combined(left, right).text == "a!a?"
+        assert calls == ["!", "?"]
+        module.Left.SUFFIX = "#"
+        assert module.combined(left, right).text == "a#a?"
+        assert module.combined(left, right).text == "a#a?"
+        assert calls == ["!", "?", "#", "?"]
+        module.Right.SUFFIX = "$"
+        assert module.combined(left, right).text == "a#a$"
+        assert module.combined(left, right).text == "a#a$"
+        assert calls == ["!", "?", "#", "?", "#", "$"]
+        module.Left.SUFFIX = "!"
+        module.Right.SUFFIX = "?"
+        assert module.combined(left, right).text == "a!a?"
+        assert calls == ["!", "?", "#", "?", "#", "$"]

@@ -1,8 +1,10 @@
 # Optional caching interfaces — first implementation for owner review
 
 The owner wants interchangeable storage, policies configurable per run/step, manual access,
-decorators and a CachedStep mixin. Cached calls require fingerprintable input AND output values;
-our intermediate value types should support that contract. Plain uncached user steps need not.
+decorators and a CachedStep mixin. Cached outputs and `CachedStep` inputs are fingerprintable;
+decorator arguments also accept supported plain values under the approved
+[call-arguments contract](cache-call-arguments.md). Plain uncached user steps need not implement
+fingerprinting.
 Skip-and-count is the default when pending writes cannot be admitted; blocking is configurable.
 The cache target is tens to hundreds of GB with room to grow. The owner authorized a first runtime
 implementation in `triplum.cache`, including default Pydantic serialization. Benchmark policy and
@@ -66,12 +68,11 @@ This does not promise a fresh observed_at on a cache hit. If consumers need the 
 time, attach it outside the cached value. Consumers must not use excluded fields to change a cached
 computation's semantic result.
 
-Native `str`, `list` and NumPy arrays do not implement the protocol. Our pipeline will need reviewed
-fingerprintable text/batch/vector value types rather than weakening this cache boundary. This does
-not authorize rewriting existing step Protocols now. Custom users can implement the method, wrap
-their value, or leave that operation uncached. The method requirement alone does not prove a good
-fingerprint: the value author must cover every semantic field and avoid stale cached digests after
-mutation. Cacheable functions must not mutate their inputs or rely on unrepresented external state.
+Native `str` and `list` arguments use the supported typed data encoder without a wrapper. NumPy
+arrays remain outside that domain and need an explicit projection or fingerprintable value type.
+This does not authorize rewriting existing step Protocols or the single-input `CachedStep` contract.
+The method requirement alone does not prove a good fingerprint: the value author must cover every
+semantic field and avoid stale cached digests after mutation. Cacheable functions must not mutate their inputs or rely on unrepresented external state.
 
 ## Supporting types and exact declarations
 
@@ -159,8 +160,8 @@ class Cache:
     ) -> None: ...
 
 
-def cached[I: Fingerprintable, O: Fingerprintable](
-    compute: Callable[[I], O] | None = None,
+def cached[**P, O: Fingerprintable](
+    compute: Callable[P, O] | None = None,
     /,
     *,
     cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
@@ -169,7 +170,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
     dependency_mode: Literal["static", "traced"] = "static",
-) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+) -> Callable[P, O] | Callable[[Callable[P, O]], Callable[P, O]]: ...
 
 
 class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputationMixin, ABC):
@@ -237,7 +238,10 @@ run/owner, lend it to steps, close it.
 
 ## Decorator and mixin: one mechanism, two authoring styles
 
-`cached` decorates a one-input function, with or without parentheses. An explicitly identified
+`cached` decorates a function with its usual valid positional/keyword call shape, with or without
+parentheses. Signature binding, applied defaults, value encoding and ordered variadics follow
+[call arguments](cache-call-arguments.md); the backend still receives one normalized input digest.
+That spec owns the exact ParamSpec overloads for `cached` and `Cache.cached`. An explicitly identified
 bound callable is also supported. When supplied, process_id is validated once when binding; it covers that callable's computation, effective configuration,
 helpers and actual model/dependency identities. Configuration affecting computation must not mutate while
 bound. Reconfigure by making a new binding. Automatic identity includes supported nonlocal captures; it does not discover external dependencies. It returns the same input/output call shape, not a proxy for every attribute of a step
@@ -296,7 +300,8 @@ else:
 ```
 
 The byte-level manual interface does not enforce fingerprintability itself; typed decorators and
-mixins do. Manual callers take responsibility for key/content correspondence.
+mixins validate their supported input/output contracts. Manual callers take responsibility for
+key/content correspondence.
 
 ## What does not need another option
 
@@ -313,9 +318,10 @@ backend read view; a maybe-positive still uses exact lookup. Pending accepted wr
 first. Other-process writes, growth and rebuilding cannot silently invalidate coverage. This is
 an optional measured optimization, not an extra decorator requirement.
 
-Declaration checks: the current ty checker accepts the strict generic decorator and compute-hook
-mixin sketches, preserves example result types and rejects calls passing a non-fingerprintable int.
-These are type/interface probes, not implementation tests. Later behavior tests must cover changed
+Declaration checks for the original single-input sketch tested generic result preservation and
+input bounds. The approved ParamSpec decorator replaces that input bound with runtime value
+validation; the single-input mixin retains it. Current call-shape verification follows
+[call arguments](cache-call-arguments.md). Later behavior tests must cover changed
 inputs/config, policy/codec separation, input/output fingerprint roundtrips, empty values/vectors,
 read-your-writes while a commit is in flight, duplicate-key writes, queue overflow/oversized entries,
 worker errors and draining close. Real backend comparison uses the same binary codecs, policy and
@@ -358,11 +364,10 @@ Attempted falsifications included deriving a safe mixin ID using existing automa
 old commits evicting newer pending values (already guarded), oversized admission hangs (prevented,
 but computed results can be lost to the error), codec namespace collisions (covered), and reversed
 mixin order (fails rather than transparently supplying the intended call). The peer did not run a
-type checker or measure batch reuse. Our ty probes accept the positive declarations and reject an
-actual non-fingerprintable input call; an annotated int-taking definition alone can type as an
-intersection and is not necessarily rejected until called.
+type checker or measure batch reuse. The original input-bound type probes apply to the historical
+single-input decorator, now superseded by the approved call-arguments contract.
 
-External research informed the single-input generic constraint, method-binding boundary and
+External research informed the original generic constraint, method-binding boundary and
 separation of queue saturation from worker/storage errors:
 
 - [Python typing specification: generics and bounds](https://typing.python.org/en/latest/spec/generics.html)

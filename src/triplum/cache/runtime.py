@@ -188,9 +188,9 @@ class Cache:
             self._check_error()
 
     @overload
-    def cached[I: Fingerprintable, O: Fingerprintable](
+    def cached[**P, O: Fingerprintable](
         self,
-        compute: Callable[[I], O],
+        compute: Callable[P, O],
         /,
         *,
         process_id: str | None = None,
@@ -198,10 +198,23 @@ class Cache:
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
         dependency_mode: Literal["static", "traced"] = "static",
-    ) -> Callable[[I], O]: ...
+    ) -> Callable[P, O]: ...
 
     @overload
-    def cached[I: Fingerprintable, O: Fingerprintable](
+    def cached[**P, O: Fingerprintable](
+        self,
+        compute: None = None,
+        /,
+        *,
+        process_id: str | None = None,
+        output_type: None = None,
+        codec: None = None,
+        policy: CachePolicy | None = None,
+        dependency_mode: Literal["static", "traced"] = "static",
+    ) -> Callable[[Callable[P, O]], Callable[P, O]]: ...
+
+    @overload
+    def cached[**P, O: Fingerprintable](
         self,
         compute: None = None,
         /,
@@ -211,11 +224,11 @@ class Cache:
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
         dependency_mode: Literal["static", "traced"] = "static",
-    ) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+    ) -> Callable[[Callable[P, O]], Callable[P, O]]: ...
 
-    def cached[I: Fingerprintable, O: Fingerprintable](
+    def cached[**P, O: Fingerprintable](
         self,
-        compute: Callable[[I], O] | None = None,
+        compute: Callable[P, O] | None = None,
         /,
         *,
         process_id: str | None = None,
@@ -223,18 +236,21 @@ class Cache:
         codec: Codec[O] | None = None,
         policy: CachePolicy | None = None,
         dependency_mode: Literal["static", "traced"] = "static",
-    ) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
+    ) -> Callable[P, O] | Callable[[Callable[P, O]], Callable[P, O]]:
         """Decorate using this owner: @cache.cached, with optional overrides."""
         from triplum.cache.steps import cached
 
-        decorate = cached(
-            cache=self,
-            process_id=process_id,
-            output_type=output_type,
-            codec=codec,
-            policy=policy,
-            dependency_mode=dependency_mode,
-        )
+        def decorate(function: Callable[P, O]) -> Callable[P, O]:
+            return cached(
+                function,
+                cache=self,
+                process_id=process_id,
+                output_type=output_type,
+                codec=codec,
+                policy=policy,
+                dependency_mode=dependency_mode,
+            )
+
         return decorate if compute is None else decorate(compute)
 
     def __enter__(self) -> Self:

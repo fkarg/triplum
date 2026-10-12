@@ -54,13 +54,18 @@ operation makes a readable example, not a performance recommendation.
 
 ## Keep the boundary explicit
 
-Tracing resolves application functions and ordinary methods on the current input or `CachedStep`
-owner. The same application-package/source-directory boundary as [static discovery](computations.md#know-the-automatic-boundary)
-applies. Receiver state belongs in the input fingerprint or selected configuration; directly
+Tracing resolves application functions and ordinary methods on current fingerprintable arguments
+or the `CachedStep` owner. Decorator calls retain the original function as the trace root and bind
+receivers to their parameter names or variadic positions. Plain values contribute data identity
+without becoming method receivers. The same application-package/source-directory boundary as
+[static discovery](computations.md#know-the-automatic-boundary) applies. Receiver state belongs in
+the input fingerprint or selected configuration; directly
 referenced class constants are checked too.
 
-Unknown receivers, ambiguous method aliases, custom attribute dispatch, or local functions that
-cannot be resolved disable admission of the new result. A stored manifest referring to a missing
+Known receiver aliases are checked at every relevant argument binding, including when one object
+is passed under multiple names. Unknown or nested receivers, ambiguous method aliases, custom
+attribute dispatch, or local functions that cannot be resolved disable admission of the new result.
+A stored manifest referring to a missing
 module is a miss; validation does not import it. If the monitoring tool is unavailable, the call
 computes without saving a new traced result. Unsupported dependency inference likewise bypasses
 caching; exceptions from user fingerprint methods, computation and serialization still propagate.
@@ -79,7 +84,7 @@ prove that every influence on a Python computation has been captured.
 ## Compose cached calls
 
 A traced child contributes its dependency manifest even when it returns a cache hit. Methods in
-that manifest must refer to the same input or owner object already known to the parent; otherwise
+that manifest must refer to an argument or owner object already known to the parent; otherwise
 the parent result is not saved. A static child's cache hit is preserved too, but it has no runtime manifest, so the parent
 result is not saved. The cache does not rerun the child merely to discover dependencies.
 

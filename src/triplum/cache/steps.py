@@ -2,8 +2,10 @@
 
 import re
 from abc import ABC, abstractmethod
+from annotationlib import Format
 from collections.abc import Callable
 from functools import wraps
+from inspect import Parameter, Signature, signature
 from threading import Lock
 from typing import Literal, get_type_hints, overload
 
@@ -19,6 +21,7 @@ from triplum.cache.protocols import (
     _DefaultCache,
 )
 from triplum.cache.runtime import Cache
+from triplum.datatype.fingerprint import _value
 from triplum.utils.cache import content_key
 from triplum.utils.fingerprint import _FRAMEWORK_BASES, FingerprintedComputationMixin
 
@@ -29,11 +32,11 @@ def _digest(value: str) -> bytes:
     return bytes.fromhex(value)
 
 
-def _call[I: Fingerprintable, O: Fingerprintable](
+def _call[O: Fingerprintable](
     cache: Cache,
     process: bytes,
-    item: I,
-    compute: Callable[[I], O],
+    data_id: bytes,
+    compute: Callable[[], O],
     codec: Codec[O],
     policy: CachePolicy | None,
     metadata: ComputationMetadata | None = None,
@@ -41,15 +44,57 @@ def _call[I: Fingerprintable, O: Fingerprintable](
     from triplum.cache.tracing import suspend_tracing, untraced_hit
 
     with suspend_tracing():
-        key = CacheKey(process, _digest(item.fingerprint()), metadata=metadata)
+        key = CacheKey(process, data_id, metadata=metadata)
         payload = cache.get(key)
         if payload is not None:
             untraced_hit()
             return codec.decode(payload)
-    result = compute(item)
+    result = compute()
     with suspend_tracing():
         cache.put(key, codec.encode(result), policy=policy)
     return result
+
+
+def _arguments(
+    call_signature: Signature, arguments: dict[str, object]
+) -> tuple[bytes, dict[str, object]]:
+    """Encode bound defaults and direct receiver roles while preserving the legacy key."""
+    receivers: dict[str, object] = {}
+
+    def encode(role: str, value: object) -> object:
+        fingerprint = getattr(value, "fingerprint", None) if not isinstance(value, type) else None
+        if callable(fingerprint):
+            digest = _digest(fingerprint())
+            receivers[role] = value
+            return {"fingerprint": digest.hex()}
+        return _value(value)
+
+    parameters = call_signature.parameters
+    if len(parameters) == 1:
+        name, parameter = next(iter(parameters.items()))
+        value = arguments[name]
+        if parameter.kind not in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
+            fingerprint = (
+                getattr(value, "fingerprint", None) if not isinstance(value, type) else None
+            )
+            if callable(fingerprint):
+                return _digest(fingerprint()), {"input": value}
+    encoded_values = {}
+    for name, value in arguments.items():
+        kind = parameters[name].kind
+        if kind is Parameter.VAR_POSITIONAL:
+            assert isinstance(value, tuple)
+            encoded_values[name] = [
+                encode(f"argument:{name}:{index}", item) for index, item in enumerate(value)
+            ]
+        elif kind is Parameter.VAR_KEYWORD:
+            assert isinstance(value, dict)
+            encoded_values[name] = [
+                [key, encode(f"argument:{name}:{key}", item)] for key, item in value.items()
+            ]
+        else:
+            encoded_values[name] = encode(f"argument:{name}", value)
+    return bytes.fromhex(content_key("cached-arguments", encoded_values)), receivers
 
 
 def _codec[O: Fingerprintable](
@@ -69,8 +114,8 @@ def _codec[O: Fingerprintable](
 
 
 @overload
-def cached[I: Fingerprintable, O: Fingerprintable](
-    compute: Callable[[I], O],
+def cached[**P, O: Fingerprintable](
+    compute: Callable[P, O],
     /,
     *,
     cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
@@ -79,11 +124,25 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
     dependency_mode: Literal["static", "traced"] = "static",
-) -> Callable[[I], O]: ...
+) -> Callable[P, O]: ...
 
 
 @overload
-def cached[I: Fingerprintable, O: Fingerprintable](
+def cached[**P, O: Fingerprintable](
+    compute: None = None,
+    /,
+    *,
+    cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
+    process_id: str | None = None,
+    output_type: None = None,
+    codec: None = None,
+    policy: CachePolicy | None = None,
+    dependency_mode: Literal["static", "traced"] = "static",
+) -> Callable[[Callable[P, O]], Callable[P, O]]: ...
+
+
+@overload
+def cached[**P, O: Fingerprintable](
     compute: None = None,
     /,
     *,
@@ -93,11 +152,11 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
     dependency_mode: Literal["static", "traced"] = "static",
-) -> Callable[[Callable[[I], O]], Callable[[I], O]]: ...
+) -> Callable[[Callable[P, O]], Callable[P, O]]: ...
 
 
-def cached[I: Fingerprintable, O: Fingerprintable](
-    compute: Callable[[I], O] | None = None,
+def cached[**P, O: Fingerprintable](
+    compute: Callable[P, O] | None = None,
     /,
     *,
     cache: Cache | None | _DefaultCache = _DefaultCache.SHARED,
@@ -106,8 +165,8 @@ def cached[I: Fingerprintable, O: Fingerprintable](
     codec: Codec[O] | None = None,
     policy: CachePolicy | None = None,
     dependency_mode: Literal["static", "traced"] = "static",
-) -> Callable[[I], O] | Callable[[Callable[[I], O]], Callable[[I], O]]:
-    """Use @cached or @cached(overrides...) for a one-input callable.
+) -> Callable[P, O] | Callable[[Callable[P, O]], Callable[P, O]]:
+    """Use @cached or @cached(overrides...) for a callable.
 
     By default the shared cache opens on first use, the return annotation selects a
     Pydantic model. Loaded code, settings and application helpers identify computation
@@ -120,7 +179,7 @@ def cached[I: Fingerprintable, O: Fingerprintable](
         raise ValueError("dependency_mode must be static or traced")
     process = _digest(process_id) if cache is not None and process_id is not None else None
 
-    def decorate(function: Callable[[I], O]) -> Callable[[I], O]:
+    def decorate(function: Callable[P, O]) -> Callable[P, O]:
         if cache is None:
             return function
         identity = process
@@ -129,10 +188,15 @@ def cached[I: Fingerprintable, O: Fingerprintable](
         lock = Lock()
 
         @wraps(function)
-        def call(item: I, /) -> O:
+        def call(*args: P.args, **kwargs: P.kwargs) -> O:
             nonlocal selected, identity
             from triplum.cache.tracing import suspend_tracing, traced_call
 
+            with suspend_tracing():
+                effective_signature = signature(function, annotation_format=Format.FORWARDREF)
+                bound = effective_signature.bind(*args, **kwargs)
+                bound.apply_defaults()
+                data_id, receivers = _arguments(effective_signature, bound.arguments)
             if selected is None or (identity is None and dependency_mode == "static"):
                 with lock, suspend_tracing():
                     if identity is None and dependency_mode == "static":
@@ -143,15 +207,26 @@ def cached[I: Fingerprintable, O: Fingerprintable](
             if dependency_mode == "traced":
                 return traced_call(
                     owner,
-                    item,
+                    data_id,
                     function,
+                    args,
+                    kwargs,
+                    receivers,
                     selected,
                     policy,
                     process_id=process_id,
                     metadata=metadata,
                 )
             assert identity is not None
-            return _call(owner, identity, item, function, selected, policy, metadata)
+            return _call(
+                owner,
+                identity,
+                data_id,
+                lambda: function(*args, **kwargs),
+                selected,
+                policy,
+                metadata,
+            )
 
         vars(call)["_triplum_compute"] = function
         vars(call)["_triplum_process_id"] = process_id
@@ -197,6 +272,8 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
             with self._codec_lock, suspend_tracing():
                 if self._codec is None:
                     self._codec = _codec(self.compute, self._output_type, None)
+        with suspend_tracing():
+            data_id = _digest(item.fingerprint())
         owner = default_cache() if self._cache is _DefaultCache.SHARED else self._cache
         if self._dependency_mode == "traced":
             configuration = None
@@ -214,8 +291,11 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
                 process_id = _digest(self.fingerprint()).hex()
             return traced_call(
                 owner,
-                item,
+                data_id,
                 self.compute,
+                (item,),
+                {},
+                {"input": item},
                 self._codec,
                 self._policy,
                 owner=self,
@@ -226,8 +306,8 @@ class CachedStep[I: Fingerprintable, O: Fingerprintable](FingerprintedComputatio
         return _call(
             owner,
             _digest(self.fingerprint()),
-            item,
-            self.compute,
+            data_id,
+            lambda: self.compute(item),
             self._codec,
             self._policy,
             self._computation_metadata,

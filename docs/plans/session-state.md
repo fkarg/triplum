@@ -14,9 +14,16 @@ Fresh-context review found no unresolved defects; Claude Opus 5.5 diff review su
 correction. Its docs consolidation and redundant-test findings were addressed; peer dispositions
 are in the capture. Existing SQL connection-cleanup warnings remain. No push or remote CI requested.
 Deterministic IDs and digest-field changes remain open. Owner favors practical collection-dependent
-later-block caching, with cheap chunking uncached. Next proposed design frontier is Q10's complete
-effective input/binding identity, then Q12's Source semantics and construction boundary. Source
-identity is independent of physical Q13 table layout. See the capture for peer dispositions.
+later-block caching, with cheap chunking uncached. The owner has answered Q10/Q11: ordinary
+multiargument decorators with deterministic named inputs;
+practical reuse without optimizing rare cross-source hits, with contextual reconstruction allowed.
+Do not re-ask those directions. Owner accepted P2; [multiargument decorators](cache-call-arguments.md)
+are implemented and verified: 288 tests passed with 90% branch-inclusive coverage; typing, Ruff,
+formatting, Cargo and strict MkDocs passed. Eight affected teaching snippets ran. Opus 5.5 found
+annotation evaluation and stale-default execution defects; both and the resulting key mismatch
+were fixed with regressions. Fresh reviews have no remaining findings. No remote CI requested.
+Q20 tracks required effective-global refresh, which is not solved by P2. Source identity
+is independent of physical Q13 table layout. See the capture for peer dispositions.
 
 The latest session resolved Q4 with a bounded referenced-class identity improvement. The wider
 library audit against the owner-maintained [goals](../goals.md) remains the context for the
@@ -24,7 +31,8 @@ remaining decisions.
 
 - Working agreement: slow, step by step, with owner review. Do what follows directly from the goals
   and instructions; put everything else to the owner as questions.
-- Next: present Q9–Q15 in [open questions](open-questions.md), one decision at a time. The owner
+- Next: prepare the bounded Q20 effective-global refresh proposal; then resume remaining
+  record/interface questions in [open questions](open-questions.md), one decision at a time. The owner
   deferred Q7's exact span counting/partial-credit choices until benchmark design. Earlier peer
   summaries for Q7 and Q9–Q12 are recorded there (review `4e752214c2144f13b6021c9dcbb48679`);
   its saved full response is unavailable on this machine.

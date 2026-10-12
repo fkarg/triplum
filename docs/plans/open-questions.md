@@ -42,57 +42,13 @@ design; Q7 is not a blocker for the current cache work. No partial-credit metric
 
 ### Q9. What Source and Chunk fingerprints cover
 
-Derived from Q2: origin and collection leave fingerprints. Source fingerprint: text only. Chunk
-fingerprint: text only, or text plus `start`?
+Q2 permits fingerprints to omit origin/collection; it does not prescribe a universal projection.
+Review Source text-only versus the current origin/text projection, then Chunk text-only versus
+text/start or its current origin/start/text projection, independently of database ID semantics.
 
 Peer (same review): Source = text; Chunk = text + start, since `start` is an observable field and
 equal text at different offsets is a different excerpt. Position-independent work can take a
 text-only value. Claude (formed after reading the peer): agrees.
-
-### Q10. Cached steps whose output depends on origin
-
-Derived from Q2. With origin outside the fingerprint, a cached block that behaves differently by
-origin (say a chunker that treats `.md` specially) returns a wrong hit for equal text at another
-origin.
-
-Peer (same review): a cached block receives an explicit input value containing every field it
-uses. Content-only blocks take a text value; origin-sensitive blocks include origin,
-or a derived selector such as the format, in that input. `Source.fingerprint()` is therefore not a
-safe key for arbitrary Source consumers. Claude raised the hazard but had no answer of its own;
-it agrees with the peer.
-
-Fresh Claude Opus 5.5 review `aa313bda22954ce2a606bb20021b48c4` recommends deciding this
-before deterministic IDs: a bound-output block input includes full binding identity plus all
-effective semantic data. Deterministic IDs improve reuse across runs; they do not repair an
-incomplete key. This is a proposal. Q10 does not require Q9's global record projection first.
-
-### Q11. How a cached block returns records
-
-Derived from Q1 and Q3. A cached block (say Source → chunks with vectors) must return records whose
-ids and parent references belong to the current input.
-
-- (a) The cached block returns an id-free payload (ordered starts, texts, vectors); ordinary pipeline
-  code builds records from the payload and the current source, on hits and misses alike.
-- (b) A step-type-specific cache adapter (`cached_chunker`, …) stores id-free content and rebuilds
-  records inside the cache layer.
-- (c) A rebinding hook on the decorator, or a codec that receives the input.
-
-Claude originally proposed (b). Peer (same review): (a); record construction stays in pipeline code,
-not in cache behavior, and benchmark runs use the same construction without the cache.
-**Divergence:** Claude now prefers (a), since Q3 makes user-composed blocks, not single steps, the
-caching unit.
-
-Current grill-me workstream: [ingress and caching](../brainstorms/2026-10-12-ingress-caching.md).
-Fresh independent Claude Opus 5.5 review `81713a89b1084c74ac68588bf02f30f7` also recommends
-(a), with complete explicit computation inputs and identical binding on hits/misses. It exposed
-the span-coordinate question Q16. This is still a proposal, not an owner decision; detailed peer
-dispositions are in the capture.
-
-Owner's latest direction: chunking itself is cheap and not a priority to cache; later blocks
-may reasonably be collection-dependent. A is acceptable in principle, but the owner leans
-toward bound-record reuse (C in the current round) with mostly deterministic identities for
-practical experimentation. Exact contracts remain open. Fingerprints and database IDs retain
-distinct, partially overlapping purposes; this does not make database IDs generic cache keys.
 
 ### Q12. Deterministic record ids
 
@@ -143,7 +99,40 @@ fingerprinting and later item reading are separate observations. Decide the snap
 and effective input for cached parsing/OCR without assuming that a dataset-wide fingerprint
 pins later reads. Held for upstream interface review; main session owns preparation.
 
+### Q20. Refreshing changed effective global context
+
+Owner requires changed effective globals/configuration (collection/community descriptions, for
+example) to change computation identity. Default static decorators freeze identity on first use;
+traced mode refreshes roots/dependencies. A bounded implementation proposal for static context
+refresh remains to be prepared after P2; do not treat argument normalization as solving it.
+Main session owns this follow-up. No new inference policy or implementation accepted yet.
+
 ## Answered
+
+### Q19. Multiargument cache decorator
+
+Owner accepted P2: "P2 sounds good, proceed." Both decorators now normalize positional/keyword
+arguments and current defaults into one input digest, preserving legacy sole-fingerprintable
+keys. [Call arguments](../specs/cache-call-arguments.md) owns the implemented contract;
+[the plan](cache-call-arguments.md) records verification. Global-context refresh remains Q20.
+
+### Q10. Effective inputs of cached functions
+
+Owner: functions may take multiple arguments; normalize by parameter name into deterministic
+input-data identity. Effective globals/configuration belong in computation identity and changes
+must be reflected. No mandatory user-authored input wrapper or new key callback is requested.
+The cache can retain one input digest. Implementation follows Q19/P2 and context refresh Q20.
+Prior peer options and the repeated-question correction are in the ingress/cache capture.
+
+### Q11. Cached results and record bindings
+
+Owner: equal text can reuse cross-source computation and IDs/records can be reconstructed from
+current context where needed. Such reuse is expected to be rare and is not worth optimizing for.
+Prefer practical later-block caching, potentially collection-dependent, with mostly deterministic
+IDs; do not mandate a payload/binding split or reopen this direction. Concrete record identity
+contracts remain Q12; Q1's no-wrong-source-reference requirement stands. Prior alternatives and
+peer dissent are preserved in the capture rather than treated as pending owner choices.
+
 
 ### Q18. Shared fingerprint interface: method or property
 

@@ -2,7 +2,7 @@
 
 A computation fingerprint answers **“would the same operation run?”** It covers the implementation,
 effective configuration and relevant external dependencies. Together with the
-[input value's fingerprint](fingerprints.md), it selects a cached result.
+[effective argument identity](../cache.md#pass-text-and-context-directly), it selects a cached result.
 Automatic discovery is a bounded aid for quick experimentation: it does not guarantee that
 every change affecting a result invalidates the cache. The limits below explain when to reload
 definitions, provide an explicit identity or clear retained entries.

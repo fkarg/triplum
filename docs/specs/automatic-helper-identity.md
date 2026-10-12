@@ -6,7 +6,9 @@ Static and optional traced discovery are implemented and verified.
 ## Interface
 
 `cached(..., dependency_mode: Literal["static", "traced"] = "static")`
-and the same keyword on `Cache.cached` and `CachedStep.__init__`. Data identity remains unchanged. Existing
+and the same keyword on `Cache.cached` and `CachedStep.__init__`.
+[Decorator call arguments](cache-call-arguments.md) owns signature binding and normalized input
+identity; value projections remain unchanged. Existing
 `process_id` is a full override. Remove `fingerprint_dependencies`; ordinary external content
 identifiers can be selected configuration. Computation definitions and settings use one engine.
 
@@ -45,7 +47,7 @@ contained in known definitions is covered. Unresolvable application code disable
 Collecting runtime code supplements static identity; it does not infer native implementation,
 files, services, hidden resource state or arbitrary dispatch effects.
 
-A preliminary root computation fingerprint plus full input fingerprint addresses a small
+A preliminary root computation fingerprint plus full normalized input digest addresses a small
 manifest index using the existing CacheBackend get/put_many abstraction. Each manifest stores a template of resolvable function paths and known receiver slots. Refresh
 their definition fingerprints and referenced receiver class settings before any result hit. Full actual process identity includes root identity
 and manifest; results live under that computation/input pair. A→B→A retains old result blobs.
@@ -59,7 +61,9 @@ unknown application dependencies, unavailable tracing, or unresolvable
 stored manifests cause recomputation without admission. Ordinary exceptions propagate and
 tracing is released. Traced child hits contribute their dependency manifest to parent traces. A static child hit
 remains reusable but declines parent admission because it has no runtime manifest. Receiver
-dependencies propagate only when the object is the parent input or owner. No explicit dependency list or manually maintained version counter.
+dependencies propagate only when the object is a known parent argument or owner receiver.
+Multiargument receiver bindings follow the call-arguments contract; the sole-input path retains
+its existing binding shape. No explicit dependency list or manually maintained version counter.
 
 ## Limits
 

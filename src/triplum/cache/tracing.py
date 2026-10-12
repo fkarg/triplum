@@ -2,7 +2,7 @@
 
 import inspect
 import sys
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from threading import Lock, get_ident
@@ -159,44 +159,40 @@ class _Scope:
             return None
         result = set(self.extra)
         for key, (code, module, namespace, receivers) in self.records.items():
-            kind = None
+            kinds: list[str | None] = [None]
             if receivers:
-                if len(receivers) != 1:
+                kinds = []
+                for receiver in receivers.values():
+                    roles = [name for name, value in self.receivers.items() if value is receiver]
+                    if not roles:
+                        return None
+                    owner_name, _, slot = code.co_qualname.rpartition(".")
+                    if not any(
+                        base.__qualname__ == owner_name and base.__module__ == module
+                        for base in type(receiver).__mro__
+                    ):
+                        return None
+                    matches = {
+                        name
+                        for base in type(receiver).__mro__
+                        for name, value in vars(base).items()
+                        if isinstance(value, FunctionType) and value.__code__ is code
+                    }
+                    if matches != {slot}:
+                        return None
+                    kinds.extend(roles)
+            for kind in kinds:
+                locator = _Locator(module=module, qualname=code.co_qualname, receiver=kind)
+                function = _resolve(locator, namespace, self.receivers)
+                if function is None or function.__code__ is not code:
                     return None
-                receiver = next(iter(receivers.values()))
-                kind = next(
-                    (key for key, value in self.receivers.items() if value is receiver), None
-                )
-                if kind is None:
+                try:
+                    captures = _captures(function)
+                except UnsupportedFingerprint:
                     return None
-                owner_name, _, slot = code.co_qualname.rpartition(".")
-                if not any(
-                    base.__qualname__ == owner_name and base.__module__ == module
-                    for base in type(receiver).__mro__
-                ):
+                if key[2] != tuple((name, id(captures[name])) for name in code.co_freevars):
                     return None
-                matches = {
-                    name
-                    for base in type(receiver).__mro__
-                    for name, value in vars(base).items()
-                    if isinstance(value, FunctionType) and value.__code__ is code
-                }
-                if matches != {slot}:
-                    return None
-            locator = _Locator(module=module, qualname=code.co_qualname, receiver=kind)
-            function = _resolve(locator, namespace, self.receivers)
-            if function is None or function.__code__ is not code:
-                return None
-            try:
-                captures = _captures(function)
-            except UnsupportedFingerprint:
-                return None
-            if key[2] != tuple((name, id(captures[name])) for name in code.co_freevars):
-                return None
-            # A free function installed as a method loses its dispatch-slot identity.
-            if receivers and "." not in code.co_qualname:
-                return None
-            result.add(locator)
+                result.add(locator)
         return sorted(result, key=lambda item: (item.module, item.qualname, item.receiver or ""))
 
 
@@ -261,10 +257,10 @@ def _propagate(
                 scope.extra.add(locator)
                 continue
             receiver = (receivers or {}).get(locator.receiver)
-            kind = next((key for key, value in scope.receivers.items() if value is receiver), None)
-            if kind is None:
+            kinds = [key for key, value in scope.receivers.items() if value is receiver]
+            if not kinds:
                 scope.tainted = True
-            else:
+            for kind in kinds:
                 scope.extra.add(locator.model_copy(update={"receiver": kind}))
 
 
@@ -321,16 +317,20 @@ def _current(
         semantic.update(context.semantic_mutables)
         if instrumentation & semantic:
             return None
-        resolved.append(
-            {"module": locator.module, "qualname": locator.qualname, "identity": identity}
-        )
+        dependency = {"module": locator.module, "qualname": locator.qualname, "identity": identity}
+        if locator.receiver is not None and locator.receiver.startswith("argument:"):
+            dependency["receiver"] = locator.receiver
+        resolved.append(dependency)
     return resolved
 
 
-def _traced_call[I: Fingerprintable, O: Fingerprintable](
+def _traced_call[O: Fingerprintable](
     cache: Cache,
-    item: I,
-    compute: Callable[[I], O],
+    data_id: bytes,
+    compute: Callable[..., O],
+    args: tuple[object, ...],
+    kwargs: Mapping[str, object],
+    receivers: dict[str, object],
     codec: Codec[O],
     policy: CachePolicy | None,
     *,
@@ -343,32 +343,26 @@ def _traced_call[I: Fingerprintable, O: Fingerprintable](
     function = compute.__func__ if isinstance(compute, MethodType) else compute
     if not isinstance(function, FunctionType):
         _propagate(None)
-        return compute(item)
-    # Input fingerprint errors are caller errors, never unsupported-inference fallback.
-    from triplum.cache.steps import _digest
-
-    data_id = _digest(item.fingerprint())
-    if _receiver_namespace(item) is None or (
-        owner is not None and _receiver_namespace(owner) is None
-    ):
+        return compute(*args, **kwargs)
+    if owner is not None:
+        receivers = {**receivers, "owner": owner}
+    if any(_receiver_namespace(receiver) is None for receiver in receivers.values()):
         _propagate(None)
-        return compute(item)
+        return compute(*args, **kwargs)
     try:
         identity, context = _snapshot(type(owner) if owner is not None else function, configuration)
         receiver_settings = {
-            "input": _receiver_settings(iter(context.codes.values()), item, context),
-            "owner": (
-                _receiver_settings(iter(context.codes.values()), owner, context)
-                if owner is not None
-                else {}
-            ),
+            name: _receiver_settings(iter(context.codes.values()), receiver, context)
+            for name, receiver in receivers.items()
         }
+        if "input" in receivers:
+            receiver_settings.setdefault("owner", {})
         identity = content_key(
             "traced-root", {"definition": identity, "receivers": receiver_settings}
         )
     except UnsupportedFingerprint:
         _propagate(None)
-        return compute(item)
+        return compute(*args, **kwargs)
     root_id = process_id if process_id is not None else identity
     index_id = bytes.fromhex(content_key("traced-index", root_id))
     key = CacheKey(index_id, data_id)
@@ -378,9 +372,6 @@ def _traced_call[I: Fingerprintable, O: Fingerprintable](
     except ValidationError:
         templates = []
     namespace = function.__globals__
-    receivers: dict[str, object] = {"input": item}
-    if owner is not None:
-        receivers["owner"] = owner
     for manifest in templates:
         current = _current(manifest, namespace, receivers, context)
         if current is None:
@@ -393,7 +384,7 @@ def _traced_call[I: Fingerprintable, O: Fingerprintable](
             _propagate(manifest, namespace, receivers)
             return codec.decode(result)
     with resume_tracing(), _Scope(context, namespace, receivers) as scope:
-        result = compute(item)
+        result = compute(*args, **kwargs)
     manifest = scope.manifest()
     _propagate(manifest, namespace, receivers)
     if manifest is None:
@@ -449,10 +440,13 @@ def untraced_hit() -> None:
     _propagate(None)
 
 
-def traced_call[I: Fingerprintable, O: Fingerprintable](
+def traced_call[O: Fingerprintable](
     cache: Cache,
-    item: I,
-    compute: Callable[[I], O],
+    data_id: bytes,
+    compute: Callable[..., O],
+    args: tuple[object, ...],
+    kwargs: Mapping[str, object],
+    receivers: dict[str, object],
     codec: Codec[O],
     policy: CachePolicy | None,
     *,
@@ -464,8 +458,11 @@ def traced_call[I: Fingerprintable, O: Fingerprintable](
     with suspend_tracing():
         return _traced_call(
             cache,
-            item,
+            data_id,
             compute,
+            args,
+            kwargs,
+            receivers,
             codec,
             policy,
             process_id=process_id,

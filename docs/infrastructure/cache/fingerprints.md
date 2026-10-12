@@ -182,8 +182,10 @@ print(Text("Hello").fingerprint() == Text("Hello").fingerprint())
 
 `content_key` hashes a kind identifier and JSON data. It is not the model's typed encoder:
 JSON can collapse distinctions such as tuples versus lists, so represent them explicitly when
-needed. The kind distinguishes meaning, not a manually maintained version. Both cached inputs
-and outputs need a fingerprint; custom non-Pydantic outputs also need a [codec](serialization.md).
+needed. The kind distinguishes meaning, not a manually maintained version. Cached outputs need a
+fingerprint; custom non-Pydantic outputs also need a [codec](serialization.md). Decorator arguments
+can instead be the supported plain values above, encoded directly without a wrapper. `CachedStep`
+continues to take one fingerprintable input.
 The Protocol cannot check whether a projection includes every field its consumers rely on.
 
 ## Share content without sharing provenance
@@ -202,7 +204,10 @@ require changing record IDs.
 
 ## Compose cached steps
 
-A cache lookup matches the **input fingerprint and computation fingerprint together**. Its output
+A cache lookup matches the **effective input digest and computation fingerprint together**.
+Decorators normalize all bound arguments into one input digest. A sole non-variadic
+fingerprintable argument retains its direct fingerprint, sharing entries with an equivalent
+`CachedStep` or manual lookup when computation identity also matches. Its output
 is another value with its own fingerprint. The next step uses that output's semantic fingerprint,
 not the upstream computation's fingerprint.
 

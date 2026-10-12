@@ -1,13 +1,14 @@
 # Reuse computed results
 
 Cache a step when reusing its result is cheaper than computing it again. A cache hit requires
-both the same computation and the same immediate input content. Different pipelines can therefore
+both the same computation and the same effective argument values. Different pipelines can therefore
 reuse an intermediate result without sharing their whole processing history.
 
 ## Add the decorator
 
-Use `@cached` on a function with fingerprintable inputs and outputs. The decorator identifies the
-computation, chooses serialization from the return annotation and opens a shared SQLite cache
+Use `@cached` on a function returning a fingerprintable output. Arguments may be supported
+plain values or fingerprintable objects. The decorator identifies the computation, chooses
+serialization from the return annotation and opens a shared SQLite cache
 when first called. No cache configuration or manual computation ID is needed.
 
 Save this complete example as `cache_example.py` and run `uv run python cache_example.py`.
@@ -56,6 +57,48 @@ cleanup, or write policy, see [ownership and write policy](cache/policies.md).
 Function identity covers loaded code, defaults, captures and statically resolved application
 helpers. External resources have their own identity boundaries; see
 [computation fingerprints](cache/computations.md).
+
+## Pass text and context directly
+
+The decorator accepts the function's usual positional and keyword arguments. You do not need to
+wrap plain strings or containers in a data model. This complete example uses an explicitly owned
+temporary cache so each run starts empty:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from triplum.cache import Cache, SQLiteBackend
+from triplum.datatype import FingerprintedDataModel
+
+
+class Rendered(FingerprintedDataModel):
+    text: str
+
+
+with TemporaryDirectory() as directory:
+    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
+
+        @cache.cached
+        def render(text: str, context: str, *, separator: str = "\n") -> Rendered:
+            print("Computing")
+            return Rendered(text=context + separator + text)
+
+        first = render("Evidence", "Collection")
+        second = render(context="Collection", text="Evidence", separator="\n")
+        print(first.text == second.text)
+```
+
+This prints `Computing` once, then `True`. Calls bind to parameter names and include defaults:
+positional versus keyword spelling, omitted versus explicit defaults, and the order of declared
+named keywords select the same input. Swapping text and context selects a different input.
+
+Supported argument values are finite primitives, bytes, UUIDs, paths, lists, tuples, string-keyed
+mappings and objects implementing `fingerprint()`. See [value fingerprints](cache/fingerprints.md)
+for their data semantics and record projection limits. Unsupported values and invalid calls fail
+before lookup. Ordered `*args` retain order and multiplicity; residual `**kwargs` retain keyword
+order because the function can observe it. Ordinary dictionaries used as values remain
+order-independent. The function's parameter and return types are preserved.
 
 ## Specialize only the part you need
 
