@@ -59,14 +59,15 @@ function uses the shared default path described in [ownership and policies](poli
 
 ## Use the CLI
 
-The following shell example creates and operates on its own temporary database. Run it from a
-checkout; it does not touch the shared user cache. The all-zero digest is an explicit example
-computation identity, and the commands pass its complete 64 hexadecimal characters.
+The following shell example creates and operates on its own temporary database. Run it in a
+Python environment with triplum installed; it does not touch the shared user cache. The all-zero
+digest is an explicit example computation identity, and the commands pass its complete
+64 hexadecimal characters.
 
 ```sh
 cache_demo_dir=$(mktemp -d)
 trap 'rm -rf "$cache_demo_dir"' EXIT
-uv run python - "$cache_demo_dir/cache.sqlite" <<'PYTHON'
+python - "$cache_demo_dir/cache.sqlite" <<'PYTHON'
 import sys
 
 from triplum.cache import Cache, CacheKey, SQLiteBackend
@@ -75,12 +76,12 @@ with Cache(SQLiteBackend(sys.argv[1])) as cache:
     assert cache.put(CacheKey(bytes(32), bytes.fromhex("11" * 32)), b"hello")
 PYTHON
 
-uv run triplum cache stats --path "$cache_demo_dir/cache.sqlite"
-uv run triplum cache stats --path "$cache_demo_dir/cache.sqlite" --details --json
-uv run triplum cache clear --path "$cache_demo_dir/cache.sqlite" \
+triplum cache stats --path "$cache_demo_dir/cache.sqlite"
+triplum cache stats --path "$cache_demo_dir/cache.sqlite" --details --json
+triplum cache clear --path "$cache_demo_dir/cache.sqlite" \
   --computation 0000000000000000000000000000000000000000000000000000000000000000 \
   --no-input --json
-uv run triplum cache clear --path "$cache_demo_dir/cache.sqlite" --no-input
+triplum cache clear --path "$cache_demo_dir/cache.sqlite" --no-input
 ```
 
 Both commands accept `--path` and either `--computation` or `--name`. Leave off `--path` to
@@ -102,9 +103,9 @@ Decorators and `CachedStep` attach a qualified function/method name and, when av
 its source path and line. `stats --details` shows these alongside each fingerprint:
 
 ```sh
-uv run triplum cache stats --details
-uv run triplum cache stats --name my_pipeline.normalize --details
-uv run triplum cache clear --name my_pipeline.normalize
+triplum cache stats --details
+triplum cache stats --name my_pipeline.normalize --details
+triplum cache clear --name my_pipeline.normalize
 ```
 
 `--name` selects **all recorded computation fingerprints** for that name, including earlier

@@ -261,7 +261,7 @@ explicit root class hashing with `definition_hash()` or the computation mixin ca
 unsupported descriptors. Static definitions and bindings freeze on first use, so reload edited
 code instead of monkey-patching a warmed computation.
 Output-model schema, validator and default changes are not automatically hashed: stop writers and
-use `uv run triplum cache clear --name my_pipeline.normalize` for the affected computation, or
+use `triplum cache clear --name my_pipeline.normalize` for the affected computation, or
 supply a complete `process_id` that includes those definitions. See
 [administration](administration.md#find-and-clear-a-functions-retained-versions) for name selection.
 
