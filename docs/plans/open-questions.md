@@ -104,8 +104,24 @@ pins later reads. Held for upstream interface review; main session owns preparat
 Owner requires changed effective globals/configuration (collection/community descriptions, for
 example) to change computation identity. Default static decorators freeze identity on first use;
 traced mode refreshes roots/dependencies. A bounded implementation proposal for static context
-refresh remains to be prepared after P2; do not treat argument normalization as solving it.
-Main session owns this follow-up. No new inference policy or implementation accepted yet.
+refresh is drafted in [context refresh](../specs/cache-context-refresh.md) and its
+[P3 plan](cache-context-refresh.md); do not treat argument normalization as solving it.
+Owner requested proceeding with P3 preparation. Main session owns the contract review;
+production implementation of the exact draft awaits owner approval.
+
+### Q21. Post-computation context validation
+
+Derived from the independent P3 critique. Refreshing before lookup covers between-call changes;
+context stability during the call remains a precondition. Session recommends A: enforce that
+contract without an extra admission mechanism. Claude Opus 5.5 recommends B: refresh again after
+an automatic static miss and skip saving if identity changed, mitigating durable wrong-key writes
+from mid-call changes. B costs an extra walk/admission branch/accounting and still cannot catch
+change-and-restore during execution. Neither gives an atomic snapshot.
+
+Review `cdf47cadbb9c4b89821f95251cb40a8e`; exact scope/options live in
+[P3 contract](../specs/cache-context-refresh.md#q21--post-computation-validation). Choosing B
+requires updating the bounded plan before implementation; the automatic refresh requirement
+itself is settled and should not be re-asked.
 
 ## Answered
 

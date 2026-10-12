@@ -472,3 +472,51 @@ Cargo check/test and strict MkDocs passed. Eight affected guide snippets ran. Ex
 SQL connection-cleanup warnings remain. Local commit is the stopping point; no push or remote
 CI authorized. Q19 is answered; Q20 remains the next bounded proposal, with no implementation
 authority for global-context refresh yet.
+
+### P3 preparation checkpoint
+
+Owner: "proceed with P3." Proceed with the bounded effective-global refresh workstream.
+The required behavior is settled: changed effective globals/context must change computation
+identity; do not ask that policy again. Draft the exact refresh contract and constrained plan,
+research current guidance, and get Opus critique. No exact P3 implementation contract has yet
+been presented; the repository's interface review gate still applies before production edits.
+Keep the current checkout and preserve the concurrent benchmark brainstorm/questions.
+
+Initial assessment before peer: refresh the existing static loaded-definition projection each
+lookup and remove only its two whole-definition freezes. Keep immutable code/disassembly caches,
+current hash namespaces, bounded discovery and explicit identity overrides. Computation identity
+must be call-local, not overwritten on a shared wrapper while another call executes. Configured
+steps should inherit the same fresh definition behavior. Do not replace static discovery with
+traced strict snapshots or add dependency-reader abstractions without measured need.
+
+### P3 research and independent design review
+
+Read-only local reproduction confirms Ax remains cached after DESCRIPTION becomes B, and the
+standalone digest also stays fixed. Explorer revalidated both freezes against P2, and measured
+fresh projection on CPython 3.14.8/macOS arm64: about 25 µs minimal, 165 µs settings/helper,
+191 µs configured class (5×20,000 warmed calls, GC disabled). Unchanged digests matched; context
+A→B→A, in-place dict changes and instrumentation exclusions behaved as required; immutable
+code/disassembly caches retained 600,017 hits/5 misses. These are identity costs, not full hits.
+
+External research found Cloudpickle's cached code-global names with fresh value reads, Marimo's
+closed-over value caching plus mutation/large-state warnings, Joblib's external validation and
+helper-invalidation limitations, and Dask's explicit deterministic-token failure behavior.
+Primary links and concrete findings are in the contract. Impact: retained fresh value reads,
+bounded completeness claims and cost measurement; no serializer/dependency system introduced.
+
+Claude Opus 5.5 (`claude-opus-5-5`), review `cdf47cadbb9c4b89821f95251cb40a8e`; complete JSON read.
+Attempted falsifications: searched all freeze layers, measured fresh walk on small/large state and
+classes, tested A→B→A, mapping order and in-place mutation, inspected tracing/overrides,
+considered mid-call mutation/torn dictionaries and whether hit revalidation is necessary.
+Impact: added verification/error timing and mapping-order qualifications. Its 20k-entry dict
+probe cost ~10.7 ms per walk; recorded as peer identity-only measurement, not end-to-end cost.
+Docstring findings are covered by planned docs sync; removing strong-reference memo is incidental.
+
+Dissent preserved as Q21: Opus recommends after-miss identity revalidation and skip on change,
+to mitigate persistent wrong-key writes from context changes during execution. Session retains
+option A's stable-during-call precondition and one walk, favoring the simpler existing boundary.
+The peer's guard still misses A→B→A and hidden state; it adds admission/accounting behavior.
+This remains a real owner tradeoff rather than being folded into refresh silently.
+
+P3 exact contract/plan are drafted in cache-context-refresh pages. No production edits.
+Next: owner review of draft option A or direction to add B, per repository review gate.

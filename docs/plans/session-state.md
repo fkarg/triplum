@@ -18,11 +18,14 @@ later-block caching, with cheap chunking uncached. The owner has answered Q10/Q1
 multiargument decorators with deterministic named inputs;
 practical reuse without optimizing rare cross-source hits, with contextual reconstruction allowed.
 Do not re-ask those directions. Owner accepted P2; [multiargument decorators](cache-call-arguments.md)
-are implemented and verified: 288 tests passed with 90% branch-inclusive coverage; typing, Ruff,
+are committed in `472b3a4` and verified: 288 tests passed with 90% branch-inclusive coverage; typing, Ruff,
 formatting, Cargo and strict MkDocs passed. Eight affected teaching snippets ran. Opus 5.5 found
 annotation evaluation and stale-default execution defects; both and the resulting key mismatch
 were fixed with regressions. Fresh reviews have no remaining findings. No remote CI requested.
-Q20 tracks required effective-global refresh, which is not solved by P2. Source identity
+Q20 tracks required effective-global refresh, which is not solved by P2. Owner requested P3;
+the [refresh contract](../specs/cache-context-refresh.md) and [plan](cache-context-refresh.md)
+are drafted for exact-contract review before production edits. Q21 records the session/Opus
+disagreement about post-computation revalidation. Source identity
 is independent of physical Q13 table layout. See the capture for peer dispositions.
 
 The latest session resolved Q4 with a bounded referenced-class identity improvement. The wider
