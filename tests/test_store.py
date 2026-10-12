@@ -1,4 +1,6 @@
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -68,3 +70,22 @@ def test_in_memory_sql_store_is_shared_across_threads():
     store.add_sources([a])
     with ThreadPoolExecutor(1) as pool:
         assert pool.submit(store.source, a.id).result() == a
+
+
+def test_sql_store_persists_explicit_record_fingerprints(tmp_path: Path):
+    path = tmp_path / "records.db"
+    source = Source(origin="a.md", text="abc")
+    chunks = FixedSize(2)(source)
+    store = SQLAlchemyStore(f"sqlite:///{path}")
+    try:
+        store.add_sources([source])
+        store.add_chunks(chunks)
+        with closing(sqlite3.connect(path)) as connection:
+            assert connection.execute("SELECT fingerprint FROM source").fetchall() == [
+                (source.fingerprint(),)
+            ]
+            assert connection.execute(
+                "SELECT fingerprint FROM chunk ORDER BY start"
+            ).fetchall() == [(chunk.fingerprint(),) for chunk in chunks]
+    finally:
+        store.engine.dispose()

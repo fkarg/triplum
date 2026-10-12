@@ -32,8 +32,9 @@ print(source.origin, len(source.text))  # notes/returns.md 57
 - Every source gets an `id` (a time-ordered UUIDv7) when it is created. Chunks refer back to their
   source through `source_id`, which is that `id`. Creating a second `Source` with the same text
   gives a different `id`.
-- `fingerprint` is a hash of `origin` and `text`: two sources with the same content have the same
-  fingerprint, whatever their `id`. See [Fingerprints](../infrastructure/fingerprints.md).
+- `fingerprint()` hashes `origin` and `text`, recomputing on each call. Two sources with the same
+  origin and text have the same fingerprint, whatever their `id`. See
+  [Fingerprints](../infrastructure/fingerprints.md#existing-record-fingerprints) for storage and cache behavior.
 - `origin` is for people and for matching back to the original document; it is not checked for
   uniqueness.
 

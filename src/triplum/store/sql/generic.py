@@ -37,7 +37,7 @@ class SQLAlchemyStore(RecordStore):
                         id=s.id,
                         origin=s.origin,
                         text=s.text,
-                        fingerprint=s.fingerprint,
+                        fingerprint=s.fingerprint(),
                     )
                 )
             session.commit()
@@ -57,7 +57,7 @@ class SQLAlchemyStore(RecordStore):
                         origin=c.origin,
                         start=c.start,
                         text=c.text,
-                        fingerprint=c.fingerprint,
+                        fingerprint=c.fingerprint(),
                     )
                 )
             session.commit()

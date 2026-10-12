@@ -21,7 +21,8 @@ This page follows the intended flow and shows where experiments can replace indi
   include name-only fallback for unsupported classes and Pydantic models.
   [Fingerprintable data models](infrastructure/cache/fingerprints.md) provide field-value identity
   for use with the cache decorators, with explicit bookkeeping exclusions; a separate mixin
-  supports existing Pydantic bases.
+  supports existing Pydantic bases. Source/Chunk implement
+  [record fingerprint methods](infrastructure/fingerprints.md#existing-record-fingerprints).
 - Indexing/ingestion prototypes remain under review. Text/vector search, graph retrieval and
   answer generation are intended responsibilities, not a supported end-to-end pipeline.
 
@@ -128,5 +129,6 @@ or summaries. [Decision points](concepts/decisions.md) lists current replacement
 Equal intermediate content can reuse downstream work even when different upstream processes
 produced it. Configured computations select effective settings explicitly; loaded application code
 and statically resolved helpers contribute automatically to identity. No manual dependency list or
-version bump is required. See [computation fingerprints](infrastructure/cache/computations.md). Source/Chunk
-identity changes and benchmark cache policy remain under review.
+version bump is required. See [computation fingerprints](infrastructure/cache/computations.md).
+Deterministic Source/Chunk IDs, collection membership, fingerprint field selection and benchmark
+cache policy remain under review.

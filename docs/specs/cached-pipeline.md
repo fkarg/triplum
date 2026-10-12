@@ -63,14 +63,9 @@ Do not feed a whole record to an arbitrary step while claiming only its text det
 
 ### Record identity remains separate
 
-The agreed UUID allocation, Source A → B → A requirement, collection scope and unresolved record
-inputs are recorded in [Record types](record-types.md#decisions). Those decisions remain in force;
-the identity audit does not reopen them or authorize the unimplemented migration.
-
-Today's Source and Chunk fingerprint properties are insufficient for general whole-record
-caching: Source lacks collection membership and Chunk omits its parent reference. Model dumps
-also include generated UUIDv7 IDs and computed fingerprints. Their replacement remains under
-review; changing a property into a method alone does not settle semantic equality.
+[Record types](record-types.md#decisions) owns record fingerprint and UUID decisions. The
+[record fingerprint guide](../infrastructure/fingerprints.md#existing-record-fingerprints) explains
+why method compatibility alone does not permit arbitrary whole-record caching.
 
 Two different Sources may produce the same embedding input and reuse vector computation.
 That does not merge their record identity, provenance or permissions. Cached complete records

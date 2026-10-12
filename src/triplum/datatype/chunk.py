@@ -1,6 +1,6 @@
 from uuid import UUID, uuid7
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 from triplum.utils.cache import content_key
 
@@ -30,8 +30,6 @@ class Chunk(BaseModel):
     )
     text: str = Field(description="The excerpt, verbatim from the source text.")
 
-    @computed_field
-    @property
     def fingerprint(self) -> str:
         """Content hash of `origin`, `start` and `text`; independent of `id` and `source_id`."""
         return content_key("chunk", [self.origin, self.start, self.text])

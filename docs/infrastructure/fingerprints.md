@@ -11,7 +11,7 @@ from triplum.steps.chunking import FixedSize
 first = Source(origin="notes/returns.md", text="Returns within 30 days.")
 second = Source(origin="notes/returns.md", text="Returns within 30 days.")
 
-print(first.id == second.id, first.fingerprint == second.fingerprint)
+print(first.id == second.id, first.fingerprint() == second.fingerprint())
 print(FixedSize(20).fingerprint() == FixedSize(20).fingerprint())
 print(FixedSize(20).fingerprint() == FixedSize(30).fingerprint())
 ```
@@ -39,10 +39,10 @@ steps and automatic function inference. Those pages include complete extension e
 This page describes existing record, object and dataset identities. They use related digest
 helpers but have different equality promises; the common name does not make them interchangeable.
 
-## Existing record properties
+## Existing record fingerprints
 
 [`Source`][triplum.datatype.source.Source] and [`Chunk`][triplum.datatype.chunk.Chunk] expose
-`fingerprint` as a **property**, recomputed on access:
+`fingerprint()` methods, recomputed on each call:
 
 | Record | Included fields | Excluded identifiers |
 | --- | --- | --- |
@@ -50,14 +50,17 @@ helpers but have different equality promises; the common name does not make them
 | Chunk | `origin`, `start`, `text` | `id`, `source_id` |
 
 Equal record fingerprints therefore do not mean equal storage identity or provenance. Two chunks
-can have equal fingerprints while referring to different source records. The computed property
-is also included in `model_dump()`; SQL storage retains it in an indexed column.
+can have equal fingerprints while referring to different source records. The digest is absent
+from model dumps and JSON; SQL storage fills its indexed fingerprint column explicitly.
 
-These properties are **not compatible with the new cache's `fingerprint()` method requirement**.
-Passing a Source or Chunk directly to a cached function does not make it a valid cache value.
-Their identity migration remains under review. Define an explicit [value model](cache/fingerprints.md) for the data a
-computation needs; do not assume an entire record is interchangeable merely because
-its content property matches.
+These methods satisfy the cache's `fingerprint()` requirement and support nested value
+fingerprints. That does not make every record consumer safe to cache: computations that use
+excluded IDs or parent references need those values in their effective input identity. Cached
+records restore their stored IDs and references unchanged. For example, a cached `Source -> Chunk`
+function that copies `source.id` into `chunk.source_id` returns the first source's parent reference
+when called with an equal-fingerprint Source that has a different ID. Include binding references
+in the effective input identity, or attach them after reusing an unbound result.
+Define an explicit [value model](cache/fingerprints.md) when the computation needs another projection.
 
 ## Configured-object identity
 
@@ -90,7 +93,7 @@ Concrete implementations choose their own projection:
 
 - [`RecordDataset`][triplum.utils.data.dataset.RecordDataset] hashes the ordered, complete
   `model_dump(mode="json")` of every record, recomputing on each call. It does **not** delegate to
-  each record's fingerprint property or method. Freshly created Source records with matching
+  each record's `fingerprint()` method. Freshly created Source records with matching
   content but different IDs therefore produce different RecordDataset identities.
 - [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes its fixed, sorted file
   list by absolute path and bytes, matching the emitted `Source.origin` and `text`. Reading an
@@ -105,7 +108,7 @@ from triplum.utils.data import RecordDataset
 
 first = Source(origin="notes.md", text="Hello")
 second = Source(origin="notes.md", text="Hello")
-print(first.fingerprint == second.fingerprint)
+print(first.fingerprint() == second.fingerprint())
 print(RecordDataset([first]).fingerprint() == RecordDataset([second]).fingerprint())
 ```
 

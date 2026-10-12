@@ -5,6 +5,19 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 ## Resume here
 
+Active grill-me workstream: [ingress and caching](../brainstorms/2026-10-12-ingress-caching.md).
+Sequential owner interview, interfaces first. Owner accepted P1: both Source and Chunk adopt
+plain fingerprint methods, preserving existing digest inputs and dropping computed-field JSON
+output. Implementation/docs are present; 265 tests passed with 89% branch-inclusive coverage,
+typing/Ruff/formatting/Cargo/strict MkDocs passed, and four affected guide snippets ran.
+Fresh-context review found no unresolved defects; Claude Opus 5.5 diff review supports the
+correction. Its docs consolidation and redundant-test findings were addressed; peer dispositions
+are in the capture. Existing SQL connection-cleanup warnings remain. No push or remote CI requested.
+Deterministic IDs and digest-field changes remain open. Owner favors practical collection-dependent
+later-block caching, with cheap chunking uncached. Next proposed design frontier is Q10's complete
+effective input/binding identity, then Q12's Source semantics and construction boundary. Source
+identity is independent of physical Q13 table layout. See the capture for peer dispositions.
+
 The latest session resolved Q4 with a bounded referenced-class identity improvement. The wider
 library audit against the owner-maintained [goals](../goals.md) remains the context for the
 remaining decisions.
@@ -28,8 +41,8 @@ remaining decisions.
   cache; static identity rejects globals that are both assigned and read, and function-local
   imports of application code. Cache docs now have an Advanced section.
 - Known: unsupported class definitions and output-model contracts can still require clearing
-  affected cache entries. Source/Chunk fingerprints are still properties, so records cannot be
-  cache inputs yet (Q9–Q11).
+  affected cache entries. Source/Chunk methods satisfy the cache protocol, but their fingerprints
+  omit IDs/bindings; arbitrary bound-record caching still needs complete effective inputs (Q9–Q11).
 - Command-line scope is recorded in [the CLI contract](../specs/cli-selection.md).
 
 ## Background: identity and fingerprinting audit
@@ -118,8 +131,8 @@ definition in process identity or clearing; there is no manually maintained vers
 Both support `--name` to select recorded function names across computation fingerprints.
 The cache guide and interface spec record lifecycle guarantees and peer dissent.
 
-Source/Chunk identity changes remain unimplemented. Both still generate UUIDv7 IDs and expose
-computed fingerprint properties; there is no chunk ordinal or UUIDv8 generation. The agreed
+Source/Chunk deterministic identity changes remain unimplemented. Both still generate UUIDv7 IDs
+and now expose plain fingerprint methods; there is no chunk ordinal or UUIDv8 generation. The agreed
 allocation, Source A→B→A requirement, proposals and unresolved decisions are authoritative in
 [Record types](../specs/record-types.md#decisions). Review the shared fingerprint contract first;
 Source/Chunk identity inputs and migration still require their own owner approval.

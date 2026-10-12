@@ -1,6 +1,6 @@
 from uuid import UUID, uuid7
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 from triplum.utils.cache import content_key
 
@@ -28,8 +28,6 @@ class Source(BaseModel):
         description="The full source text. May be empty; chunking then produces no chunks. Used as basis for full-text-search and further processing such as chunking or knowledge graph construction.",
     )
 
-    @computed_field
-    @property
     def fingerprint(self) -> str:
         """Content hash of `origin` and `text`; equal for records with equal content, whatever their `id`."""
         return content_key("source", [str(self.origin), self.text])

@@ -61,6 +61,11 @@ or a derived selector such as the format, in that input. `Source.fingerprint()` 
 safe key for arbitrary Source consumers. Claude raised the hazard but had no answer of its own;
 it agrees with the peer.
 
+Fresh Claude Opus 5.5 review `aa313bda22954ce2a606bb20021b48c4` recommends deciding this
+before deterministic IDs: a bound-output block input includes full binding identity plus all
+effective semantic data. Deterministic IDs improve reuse across runs; they do not repair an
+incomplete key. This is a proposal. Q10 does not require Q9's global record projection first.
+
 ### Q11. How a cached block returns records
 
 Derived from Q1 and Q3. A cached block (say Source → chunks with vectors) must return records whose
@@ -77,6 +82,18 @@ not in cache behavior, and benchmark runs use the same construction without the 
 **Divergence:** Claude now prefers (a), since Q3 makes user-composed blocks, not single steps, the
 caching unit.
 
+Current grill-me workstream: [ingress and caching](../brainstorms/2026-10-12-ingress-caching.md).
+Fresh independent Claude Opus 5.5 review `81713a89b1084c74ac68588bf02f30f7` also recommends
+(a), with complete explicit computation inputs and identical binding on hits/misses. It exposed
+the span-coordinate question Q16. This is still a proposal, not an owner decision; detailed peer
+dispositions are in the capture.
+
+Owner's latest direction: chunking itself is cheap and not a priority to cache; later blocks
+may reasonably be collection-dependent. A is acceptable in principle, but the owner leans
+toward bound-record reuse (C in the current round) with mostly deterministic identities for
+practical experimentation. Exact contracts remain open. Fingerprints and database IDs retain
+distinct, partially overlapping purposes; this does not make database IDs generic cache keys.
+
 ### Q12. Deterministic record ids
 
 Derived from Q1/Q2. Ids either derive fully from their inputs or are random and recomputed per run.
@@ -90,6 +107,11 @@ Peer (same review): (a); rerun
 insertion without duplicates and A → B → A recovery follow, but conflict handling, obsolete chunk
 removal and the 65,536-chunk ordinal limit still need specifying. Claude (formed after reading the
 peer): (a), decided together with the storage backbone (Q13).
+
+Fresh review `aa313bda22954ce2a606bb20021b48c4` and local interface exploration remove that
+table-layout dependency: full collection-scoped Source identity works with shared or separate
+tables. Review Source semantic inputs first, then where collection enters construction, with
+Chunk identity as a later contract. Keep ID derivation independent of record fingerprint inputs.
 
 ### Q13. Storage backbone: one table for many collections, or tables per collection
 
@@ -107,7 +129,33 @@ once ids are deterministic (Q12)? Not yet put to a peer.
 `@cached`, `@cache.cached` and `CachedStep` overlap. The owner asked for both decorators. Whether
 `CachedStep` remains depends on Q11. Not yet put to a peer.
 
+### Q16. Span coordinates across preprocessing
+
+Derived from fresh Q11 review: Chunk text must be a verbatim slice of Source.text. Normalization
+inside a cached block can shift offsets. Decide which text spans address and where text-changing
+preprocessing sits when reviewing the concrete payload contract. No offset-map type or restriction
+has been approved. Held until that review; main session owns preparation.
+
+### Q17. Mutable external inputs at the conversion/cache boundary
+
+Utf8File reads a Path's current bytes; a path alone does not identify that content. MarkdownFolder
+fingerprinting and later item reading are separate observations. Decide the snapshot boundary
+and effective input for cached parsing/OCR without assuming that a dataset-wide fingerprint
+pins later reads. Held for upstream interface review; main session owns preparation.
+
 ## Answered
+
+### Q18. Shared fingerprint interface: method or property
+
+Owner: proceed with both Source and Chunk adopting fingerprint methods via subagent. This
+accepts P1's method compatibility correction, preserving current record digest inputs and
+removing computed-field serialization. RecordDataset digests consequently change; its wider
+identity semantics remain Q14. Deterministic IDs and digest-field changes remain unapproved.
+
+Session and Claude Opus 5.5 (`58c7c321353e42869071e7f4f9ce1b77`) recommend methods. Peer
+additionally recommends preserving dataset digests with an explicit projection; session
+recommends no compatibility projection. Owner accepted the bounded correction. Implementation
+and verification are tracked in the [capture](../brainstorms/2026-10-12-ingress-caching.md).
 
 ### Q4. Application classes and output models in computation identity
 

@@ -20,8 +20,9 @@ Keep codecs separate from semantic fingerprints so storage representation does n
 `Fingerprintable.fingerprint()` is a structural contract returning the current convention: a
 64-character SHA-256 hexadecimal digest. Cache backends use the binary digest for key storage.
 That conversion cost belongs in the benchmark; this draft does not change all existing fingerprint
-return types or settle UUID allocation. Existing data-record fingerprint properties must become
-methods through their own reviewed change. The existing configured-object `FingerprintedComputationMixin` mixin
+return types or settle UUID allocation. [Record types](record-types.md#decisions) owns record
+fingerprint decisions; method compatibility does not establish semantic equality for arbitrary
+record consumers. The existing configured-object `FingerprintedComputationMixin` mixin
 identifies configured computations through explicit settings and loaded code; it does not define
 value equality.
 

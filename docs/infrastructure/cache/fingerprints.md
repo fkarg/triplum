@@ -196,10 +196,9 @@ Project a record into the data the computation actually consumes. Include parent
 when the result depends on them, or attach record references after reusing an identity-free
 result. A fingerprint does not merge storage identity, provenance or access permissions.
 
-Current `Source.fingerprint` and `Chunk.fingerprint` are **properties**, not the required method.
-They also omit storage IDs, and Chunk's property omits `source_id`. They are not directly usable
-as cache values. See [record identity](../fingerprints.md#existing-record-properties) for the
-current behavior; defining the explicit value above does not require changing record IDs.
+See [record identity](../fingerprints.md#existing-record-fingerprints) for Source/Chunk projections
+and the binding constraints on cached record outputs. Defining the explicit value above does not
+require changing record IDs.
 
 ## Compose cached steps
 

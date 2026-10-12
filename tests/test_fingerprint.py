@@ -4,23 +4,58 @@ from pathlib import Path
 
 import pytest
 
-from triplum.datatype import Chunk, Source
+from triplum.datatype import Chunk, FingerprintedDataModel, Source
 from triplum.steps.chunking import FixedSize
 from triplum.steps.embedding import ZeroEmbedder
+from triplum.utils.cache import content_key
 from triplum.utils.fingerprint import FingerprintedComputationMixin, source_hash
 
 
-def test_record_fingerprint_ignores_id_and_follows_content():
-    a = Source(origin="a.md", text="abc")
-    assert Source(origin="a.md", text="abc").fingerprint == a.fingerprint
-    assert Source(origin="a.md", text="abd").fingerprint != a.fingerprint
-    assert "fingerprint" in a.model_dump()
+def test_source_fingerprint_ignores_id_and_follows_content():
+    source = Source(origin="a.md", text="abc")
+    original = source.fingerprint()
+    assert original == content_key("source", ["a.md", "abc"])
+    assert Source(origin="a.md", text="abc").fingerprint() == original
+    source.text = "abd"
+    assert source.fingerprint() != original
+    source.text = "abc"
+    source.origin = "b.md"
+    assert source.fingerprint() != original
 
-    chunk = Chunk(source_id=a.id, origin="a.md", start=0, text="ab")
-    other_source = Source(origin="x", text="y")
-    assert Chunk(source_id=other_source.id, origin="a.md", start=0, text="ab").fingerprint == (
-        chunk.fingerprint
+
+def test_chunk_fingerprint_ignores_ids_and_follows_content():
+    source = Source(origin="a.md", text="abc")
+    chunk = Chunk(source_id=source.id, origin="a.md", start=0, text="ab")
+    original = chunk.fingerprint()
+    assert original == content_key("chunk", ["a.md", 0, "ab"])
+    other_source = Source(origin="a.md", text="abc")
+    assert (
+        Chunk(source_id=other_source.id, origin="a.md", start=0, text="ab").fingerprint()
+        == original
     )
+    chunk.text = "ac"
+    assert chunk.fingerprint() != original
+    chunk.text = "ab"
+    chunk.start = 1
+    assert chunk.fingerprint() != original
+    chunk.start = 0
+    chunk.origin = "b.md"
+    assert chunk.fingerprint() != original
+
+
+def test_nested_records_use_their_fingerprints():
+    class Bundle(FingerprintedDataModel):
+        source: Source
+        chunk: Chunk
+
+    source = Source(origin="a.md", text="abc")
+    chunk = Chunk(source_id=source.id, origin="a.md", start=0, text="ab")
+    original = Bundle(source=source, chunk=chunk).fingerprint()
+    other = Source(origin="a.md", text="abc")
+    same = Bundle(source=other, chunk=Chunk(source_id=other.id, origin="a.md", start=0, text="ab"))
+    assert same.fingerprint() == original
+    same.chunk.text = "ac"
+    assert same.fingerprint() != original
 
 
 def test_object_fingerprint_covers_class_and_state():

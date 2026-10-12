@@ -88,5 +88,6 @@ there is no requirement to cache every operation or use a pipeline executor.
 The cache holds recomputable results. A [record store](store.md) holds selected records and their
 references. Equal text may reuse a vector computation without merging source identity or copying
 another source's provenance. [Value fingerprints](cache/fingerprints.md#share-content-without-sharing-provenance)
-explain the boundary; current Source/Chunk fingerprint properties cannot be used directly as cache
-values.
+explain the boundary. The [record fingerprint guide](fingerprints.md#existing-record-fingerprints)
+describes Source/Chunk projections and binding constraints. Include every field the computation
+uses in its effective input identity.

@@ -88,9 +88,12 @@ Everything else can arrive as new tables or optional fields.
   unlikely. Short prefixes are never authoritative identity or ACL checks. Collision protection
   depends on the remaining bits distinguishing records, with full source identity in the digest.
   UUID ordering does not cluster table rows or replace source indexes; no speedup has been measured.
-- Record `fingerprint` should become a plain method, with stores populating their column from it.
-  This is agreed but not implemented. Groups use many-to-many membership, allowing multiple parents;
-  graph/entity implications remain for their own review.
+- Source and Chunk expose plain `fingerprint()` methods, with stores populating their indexed
+  columns explicitly. Existing digest inputs are unchanged: Source origin/text; Chunk
+  origin/start/text, excluding record IDs and parent references. Model dumps/JSON omit the
+  fingerprint, changing RecordDataset digests without a compatibility projection. This method
+  correction does not approve deterministic ID or collection-membership migration. Groups use
+  many-to-many membership, allowing multiple parents; graph/entity implications remain for review.
 - Computation reuse is separate from record identity, provenance and permissions. Identical
   payloads may reuse work across Sources, but complete cached records must preserve the correct
   parent references. The [identity/cache analysis](cached-pipeline.md) records the approved

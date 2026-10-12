@@ -26,9 +26,8 @@ Settled decisions remain:
   downstream results. Producer history does not define the next step's input identity.
 - Cache keys contain computation and input digests, with no codec format key or migration layer.
 - Bare `@cached`, explicitly owned caches and `CachedStep` remain supported conveniences.
-- Record property→method migration is already agreed in [Record types](record-types.md#decisions),
-  but semantic inputs and deterministic UUID construction still require their own review. Source's
-  at-least-24-bit collection tag preference, A→B→A requirement and the agreed Chunk allocation stand.
+- [Record types](record-types.md#decisions) owns record fingerprint and UUID decisions. Method
+  compatibility alone does not establish interchangeable whole-record inputs.
 - Record UUIDs must not change merely because processing code changed. Code belongs in computation
   identity; scoped semantic record data belongs in record identity.
 
@@ -53,7 +52,6 @@ Serialization format remains independent; this is not approval to reintroduce a 
 | Surface | Current identity | Consumer / mismatch |
 | --- | --- | --- |
 | `content_key(kind, payload)` | Namespace plus sorted JSON | Shared helper; does not define arbitrary-Python equivalence |
-| Source/Chunk fingerprint properties | Origin/text, plus chunk offset | SQL columns; omit storage IDs and Chunk parent reference |
 | Historical `Fingerprinted.fingerprint()` | Qualified class, class/base source and every attribute | Four reference steps; includes resources, collapses some type distinctions |
 | `function_fingerprint()` | Function source/name/defaults/nonlocal captures | Frozen by the decorator; globals/helpers/model definitions not discovered |
 | `Fingerprintable.fingerprint()` | Author-declared semantic value | Cache input/output boundary |
@@ -69,8 +67,8 @@ The pre-change audit reproduced these findings:
   distinguishes lists/tuples and preserves dictionary iteration order.
 - Two MarkdownFolder roots with identical names/bytes have equal dataset fingerprints but emit
   different absolute origins. RecordDataset instead includes full dumps and generated IDs.
-- Changing record properties into methods would remove the shape mismatch but not the provenance
-  problem: FixedSize copies Source.id into output Chunk.source_id, which current fingerprints omit.
+- The [record fingerprint guide](../infrastructure/fingerprints.md#existing-record-fingerprints)
+  explains the separate provenance constraint on whole-record cache reuse.
 - The current generic mixin cannot supply CachedStep identity unchanged: abstract-method/base order
   can prevent instantiation, and its all-attribute traversal encounters the mixin's locks/resources.
 

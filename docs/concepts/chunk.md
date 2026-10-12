@@ -32,6 +32,9 @@ assert source.text[chunk.start : chunk.start + len(chunk.text)] == chunk.text
 - `text` is copied verbatim from the source text, never rewritten. Text prepared for embedding
   (descriptions, questions, context) is a separate concern; see
   [chunk preprocessing](chunk-preprocessing.md).
+- `fingerprint()` hashes `origin`, `start` and `text`, recomputing on each call. It excludes `id`
+  and `source_id`, so matching fingerprints do not imply the same parent record. See
+  [Fingerprints](../infrastructure/fingerprints.md#existing-record-fingerprints) for storage and cache behavior.
 - Like `Source`, `Chunk` is a plain Pydantic model. It cannot check the slicing relationship
   itself, because it does not hold the source; the code that creates chunks is responsible for it.
 
