@@ -65,35 +65,47 @@ Everything else can arrive as new tables or optional fields.
   records remain in that scope. Collection scope is separate from access permissions.
 - The baseline `Collection` is a plain Pydantic model with a generated UUIDv7 `id` and a required
   string `name`. Names are human-readable labels and need not be unique. `CollectionRow` maps
-  the same fields, with `id` as primary key. These declarations are implemented; membership
-  fields and collection store operations are deferred.
+  the same fields, with `id` as primary key. Collection ids are persisted, not derived; benchmark
+  record ids need not be reproducible across installations (Q23). Collection store operations are
+  deferred.
 - Peer review was skipped for the collection baseline only, at the owner’s request.
   Later interfaces follow the review gate in AGENTS.md.
-- The agreed Chunk UUIDv8 payload allocation is `[collection tag 16][source prefix 42]
-  [ordinal 16][identity fingerprint 48]`. Any later adjustment considered here moves bits from
-  the source prefix to the fingerprint; the collection and ordinal allocations stay fixed.
-  This is a design decision, not implemented behavior.
-- The ordinal counts chunks in one chunking result contiguously from zero. It is neither a
-  character offset nor a relative-position bucket. The 16-bit field represents 0 through 65,535;
-  behavior for larger results remains to be specified.
-- Equivalent Source and Chunk records within the same collection should reproduce their IDs,
-  provided this does not impose unreasonable costs. Exact equivalence and digest inputs remain
-  open. Cache identity is separate from record identity; reusing record IDs is a weak
-  preference when appropriate, not a requirement driving this layout. Reconstructing records
-  with their IDs from cache is also acceptable.
-- The owner confirmed that text changing A → B → A should recover the original Source ID.
-  Creation/change timestamps do not contribute to this identity. The owner now prefers at least
-  24 collection-tag bits for Source; this does not revise the agreed Chunk allocation.
-- Source-prefix collisions may affect locality, but complete-ID collisions must remain very
-  unlikely. Short prefixes are never authoritative identity or ACL checks. Collision protection
-  depends on the remaining bits distinguishing records, with full source identity in the digest.
-  UUID ordering does not cluster table rows or replace source indexes; no speedup has been measured.
-- Source and Chunk expose plain `fingerprint()` methods, with stores populating their indexed
-  columns explicitly. Existing digest inputs are unchanged: Source origin/text; Chunk
-  origin/start/text, excluding record IDs and parent references. Model dumps/JSON omit the
-  fingerprint, changing RecordDataset digests without a compatibility projection. This method
-  correction does not approve deterministic ID or collection-membership migration. Groups use
-  many-to-many membership, allowing multiple parents; graph/entity implications remain for review.
+- Implemented: `Source` and `Chunk` are frozen Pydantic models whose `id` is a deterministic
+  UUIDv8, derived during validation by `triplum.datatype.ids`. A supplied id must equal the
+  derived one, otherwise validation fails. No timestamp enters an id or fingerprint (Q22), and
+  text changing A → B → A recovers the original Source id. `model_copy(update=...)` skips
+  validation and would keep a stale id; changes construct a new record.
+- Source: required `collection_id: UUID`. The id digest is
+  `content_key("source-id", [collection_id, origin, text])`; the payload is
+  `[collection tag 24][scoped source digest 98]`, the tag being leading bits of
+  `content_key("collection-tag", [collection_id])`. Origin and text enter exactly as given.
+- Chunk: required `collection_id` (its source's), `source_id`, `origin`, `ordinal`, `start` and
+  `text`. The ordinal counts chunks in one chunking result contiguously from zero; it is neither
+  a character offset nor a relative-position bucket, and validation restricts it to 0–65,535.
+  The payload is `[collection tag 16][source prefix 42][ordinal 16][chunk digest 48]`: the source
+  prefix copies the leading 42 bits of the scoped source digest, and the chunk digest hashes
+  `[collection_id, source_id, ordinal, start, text]`. Chunker identity does not enter: equal output gives equal
+  ids, whichever chunker produced it. `FixedSize` copies the source's collection and numbers its
+  chunks.
+- Tags and prefixes are locality hints only. The full collection id enters both digests and
+  the full source id the chunk digest, so prefix collisions never merge records; short prefixes
+  are never authoritative identity or ACL checks. UUID ordering does not cluster table rows or
+  replace source indexes; no speedup has been measured.
+- Fingerprints have the same dependencies as the ids (Q9): Source
+  `content_key("source", [collection_id, origin, text])`, Chunk
+  `content_key("chunk", [collection_id, source_id, ordinal, start, text])`. `Chunk.origin` is
+  determined by its source and does not enter. Model dumps/JSON omit the fingerprint; stores fill
+  their indexed columns explicitly. Equal fingerprints imply equal ids and parent references, so
+  cached complete records keep correct parents; cross-collection or position-independent reuse
+  takes an explicit smaller payload.
+- Producers take a keyword-only `collection_id` (`Utf8File`, `MarkdownFolder`,
+  `MultiHopRAGCorpus`) and include it in their fingerprints. The `index_folder` prototype uses a
+  fresh UUIDv7 collection per call.
+- SQL `source` and `chunk` rows carry `collection_id`, and `chunk` rows `ordinal`. Reads rebuild
+  records through validation, so a row whose fields do not match its id is rejected. There are no
+  migrations; tables created by the earlier layout are not updated.
+- Groups use many-to-many membership, allowing multiple parents; graph/entity implications remain
+  for review.
 - Computation reuse is separate from record identity, provenance and permissions. Identical
   payloads may reuse work across Sources, but complete cached records must preserve the correct
   parent references. The [identity/cache analysis](cached-pipeline.md) records the approved
@@ -102,32 +114,22 @@ Everything else can arrive as new tables or optional fields.
 
 ## Remaining ID decisions
 
-- Source identity inputs: collection, origin, prepared text, and the treatment of future fields.
-  Origin normalization and the identity consequences of edited text remain open.
-- Chunk identity inputs: full source identity, ordinal, character offset, exact excerpt, and
-  whether processing configuration contributes. Ordinals already distinguish equal excerpts
-  at different positions in a chunking result. Multiple results also need a way to identify their
-  members; distinct Chunk IDs alone do not distinguish which ordered result is being read.
-- Collection generation: UUIDv7 is implemented; optionally seeding a persisted collection ID
-  once from a suitable upstream dataset fingerprint remains a proposal. The seed precedes
-  collection-scoped IDs to avoid circularity; independent copies need a distinct seed or fresh ID.
-  `RecordDataset.fingerprint()` includes generated record IDs, so is not automatically a stable seed.
-- Source UUIDv8 layout: `[collection tag 24][scoped source fingerprint 98]` is the current proposal
-  following the owner's preference for at least 24 collection-tag bits. The exact width remains
-  to be finalized. This replaces the earlier 16/106 proposal. It is the proposed
-  companion to the agreed Chunk layout; the proposed Chunk prefix copies the leading 42 bits
-  of the scoped Source fingerprint. Canonical hash inputs, record-kind separation, prefix
-  derivation and packing around UUID version/variant bits need a specification, including full
-  collection identity in Source hashes and full Source identity in Chunk hashes. A proposed tag
-  hashes the collection UUID; copying leading UUIDv7 bits would
-  mostly copy timestamp bits. Prefix collisions must not erase scope.
-- Construction and storage: when IDs are generated, handling supplied IDs and later field edits,
-  equal-ID/equal-record versus equal-ID/different-record writes, and oversized chunking results.
-  Reusing equal records and rejecting conflicting records/ordinal overflow is a recommendation,
-  not an approved contract.
-- IDs for additional record types follow their own interface reviews. Cache identity is discussed
-  before those missing record types.
+- Store write semantics (Q25): stores still replace by id. With derived ids this is reachable
+  only for equal records, barring bugs, truncated-hash collisions or future fields outside the
+  id. Insert-if-absent with equal duplicates as no-ops and unequal duplicates raising is the
+  recommendation, not an approved contract.
+- Several chunkings of one Source (Q24): `chunks(source_id)` returns the union of every stored
+  chunking, and nothing identifies which ordered result a chunk belongs to or records an empty
+  result. One chunking per collection versus an ordered membership record remains open.
+- Chunking results over 65,536 chunks currently fail Chunk validation; the intended behavior is
+  unspecified.
+- Temporal history: text versions of a document share (collection, origin) but have unrelated
+  ids, with no supersession link, validity interval or invalidation record.
+- Origin normalization: ids use origin as given; which normalization producers apply is open.
+- Collection storage operations: creating and reading collection records, store methods, and
+  scoping reads to a collection.
+- IDs for additional record types follow their own interface reviews. Multi-source records must
+  not be forced into a single-source prefix.
 
 Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk.origin remain
-open. Additional record types need their own layouts: multi-source records must not be forced
-into a single-source prefix.
+open.

@@ -9,10 +9,11 @@ From a repository checkout, run `uv sync` to install (Python 3.14+), then `uv ru
 try this example:
 
 ```python
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.chunking import FixedSize
 
-source = Source(origin="example", text="Alpha. Beta.")
+collection = Collection(name="example")
+source = Source(collection_id=collection.id, origin="example", text="Alpha. Beta.")
 for chunk in FixedSize(7)(source):
     print(chunk.start, repr(chunk.text))
 ```

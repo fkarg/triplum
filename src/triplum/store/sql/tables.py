@@ -16,6 +16,7 @@ class SourceRow(SQLModel, table=True):
     __tablename__ = "source"  # type: ignore[assignment]
 
     id: UUID = Field(primary_key=True)
+    collection_id: UUID = Field(index=True)
     origin: str
     text: str
     fingerprint: str = Field(index=True)
@@ -25,8 +26,10 @@ class ChunkRow(SQLModel, table=True):
     __tablename__ = "chunk"  # type: ignore[assignment]
 
     id: UUID = Field(primary_key=True)
+    collection_id: UUID = Field(index=True)
     source_id: UUID = Field(foreign_key="source.id", index=True)
     origin: str
+    ordinal: int
     start: int
     text: str
     fingerprint: str = Field(index=True)

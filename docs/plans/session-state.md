@@ -5,32 +5,15 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 ## Resume here
 
-Active grill-me workstream: [ingress and caching](../brainstorms/2026-10-12-ingress-caching.md).
-Sequential owner interview, interfaces first. Owner accepted P1: both Source and Chunk adopt
-plain fingerprint methods, preserving existing digest inputs and dropping computed-field JSON
-output. Implementation/docs are present; 265 tests passed with 89% branch-inclusive coverage,
-typing/Ruff/formatting/Cargo/strict MkDocs passed, and four affected guide snippets ran.
-Fresh-context review found no unresolved defects; Claude Opus 5.5 diff review supports the
-correction. Its docs consolidation and redundant-test findings were addressed; peer dispositions
-are in the capture. Existing SQL connection-cleanup warnings remain. No push or remote CI requested.
-Deterministic IDs and digest-field changes remain open. Owner favors practical collection-dependent
-later-block caching, with cheap chunking uncached. The owner has answered Q10/Q11: ordinary
-multiargument decorators with deterministic named inputs;
-practical reuse without optimizing rare cross-source hits, with contextual reconstruction allowed.
-Do not re-ask those directions. Owner accepted P2; [multiargument decorators](cache-call-arguments.md)
-are committed in `472b3a4` and verified: 288 tests passed with 90% branch-inclusive coverage; typing, Ruff,
-formatting, Cargo and strict MkDocs passed. Eight affected teaching snippets ran. Opus 5.5 found
-annotation evaluation and stale-default execution defects; both and the resulting key mismatch
-were fixed with regressions. Fresh reviews have no remaining findings. No remote CI requested.
-Owner approved P3 option A; [effective-context refresh](../specs/cache-context-refresh.md)
-is implemented and verified: 312 tests passed with 90% branch-inclusive coverage; typing,
-Ruff/format, Cargo and strict MkDocs passed. All 12 affected guide Python blocks ran. Automatic static identity now rereads its existing
-bounded projection each lookup; immutable code/disassembly caches remain. Inputs/context must
-stay stable during identity calculation and execution; mixed-context execution is outside the
-guarantee, with no post-miss validation. The [plan](cache-context-refresh.md) owns verification.
-Q20/Q21 are answered; fresh and Opus reviews have no unresolved findings. No push/remote CI
-requested. Source identity
-is independent of physical Q13 table layout. See the capture for peer dispositions.
+Active grill-me workstream: [benchmark baseline](../brainstorms/2026-10-12-benchmark-baseline.md);
+questions are tracked per area in [questions](questions/README.md). The ingress/cache session ended
+2026-10-12 with its work committed; its capture is historical.
+
+- Deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk ordinals and frozen records are
+  implemented ([record types](../specs/record-types.md)). Open: Q24 chunking-result membership,
+  Q25 store write semantics, temporal history, origin normalization, collection store operations.
+- Benchmark area: BE3/BE4/BE5 answered; BE1, BE2, BE10, BE14–BE17 and RT1–RT3 open; the
+  [interface map](interface-map.md) is the accepted working frame.
 
 Earlier work resolved Q4 with a bounded referenced-class identity improvement. The wider
 library audit against the owner-maintained [goals](../goals.md) remains the context for the
@@ -146,11 +129,8 @@ definition in process identity or clearing; there is no manually maintained vers
 Both support `--name` to select recorded function names across computation fingerprints.
 The cache guide and interface spec record lifecycle guarantees and peer dissent.
 
-Source/Chunk deterministic identity changes remain unimplemented. Both still generate UUIDv7 IDs
-and now expose plain fingerprint methods; there is no chunk ordinal or UUIDv8 generation. The agreed
-allocation, Source A→B→A requirement, proposals and unresolved decisions are authoritative in
-[Record types](../specs/record-types.md#decisions). Review the shared fingerprint contract first;
-Source/Chunk identity inputs and migration still require their own owner approval.
+Source/Chunk deterministic UUIDv8 identity, `collection_id` and chunk ordinals are implemented;
+[Record types](../specs/record-types.md#decisions) is authoritative, including what remains open.
 
 ## Other implementation boundaries
 

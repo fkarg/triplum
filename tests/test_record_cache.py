@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from types import ModuleType
+from uuid import UUID
 
 import pytest
 
@@ -8,29 +9,34 @@ from triplum.cache import Cache, SQLiteBackend, cached
 from triplum.datatype import Chunk, FingerprintedDataModel, Source
 from triplum.utils.cache import content_key
 
+COLLECTION = UUID("01900000-0000-7000-8000-000000000001")
+
 
 class TextResult(FingerprintedDataModel):
     text: str
+
+
+def _record(record_type: type[Source | Chunk], text: str) -> Source | Chunk:
+    """A fresh record with `text`; equal arguments give an equal record."""
+    source = Source(collection_id=COLLECTION, origin="a.md", text=text)
+    if record_type is Source:
+        return source
+    return Chunk(
+        collection_id=COLLECTION,
+        source_id=source.id,
+        origin=source.origin,
+        ordinal=0,
+        start=0,
+        text=text,
+    )
 
 
 @pytest.mark.parametrize("record_type", [Source, Chunk])
 def test_record_inputs_reuse_detached_results_after_reopen(
     tmp_path: Path, record_type: type[Source | Chunk]
 ):
-    source = Source(origin="a.md", text="abc")
-    first = (
-        source
-        if record_type is Source
-        else Chunk(source_id=source.id, origin=source.origin, start=0, text=source.text)
-    )
-    other_source = Source(origin="a.md", text="abc")
-    equivalent = (
-        other_source
-        if record_type is Source
-        else Chunk(
-            source_id=other_source.id, origin=other_source.origin, start=0, text=other_source.text
-        )
-    )
+    first = _record(record_type, "abc")
+    equivalent = _record(record_type, "abc")
     calls = 0
     path = tmp_path / "cache.sqlite"
     process = content_key("record-uppercase", {})
@@ -45,8 +51,8 @@ def test_record_inputs_reuse_detached_results_after_reopen(
         assert uppercase(first) == TextResult(text="ABC")
         assert uppercase(equivalent) == TextResult(text="ABC")
         assert calls == 1
-        equivalent.text = "def"
-        assert uppercase(equivalent) == TextResult(text="DEF")
+        changed = _record(record_type, "def")
+        assert uppercase(changed) == TextResult(text="DEF")
         assert calls == 2
 
     with Cache(SQLiteBackend(path)) as cache:
@@ -56,27 +62,15 @@ def test_record_inputs_reuse_detached_results_after_reopen(
             raise AssertionError("persisted record-input result should be reused")
 
         assert reopened(first) == TextResult(text="ABC")
-        assert reopened(equivalent) == TextResult(text="DEF")
+        assert reopened(changed) == TextResult(text="DEF")
 
 
 @pytest.mark.parametrize("record_type", [Source, Chunk])
 def test_traced_record_inputs_admit_and_reuse_detached_results(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, record_type: type[Source | Chunk]
 ):
-    source = Source(origin="a.md", text="abc")
-    first = (
-        source
-        if record_type is Source
-        else Chunk(source_id=source.id, origin=source.origin, start=0, text=source.text)
-    )
-    other_source = Source(origin="a.md", text="abc")
-    equivalent = (
-        other_source
-        if record_type is Source
-        else Chunk(
-            source_id=other_source.id, origin=other_source.origin, start=0, text=other_source.text
-        )
-    )
+    first = _record(record_type, "abc")
+    equivalent = _record(record_type, "abc")
     calls: list[str] = []
     for _ in range(2):
         with Cache(SQLiteBackend(tmp_path / "traced.sqlite")) as cache:

@@ -4,8 +4,10 @@ import hashlib
 import json
 import urllib.request
 from pathlib import Path
+from uuid import UUID
 
 from triplum.datatype import Source
+from triplum.utils.cache import content_key
 from triplum.utils.data import Dataset
 
 URL = "https://huggingface.co/datasets/yixuantt/MultiHopRAG/resolve/main/corpus.json"
@@ -33,10 +35,12 @@ def download(root: Path) -> Path:
 class MultiHopRAGCorpus(Dataset[Source]):
     """One `Source` per article: `origin` is the article URL, `text` is title, blank line, body.
 
-    The whole file is parsed at construction and must match the pinned hash.
+    The whole file is parsed at construction and must match the pinned hash. Sources belong to
+    the collection `collection_id`.
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, collection_id: UUID) -> None:
+        self.collection_id = collection_id
         if not _verified(path):
             raise ValueError(f"{path} does not match the pinned sha256 {SHA256}")
         self.articles = json.loads(path.read_bytes())
@@ -46,7 +50,11 @@ class MultiHopRAGCorpus(Dataset[Source]):
 
     def __getitem__(self, index: int) -> Source:
         article = self.articles[index]
-        return Source(origin=article["url"], text=f"{article['title']}\n\n{article['body']}")
+        return Source(
+            collection_id=self.collection_id,
+            origin=article["url"],
+            text=f"{article['title']}\n\n{article['body']}",
+        )
 
     def fingerprint(self) -> str:
-        return SHA256
+        return content_key("multihoprag-corpus", [SHA256, str(self.collection_id)])

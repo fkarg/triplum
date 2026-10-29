@@ -8,9 +8,15 @@ This page follows the intended flow and shows where experiments can replace indi
 - [Datasets/loaders](concepts/datasets.md), [Source](concepts/source.md) and
   [Chunk](concepts/chunk.md) records, and the four [indexing step contracts](concepts/decisions.md)
   have initial implementations. `ZeroEmbedder` is a shape-only placeholder.
-- [Collection](concepts/collection.md) has a baseline record and SQL mapping; membership fields,
-  collection storage operations and derived-record scope enforcement are not implemented.
-- [Record stores](infrastructure/store.md) support memory and SQL persistence.
+- Source and Chunk are immutable and carry a required `collection_id`; chunks also carry their
+  `ordinal` in the chunker's result. Their IDs are deterministic UUIDv8s derived from the same
+  fields as their fingerprints, so re-creating equal records reproduces their IDs. Dataset and
+  converter producers take the collection as an argument.
+- [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
+  operations and derived-record scope enforcement are not implemented.
+- [Record stores](infrastructure/store.md) support memory and SQL persistence. Write semantics
+  for re-ingested and changed documents, several chunkings of one source, temporal history and
+  origin normalization are not settled.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   normalized positional/keyword call arguments, per-computation SQLite tables and CLI/library
   inspection and clearing, including retained function names and source locations for selecting

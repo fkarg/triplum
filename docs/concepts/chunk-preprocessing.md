@@ -11,11 +11,16 @@ unchanged.
 ## Example
 
 ```python
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.chunk_preprocessing import OriginalText
 from triplum.steps.chunking import FixedSize
 
-source = Source(origin="notes/returns.md", text="Returns are accepted within 30 days.")
+collection = Collection(name="Research notes")
+source = Source(
+    collection_id=collection.id,
+    origin="notes/returns.md",
+    text="Returns are accepted within 30 days.",
+)
 [chunk] = FixedSize(100)(source)
 embedding_text = OriginalText()
 print(embedding_text(chunk))  # Returns are accepted within 30 days.

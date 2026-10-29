@@ -2,6 +2,7 @@
 
 import hashlib
 from pathlib import Path
+from uuid import UUID
 
 from triplum.datatype import Source
 from triplum.utils.cache import content_key
@@ -13,10 +14,11 @@ class MarkdownFolder(Dataset[Source]):
 
     The file list is fixed at construction; file contents are read on access, as UTF-8 with
     newlines unchanged. `origin` is the absolute file path. The fingerprint covers each absolute
-    path and file content, so it reads every file.
+    path and file content, and the collection, so it reads every file.
     """
 
-    def __init__(self, folder: Path) -> None:
+    def __init__(self, folder: Path, *, collection_id: UUID) -> None:
+        self.collection_id = collection_id
         folder = folder.resolve()
         if not folder.is_dir():
             raise NotADirectoryError(folder)
@@ -27,10 +29,14 @@ class MarkdownFolder(Dataset[Source]):
 
     def __getitem__(self, index: int) -> Source:
         path = self.paths[index]
-        return Source(origin=str(path), text=path.read_bytes().decode("utf-8"))
+        text = path.read_bytes().decode("utf-8")
+        return Source(collection_id=self.collection_id, origin=str(path), text=text)
 
     def fingerprint(self) -> str:
         return content_key(
             "markdown-folder",
-            [[str(p), hashlib.sha256(p.read_bytes()).hexdigest()] for p in self.paths],
+            [
+                str(self.collection_id),
+                [[str(p), hashlib.sha256(p.read_bytes()).hexdigest()] for p in self.paths],
+            ],
         )

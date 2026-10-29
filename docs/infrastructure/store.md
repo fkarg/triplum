@@ -19,26 +19,34 @@ tables, [`SourceRow`][triplum.store.sql.tables.SourceRow] and
 [`ChunkRow`][triplum.store.sql.tables.ChunkRow] in `triplum.store.sql.tables`.
 
 A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also available, with the
-`id` and `name` of a [collection](../concepts/collection.md). `SQLAlchemyStore` does not yet create
-its table or manage collection records; `RecordStore` has no collection methods. Source and chunk
-rows do not yet carry collection membership.
+`id` and `name` of a [collection](../concepts/collection.md). Source and chunk rows store their
+`collection_id`, but `SQLAlchemyStore` does not yet create the collection table or manage
+collection records, `RecordStore` has no collection methods, and reads are not scoped to a
+collection.
 
 The current read methods take record IDs, with no Viewer or temporal-view argument. They do not
 filter access by principal or reconstruct historical state. Those are requirements of the
 [intended retrieval flow](../flow.md#2-retrieval-select-evidence-for-a-question), not guarantees
-of these stores. Adding a record with an existing ID replaces it rather than preserving history.
+of these stores. Changing a document's text gives a new source ID; the stores keep no link
+between the two versions and no history.
 
 ## Example
 
 This chunks one source, writes both to a SQLite file, and reads them back through a second store
-opened on the same file, as a later run of your program would.
+opened on the same file, as a later run of your program would. A later run reproduces the same
+record IDs only if it reuses the same collection `id`.
 
 ```python
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.chunking import FixedSize
 from triplum.store import SQLAlchemyStore
 
-source = Source(origin="notes/returns.md", text="Returns are accepted within 30 days.")
+collection = Collection(name="Research notes")
+source = Source(
+    collection_id=collection.id,
+    origin="notes/returns.md",
+    text="Returns are accepted within 30 days.",
+)
 chunks = FixedSize(20)(source)
 
 store = SQLAlchemyStore("sqlite:///records.db")
@@ -111,19 +119,23 @@ column types, but this has not been verified.
 
 ## What it guarantees
 
-- **Records are keyed by `id`.** Every source and chunk carries an `id`, a
-  [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562#name-uuid-version-7) generated when the record
-  is created. It is not derived from the content: two sources with identical text get different
-  ids and are stored as two records. Their [fingerprints](fingerprints.md) are equal, which is
-  how you detect such duplicates.
-- **Adding an `id` that is already stored replaces the record.** Chunks stored for a replaced
-  source are not removed.
+- **Records are keyed by `id`.** Every source and chunk carries an `id`, a deterministic
+  [UUIDv8](https://www.rfc-editor.org/rfc/rfc9562#name-uuid-version-8) derived from its content
+  (see [Source](../concepts/source.md) and [Chunk](../concepts/chunk.md)). Re-adding a record
+  produced the same way therefore adds an equal record, and the store keeps one copy. Stores do
+  not yet check that a chunk's `collection_id` and `origin` match its stored source; a chunk
+  that disagrees with its source can replace a stored chunk with the same `id`.
+- **Changed content is a new record.** A source with different text, origin or collection has a
+  different `id` and is stored alongside the old one. Neither the old source nor its chunks are
+  removed.
 - **A chunk needs its source.** If any chunk in `add_chunks` refers to a source that is not
   stored, `add_chunks` raises `KeyError` and stores none of the batch.
 - **Reads**: `source(id)` raises `KeyError` for an unknown id. `sources()` yields every source in
   no particular order. `chunks(source_id)` returns a list ordered by `start`, empty if the source
   has no chunks.
-- **Round trip**: a record read back equals the one you stored.
+- **Round trip**: a record read back equals the one you stored. `SQLAlchemyStore` rebuilds each
+  record from its row and checks the stored `id` against its fields; a row edited outside the
+  store so that they no longer match raises a Pydantic `ValidationError` on read.
 
 ## Capabilities, not one big store
 

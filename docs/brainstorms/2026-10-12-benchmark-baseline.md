@@ -182,6 +182,46 @@ integer chunk ids that match no document id.
 
 ## Rounds
 
+### Round 5 owner answers (checkpoint, 2026-10-29)
+
+- Q24 (answered): option (a). One current chunking per source; `chunks(source_id)` returns only the
+  configured chunker's chunks, ordered by the per-source-unique ordinal; changing the chunker clears
+  and recomputes the source's chunks (cache makes expensive state fast to reproduce). (b)-like
+  membership may return with benchmark run design (randomness, variability).
+- Q25 (answered): agrees with (c): insert if absent, equal duplicate no-op, unequal duplicate raises;
+  cache unaffected. Derived with Q24: chunks are not insert-only; a write replaces the source's
+  whole chunk list. Old Source versions remain (new text = new Source id).
+- Owner asks whether to look into the unclosed SQLite connection warnings (question; assessment
+  given, no fix applied).
+- Note: chunks are derived records, so clearing them is consistent with the history requirement,
+  which the session reads as applying to facts and sources; flag if the owner disagrees.
+
+### Round 5 (Q24 re-presented, Q25 re-presented, Q26, Q27)
+
+Session assessment before peer: Q24 one chunking per source per collection (experiments compare
+chunkers in separate collections; no membership record); Q25 insert-if-absent, equal duplicate
+no-op, unequal duplicate error, never delete; Q26 producers (Utf8File, MarkdownFolder,
+MultiHopRAGCorpus) take `collection_id` in `__init__`, Source requires it; Q27 id derived during
+validation, supplied id must match, records frozen.
+
+Peer gpt-6.1-sol, review `4254cb6d42c34fce9021d55e9c5dea3b`, full JSON read. Falsifications:
+coexisting chunk sizes 4/8/20 by id; two histories with identical chunk unions; empty result
+invisible in the union; A→B→A observations indistinguishable; MemoryStore alias mutation
+(observed); redundant Chunk.origin vs equal-id assumption; one collection per chunker.
+
+- Q24: **divergence**. Peer: ordered `ChunkingResult(source_id, chunk_ids)` membership (no chunker
+  identity), because the chunk union cannot recover one result or an empty result. Session: separate
+  collections; peer objects that duplicates Sources and fails same-Source coexistence.
+- Q25: agreement; peer adds full-value comparison, race-safe insert, parent/slice/origin validation.
+- Q26: agreement, keyword-only `collection_id` on producers; chunkers copy it from the Source.
+- Q27: agreement; peer observed the MemoryStore alias mutation, which freezing fixes (unique defect
+  confirmation of a known backlog item).
+
+Implementation decision (session, within the owner's "go ahead with deterministic ids"): proceed
+with Q26/Q27 as agreed by session and peer; leave the store write contract (Q25) and membership
+(Q24) for owner answers. With derived ids, replace-by-id of an equal record is a no-op, so the
+store change can follow separately.
+
 ### Round 4 owner answers (checkpoint, 2026-10-29)
 
 - Q22 (answered): one id per exact text version. The fingerprint may share behaviour with the id or
@@ -435,6 +475,25 @@ Dispositions:
   labelled dataset-native profile for reproductions (added verification).
 
 ## Implementation proposals
+
+- **P1 AGENTS.md trim** (accepted 2026-10-29): committed `4e64b98`. Per-approval history removed;
+  approval scope lives in specs; no-timestamp/no-manual-version rule added. Rules unchanged.
+- **P2 deterministic ids** (accepted 2026-10-29, "go ahead"): `datatype/ids.py` (pure UUIDv8
+  derivation), frozen Source/Chunk with derived/validated ids, `collection_id` on both, Chunk
+  `ordinal`, fingerprints with id inputs, producers take `collection_id`, SQL columns, tests/docs/spec
+  migrated (docs and tests by a scoped worker, reviewed by session). Out of scope: Q24 membership,
+  Q25 write semantics, temporal history. Worker also fixed a pre-existing fingerprinting failure for
+  PEP 695 generic Protocols (`Utf8File.fingerprint()` raised); session extended it to hash lazy
+  bound/constraint/default definitions.
+  Verification (observed): 332 passed, 90% branch coverage, ty, Ruff lint/format, cargo check/test,
+  strict MkDocs; examples/naive.py and examples/cached_pipeline.py ran.
+  Cross-model diff review gpt-6.1-sol `965d356755ca4eafa1c5c499c1c6ccd3` (1,124-payload packing
+  check, tag-collision search, framing probes, TypeVar probes, frozen bypasses, SQL tampering):
+  unique defect, chunk digest lacked the full collection id (16-bit tag collision let a chunk with an
+  inconsistent collection share an id) → fixed with regression; unique defect, parameterized
+  TypeVar bounds failed → fixed; added verification, independent layout vector test; nits: inlined
+  single-use helper, removed duplicate assertion; parentheses nit not applied (cosmetic).
+  Remaining known limit: `model_copy(update=...)` bypasses validation (documented; SQL reads reject).
 
 ## Lasting documentation targets
 

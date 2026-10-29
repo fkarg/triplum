@@ -9,14 +9,15 @@ the records are, the loader only decides *how many at once*. A loader never conv
 Start with an in-memory dataset to see the boundary between records and batching:
 
 ```python
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.utils.data import DataLoader, RecordDataset
 
+collection = Collection(name="Greetings")
 records = RecordDataset(
     [
-        Source(origin="first", text="Hello"),
-        Source(origin="second", text="World"),
-        Source(origin="third", text="Again"),
+        Source(collection_id=collection.id, origin="first", text="Hello"),
+        Source(collection_id=collection.id, origin="second", text="World"),
+        Source(collection_id=collection.id, origin="third", text="Again"),
     ]
 )
 for batch in DataLoader(records, batch_size=2):
@@ -41,9 +42,11 @@ the corpus file.
 from pathlib import Path
 
 from triplum.datasets.multihoprag import MultiHopRAGCorpus, download
+from triplum.datatype import Collection
 from triplum.utils.data import DataLoader
 
-corpus = MultiHopRAGCorpus(download(Path("data")))
+collection = Collection(name="MultiHop-RAG")
+corpus = MultiHopRAGCorpus(download(Path("data")), collection_id=collection.id)
 print(len(corpus))  # 609
 
 for source in DataLoader(corpus, batch_size=None):
@@ -57,8 +60,9 @@ for batch in DataLoader(corpus, batch_size=256):
 1. `download(Path("data"))` fetches the pinned `corpus.json` to `data/multihoprag/corpus.json`,
    checks its SHA-256 hash and returns the path. If a verified copy already exists, it skips the
    download.
-2. `MultiHopRAGCorpus(path)` parses the file and is a `Dataset[Source]`: one `Source` per
-   article. `origin` is the article URL; `text` is the title, a blank line, then the body.
+2. `MultiHopRAGCorpus(path, collection_id=collection.id)` parses the file and is a
+   `Dataset[Source]`: one `Source` per article, in that collection. `origin` is the article URL;
+   `text` is the title, a blank line, then the body.
 3. `DataLoader(corpus, batch_size=None)` yields the records one by one, unchanged.
 4. `DataLoader(corpus, batch_size=256)` yields lists of up to 256 sources. The last batch keeps
    the remainder.
@@ -72,9 +76,11 @@ per `.md` file in a folder. Given a folder `notes/` with `returns.md` and `shipp
 from pathlib import Path
 
 from triplum.datasets.markdownfolder import MarkdownFolder
+from triplum.datatype import Collection
 from triplum.utils.data import DataLoader
 
-notes = MarkdownFolder(Path("notes"))
+collection = Collection(name="Research notes")
+notes = MarkdownFolder(Path("notes"), collection_id=collection.id)
 print(len(notes))
 
 for source in DataLoader(notes, batch_size=None):
@@ -96,7 +102,9 @@ The example prints only each file's name; `source.origin` retains its absolute p
 - The file list is fixed when you create the dataset; a file added later needs a new
   `MarkdownFolder`. Contents are read, as UTF-8, each time a record is accessed.
 - `origin` is the absolute path of the file, as a string.
-- Its `fingerprint()` hashes every file's name and bytes, so it reads the whole folder.
+- Every source belongs to the collection given as `collection_id`.
+- Its `fingerprint()` hashes the collection and every file's name and bytes, so it reads the
+  whole folder.
 
 ## Two kinds of dataset
 
@@ -112,9 +120,9 @@ Neither class imposes a schema; each dataset chooses its record type.
 
 Every dataset must implement `fingerprint()`: a stable string identifying its logical content.
 Two datasets with equal fingerprints promise the same records in the same order. A name or a URL
-that can change is not enough; the MultiHop-RAG corpus uses the pinned file hash. Computing the
-fingerprint must not consume the dataset, and batch size is not part of it. Fingerprints are meant
-to let expensive later steps be cached by their inputs.
+that can change is not enough; the MultiHop-RAG corpus uses the pinned file hash and its
+collection. Computing the fingerprint must not consume the dataset, and batch size is not part of
+it. Fingerprints are meant to let expensive later steps be cached by their inputs.
 
 ## What the loader does
 

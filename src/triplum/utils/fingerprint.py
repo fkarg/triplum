@@ -249,7 +249,42 @@ def _reference(value: object, active: _Definitions) -> object:
             return name
     if isinstance(value, BuiltinFunctionType):
         return {"external": f"{value.__module__}.{value.__qualname__}"}
+    if isinstance(value, typing.TypeVar | typing.ParamSpec | typing.TypeVarTuple):
+        return _type_parameter(value, active)
     return _state(value, active, ordered=True)
+
+
+def _type_parameter(
+    value: typing.TypeVar | typing.ParamSpec | typing.TypeVarTuple, active: _Definitions
+) -> object:
+    """A PEP 695 type parameter captured by a generic definition's annotation scope.
+
+    Its bound, constraints and default are evaluated lazily. Like `__annotate__` functions, their
+    evaluation functions contribute code and captures without resolving globals, so names imported
+    only for type checking need not exist. Eager values are read only for parameters created
+    without such functions (`typing.TypeVar(...)`).
+    """
+
+    def part(evaluate: object, eager: typing.Callable[[], object]) -> object:
+        if not isinstance(evaluate, FunctionType):
+            return _reference(eager(), active)
+        return {
+            "code": _code_identity(evaluate.__code__),
+            "captures": {
+                name: _reference(item, active) for name, item in _captures(evaluate).items()
+            },
+        }
+
+    result: dict[str, object] = {"kind": type(value).__name__, "name": value.__name__}
+    if isinstance(value, typing.TypeVar):
+        result["bound"] = part(value.evaluate_bound, lambda: value.__bound__)
+        result["constraints"] = part(
+            value.evaluate_constraints, lambda: list(value.__constraints__)
+        )
+    result["default"] = part(
+        value.evaluate_default, lambda: value.__default__ if value.has_default() else None
+    )
+    return result
 
 
 _MUTATING_METHODS = {

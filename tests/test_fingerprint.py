@@ -1,6 +1,7 @@
 import importlib.util
 import sys
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -10,37 +11,46 @@ from triplum.steps.embedding import ZeroEmbedder
 from triplum.utils.cache import content_key
 from triplum.utils.fingerprint import FingerprintedComputationMixin, source_hash
 
+COLLECTION = UUID("01900000-0000-7000-8000-000000000001")
+OTHER = UUID("01900000-0000-7000-8000-000000000002")
 
-def test_source_fingerprint_ignores_id_and_follows_content():
-    source = Source(origin="a.md", text="abc")
+
+def test_source_fingerprint_follows_the_id_inputs():
+    source = Source(collection_id=COLLECTION, origin="a.md", text="abc")
     original = source.fingerprint()
-    assert original == content_key("source", ["a.md", "abc"])
-    assert Source(origin="a.md", text="abc").fingerprint() == original
-    source.text = "abd"
-    assert source.fingerprint() != original
-    source.text = "abc"
-    source.origin = "b.md"
-    assert source.fingerprint() != original
+    assert original == content_key("source", [str(COLLECTION), "a.md", "abc"])
+    assert Source(collection_id=COLLECTION, origin="a.md", text="abc").fingerprint() == original
+    assert Source(collection_id=COLLECTION, origin="a.md", text="abd").fingerprint() != original
+    assert Source(collection_id=COLLECTION, origin="b.md", text="abc").fingerprint() != original
+    assert Source(collection_id=OTHER, origin="a.md", text="abc").fingerprint() != original
 
 
-def test_chunk_fingerprint_ignores_ids_and_follows_content():
-    source = Source(origin="a.md", text="abc")
-    chunk = Chunk(source_id=source.id, origin="a.md", start=0, text="ab")
-    original = chunk.fingerprint()
-    assert original == content_key("chunk", ["a.md", 0, "ab"])
-    other_source = Source(origin="a.md", text="abc")
-    assert (
-        Chunk(source_id=other_source.id, origin="a.md", start=0, text="ab").fingerprint()
-        == original
+def _chunk(source: Source, ordinal: int = 0, start: int = 0, text: str = "ab") -> Chunk:
+    return Chunk(
+        collection_id=source.collection_id,
+        source_id=source.id,
+        origin=source.origin,
+        ordinal=ordinal,
+        start=start,
+        text=text,
     )
-    chunk.text = "ac"
-    assert chunk.fingerprint() != original
-    chunk.text = "ab"
-    chunk.start = 1
-    assert chunk.fingerprint() != original
-    chunk.start = 0
-    chunk.origin = "b.md"
-    assert chunk.fingerprint() != original
+
+
+def test_chunk_fingerprint_follows_the_id_inputs():
+    source = Source(collection_id=COLLECTION, origin="a.md", text="abc")
+    chunk = _chunk(source)
+    original = chunk.fingerprint()
+    assert original == content_key("chunk", [str(COLLECTION), str(source.id), 0, 0, "ab"])
+    assert _chunk(Source(collection_id=COLLECTION, origin="a.md", text="abc")).fingerprint() == (
+        original
+    )
+    assert _chunk(source, text="ac").fingerprint() != original
+    assert _chunk(source, start=1).fingerprint() != original
+    assert _chunk(source, ordinal=1).fingerprint() != original
+    other_source = Source(collection_id=COLLECTION, origin="b.md", text="abc")
+    assert _chunk(other_source).fingerprint() != original
+    other_collection = Source(collection_id=OTHER, origin="a.md", text="abc")
+    assert _chunk(other_collection).fingerprint() != original
 
 
 def test_nested_records_use_their_fingerprints():
@@ -48,14 +58,11 @@ def test_nested_records_use_their_fingerprints():
         source: Source
         chunk: Chunk
 
-    source = Source(origin="a.md", text="abc")
-    chunk = Chunk(source_id=source.id, origin="a.md", start=0, text="ab")
-    original = Bundle(source=source, chunk=chunk).fingerprint()
-    other = Source(origin="a.md", text="abc")
-    same = Bundle(source=other, chunk=Chunk(source_id=other.id, origin="a.md", start=0, text="ab"))
-    assert same.fingerprint() == original
-    same.chunk.text = "ac"
-    assert same.fingerprint() != original
+    source = Source(collection_id=COLLECTION, origin="a.md", text="abc")
+    original = Bundle(source=source, chunk=_chunk(source)).fingerprint()
+    other = Source(collection_id=COLLECTION, origin="a.md", text="abc")
+    assert Bundle(source=other, chunk=_chunk(other)).fingerprint() == original
+    assert Bundle(source=other, chunk=_chunk(other, text="ac")).fingerprint() != original
 
 
 def test_object_fingerprint_covers_class_and_state():

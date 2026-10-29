@@ -31,10 +31,12 @@ class FixedSize(Chunker, FingerprintedComputationMixin):
     def __call__(self, source: Source, /) -> list[Chunk]:
         return [
             Chunk(
+                collection_id=source.collection_id,
                 source_id=source.id,
                 origin=source.origin,
+                ordinal=ordinal,
                 start=start,
                 text=source.text[start : start + self.size],
             )
-            for start in range(0, len(source.text), self.size)
+            for ordinal, start in enumerate(range(0, len(source.text), self.size))
         ]

@@ -57,7 +57,7 @@ Serialization format remains independent; this is not approval to reintroduce a 
 | `Fingerprintable.fingerprint()` | Author-declared semantic value | Cache input/output boundary |
 | `CachedStep.fingerprint()` | Author-declared computation | Re-evaluated per call; resources must stay out |
 | Dataset/stream `fingerprint()` | Concrete source's chosen logical data or recipe | Full record dumps, bytes or source+selection composition differ |
-| Record `id` | Current UUIDv7 identity | Store references; UUIDv8 layouts remain under separate review |
+| Record `id` | Deterministic UUIDv8 of the record's identity fields ([record types](record-types.md)) | Store references |
 
 The pre-change audit reproduced these findings:
 

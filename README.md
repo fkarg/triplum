@@ -30,10 +30,11 @@ Create a source and split its text into chunks:
 
 ```sh
 uv run python - <<'PYTHON'
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.chunking import FixedSize
 
-source = Source(origin="example", text="Alpha. Beta.")
+collection = Collection(name="example")
+source = Source(collection_id=collection.id, origin="example", text="Alpha. Beta.")
 for chunk in FixedSize(7)(source):
     print(chunk.start, repr(chunk.text))
 PYTHON

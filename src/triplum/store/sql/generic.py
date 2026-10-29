@@ -35,6 +35,7 @@ class SQLAlchemyStore(RecordStore):
                 session.merge(
                     SourceRow(
                         id=s.id,
+                        collection_id=s.collection_id,
                         origin=s.origin,
                         text=s.text,
                         fingerprint=s.fingerprint(),
@@ -53,8 +54,10 @@ class SQLAlchemyStore(RecordStore):
                 session.merge(
                     ChunkRow(
                         id=c.id,
+                        collection_id=c.collection_id,
                         source_id=c.source_id,
                         origin=c.origin,
+                        ordinal=c.ordinal,
                         start=c.start,
                         text=c.text,
                         fingerprint=c.fingerprint(),
@@ -67,13 +70,13 @@ class SQLAlchemyStore(RecordStore):
             row = session.get(SourceRow, id)
             if row is None:
                 raise KeyError(id)
-            return Source(id=row.id, origin=row.origin, text=row.text)
+            return _source(row)
 
     def sources(self) -> Iterator[Source]:
         with Session(self.engine) as session:
             rows = session.exec(select(SourceRow)).all()
         for row in rows:
-            yield Source(id=row.id, origin=row.origin, text=row.text)
+            yield _source(row)
 
     def chunks(self, source_id: UUID, /) -> list[Chunk]:
         with Session(self.engine) as session:
@@ -85,10 +88,17 @@ class SQLAlchemyStore(RecordStore):
         return [
             Chunk(
                 id=row.id,
+                collection_id=row.collection_id,
                 source_id=row.source_id,
                 origin=row.origin,
+                ordinal=row.ordinal,
                 start=row.start,
                 text=row.text,
             )
             for row in rows
         ]
+
+
+def _source(row: SourceRow) -> Source:
+    """The stored source; its stored id is checked against the id derived from its fields."""
+    return Source(id=row.id, collection_id=row.collection_id, origin=row.origin, text=row.text)

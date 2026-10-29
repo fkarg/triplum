@@ -12,20 +12,23 @@ reads a file as text.
 ```python
 from pathlib import Path
 
+from triplum.datatype import Collection
 from triplum.steps.conversion import Utf8File
 
 path = Path("returns.md")
 path.write_text("# Returns\nReturns are accepted within 30 days.\n", encoding="utf-8")
 
-convert = Utf8File()
+collection = Collection(name="Research notes")
+convert = Utf8File(collection_id=collection.id)
 sources = convert(path)
 print(len(sources))  # 1
 print(sources[0].origin, repr(sources[0].text))
 # returns.md '# Returns\nReturns are accepted within 30 days.\n'
 ```
 
-1. Create the converter once. Converters that need configuration or resources (an OCR model, an
-   HTTP client) take them in `__init__`; `Utf8File` needs none.
+1. Create the converter once. Converters take their configuration and resources (an OCR model,
+   an HTTP client) in `__init__`. `Utf8File` needs only the `collection_id` its sources belong
+   to; its fingerprint includes it.
 2. Call it with one item, here a `Path`. It returns a **list** of sources, because one item may
    hold several documents (an archive, a JSON Lines file). `Utf8File` always returns one.
 3. The source's `origin` is the path as given, as a string, and `text` is the file decoded as UTF-8 with its
@@ -53,22 +56,29 @@ several sources:
 ```python
 import json
 from pathlib import Path
+from uuid import UUID
 
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.conversion import Converter
 
 
 class JsonLines(Converter[Path]):
     """One source per line of a JSON Lines file with `id` and `text` fields."""
 
+    def __init__(self, *, collection_id: UUID) -> None:
+        self.collection_id = collection_id
+
     def __call__(self, item: Path, /) -> list[Source]:
         records = [json.loads(line) for line in item.read_text("utf-8").splitlines() if line]
-        return [Source(origin=f"{item}#{r['id']}", text=r["text"]) for r in records]
+        return [
+            Source(collection_id=self.collection_id, origin=f"{item}#{r['id']}", text=r["text"])
+            for r in records
+        ]
 
 
 path = Path("faq.jsonl")
 path.write_text('{"id": "returns", "text": "30 days."}\n{"id": "refunds", "text": "5 days."}\n')
-for source in JsonLines()(path):
+for source in JsonLines(collection_id=Collection(name="FAQ").id)(path):
     print(source.origin, source.text)
 # faq.jsonl#returns 30 days.
 # faq.jsonl#refunds 5 days.

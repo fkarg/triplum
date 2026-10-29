@@ -25,18 +25,6 @@ Collection ids are persisted UUIDv7.
 `Source.collection_id: UUID`; collection ids persisted UUIDv7. Divergence on benchmarks: Claude
 derives from corpus identity (needs Q14); peer publishes fixed ids in a benchmark manifest.
 
-### Q24. Chunk identity and multiple chunkings
-
-Claude revised to peer: chunk id from source id, ordinal, start, text; chunker identity in an
-ordered `ChunkingResult` membership record; reads select one result.
-
-### Q25. Writes
-
-Equal id and equal values: no-op. Equal id, different values: conflict error. No replace-by-id;
-retain old versions; explicit replacement closes temporal selections. Atomic publication. At most
-65,536 chunks per result.
-
-
 ### Q7. Representing gold evidence in benchmarks
 
 "Gold evidence" is a benchmark's annotation of which passages support each answer. HotpotQA marks
@@ -58,6 +46,61 @@ Claude now prefers the peer's complete-coverage rule.
 Owner agrees with span-based evidence and wants the full (or mostly full) span retrieved, and
 raised proportional partial credit as a possibility. Owner deferred exact counting until benchmark
 design; Q7 is not a blocker for the current cache work. No partial-credit metric is approved.
+
+### Q24. Several chunkings of one Source
+
+Owner (answered 2026-10-29): (a). A source has one current chunking; `chunks(source_id)` returns
+only that chunker's chunks, ordered by ordinal, which is unique per source. Changing the chunker
+clears the source's existing chunks and recomputes them (cached if configured), giving fast
+reproduction of expensive state. A membership-style option (b) may return later with benchmark
+run design, randomness and variability.
+
+Owner (round 4): agreed chunker identity is not stored; questioned the intermediate record and
+asked for full context. Re-presented in round 5 (peer `4254cb6d42c34fce9021d55e9c5dea3b`).
+
+Context: `chunks(source_id)` returns every stored chunk of a source sorted by start. Chunking the
+same Source with FixedSize(500) and FixedSize(1000) into one store returns both mixed together; nothing
+says which chunk belongs to which run, and an empty result leaves no trace.
+
+- (a) One chunking per Source per collection: compare chunkers in separate collections. No new
+  record; Sources are duplicated per collection (their ids differ by collection).
+- (b) An ordered membership record `ChunkingResult(source_id, chunk_ids)` (no chunker identity);
+  reads name a result. Equal chunks are shared; a small extra record and completion boundary.
+- (c) Callers keep the chunk ids of each run in their experiment output; the store keeps the union.
+
+Claude: (a). Peer: (b); (a) duplicates Sources and cannot hold two chunkings of the same Source.
+
+### Q25. Store writes once ids are deterministic
+
+Owner (answered 2026-10-29): agrees with (c) for the record store; the cache is unaffected.
+Derived with Q24: chunk writes replace a source's complete chunk list; see P3 in the capture.
+
+Owner (round 4) asked whether this is the cache or the store. It is the record store; the cache is
+unaffected (equal key is a hit, writes replace). Context: today the store replaces a record whose id
+already exists. With derived ids, re-running ingestion writes records whose ids already exist, and
+an equal id normally means equal content. Remaining cases: a different value under an existing id
+(bug, truncated-hash collision, or a future field outside the id) and records a re-run no longer
+produces (old text versions, old chunks).
+
+- (a) Keep replace-by-id.
+- (b) Insert if absent, ignore any duplicate.
+- (c) Insert if absent; equal duplicate is a no-op; unequal duplicate raises; nothing is deleted.
+
+Claude and peer: (c). Owner's expectation that pipelines cannot conflict holds for (c) in normal
+operation; the error only surfaces bugs or collisions.
+
+### Q26. Where the collection enters construction
+
+Found while implementing deterministic ids (round 5, peer `4254cb6d42c34fce9021d55e9c5dea3b`).
+Claude and peer: producers of Sources (`Utf8File`, `MarkdownFolder`, `MultiHopRAGCorpus`) take a
+keyword-only `collection_id`; Source requires it; chunkers copy it from the Source. Implemented
+under the owner's "go ahead with deterministic ids"; reopen if the owner prefers a later binding step.
+
+### Q27. How the derived id is attached
+
+Claude and peer: the id is derived during validation, a supplied id must match, and records are
+frozen. Implemented on the same basis as Q26. `model_copy(update=...)` bypasses validation; SQL
+reads re-validate.
 
 ### Q9. What Source and Chunk fingerprints cover
 

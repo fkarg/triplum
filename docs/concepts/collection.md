@@ -55,10 +55,13 @@ their collection membership; group interfaces are not implemented yet.
 
 ## Current support
 
-The baseline currently supplies only `Collection` and its SQL mapping,
-[`CollectionRow`][triplum.store.sql.tables.CollectionRow]. Source and chunk membership fields
-and store methods for collections are not implemented yet; existing stores do not enforce
-collection scope. See the [store guide](../infrastructure/store.md).
+Every `Source` and `Chunk` carries a required `collection_id`, and their IDs are derived from it,
+so the same document in two collections gives two different records. A collection's `id` is a
+random UUIDv7 created once; keep and reuse it to reproduce the same record IDs in a later run. The SQL store keeps
+`collection_id` on source and chunk rows, and
+[`CollectionRow`][triplum.store.sql.tables.CollectionRow] maps `Collection` itself. Stores do not
+yet create or manage collection records, have no collection methods and do not enforce collection
+scope. See the [store guide](../infrastructure/store.md).
 
 ## Reference
 

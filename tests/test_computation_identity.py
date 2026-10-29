@@ -245,6 +245,39 @@ class Step(FingerprintedComputationMixin):
     assert first.fingerprint() != second.fingerprint()
 
 
+def test_generic_protocol_type_parameters_enter_definition_identity(tmp_path: Path) -> None:
+    source = """from typing import Protocol
+from triplum.utils.fingerprint import FingerprintedComputationMixin
+class Convert[{param}](Protocol):
+    def __call__(self, item: A, /) -> list[A]: ...
+class Step(Convert, FingerprintedComputationMixin):
+    def fingerprint_config(self):
+        return {{}}
+    def __call__(self, item: str, /) -> list[str]:
+        return [item]
+"""
+    first = load(source.format(param="A"), tmp_path / "first.py")()
+    assert (
+        first.fingerprint() == load(source.format(param="A"), tmp_path / "again.py")().fingerprint()
+    )
+    variants = [
+        "A: str",
+        "A: list[str]",
+        "A: list[int]",
+        "A: (str, bytes)",
+        "A = str",
+        "A: Undefined",  # resolvable only for type checking; must not be evaluated
+        "**A",
+        "*A",
+        "*A = *tuple[int, ...]",
+    ]
+    fingerprints = {
+        load(source.format(param=param), tmp_path / f"variant{i}.py")().fingerprint()
+        for i, param in enumerate(variants)
+    }
+    assert len(fingerprints | {first.fingerprint()}) == len(variants) + 1
+
+
 @pytest.mark.parametrize(
     "implementation",
     [

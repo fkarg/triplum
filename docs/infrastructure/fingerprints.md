@@ -2,14 +2,16 @@
 
 A fingerprint identifies the content you chose to treat as equivalent. For caching, two questions
 matter: **is this the same input data?** and **is this the same computation?** The cache matches both.
-A record's storage ID answers a third question: which persisted record does this refer to?
+A record's ID answers a third question: which record does this refer to?
 
 ```python
-from triplum.datatype import Source
+from triplum.datatype import Collection, Source
 from triplum.steps.chunking import FixedSize
 
-first = Source(origin="notes/returns.md", text="Returns within 30 days.")
-second = Source(origin="notes/returns.md", text="Returns within 30 days.")
+collection = Collection(name="Research notes")
+text = "Returns within 30 days."
+first = Source(collection_id=collection.id, origin="notes/returns.md", text=text)
+second = Source(collection_id=collection.id, origin="notes/returns.md", text=text)
 
 print(first.id == second.id, first.fingerprint() == second.fingerprint())
 print(FixedSize(20).fingerprint() == FixedSize(20).fingerprint())
@@ -19,13 +21,14 @@ print(FixedSize(20).fingerprint() == FixedSize(30).fingerprint())
 Output:
 
 ```text
-False True
+True True
 True
 False
 ```
 
-The sources contain equivalent data but have distinct UUIDv7 storage IDs. The chunkers identify
-configured computations: changing the chunk size changes their identity.
+The sources hold the same collection, origin and text, so they get the same derived ID and the
+same fingerprint. The chunkers identify configured computations: changing the chunk size changes
+their identity.
 
 ## Choose the identity question
 
@@ -42,25 +45,25 @@ helpers but have different equality promises; the common name does not make them
 ## Existing record fingerprints
 
 [`Source`][triplum.datatype.source.Source] and [`Chunk`][triplum.datatype.chunk.Chunk] expose
-`fingerprint()` methods, recomputed on each call:
+`fingerprint()` methods, recomputed on each call. Each covers the same fields as the record's
+deterministic `id`:
 
-| Record | Included fields | Excluded identifiers |
+| Record | Fingerprint and `id` fields | Not included |
 | --- | --- | --- |
-| Source | `origin`, `text` | `id` |
-| Chunk | `origin`, `start`, `text` | `id`, `source_id` |
+| Source | `collection_id`, `origin`, `text` | `id` |
+| Chunk | `collection_id`, `source_id`, `ordinal`, `start`, `text` | `id`, `origin` |
 
-Equal record fingerprints therefore do not mean equal storage identity or provenance. Two chunks
-can have equal fingerprints while referring to different source records. The digest is absent
-from model dumps and JSON; SQL storage fills its indexed fingerprint column explicitly.
+Records with equal fingerprints therefore have equal IDs, collections and parent references.
+`Chunk.origin` is left out because it is copied from the source that `source_id` already
+identifies. The same document in two collections, or a chunk at a different position, has a
+different fingerprint. The digest is absent from model dumps and JSON; SQL storage fills its
+indexed fingerprint column explicitly.
 
 These methods satisfy the cache's `fingerprint()` requirement and support nested value
-fingerprints. That does not make every record consumer safe to cache: computations that use
-excluded IDs or parent references need those values in their effective input identity. Cached
-records restore their stored IDs and references unchanged. For example, a cached `Source -> Chunk`
-function that copies `source.id` into `chunk.source_id` returns the first source's parent reference
-when called with an equal-fingerprint Source that has a different ID. Include binding references
-in the effective input identity, or attach them after reusing an unbound result.
-Define an explicit [value model](cache/fingerprints.md) when the computation needs another projection.
+fingerprints. A cached `Source -> Chunk` function that copies `source.id` into `chunk.source_id`
+can be reused safely: an equal-fingerprint source has the same `id`. Define an explicit
+[value model](cache/fingerprints.md) when a computation should treat records from different
+collections, or chunks at different positions, as equivalent.
 
 ## Configured-object identity
 
@@ -95,31 +98,14 @@ Concrete implementations choose their own projection:
 
 - [`RecordDataset`][triplum.utils.data.dataset.RecordDataset] hashes the ordered, complete
   `model_dump(mode="json")` of every record, recomputing on each call. It does **not** delegate to
-  each record's `fingerprint()` method. Freshly created Source records with matching
-  content but different IDs therefore produce different RecordDataset identities.
-- [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes its fixed, sorted file
-  list by absolute path and bytes, matching the emitted `Source.origin` and `text`. Reading an
-  unchanged folder again gives the same dataset identity, although accessed Source records receive
-  fresh IDs. A copy of the folder elsewhere has a different identity, because its origins differ.
-
-For example, record content equivalence and full-record dataset equivalence differ:
-
-```python
-from triplum.datatype import Source
-from triplum.utils.data import RecordDataset
-
-first = Source(origin="notes.md", text="Hello")
-second = Source(origin="notes.md", text="Hello")
-print(first.fingerprint() == second.fingerprint())
-print(RecordDataset([first]).fingerprint() == RecordDataset([second]).fingerprint())
-```
-
-Output:
-
-```text
-True
-False
-```
+  each record's `fingerprint()` method, so every dumped field counts, including `Chunk.origin`.
+  Because Source and Chunk IDs are derived from their content, equal records give equal
+  RecordDataset identities.
+- [`MarkdownFolder`][triplum.datasets.markdownfolder.MarkdownFolder] hashes its collection and its
+  fixed, sorted file list by absolute path and bytes, matching the emitted `Source.collection_id`,
+  `origin` and `text`. Reading an unchanged folder again with the same collection `id` gives the
+  same dataset identity and the same Source IDs. A copy of the folder elsewhere has a different identity, because its origins
+  differ.
 
 Choose the dataset's identity according to its concrete contract; a method named `fingerprint`
 alone does not establish that it excludes storage IDs or bookkeeping.

@@ -134,5 +134,5 @@ The cache holds recomputable results. A [record store](store.md) holds selected 
 references. Equal text may reuse a vector computation without merging source identity or copying
 another source's provenance. [Value fingerprints](cache/fingerprints.md#share-content-without-sharing-provenance)
 explain the boundary. The [record fingerprint guide](fingerprints.md#existing-record-fingerprints)
-describes Source/Chunk projections and binding constraints. Include every field the computation
+describes the fields Source/Chunk fingerprints and IDs cover. Include every field the computation
 uses in its effective input identity.

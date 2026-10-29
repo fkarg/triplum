@@ -1,6 +1,7 @@
 """Toy indexing: Markdown files, fixed character slices, and a list as the store."""
 
 from pathlib import Path
+from uuid import uuid7
 
 from triplum.datatype import Chunk
 from triplum.steps.chunking import FixedSize
@@ -11,11 +12,11 @@ from triplum.utils.data import DataLoader, RecordDataset
 def index_folder(folder: Path, chunk_size: int = 1000) -> list[Chunk]:
     """Read top-level .md files and return chunks in file/offset order.
 
-    The returned list is the in-memory store. Every call starts fresh. Files are read eagerly;
+    The returned list is the in-memory store. Every call starts fresh, in a new collection. Files are read eagerly;
     empty files produce no chunks. There is no Markdown parsing, overlap or embedding.
     """
     chunker = FixedSize(chunk_size)
-    convert = Utf8File()
+    convert = Utf8File(collection_id=uuid7())
     folder = folder.resolve()
     if not folder.is_dir():
         raise NotADirectoryError(folder)
