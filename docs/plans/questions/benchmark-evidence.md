@@ -4,6 +4,14 @@ Questions use the `BE` prefix. Process: [questions index](README.md).
 
 ## Open
 
+### Round 6 (BE1, BE2 with RT1–RT4), peer `95db7880fa8342b8b991f335601f11be`
+
+BE1 options: public `QuestionInput` nested in `QAQuestion` (both agree); flat evidence (Claude) vs
+alternative sets `list[list[Evidence]]` (peer); small `QABenchmark` bundle (Claude) vs alias
+`QABenchmarkDataset = Dataset[QAQuestion]` composed with a separate corpus (peer).
+BE2 options: `Source.origin` = native key, validated unique (Claude) vs an explicit adapter-built
+key → Source.id binding (peer). Four fixtures repeat titles.
+
 ### BE14. Benchmark run lifecycle and interface map
 
 From owner round 2: identify the full lifecycle and every interface for indexing, retrieval and

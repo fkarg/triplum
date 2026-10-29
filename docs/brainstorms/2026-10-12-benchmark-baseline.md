@@ -182,6 +182,61 @@ integer chunk ids that match no document id.
 
 ## Rounds
 
+### Round 6 owner direction (checkpoint, 2026-10-30)
+
+- Owner: build the base BM25 ingestion example and naive/trivial options along the way; document
+  open ingestion items (done `e4654d1`: Q28–Q33, DF1–DF3, LQ1–LQ2), revisit later; docs, not GitHub
+  issues. Owner thought closed-book needs no LLM; corrected: closed-book needs an LLM but no
+  retrieval; the LLM-free path is BM25 + evidence recall. **Policy: lowest complexity first; avoid
+  needing an API key for now** (owner can provide one). Applied: first measurement is BM25 R@k.
+- Research (web subagent, primary sources): bm25s MIT, active, Lucene variant default k1=1.5 b=0.75,
+  `weight_mask` filters before top-k, used by HippoRAG 2 and FlashRAG; rank_bm25 unmaintained;
+  Pyserini needs JVM + heavy deps; tantivy fixed k1/b; SQLite FTS5 fixed k1=1.2/b=0.75, no stopwords,
+  SQL WHERE pre-filters; HippoRAG 1 used ES english analyzer (k1 1.2, b 0.75) via IRCoT; HippoRAG 2
+  bm25s with unstated settings; published numbers differ 1.4–3.4 R@5; tokenizer ≥ k1/b ≫ variant
+  (Kamphuis 2020, bm25s paper). ACL: viewer principal set ∩ document allow-set, filter before
+  ranking, ES DLS keeps global IDF (term statistics leak); as-of is another filter conjunct.
+  Recommendation: bm25s, lucene, k1 1.2 b 0.75 pinned, English stopwords + Porter stemmer, title+text,
+  drop zero-score hits after masking; Viewer(principals); global IDF for benchmarks.
+
+Session assessment before peer (round 6: BE1, BE2, RT1/RT2, RT3+Q28, RT4):
+- BE1: QAQuestion with list fields, flat answers and evidence (alternatives later); a small
+  `QABenchmark` with `corpus(collection_id) -> Dataset[Source]` and `questions() -> Dataset[QAQuestion]`.
+- BE2: benchmark adapters set `Source.origin` to the native document key; Evidence references it;
+  uniqueness validated at load; Q29 may later move the key into provenance.
+- RT1/RT2: `RetrievalHit(chunk, score | None)`; `Retriever.__call__(query: RetrievalQuery, /)` with
+  `RetrievalQuery(text, viewer)`; k in `__init__`.
+- RT3+Q28: `Viewer(principals: frozenset[str])`; `Source.access: list[str]` required; chunks inherit;
+  access outside ids, so an access change is a history question (Q30); no as-of yet; global IDF.
+- RT4: bm25s with pinned lucene k1 1.2 b 0.75, stopwords + Porter stemmer, built from chunks with
+  their source access; mask before top-k; drop zero scores.
+
+Round 6 peer: gpt-6.1-sol, review `95db7880fa8342b8b991f335601f11be`, full JSON read.
+Falsifications: Source id/insert-only vs ACL fields; duplicate titles across fixtures (observed in
+squad, squad_v2, musique, musique_full); answer-bearing metadata; 540 questions, 249 without gold;
+220 questions with candidate_chunk_ids; segment bounds; zero-score masking counterexample; changed
+viewers/times/contexts/empty tokens/ties. Dispositions:
+
+- **Rejected false positive**: peer could not reproduce the legacy gold recipe (704 references).
+  Session re-ran the documented recipe this session: 704 of 704 resolve (observed).
+- BE1: **divergence**. Peer nests the public `QuestionInput` inside `QAQuestion` (structural gold
+  boundary; adopted by session as better), evidence as alternative sets `list[list[Evidence]]`, split
+  span/document evidence types, and `QABenchmarkDataset` as a plain alias over `Dataset[QAQuestion]`
+  composed with a separate corpus. Session keeps flat evidence and a small bundle.
+- BE2: **divergence**. Peer: explicit adapter-built native-key → Source.id binding, validated;
+  duplicate titles observed in four fixtures (unique evidence against title-as-origin). Session:
+  origin = native key, validated unique; now limited to adapters whose keys are unique.
+- RT12: minor divergence: peer `__call__(question, /, *, viewer)`; session one input record.
+- RT3: **divergence, unique defect**: an access field on Source conflicts with id-derived identity
+  and insert-only writes (session had flagged it as a Q30 question; peer resolves it). Peer: store-owned
+  `SourceAccess(allow, valid_from, valid_until)` keyed by Source.id, immutable snapshot per
+  store/index, `Viewer(principals, as_of)`; all reads take `viewer=`; missing policy denies.
+- RT4: **divergence**. Peer: bm25s lucene k1 1.5/b 0.75, plain casefold alphanumeric tokenizer, no
+  stemming/stopwords (fewest dependencies), viewer-scoped statistics by physically indexing only the
+  eligible projection, temporary index for restricted contexts. Session: k1 1.2/b 0.75 with English
+  stopwords + Porter (closest to ES/IRCoT/HippoRAG 1), global statistics, mask then drop zero scores.
+  Peer's masking counterexample is handled by dropping zero scores; recorded as added verification.
+
 ### Round 5 owner answers (checkpoint, 2026-10-29)
 
 - Q24 (answered): option (a). One current chunking per source; `chunks(source_id)` returns only the
