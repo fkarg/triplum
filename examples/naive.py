@@ -18,5 +18,5 @@ if __name__ == "__main__":
     chunker = FixedSize(1000)
     for source in DataLoader(dataset, batch_size=None):
         store.add_sources([source])
-        store.add_chunks(chunker(source))
+        store.replace_chunks(source.id, chunker(source))
         print(source.origin, len(store.chunks(source.id)), "chunks")

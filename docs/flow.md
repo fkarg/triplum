@@ -14,9 +14,9 @@ This page follows the intended flow and shows where experiments can replace indi
   converter producers take the collection as an argument.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.
-- [Record stores](infrastructure/store.md) support memory and SQL persistence. Write semantics
-  for re-ingested and changed documents, several chunkings of one source, temporal history and
-  origin normalization are not settled.
+- [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are
+  insert-only and each source has one current chunk list, replaced as a whole. Temporal history
+  of changed documents and origin normalization are not settled.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   normalized positional/keyword call arguments, per-computation SQLite tables and CLI/library
   inspection and clearing, including retained function names and source locations for selecting

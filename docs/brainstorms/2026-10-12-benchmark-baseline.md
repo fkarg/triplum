@@ -502,15 +502,26 @@ Dispositions:
   collection, store, fingerprints pages and naive.py; stale handoff/identity spec lines fixed;
   Q26/Q27 added to the question file; store.md now names the missing parent checks; nits applied.
   Committed `14d5b9f` after rerunning all checks (332 passed, 90% branch coverage).
-- **P3 store write contract** (proposed, awaiting acceptance): `add_sources` insert-only with
+- **P3 store write contract** (accepted 2026-10-30, implemented): `add_sources` insert-only with
   conflict errors; `replace_chunks(source_id, chunks)` replaces `add_chunks`; `chunks` ordered by
   ordinal. Peer gpt-6.1-sol `5aea51ff9b27409fb8eb8ffd75f73c7a` added verification: check conflicts
   before deleting, include intra-batch conflicts, bound empty spans to the source length, consume
   iterables fully before mutating, serialize concurrent replacements (SQL transaction; memory store
   single-threaded).
-- **P4 SQLite connection cleanup** (offered): `SQLAlchemyStore` owns an engine with no `close()`;
+- **P4 SQLite connection cleanup** (accepted 2026-10-30, implemented): `SQLAlchemyStore` owns an engine with no `close()`;
   file-backed tests leave pooled connections for GC (warnings under coverage in two store tests,
   attributed by GC timing to a third test).
+- P3/P4 result: `store/checks.py` shared checks; `add_sources` insert-only; `replace_chunks` replaces
+  `add_chunks`; `chunks` ordered by ordinal; `SQLAlchemyStore.close()`; tests close stores. Docs
+  synced by a worker (store guide, decisions, flow, record-types spec), inspected by session.
+  Cross-model diff review gpt-6.1-sol `d2f558a782ab4715bc25f64cba85ad41`: unique defects, chunk-id
+  conflicts were checked only within the target source, and negative starts passed the slice check
+  (via `model_copy`) → both fixed with tests; added verification, failing source iterable and
+  unknown-source precedence tests, protocol now documents chunk-id conflicts; nits partly applied.
+  Not tested: rollback after SQL deletion (no reachable post-delete failure after the global id
+  check) and concurrent SQL replacements (relies on SQLite transaction serialization).
+  Verification (observed): 360 passed, 90% branch coverage, no ResourceWarnings, ty, Ruff, cargo,
+  strict MkDocs, examples/naive.py ran.
 
 ## Lasting documentation targets
 

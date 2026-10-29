@@ -51,29 +51,33 @@ chunks = FixedSize(20)(source)
 
 store = SQLAlchemyStore("sqlite:///records.db")
 store.add_sources([source])
-store.add_chunks(chunks)
+store.replace_chunks(source.id, chunks)
+store.close()
 
 reopened = SQLAlchemyStore("sqlite:///records.db")
 print(reopened.source(source.id) == source)
 for chunk in reopened.chunks(source.id):
-    print(chunk.start, repr(chunk.text))
+    print(chunk.ordinal, chunk.start, repr(chunk.text))
+reopened.close()
 ```
 
 Output:
 
 ```text
 True
-0 'Returns are accepted'
-20 ' within 30 days.'
+0 0 'Returns are accepted'
+1 20 ' within 30 days.'
 ```
 
 1. `FixedSize(20)(source)` splits the source into chunks. Each chunk's `source_id` is the
    source's `id`, which is how the store connects them.
 2. `SQLAlchemyStore("sqlite:///records.db")` opens (or creates) the SQLite file `records.db` in the
    current working directory and creates its `source` and `chunk` tables if they are missing.
-3. `add_sources` must come before `add_chunks`: a chunk whose source is not stored is rejected.
-4. `SQLAlchemyStore(...)` on the same URL sees everything the first store committed. `source(id)`
-   returns the source with that `id`; `chunks(source_id)` returns its chunks ordered by `start`.
+3. `add_sources` must come before `replace_chunks`: chunks can only be given to a stored source.
+   `replace_chunks(source.id, chunks)` makes `chunks` the source's complete chunk list.
+4. `close()` releases the store's database connections once you are done with it.
+5. `SQLAlchemyStore(...)` on the same URL sees everything the first store committed. `source(id)`
+   returns the source with that `id`; `chunks(source_id)` returns its chunks ordered by `ordinal`.
 
 ## Choosing where records go
 
@@ -95,7 +99,8 @@ Practical details:
   created by an older layout is not updated.
 - **The in-memory default is shared across threads.** `SQLAlchemyStore()` keeps its in-memory
   SQLite database on a single connection, so every thread using that store instance sees the same
-  records. Another store instance, even another `SQLAlchemyStore()`, gets its own empty database.
+  records. Another store instance, even another `SQLAlchemyStore()`, gets its own empty database,
+  and `close()` discards it. `MemoryStore` is not safe for concurrent writers.
 - **To start over**, delete the SQLite file (`rm records.db`). There is no method that clears a
   store.
 - **Inspecting the data**: the SQLite file is an ordinary database. Any SQLite client can open it,
@@ -122,17 +127,29 @@ column types, but this has not been verified.
 - **Records are keyed by `id`.** Every source and chunk carries an `id`, a deterministic
   [UUIDv8](https://www.rfc-editor.org/rfc/rfc9562#name-uuid-version-8) derived from its content
   (see [Source](../concepts/source.md) and [Chunk](../concepts/chunk.md)). Re-adding a record
-  produced the same way therefore adds an equal record, and the store keeps one copy. Stores do
-  not yet check that a chunk's `collection_id` and `origin` match its stored source; a chunk
-  that disagrees with its source can replace a stored chunk with the same `id`.
+  produced the same way therefore writes an equal record, and the store keeps one copy.
+- **Sources are only ever added.** `add_sources` stores each source that is not stored yet;
+  re-adding an equal source does nothing. A different source with the `id` of a stored source,
+  or of another source in the same batch, raises `ValueError`. Sources are never replaced or
+  removed.
 - **Changed content is a new record.** A source with different text, origin or collection has a
   different `id` and is stored alongside the old one. Neither the old source nor its chunks are
   removed.
-- **A chunk needs its source.** If any chunk in `add_chunks` refers to a source that is not
-  stored, `add_chunks` raises `KeyError` and stores none of the batch.
+- **Each source has one current chunk list.** `replace_chunks(source_id, chunks)` makes the given
+  chunks, in order, the source's complete chunk list and removes its previous chunks; an empty
+  list leaves the source without chunks. To rechunk with another chunker, replace the source's
+  chunks with the new result.
+- **Chunks must fit their source.** `replace_chunks` raises `KeyError` if the source is not
+  stored, and `ValueError` unless every chunk names that source and its `collection_id` and
+  `origin`, has its list position as `ordinal`, and is an exact slice of the source text
+  (`source.text[chunk.start : chunk.start + len(chunk.text)] == chunk.text`). A different chunk
+  with the `id` of a stored chunk also raises `ValueError`.
+- **A failed write changes nothing.** Each write checks its whole input before storing any of
+  it, so when it raises, including when the iterable you pass raises partway, the store is
+  unchanged. `SQLAlchemyStore` performs each write in one transaction.
 - **Reads**: `source(id)` raises `KeyError` for an unknown id. `sources()` yields every source in
-  no particular order. `chunks(source_id)` returns a list ordered by `start`, empty if the source
-  has no chunks.
+  no particular order. `chunks(source_id)` returns the current chunks ordered by `ordinal`, empty
+  if the source has none.
 - **Round trip**: a record read back equals the one you stored. `SQLAlchemyStore` rebuilds each
   record from its row and checks the stored `id` against its fields; a row edited outside the
   store so that they no longer match raises a Pydantic `ValidationError` on read.

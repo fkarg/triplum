@@ -104,6 +104,17 @@ Everything else can arrive as new tables or optional fields.
 - SQL `source` and `chunk` rows carry `collection_id`, and `chunk` rows `ordinal`. Reads rebuild
   records through validation, so a row whose fields do not match its id is rejected. There are no
   migrations; tables created by the earlier layout are not updated.
+- Implemented store writes (Q25): `add_sources` is insert-only. Equal duplicates are no-ops; a
+  different source under a stored or earlier batch id raises `ValueError`. Sources are never
+  replaced or removed.
+- Implemented chunkings (Q24): each Source has one current chunk list. `replace_chunks(source_id,
+  chunks)` replaces it as a whole (empty clears), after checking that the source is stored
+  (`KeyError`) and that every chunk names its source, collection and origin, has ordinal equal to
+  its list position and is an exact in-bounds slice (`ValueError`, as is a different chunk under a
+  stored id). Writes check all input before changing anything; SQL uses one transaction.
+  `chunks(source_id)` orders by ordinal. Changing the chunker clears and recomputes a source's
+  chunks; the computation cache can make that fast. Multi-chunking membership may follow with
+  benchmark run design.
 - Groups use many-to-many membership, allowing multiple parents; graph/entity implications remain
   for review.
 - Computation reuse is separate from record identity, provenance and permissions. Identical
@@ -114,13 +125,6 @@ Everything else can arrive as new tables or optional fields.
 
 ## Remaining ID decisions
 
-- Store write semantics (Q25): stores still replace by id. With derived ids this is reachable
-  only for equal records, barring bugs, truncated-hash collisions or future fields outside the
-  id. Insert-if-absent with equal duplicates as no-ops and unequal duplicates raising is the
-  recommendation, not an approved contract.
-- Several chunkings of one Source (Q24): `chunks(source_id)` returns the union of every stored
-  chunking, and nothing identifies which ordered result a chunk belongs to or records an empty
-  result. One chunking per collection versus an ordered membership record remains open.
 - Chunking results over 65,536 chunks currently fail Chunk validation; the intended behavior is
   unspecified.
 - Temporal history: text versions of a document share (collection, origin) but have unrelated
