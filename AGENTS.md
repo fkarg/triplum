@@ -25,38 +25,15 @@ planning work and whenever a decision depends on direction; do not edit it unles
   Declarations and docs may be drafted; adapters and pipelines wait for approval.
   Approval of the process is not blanket design approval. Keep decisions with the relevant
   spec until a dedicated design record exists.
-- The owner authorized the first `triplum.cache` implementation and reuse example for review:
-  decorators, `CachedStep`, manual access, replaceable storage, default Pydantic serialization,
-  fingerprintable inputs/outputs and skip-and-count background writes. This does not authorize
-  Source/Chunk ID migration or the remaining ingestion/indexing interfaces.
-- The owner also requested bare `@cached` and `@cache.cached` convenience defaults. The shared
-  cache opens lazily, and concrete return annotations select Pydantic serialization. Automatic
-  function identity covers loaded definitions, settings and statically resolved application helpers
-  on first use. External content needs effective identity in inputs/settings or a full process override. Keep the detailed guarantees in the cache guide and interface spec.
-- Fingerprints should follow relevant data/structure and computation definitions, without requiring
-  manually maintained version numbers. Explicit field projections do not automatically detect
-  schema/code changes. The owner approved automatic loaded-definition hashing plus required selected
-  configuration for FingerprintedComputationMixin/CachedStep, with automatic bounded helper discovery
-  and no manual dependency declarations or counters. Optional `dependency_mode="traced"` refreshes
-  definitions/settings and validates observed dependency manifests before reuse. Tracing is bounded;
-  unsupported discovery declines admission, and cached child hits must not be forced to rerun.
-  This does not approve record/dataset identity migration or whole-schema equivalence.
-- The owner approved `datatype.FingerprintedDataModel`: semantic field-value identity for Pydantic
-  data, explicit bookkeeping exclusions and custom projections. Keep this separate from the
-  computation `FingerprintedComputationMixin`. `FingerprintedDataModelMixin` supplies the same data
-  identity to existing Pydantic bases (mixin first); the ready-made data model combines it with
-  BaseModel. Source/Chunk and dataset migration remain deferred.
-- The owner selected one SQLite table per computation, input-only keys within each table and
-  no codec format identity/migrations. Incompatible output contracts must be represented in
-  computation identity or cleared. The cache stats/clear CLI is authorized; preserve unrelated tables
-  and distinguish
-  committed snapshot counts from filesystem observations.
-- Indexing/ingestion prototypes and their tests remain under owner review. Their appearance in
-  generated API docs does not make them approved interfaces; do not describe them as working
-  APIs in prose docs. The current handoff is
-  [session-state.md](docs/plans/session-state.md); follow its linked specs for open decisions.
-- Track owner questions in [open questions](docs/plans/open-questions.md), across sessions and
-  machines. Append new and leftover questions; after each answer, derive the answers and new
+- Approved contracts, their scope and their limits live in `docs/specs/`; the handoff names what
+  remains under review. Approving one interface never implies approval of a neighbouring one.
+- Fingerprints and ids follow data and computation definitions automatically: no manually
+  maintained version numbers, counters or dependency lists, and no timestamps.
+- Code under owner review may appear in generated API docs; that does not make it an approved
+  interface, and prose docs must not describe it as working. The current handoff is
+  [session-state.md](docs/plans/session-state.md).
+- Track owner questions in [one file per design area](docs/plans/questions/README.md), across
+  sessions and machines. Append new and leftover questions; after each answer, derive the answers and new
   questions it implies. Before presenting a question, get a peer's independent answer with
   `peer-review` and present both, naming who chose what. The owner's answers are authoritative.
 
@@ -90,8 +67,8 @@ planning work and whenever a decision depends on direction; do not edit it unles
 ## Research and data requirements
 
 This research project measures techniques on public benchmarks and the owner’s corpora.
-These requirements describe the intended architecture, not capabilities of every current prototype. Deleted design/benchmark documents do not authorize restoring their old schemas.
-Re-establish missing contracts through the review gate.
+These requirements describe the intended architecture, not current capabilities (see
+`docs/flow.md`). Deleted documents do not authorize restoring their old schemas.
 
 - The library is the product: every capability must be importable and composable without the
   CLI. Any CLI is a thin layer for repetitive operator tasks.
@@ -105,14 +82,13 @@ Re-establish missing contracts through the review gate.
   operate on the viewer's projection. Derived content may never widen input ACLs. Community
   and global summaries must be principal-scoped.
 - Bi-temporal facts use UTC integer instants and closed-open intervals, with a maximum sentinel
-  for open ends.
-  Historical rows are not overwritten/deleted; invalidation closes them and identifies the
-  invalidating fact. Current replace-by-ID prototypes do not satisfy this requirement.
+  for open ends. Historical rows are not overwritten/deleted; invalidation closes them and
+  identifies the invalidating fact.
 - Provider calls belong behind one LLM protocol, with full effective requests as cache keys;
-  pipeline code must not call provider SDKs directly. This interface remains to be rebuilt.
+  pipeline code must not call provider SDKs directly.
 - Every expensive stage is content-addressed on its inputs/configuration and must work with an
-  empty cache. Everything changing an answer belongs in run identity. An explicit benchmark
-  bypass is intended; its interface and the rebuilt benchmark methodology remain deferred.
+  empty cache. Everything changing an answer belongs in run identity. Benchmark runs neither
+  read nor write the cache.
 - Record all third-party dataset/model/code terms in `docs/licences.md`, including commercial
   reuse implications, when introducing or restoring a dependency. Never claim commercial reuse
   the recorded terms do not support. Research-only terms do not disqualify candidates; code without a licence
@@ -123,7 +99,7 @@ Re-establish missing contracts through the review gate.
 
 - Keep decisions in specs/design records and implementation status in `docs/flow.md` and concept
   guides. Change the authoritative page and link to it elsewhere; do not maintain duplicate
-  status inventories. Historical `docs/research/design.md` and `docs/api/index.md` are absent.
+  status inventories.
 - Update hand-written docs in the same change as contracts, fields, paths or behavior; rerun
   affected examples. Update flow.md in the same commit when modules, stages, pipelines or CLI
   commands are added or move from planned to implemented. Delegate docs sync after interface
