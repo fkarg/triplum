@@ -39,7 +39,7 @@ remaining decisions.
 - Working agreement: slow, step by step, with owner review. Do what follows directly from the goals
   and instructions; put everything else to the owner as questions.
 - Next: resume remaining
-  record/interface questions in [open questions](open-questions.md), one decision at a time. The owner
+  record/interface questions in [open questions](questions/ingress-identity.md), one decision at a time. The owner
   deferred Q7's exact span counting/partial-credit choices until benchmark design. Earlier peer
   summaries for Q7 and Q9–Q12 are recorded there (review `4e752214c2144f13b6021c9dcbb48679`);
   its saved full response is unavailable on this machine.

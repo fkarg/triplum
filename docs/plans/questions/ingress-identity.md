@@ -1,22 +1,41 @@
-# Open questions
+# Ingress, record identity and cache binding
 
-Cross-session record of design questions for the owner: open questions first, then answered ones.
-The owner's answers are authoritative. Specs record the resulting contracts once written; this page
-records the questions and answers, and links to the spec that takes over.
-
-## Process
-
-- Append new open questions as they arise, including questions left over from a session.
-- After each owner answer, derive what follows: answers it implies for other questions (mark them
-  "derived" and name the source answer) and new questions it raises. Derive carefully; when an
-  implication is uncertain, ask it as a new question instead of recording it as an answer.
-- Before presenting a question, ask a peer for an independent answer with `peer-review` (see
-  AGENTS.md), without showing it our suggestion. Present both suggestions and name who chose what.
-  Record the peer model, the review ID and any divergence.
-- Number questions once and never reuse a number. Move a question to "Answered" when the owner
-  answers it; keep the suggestions there for context.
+Questions use the `Q` prefix. Process: [questions index](README.md).
 
 ## Open
+
+Round 4 (identity basics), peer gpt-6.1-sol review `46079fc7b277487abf9b2966b4ffd738`; detail in the
+[benchmark baseline capture](../../brainstorms/2026-10-12-benchmark-baseline.md).
+
+### Q22. What a Source id identifies
+
+Owner (answered): one id per exact text version; the fingerprint may share behaviour or build on
+it. No timestamp fields in ids or fingerprints.
+
+Claude and peer: one exact prepared text of one origin in one collection;
+`content_key("source-id", [collection_id, origin, text])` packed into the proposed Source UUIDv8.
+A→B→A recovers A. Versions of a document group by (collection, origin). Temporal occurrences need
+their own key.
+
+### Q23. Collection reference and creation
+
+Owner (answered): deterministic benchmark record ids across installations are not a requirement.
+Collection ids are persisted UUIDv7.
+
+`Source.collection_id: UUID`; collection ids persisted UUIDv7. Divergence on benchmarks: Claude
+derives from corpus identity (needs Q14); peer publishes fixed ids in a benchmark manifest.
+
+### Q24. Chunk identity and multiple chunkings
+
+Claude revised to peer: chunk id from source id, ordinal, start, text; chunker identity in an
+ordered `ChunkingResult` membership record; reads select one result.
+
+### Q25. Writes
+
+Equal id and equal values: no-op. Equal id, different values: conflict error. No replace-by-id;
+retain old versions; explicit replacement closes temporal selections. Atomic publication. At most
+65,536 chunks per result.
+
 
 ### Q7. Representing gold evidence in benchmarks
 
@@ -42,6 +61,12 @@ design; Q7 is not a blocker for the current cache work. No partial-credit metric
 
 ### Q9. What Source and Chunk fingerprints cover
 
+Owner (answered): whole-record fingerprints with the same dependencies as the ids.
+
+Round 4: Claude revised to peer: whole-record fingerprints include context (Source collection,
+origin, text; Chunk source, ordinal, origin, start, text); cross-context reuse caches explicit
+smaller payloads. Current Chunk fingerprint can replay another collection's parent ids.
+
 Q2 permits fingerprints to omit origin/collection; it does not prescribe a universal projection.
 Review Source text-only versus the current origin/text projection, then Chunk text-only versus
 text/start or its current origin/start/text projection, independently of database ID semantics.
@@ -54,7 +79,7 @@ text-only value. Claude (formed after reading the peer): agrees.
 
 Derived from Q1/Q2. Ids either derive fully from their inputs or are random and recomputed per run.
 
-- (a) Deterministic UUIDv8 ids from the agreed layouts ([record types](../specs/record-types.md)):
+- (a) Deterministic UUIDv8 ids from the agreed layouts ([record types](../../specs/record-types.md)):
   Source from full collection identity, exact origin and text; Chunk from full source identity,
   ordinal, start, excerpt and the chunking computation's identity. Requires a persisted collection id.
 - (b) Random UUIDv7, rebuilt per run.
@@ -107,7 +132,7 @@ Owner requires changed effective globals/configuration to change computation ide
 approved P3 option A. Implemented and verified: automatic static decorators and the computation
 mixin reread the existing bounded definition/settings projection each lookup. Code/disassembly
 caches remain; overrides and discovery limits are unchanged. Q21 defines the stable-during-call
-boundary. [Context refresh](../specs/cache-context-refresh.md) owns the resulting contract.
+boundary. [Context refresh](../../specs/cache-context-refresh.md) owns the resulting contract.
 
 ### Q21. Post-computation context validation
 
@@ -116,14 +141,14 @@ identity check after a miss. A computation observing intermediate changes may mi
 neither fingerprint describes it fully. Document this limit; do not expand into dynamic mutation
 tracking. Session favored A, Claude Opus 5.5 favored a partial after-miss guard (review
 cdf47cadbb9c4b89821f95251cb40a8e); owner rejected that extra mechanism.
-[P3 contract](../specs/cache-context-refresh.md) records the authoritative boundary.
+[P3 contract](../../specs/cache-context-refresh.md) records the authoritative boundary.
 
 ### Q19. Multiargument cache decorator
 
 Owner accepted P2: "P2 sounds good, proceed." Both decorators now normalize positional/keyword
 arguments and current defaults into one input digest, preserving legacy sole-fingerprintable
-keys. [Call arguments](../specs/cache-call-arguments.md) owns the implemented contract;
-[the plan](cache-call-arguments.md) records verification. Global-context refresh remains Q20.
+keys. [Call arguments](../../specs/cache-call-arguments.md) owns the implemented contract;
+[the plan](../cache-call-arguments.md) records verification. Global-context refresh remains Q20.
 
 ### Q10. Effective inputs of cached functions
 
@@ -153,7 +178,7 @@ identity semantics remain Q14. Deterministic IDs and digest-field changes remain
 Session and Claude Opus 5.5 (`58c7c321353e42869071e7f4f9ce1b77`) recommend methods. Peer
 additionally recommends preserving dataset digests with an explicit projection; session
 recommends no compatibility projection. Owner accepted the bounded correction. Implementation
-and verification are tracked in the [capture](../brainstorms/2026-10-12-ingress-caching.md).
+and verification are tracked in the [capture](../../brainstorms/2026-10-12-ingress-caching.md).
 
 ### Q4. Application classes and output models in computation identity
 
@@ -162,7 +187,7 @@ the limits. The cache is intended to help quick experimentation, not guarantee d
 every behavior change. Comprehensive output-model contract hashing is not required.
 Python `__hash__` was raised as a possible fallback; it is not a persistent definition identity.
 Implementation details and verification are tracked in
-[referenced class identity](referenced-class-identity.md).
+[referenced class identity](../referenced-class-identity.md).
 
 Owner requested clarification of the current mechanism before deciding: computation selects
 the table, input fingerprint selects the row, and the value is the computed result. The output
