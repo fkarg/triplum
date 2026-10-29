@@ -494,6 +494,23 @@ Dispositions:
   TypeVar bounds failed → fixed; added verification, independent layout vector test; nits: inlined
   single-use helper, removed duplicate assertion; parentheses nit not applied (cosmetic).
   Remaining known limit: `model_copy(update=...)` bypasses validation (documented; SQL reads reject).
+  Fresh-context Claude review: unique defect, the round-5 edit had deleted the owner's Q7 record
+  from the question file (session's slice error) → restored from HEAD; unique defect, TypeVar
+  hashing still evaluated bounds eagerly (NameError for type-checking-only names) and missed
+  ParamSpec/TypeVarTuple/old-style defaults → evaluators now hashed like `__annotate__`, test covers
+  all; docs overstated id reproducibility without a reused collection id → fixed in source,
+  collection, store, fingerprints pages and naive.py; stale handoff/identity spec lines fixed;
+  Q26/Q27 added to the question file; store.md now names the missing parent checks; nits applied.
+  Committed `14d5b9f` after rerunning all checks (332 passed, 90% branch coverage).
+- **P3 store write contract** (proposed, awaiting acceptance): `add_sources` insert-only with
+  conflict errors; `replace_chunks(source_id, chunks)` replaces `add_chunks`; `chunks` ordered by
+  ordinal. Peer gpt-6.1-sol `5aea51ff9b27409fb8eb8ffd75f73c7a` added verification: check conflicts
+  before deleting, include intra-batch conflicts, bound empty spans to the source length, consume
+  iterables fully before mutating, serialize concurrent replacements (SQL transaction; memory store
+  single-threaded).
+- **P4 SQLite connection cleanup** (offered): `SQLAlchemyStore` owns an engine with no `close()`;
+  file-backed tests leave pooled connections for GC (warnings under coverage in two store tests,
+  attributed by GC timing to a third test).
 
 ## Lasting documentation targets
 
