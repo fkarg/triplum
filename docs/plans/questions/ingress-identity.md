@@ -7,24 +7,6 @@ Questions use the `Q` prefix. Process: [questions index](README.md).
 Round 4 (identity basics), peer gpt-6.1-sol review `46079fc7b277487abf9b2966b4ffd738`; detail in the
 [benchmark baseline capture](../../brainstorms/2026-10-12-benchmark-baseline.md).
 
-### Q22. What a Source id identifies
-
-Owner (answered): one id per exact text version; the fingerprint may share behaviour or build on
-it. No timestamp fields in ids or fingerprints.
-
-Claude and peer: one exact prepared text of one origin in one collection;
-`content_key("source-id", [collection_id, origin, text])` packed into the proposed Source UUIDv8.
-A→B→A recovers A. Versions of a document group by (collection, origin). Temporal occurrences need
-their own key.
-
-### Q23. Collection reference and creation
-
-Owner (answered): deterministic benchmark record ids across installations are not a requirement.
-Collection ids are persisted UUIDv7.
-
-`Source.collection_id: UUID`; collection ids persisted UUIDv7. Divergence on benchmarks: Claude
-derives from corpus identity (needs Q14); peer publishes fixed ids in a benchmark manifest.
-
 ### Q7. Representing gold evidence in benchmarks
 
 "Gold evidence" is a benchmark's annotation of which passages support each answer. HotpotQA marks
@@ -46,6 +28,92 @@ Claude now prefers the peer's complete-coverage rule.
 Owner agrees with span-based evidence and wants the full (or mostly full) span retrieved, and
 raised proportional partial credit as a possibility. Owner deferred exact counting until benchmark
 design; Q7 is not a blocker for the current cache work. No partial-credit metric is approved.
+
+### Q13. Storage backbone: one table for many collections, or tables per collection
+
+Owner, while answering Q2: to be rethought soon. Benchmarking one table holding several collections
+requires ids that include collection and origin. Not yet put to a peer.
+
+### Q14. Dataset fingerprints and record ids
+
+Update (2026-10-30): with deterministic ids, `RecordDataset` digests of equal records are now equal;
+whether dataset identity should still include ids remains open.
+
+Derived from Q2. `RecordDataset.fingerprint()` hashes full records, including random ids, so equal
+content gives different dataset identities. Delegate to record fingerprints, or keep full records
+once ids are deterministic (Q12)? Not yet put to a peer.
+
+### Q15. Cache entry points
+
+`@cached`, `@cache.cached` and `CachedStep` overlap. The owner asked for both decorators. Whether
+`CachedStep` remains depends on Q11. Not yet put to a peer.
+
+### Q16. Span coordinates across preprocessing
+
+Derived from fresh Q11 review: Chunk text must be a verbatim slice of Source.text. Normalization
+inside a cached block can shift offsets. Decide which text spans address and where text-changing
+preprocessing sits when reviewing the concrete payload contract. No offset-map type or restriction
+has been approved. Held until that review; main session owns preparation.
+
+### Q17. Mutable external inputs at the conversion/cache boundary
+
+Utf8File reads a Path's current bytes; a path alone does not identify that content. MarkdownFolder
+fingerprinting and later item reading are separate observations. Decide the snapshot boundary
+and effective input for cached parsing/OCR without assuming that a dataset-wide fingerprint
+pins later reads. Held for upstream interface review; main session owns preparation.
+
+### Q28. Access fields on Source
+
+Every store read must take a Viewer (AGENTS.md), and derived records inherit their sources'
+access. Source has no access field yet. Decide the minimal representation (for example an allow-set
+of principals) together with the Viewer contract, RT3 in [retrieval](retrieval.md).
+
+### Q29. Source provenance to the original document
+
+Goals: each source carries provenance to its original document. Source has only `origin`. Decide
+what links a Source to the document it was prepared from (document key, location, conversion and
+preprocessing steps) and whether `origin` remains the document key for gold evidence (BE2).
+
+### Q30. Source history and supersession
+
+Changed text gives a new Source id; nothing links versions, marks one current, or records validity
+and recording intervals. Decide the temporal fields and invalidation records the history
+requirement needs, and how chunk replacement relates to them.
+
+### Q31. Origin normalization
+
+Ids use `origin` exactly as given. Decide which normalization producers apply (paths, URLs) before
+deriving ids, since changing it later re-keys every source.
+
+### Q32. Chunking results over 65,536 chunks
+
+Chunk validation rejects ordinals above 65,535. Decide whether larger results are an error, split,
+or need another layout.
+
+### Q33. Collection storage operations
+
+Collection records are not created, read or scoped by stores. Decide the store methods and whether
+reads are scoped to a collection.
+
+## Answered
+
+### Q22. What a Source id identifies
+
+Owner (answered): one id per exact text version; the fingerprint may share behaviour or build on
+it. No timestamp fields in ids or fingerprints.
+
+Claude and peer: one exact prepared text of one origin in one collection;
+`content_key("source-id", [collection_id, origin, text])` packed into the proposed Source UUIDv8.
+A→B→A recovers A. Versions of a document group by (collection, origin). Temporal occurrences need
+their own key.
+
+### Q23. Collection reference and creation
+
+Owner (answered): deterministic benchmark record ids across installations are not a requirement.
+Collection ids are persisted UUIDv7.
+
+`Source.collection_id: UUID`; collection ids persisted UUIDv7. Divergence on benchmarks: Claude
+derives from corpus identity (needs Q14); peer publishes fixed ids in a benchmark manifest.
 
 ### Q24. Several chunkings of one Source
 
@@ -120,7 +188,8 @@ text-only value. Claude (formed after reading the peer): agrees.
 
 ### Q12. Deterministic record ids
 
-Derived from Q1/Q2. Ids either derive fully from their inputs or are random and recomputed per run.
+Owner (answered through Q22–Q27): (a), implemented in `14d5b9f` without chunker identity in chunk
+ids. Derived from Q1/Q2. Ids either derive fully from their inputs or are random and recomputed per run.
 
 - (a) Deterministic UUIDv8 ids from the agreed layouts ([record types](../../specs/record-types.md)):
   Source from full collection identity, exact origin and text; Chunk from full source identity,
@@ -136,38 +205,6 @@ Fresh review `aa313bda22954ce2a606bb20021b48c4` and local interface exploration 
 table-layout dependency: full collection-scoped Source identity works with shared or separate
 tables. Review Source semantic inputs first, then where collection enters construction, with
 Chunk identity as a later contract. Keep ID derivation independent of record fingerprint inputs.
-
-### Q13. Storage backbone: one table for many collections, or tables per collection
-
-Owner, while answering Q2: to be rethought soon. Benchmarking one table holding several collections
-requires ids that include collection and origin. Not yet put to a peer.
-
-### Q14. Dataset fingerprints and record ids
-
-Derived from Q2. `RecordDataset.fingerprint()` hashes full records, including random ids, so equal
-content gives different dataset identities. Delegate to record fingerprints, or keep full records
-once ids are deterministic (Q12)? Not yet put to a peer.
-
-### Q15. Cache entry points
-
-`@cached`, `@cache.cached` and `CachedStep` overlap. The owner asked for both decorators. Whether
-`CachedStep` remains depends on Q11. Not yet put to a peer.
-
-### Q16. Span coordinates across preprocessing
-
-Derived from fresh Q11 review: Chunk text must be a verbatim slice of Source.text. Normalization
-inside a cached block can shift offsets. Decide which text spans address and where text-changing
-preprocessing sits when reviewing the concrete payload contract. No offset-map type or restriction
-has been approved. Held until that review; main session owns preparation.
-
-### Q17. Mutable external inputs at the conversion/cache boundary
-
-Utf8File reads a Path's current bytes; a path alone does not identify that content. MarkdownFolder
-fingerprinting and later item reading are separate observations. Decide the snapshot boundary
-and effective input for cached parsing/OCR without assuming that a dataset-wide fingerprint
-pins later reads. Held for upstream interface review; main session owns preparation.
-
-## Answered
 
 ### Q20. Refreshing changed effective global context
 
@@ -306,11 +343,8 @@ From the library review; promote to numbered questions when they come up.
 - `process_id` with `dependency_mode="traced"` does not key tables as the docs and CLI describe.
 - `examples/cached_pipeline.py` uses `process_id=definition_hash(...)`, which the guide says is
   unnecessary.
-- `MemoryStore` stores references while the SQL store copies; records are mutable.
-- Re-running ingestion duplicates records (Q12); replacing a source keeps stale chunks.
-- No Question/QA dataset, retriever or text index, retrieval result type, Viewer, metrics or run
-  loop: the path to a BM25 baseline on the fixtures (needs Q7).
-- `Embedder` has no query/passage split; `EmbeddingText` sees only a chunk.
+- QA datasets, retrieval, Viewer, metrics and the run loop are tracked in the
+  [benchmark](benchmark-evidence.md), [retrieval](retrieval.md) and [LLM](llm-qa.md) areas.
+- `Embedder` has no query/passage split; `EmbeddingText` sees only a chunk (DF1).
 - `datasets/manifest.json` and `tests/fixtures/ATTRIBUTION.md` reference removed tooling.
 - `steps/ingestion.py` (comment only) and `steps/indexing.py` (a pipeline) sit in `steps/`.
-- `docs/concepts/decisions.md` publishes replace-by-ID as a store contract.
