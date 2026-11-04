@@ -5,15 +5,28 @@ live in [AGENTS.md](../../AGENTS.md); this page records where to resume, not a s
 
 ## Resume here
 
-Active grill-me workstream: [benchmark baseline](../brainstorms/2026-10-12-benchmark-baseline.md);
-questions are tracked per area in [questions](questions/README.md). The ingress/cache session ended
-2026-10-12 with its work committed; its capture is historical.
+Active grill-me workstream (sequential mode, existing checkout on `main`):
+[benchmark baseline](../brainstorms/2026-10-12-benchmark-baseline.md). Questions live per area in
+[questions](questions/README.md). The ingress/cache session ended 2026-10-12; its capture is
+historical. To resume on any machine: pull `main`, read this section, the capture's latest round
+and the question files; then check `git log` against the state below.
 
-- Deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk ordinals and frozen records are
-  implemented ([record types](../specs/record-types.md)). Open: Q24 chunking-result membership,
-  Q25 store write semantics, temporal history, origin normalization, collection store operations.
-- Benchmark area: BE3/BE4/BE5 answered; BE1, BE2, BE10, BE14–BE17 and RT1–RT3 open; the
-  [interface map](interface-map.md) is the accepted working frame.
+- **Waiting on the owner:** round 6 answers, presented 2026-10-30 (BE1 question record and corpus
+  pairing; BE2 gold-to-Source binding; RT1/RT2 hit and retriever call; RT3 Viewer and a store-owned
+  access snapshot; RT4 bm25s settings and tokenizer). Options, both recommendations and peer
+  dispositions are in the capture ("Round 6") and in
+  [benchmark evidence](questions/benchmark-evidence.md) / [retrieval](questions/retrieval.md).
+- **Next after answers:** offer P5 QA records and fixture converter, P6 Viewer, access snapshot and
+  Viewer-taking reads, P7 BM25 retriever, P8 recall scorers plus the first BM25 R@2/R@5 example on
+  the fixtures. No LLM or API key needed for this path (owner: lowest complexity first).
+- **Implemented this workstream:** deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
+  ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
+  `replace_chunks` with one current chunk list per source; `SQLAlchemyStore.close()`.
+- **Open but deferred** (documented, revisit later): Q13–Q17, Q28–Q33 ingestion items, BE10,
+  BE11, BE13–BE17, DF1–DF3, LQ1–LQ2.
+- No background agents or uncommitted work at handoff. Peer-review JSON is saved per machine; the
+  review IDs in docs are retrievable with `peer-review --show` only on the machine that ran them, so
+  the docs record each review's dispositions in full.
 
 Earlier work resolved Q4 with a bounded referenced-class identity improvement. The wider
 library audit against the owner-maintained [goals](../goals.md) remains the context for the

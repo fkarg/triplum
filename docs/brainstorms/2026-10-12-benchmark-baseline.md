@@ -54,6 +54,10 @@ across nested decorated calls.
   and usage, including cache examples for the more expensive steps. Target for a later P task; not
   before the interfaces it documents are approved.
 
+- **Resumable from any machine** (owner, 2026-11-04; scope: all triplum sessions, standing): commit
+  and push `main` before ending any state-changing turn; handoff and capture carry everything
+  needed to resume. Recorded in AGENTS.md (Verification and workflow).
+
 ## Architecture summary (current state)
 
 No QA dataset type, retrieval result, text/vector index, Viewer, LLM protocol, answerer, metrics or

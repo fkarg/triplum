@@ -127,6 +127,11 @@ These requirements describe the intended architecture, not current capabilities 
   edits. Modifying Ruff commands are fine during development; hooks and CI check without edits.
 - Commit coherent, verified changes periodically. Never add attribution or `Co-Authored-By`
   trailers. Core decisions remain with the owner; keep feedback focused and researched.
+- Keep every session resumable from another machine between turns, without being asked: before
+  ending a turn that changed state, commit the work and its records (handoff, active capture,
+  question files) and push `main`. Record pending questions, running work and review dispositions
+  in [session-state.md](docs/plans/session-state.md) and the capture; machine-local memory,
+  `/tmp` files and saved peer-review JSON do not travel.
 
 ## Human-facing tools
 
