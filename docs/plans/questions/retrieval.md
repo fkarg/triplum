@@ -28,9 +28,22 @@ separate arguments.
 - RT4: bm25s. Claude: k1 1.2, b 0.75, English stopwords + Porter, global statistics, mask then drop
   zero scores. Peer: k1 1.5, b 0.75, plain tokenizer, index only the viewer's eligible chunks.
 
+### Round 7 (peer `c047f9c1bcbf400d94bf457f234e5905`)
+
+Re-presented RT1–RT3 with producer/consumer and access context; new RT6 (read/write semantics
+under a Viewer) and RT5 (which part of BM25 option A the owner excludes). RT2 divergence: k in
+`__init__` (Claude) vs per call (peer).
+
 ### RT3. Viewer contract
 
 Store reads take no Viewer today; the Retriever cannot be access-safe until they do. One `as_of`
 cannot express both valid and transaction time.
 
 ## Answered
+
+### RT4 (answered round 6). BM25 settings
+
+Mostly option A, under the owner policy that established baselines are named, configurable
+presets and stay tunable: bm25s; default IRCoT/ES-like preset (lucene, k1 1.2, b 0.75, English
+stopwords + Porter, global statistics, mask before top-k, drop zero scores); bm25s defaults with a
+plain tokenizer as another preset. RT5 asks which part of A is excluded.

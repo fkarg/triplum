@@ -11,14 +11,14 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Waiting on the owner:** round 6 answers, presented 2026-10-30 (BE1 question record and corpus
-  pairing; BE2 gold-to-Source binding; RT1/RT2 hit and retriever call; RT3 Viewer and a store-owned
-  access snapshot; RT4 bm25s settings and tokenizer). Options, both recommendations and peer
-  dispositions are in the capture ("Round 6") and in
-  [benchmark evidence](questions/benchmark-evidence.md) / [retrieval](questions/retrieval.md).
-- **Next after answers:** offer P5 QA records and fixture converter, P6 Viewer, access snapshot and
-  Viewer-taking reads, P7 BM25 retriever, P8 recall scorers plus the first BM25 R@2/R@5 example on
-  the fixtures. No LLM or API key needed for this path (owner: lowest complexity first).
+- **Waiting on the owner:** round 7, presented 2026-11-04 (BE18 evidence key resolution; RT1/RT2
+  hit and retriever call, with producer/consumer walkthrough; RT3 where access lives; RT6 reads and
+  writes under a Viewer; RT5 which part of BM25 option A is excluded), and approval of the exact P5
+  declaration in [benchmark spec](../specs/benchmark.md). Round 6 answers (BE1 mixed, RT4 mostly A
+  with the presets policy) are in the capture.
+- **Next after answers:** implement P5 once its declaration is approved; then offer P6 Viewer,
+  access and Viewer-taking reads, P7 BM25 retriever, P8 recall scorers plus the first BM25 R@2/R@5
+  example on the fixtures. No LLM or API key needed for this path (owner: lowest complexity first).
 - **Implemented this workstream:** deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
   `replace_chunks` with one current chunk list per source; `SQLAlchemyStore.close()`.

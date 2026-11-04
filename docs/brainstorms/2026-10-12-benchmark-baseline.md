@@ -54,6 +54,11 @@ across nested decorated calls.
   and usage, including cache examples for the more expensive steps. Target for a later P task; not
   before the interfaces it documents are approved.
 
+- **Established baselines as configurable presets** (owner, round 6 Q5, 2026-11-04; scope: all
+  baselines and techniques): ship the established published configurations as named options and
+  keep every parameter tunable. Resolves: RT4 is a preset set (default IRCoT/ES-like), not one
+  pinned setting.
+
 - **Resumable from any machine** (owner, 2026-11-04; scope: all triplum sessions, standing): commit
   and push `main` before ending any state-changing turn; handoff and capture carry everything
   needed to resume. Recorded in AGENTS.md (Verification and workflow).
@@ -79,7 +84,7 @@ integer chunk ids that match no document id.
 
 | ID | Decision | Prerequisites | Status |
 | --- | --- | --- | --- |
-| BE1 | QA benchmark dataset interface (direction b) | research: shared benchmark shapes | Open, research running |
+| BE1 | QA benchmark dataset interface | — | Answered round 6 (mixed) |
 | BE2 | How gold identifies its document | ID state report (done); Q12 status | Re-present with ID facts |
 | BE3 | Evidence recall | — | Answered round 2 |
 | BE4 | Gold granularity | — | Answered: native granularity, recorded |
@@ -90,11 +95,11 @@ integer chunk ids that match no document id.
 | Q22, Q23, Q9 | Source id, collection, fingerprints | — | Answered round 4 |
 | Q24, Q25 | Chunking result membership; store writes | — | Re-present with context |
 | BE17 | Persistence between stages; separate index-build and retrieval runs | BE16, Q22–Q25 | Ready later |
-| RT1 | Retrieval hit record | BE14 | Round 3 |
-| RT2 | Retriever and oracle selector | BE14 | Round 3 |
+| RT1 | Retrieval hit record | BE14 | Round 7 (with context) |
+| RT2 | Retriever and oracle selector | BE14 | Round 7 (with context) |
 | BE15 | Evaluation layering | BE14 | Round 3 |
 | BE16 | Sample/run records, usage, errors | BE14 | Round 3 |
-| RT3 | Viewer contract; Viewer on every store read; as_of semantics | RT2 | Next |
+| RT3 | Viewer contract; where access lives | — | Round 7 (with context) |
 | LQ1 | LLM request/response protocol | BE16 | Queued |
 | RT4 | Evidence formatting and citation format | LQ1 | Queued |
 | BE12 | Retrieval-metric interface | RT result type | Blocked |
@@ -103,6 +108,9 @@ integer chunk ids that match no document id.
 | BE7 | Unanswerable / no-gold handling and eligibility reporting | BE1, BE3 | Backlog |
 | BE8 | Oracle-passage baseline construction | BE2, BE4 | Backlog |
 | BE9 | Judge protocol (prompt, binary, validation sample) | LQ protocol | Backlog |
+| BE18 | Evidence key → Source resolution (follow-up to BE2) | BE2 partial | Round 7 |
+| RT5 | Which part of BM25 option A the owner excludes | RT4 | Round 7 |
+| RT6 | Store read/write semantics under a Viewer | RT3 | Round 7 |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
 ## Investigations
@@ -185,6 +193,62 @@ integer chunk ids that match no document id.
   FlashRAG silently drops raising metrics; DSPy substitutes failure scores.
 
 ## Rounds
+
+### Round 7 (BE18, RT1/RT2, RT3, RT6, RT5): session assessment before peer
+
+Facts gathered: legacy document ids are unique in every fixture; no fixture has duplicate texts;
+titles repeat (or are missing) in many; `Chunk` already carries `origin`, so a span scorer can
+match `evidence.document` against `hit.chunk.origin` without a store read. Record-types decision:
+collection scope is separate from access permissions. Store reads today: `source(id)`,
+`sources()`, `chunks(source_id)`, none take a Viewer.
+
+- BE18: validated origin (no new field): the benchmark binding checks each evidence key resolves to
+  exactly one Source origin in the corpus. Alternatives: nullable `external_id` outside the id,
+  store-enforced unique per collection; same inside the id.
+- RT1/RT2 (revised with consumer context): `RetrievalHit(chunk, score | None)`, list order is rank,
+  producer recorded by the stage; call `__call__(query: str, /, *, viewer: Viewer)`, because query
+  transforms produce strings and the retriever needs nothing else of `QuestionInput`.
+- RT3: store-owned access keyed by Source id, `Viewer(principals)` only; time later.
+- RT6: every read takes `viewer`; an invisible source reads exactly like a missing one (no
+  existence leak); a source without access policy is invisible; access written with the source.
+- RT5: ask which part of round-6 option A the owner excludes.
+
+Round 7 peer: gpt-6.1-sol, review `c047f9c1bcbf400d94bf457f234e5905`, full JSON read (brief only, no
+repository reads). Falsifications: same-origin text revisions; same-title paragraphs; two Sources
+per key; fusion/oracle through a string Retriever; stale stored ranks; forbidden chunks outranking
+visible ones; conflicting grant sets; multi-span graph summary; public Viewer over private gold.
+- BE18: **agrees with session** (benchmark-local origin validation, no field), with a unique
+  argument: a store-enforced unique origin/external id would forbid text revisions of one document
+  coexisting under one origin, so uniqueness belongs to the selected corpus. Missing alternative
+  kept: explicit native key → Source.id binding when key and locator differ. Changed framing.
+- RT1: agrees. RT2: **divergence on k**: peer `(query: str, *, viewer, k)`, k per call; session k in
+  `__init__`. Unique challenge adopted: one shared output type, separate input Protocols for
+  fusion, reranking and oracle (session already had a separate oracle).
+- RT3: agrees; adds `public` is an ordinary principal, empty principals see nothing.
+- RT6: agrees (absent = invisible = policy-less); peer `source(id) -> Source | None` (today raises
+  KeyError); access written atomically with sources as a Source.id → grants mapping, equal repeat
+  no-op, conflict raises, no update operation yet. Added verifications: forbidden-outranks-visible
+  integration case; the evaluation Viewer must see every gold Source (first path).
+
+### Round 6 owner answers (checkpoint, 2026-11-04)
+
+- Q1/BE1 (answered): **mixed**: nested `QuestionInput`, the small `QABenchmark` bundle
+  (`corpus(collection_id)`, `questions()`) and evidence as alternative sets `list[list[Evidence]]`.
+- Q2/BE2 (partial): origin is meant to be the native key, but it is not checked unique. Owner
+  floats an extra nullable field (working name `external_identifier_uq`), unique where non-null.
+  Follow-up BE18: field or validated origin; inside or outside the id; uniqueness scope/enforcer.
+- Q3/RT1–RT2 (not answered): owner needs the surrounding context: RetrievalHit producers,
+  consumers and their constraining shapes. Re-present with a walkthrough.
+- Q4/RT3 (not answered): owner accepts that Viewers are due now; asks for a contextual walkthrough
+  of the surrounding mechanisms. Re-present with a walkthrough. Owner noted grill-me already
+  requires orienting context; the round-6 context was too thin (session error).
+- Q5/RT4 (answered, "mostly A"): **policy: established baselines are offered as configurable
+  named presets and remain tunable** (scope: all baselines/techniques). Applied: bm25s with an
+  IRCoT/ES-like default preset (k1 1.2, b 0.75, English stopwords + Porter, global statistics, mask
+  before top-k, drop zero scores) and the bm25s-default/plain-tokenizer settings as another preset;
+  every parameter configurable. Which part of A "mostly" excludes is unknown → RT5 follow-up.
+- P5 (accepted, "go ahead"): per the AGENTS.md gate this starts with the exact declaration draft
+  and peer critique; implementation waits for owner approval of that declaration.
 
 ### Round 6 owner direction (checkpoint, 2026-10-30)
 
@@ -581,6 +645,14 @@ Dispositions:
   check) and concurrent SQL replacements (relies on SQLite transaction serialization).
   Verification (observed): 360 passed, 90% branch coverage, no ResourceWarnings, ty, Ruff, cargo,
   strict MkDocs, examples/naive.py ran.
+
+- **P5 QA records and legacy fixture loader** (accepted 2026-11-04): declaration drafted in
+  [benchmark spec](../specs/benchmark.md), peer `7ab5b020457144abaf7832b011016aec` dispositions
+  recorded there. Waiting for owner approval of the exact declaration before implementation.
+  Plan: `datatype/question.py`, `datasets/benchmark.py`, `datasets/fixture.py`; tests: every
+  fixture loads and all 704 gold references decode; union/validators via `QAQuestion`; content
+  fingerprints; docs page + flow.md after approval. Budget: no Viewer, no resolution helper (BE18),
+  no scorer.
 
 ## Lasting documentation targets
 
