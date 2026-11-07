@@ -18,9 +18,10 @@ planning work and whenever a decision depends on direction; do not edit it unles
 - For each interface, draft the exact Python declaration, purpose, inputs, outputs, guarantees,
   one small example and unresolved tradeoffs. Introduce supporting types at first use and
   distinguish proposals from approved contracts.
-- Have Claude Opus critique the draft using host `peer-review`, outside the sandbox. Report
-  the serving model, attempted falsifications, dissent and its disposition: changed decision,
-  added verification, unique defect, rejected with reason, or no impact.
+- Have a peer from a different model family critique the draft using host `peer-review`, which
+  selects the family, outside the sandbox. Report the serving model, attempted falsifications,
+  dissent and its disposition: changed decision, added verification, unique defect, rejected
+  with reason, or no impact.
 - Stop for owner review before implementing a contract or advancing to the next interface.
   Declarations and docs may be drafted; adapters and pipelines wait for approval.
   Approval of the process is not blanket design approval. Keep decisions with the relevant
