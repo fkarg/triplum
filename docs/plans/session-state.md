@@ -11,12 +11,9 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Next:** draft P8 (BM25 retriever: `__call__(query, /, *, viewer, k)`, IRCoT/ES-like default
-  preset, mask before top-k) and P9 (recall scorers, first BM25 R@2/R@5 example) declarations,
-  peer them, present for owner approval. Open for P8: global corpus statistics leak term
-  statistics of hidden sources (owner chose global statistics for benchmarks in RT5); private
-  corpora need a decision. Constraints from the security review are in
-  [source access](../specs/source-access.md#implementation-review).
+- **Next:** owner answers to round 8 (RT5 reopened, RT7, RT8, BE12), presented 2026-11-07 with
+  peer `2093cf26166c43c998114f9d3709ff77`; then owner approval of the P8/P9 declarations in the
+  [retrieval spec](../specs/retrieval.md) (draft). Nothing implemented for P8/P9 yet.
 - **Implemented this workstream:** P6 `Source.external_id` and P7 Viewer, store-owned access and
   Viewer-taking reads ([spec](../specs/source-access.md)); P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
   records, `QABenchmark`, `LegacyFixture`; deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk

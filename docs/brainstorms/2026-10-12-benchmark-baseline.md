@@ -102,7 +102,7 @@ integer chunk ids that match no document id.
 | RT3 | Viewer contract; where access lives | — | Answered round 7 |
 | LQ1 | LLM request/response protocol | BE16 | Queued |
 | RT4 | Evidence formatting and citation format | LQ1 | Queued |
-| BE12 | Retrieval-metric interface | RT result type | Blocked |
+| BE12 | Retrieval-metric interface | RT1 | Round 8 |
 | BE13 | Multi-session / episodic benchmarks (LongMemEval) | BE1 | Deferred |
 | BE6 | Run identity record and benchmark-wide cache bypass | BE1, LQ protocol | Backlog |
 | BE7 | Unanswerable / no-gold handling and eligibility reporting | BE1, BE3 | Backlog |
@@ -110,7 +110,9 @@ integer chunk ids that match no document id.
 | BE9 | Judge protocol (prompt, binary, validation sample) | LQ protocol | Backlog |
 | BE18 | Evidence key → Source resolution | — | Answered round 7 (external_id) |
 | BE19 | Revisions of one document vs unique external_id | BE18, history | Flagged |
-| RT5 | BM25 default preset | — | Answered round 7 (A) |
+| RT5 | BM25 default preset | — | Reopened round 8 (HippoRAG 1 premise wrong) |
+| RT7 | BM25 index corpus, masking, statistics scope | RT3, RT6 | Round 8 |
+| RT8 | Tokenizer ownership and preset fidelity | RT5 | Round 8 |
 | RT6 | Store read/write semantics under a Viewer | — | Answered round 7 (raise) |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
@@ -194,6 +196,74 @@ integer chunk ids that match no document id.
   FlashRAG silently drops raising metrics; DSPy substitutes failure scores.
 
 ## Rounds
+
+### Round 8 (RT5 reopened, RT7, RT8, BE12): session assessment before peer (2026-11-07)
+
+Drafting P8/P9 declarations in [retrieval spec](../specs/retrieval.md). Facts: the store exposes no
+per-source grants, only `sources(viewer=)`; 15 of 16 gold-bearing fixtures have one whole-text
+segment per document (qasper has up to 22), and fixture texts start with `title\n`; BE15/BE16
+(layering, run records) remain unanswered, BE6 run identity in backlog.
+
+- RT7 (index corpus, access and statistics scope): `BM25(store, *, viewer, preset)` indexes the
+  current chunks of every source the *indexing* viewer sees; that set is the term-statistics
+  scope. Each call masks to the *query* viewer's source ids (from `store.sources(viewer=)`,
+  memoized per principal set, snapshot semantics). Global statistics = an indexing viewer that
+  sees everything (benchmarks: one public viewer, no difference); exact private statistics = one
+  index per principal set. Alternatives: caller passes chunks plus an access map (store-free,
+  duplicates access); new store capability exposing visible ids or grants.
+- RT8 (tokenizer): before research, leaned bm25s tokenizer + Lucene stop list + Porter. After the
+  research below: our own small tokenizer (lowercase, optional possessive strip, `\w+` regex keeping
+  one-character tokens, stopwords, optional PyStemmer stem), bm25s for scoring only, our own
+  mask/drop/stable-sort ranking; presets documented as approximations.
+- RT5 **reopened by new evidence**: round 6 stated HippoRAG 1 used the ES `english` analyzer; it
+  used the `standard` analyzer (lowercase only) on one `title\ntext` field. IRCoT used `english`
+  on separate title and paragraph fields, summed. Session now recommends a `HIPPORAG1` default
+  (matches the fixtures' source and text format, and HippoRAG reports R@2/R@5), with `IRCOT`
+  (one-field approximation) and `BM25S_DEFAULT` as presets.
+- Research (web subagent, observed with bm25s 0.3.16 / PyStemmer 3.1.0 in a scratch env; primary
+  sources): bm25s MIT, numpy-only core; `lucene` formula equals Lucene's (hand-checked); default
+  k1 1.5; default regex drops one-character tokens; "en" stopwords equal Lucene's 33-word set;
+  `weight_mask` multiplies scores, masked documents still returned at 0; k > N raises; ties via
+  argpartition, jax backend changes tie order; empty corpus and stopword-only queries raise (#214,
+  #202). ES `english` = standard tokenizer, possessive, lowercase, `_english_` stop, Porter;
+  Lucene doc lengths lossy (one byte); default 1 shard since ES 7, so statistics were global.
+  PyStemmer `porter` (1980) differs slightly from Lucene's Porter release-3 code.
+- BE12 (recall scorer interface, P9): a `RetrievalScorer` Protocol `__call__(hits, evidence, /)
+  -> float | None` (None = no gold), configured with `k` and an explicit evidence-key → Source id
+  binding; span-coverage R@k and all-gold R@k first; retrieved characters; `mean` aggregation
+  reporting eligible/excluded counts, zero-counting option. Full BE15 layering not built now.
+- Session decisions (not asked): ties broken by (source id, ordinal); zero-score hits dropped;
+  fewer than k hits allowed; `k < 1` raises; retriever fingerprint covers settings only, index
+  content identity waits for BE6/BE17; unknown evidence key raises; a `WholeText` chunker for the
+  example (HippoRAG passage identity on whole-segment fixtures).
+
+Round 8 peer: gpt-6.1-sol (codex), review `2093cf26166c43c998114f9d3709ff77`, full JSON read (brief
+only, no repository access). Falsifications (executed in a standalone sketch): hidden score 100 vs
+visible 2/0 with k=5; zero-only, empty corpus, k=0; three-way ties at the cutoff; adjacent, gapped
+and overlapping spans; cross-source offsets; best alternative vs pooled items; exclude vs zero
+denominators (1/2 vs 1/3); overlapping chunks in retrieved characters; hidden document changing
+visible scores. Not verified: bm25s/ES facts (taken as given), real adapter paths, costs.
+
+- RT5: **agrees with session**: default to the HippoRAG-standard-like approximation, named as an
+  approximation, other configurations as presets. No decision impact.
+- RT7: **agrees** (store API, declared corpus viewer, snapshot, intersect visible ids before
+  ranking). Divergence: peer reads `sources(viewer=)` per query except for a fixed benchmark viewer;
+  session memoizes per principal set. Session keeps the memo: grants of a stored source cannot
+  change (conflicting re-add raises, no revoke), and later sources are not in the snapshot anyway.
+  Peer finding adopted as a question: private-corpus statistics is a separate owner decision;
+  "global" means global over the declared corpus, not the store.
+- RT8: **agrees** (own small tokenizer as data settings, bm25s scoring only, own selection and
+  ordering). **Unique defect**: dropping nonpositive scores is wrong for methods with negative idf
+  (robertson) → spec now drops by token match. Peer's `k=0 → []` rejected: owner prefers raising on
+  invalid input and `k=0` has no use. Peer's longer tie key (start, text) rejected: `(source_id,
+  ordinal)` is unique within one snapshot (one current chunk list per source).
+- BE12: **divergence**. Peer: plain functions `score_recall(hits, resolved_evidence, *, ks) ->
+  dict[int, RecallAtK]` and `summarize_recall`, evidence resolved to Source ids once during
+  preparation (missing key fails before any retrieval), result records with explicit denominators.
+  Session: scorer classes configured with `k` and the key map. Added verification: no-gold
+  questions still count retrieved characters; summary reports gold-eligible and denominator counts.
+  New sub-question from peer: retrieved characters = delivered text (overlaps count twice) or
+  unique source characters.
 
 ### Round 7 owner answers (checkpoint, 2026-11-07)
 

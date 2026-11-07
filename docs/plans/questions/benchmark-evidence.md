@@ -12,6 +12,16 @@ alternative sets `list[list[Evidence]]` (peer); small `QABenchmark` bundle (Clau
 BE2 options: `Source.origin` = native key, validated unique (Claude) vs an explicit adapter-built
 key → Source.id binding (peer). Four fixtures repeat titles.
 
+### BE12. Recall scoring interface (round 8)
+
+Declarations in the [retrieval spec](../../specs/retrieval.md) (P9). Peer: gpt-6.1-sol,
+`2093cf26166c43c998114f9d3709ff77`. Claude: `SpanRecall`/`AllGoldRecall` classes configured with `k`
+and an evidence-key → Source id map, `KeyError` on a missing key when scoring, `summarize` with
+eligible/excluded counts. Peer: plain `score_recall(hits, resolved_evidence, *, ks)` and
+`summarize_recall` with explicit denominators; evidence resolved to Source ids once during
+preparation, so a missing key fails before retrieval. Sub-question: retrieved characters count
+delivered text (overlaps twice) or unique source characters.
+
 ### BE14. Benchmark run lifecycle and interface map
 
 From owner round 2: identify the full lifecycle and every interface for indexing, retrieval and
