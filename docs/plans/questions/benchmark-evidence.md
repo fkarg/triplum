@@ -12,21 +12,6 @@ alternative sets `list[list[Evidence]]` (peer); small `QABenchmark` bundle (Clau
 BE2 options: `Source.origin` = native key, validated unique (Claude) vs an explicit adapter-built
 key → Source.id binding (peer). Four fixtures repeat titles.
 
-### BE21. Gold character-coverage proportion (round 8 follow-up)
-
-Owner floated "total target (gold) overlap proportion" next to strict span recall. Open: add BE3's
-character-coverage variant (fraction of gold characters covered by the top k, best set) as a
-`RecallAtK` field, or keep it as a later named variant. Prerequisite: BE12 (answered).
-
-Claude (before peer): a `coverage` field on `RecallAtK`, best set. Peer gpt-6.1-sol
-`b4732e8cf63841fa8cc566d20f27c5c3`: a separate `score_character_recall(hits, evidence, *, ks) ->
-dict[int, float | None]`; per set, distinct gold characters covered / distinct gold characters
-(union of same-source gold and hit intervals, so overlapping annotations count once); best set
-chosen independently of strict recall (counterexample: strict picks a set with one of two 10-char
-items, coverage prefers a 100-char item 90% covered); `None` when any set has document evidence
-(no character extent). Agreement: character-weighted, not a mean of item fractions.
-Divergence: field vs separate function.
-
 ### BE14. Benchmark run lifecycle and interface map
 
 From owner round 2: identify the full lifecycle and every interface for indexing, retrieval and
@@ -153,6 +138,26 @@ questions.
 Mixed: nested public `QuestionInput`, small `QABenchmark` bundle (`corpus(collection_id)`,
 `questions()`), evidence as alternative sets `list[list[Evidence]]`. Declaration draft:
 [benchmark spec](../../specs/benchmark.md) (P5, under review).
+
+### BE21 (answered). Gold character-coverage proportion
+
+Owner floated "total target (gold) overlap proportion" next to strict span recall. Open: add BE3's
+character-coverage variant (fraction of gold characters covered by the top k, best set) as a
+`RecallAtK` field, or keep it as a later named variant. Prerequisite: BE12 (answered).
+
+Claude (before peer): a `coverage` field on `RecallAtK`, best set. Peer gpt-6.1-sol
+`b4732e8cf63841fa8cc566d20f27c5c3`: a separate `score_character_recall(hits, evidence, *, ks) ->
+dict[int, float | None]`; per set, distinct gold characters covered / distinct gold characters
+(union of same-source gold and hit intervals, so overlapping annotations count once); best set
+chosen independently of strict recall (counterexample: strict picks a set with one of two 10-char
+items, coverage prefers a 100-char item 90% covered); `None` when any set has document evidence
+(no character extent). Agreement: character-weighted, not a mean of item fractions.
+Divergence: field vs separate function.
+
+Owner: asked for the common academic view, otherwise add directly. Closest precedent: Chroma's
+chunking evaluation token recall, union of relevant tokens, mean over queries (checked). Added as
+`RecallAtK.character_recall` (field, owner's "directly"; peer preferred a separate function), with
+the peer's definition: distinct characters, best set independently, `None` with document evidence.
 
 ### BE12 (answered round 8). Recall scoring interface
 

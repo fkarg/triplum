@@ -76,6 +76,10 @@ class RecallAtK(BaseModel):
     all_gold: bool | None = Field(
         description="Whether some alternative set is covered completely; None without gold."
     )
+    character_recall: float | None = Field(
+        description="Best alternative set's fraction of distinct gold characters inside the top "
+        "`k` hits; None without gold or when any set holds document evidence."
+    )
     retrieved_characters: int = Field(
         description="Distinct source characters in the top `k` hits; overlaps count once."
     )
@@ -98,6 +102,22 @@ def _covered(item: ResolvedEvidence, intervals: dict[UUID, list[tuple[int, int]]
     return any(s <= item.start and item.end <= e for s, e in merged)
 
 
+def _character_recall(
+    items: Sequence[ResolvedSpan], intervals: dict[UUID, list[tuple[int, int]]]
+) -> float:
+    gold: dict[UUID, list[tuple[int, int]]] = {}
+    for item in items:
+        gold.setdefault(item.source_id, []).append((item.start, item.end))
+    total = covered = 0
+    for source, spans in gold.items():
+        for start, end in _merged(spans):
+            total += end - start
+            covered += sum(
+                max(0, min(end, e) - max(start, s)) for s, e in intervals.get(source, [])
+            )
+    return covered / total
+
+
 def score_recall(
     hits: Sequence[RetrievalHit],
     evidence: Sequence[Sequence[ResolvedEvidence]],
@@ -110,6 +130,11 @@ def score_recall(
     A span is covered when the union of the top-`k` chunks of its source contains all of it; a
     document when any top-`k` chunk comes from it. Each alternative set scores the fraction of
     its items covered; the question takes the best set. Items of different sets never combine.
+
+    `character_recall` is the fraction of a set's distinct gold characters that lie in top-`k`
+    chunks of the same source (token recall in Chroma's chunking evaluation, over characters),
+    best set taken separately. Document evidence has no character extent, so a question with
+    any is `None`.
     """
     if any(k < 1 for k in ks):
         raise ValueError("every k must be at least 1")
@@ -126,9 +151,19 @@ def score_recall(
         fractions = [
             sum(_covered(item, covered_by) for item in items) / len(items) for items in evidence
         ]
+        spans_only = all(isinstance(item, ResolvedSpan) for items in evidence for item in items)
+        characters = (
+            [
+                _character_recall([i for i in items if isinstance(i, ResolvedSpan)], covered_by)
+                for items in evidence
+            ]
+            if spans_only
+            else []
+        )
         result[k] = RecallAtK(
             recall=max(fractions) if fractions else None,
             all_gold=any(f == 1 for f in fractions) if fractions else None,
+            character_recall=max(characters) if characters else None,
             retrieved_characters=sum(e - s for spans in covered_by.values() for s, e in spans),
         )
     return result
@@ -143,12 +178,19 @@ class RecallSummary(BaseModel):
     all_gold: float | None = Field(
         description="Fraction of the `denominator` questions with some set fully covered."
     )
+    character_recall: float | None = Field(
+        description="Mean character recall over `character_denominator` questions."
+    )
     retrieved_characters: float | None = Field(
         description="Mean distinct retrieved characters over all `questions`."
     )
     questions: int = Field(description="Questions scored.")
     no_gold: int = Field(description="Questions without gold evidence.")
     denominator: int = Field(description="Questions in the recall means.")
+    character_denominator: int = Field(
+        description="Questions in the character-recall mean: those `denominator` counts, less "
+        "those with document evidence."
+    )
 
 
 def summarize_recall(
@@ -163,9 +205,11 @@ def summarize_recall(
     missing = sum(s.recall is None for s in scores)
     recalls = [s.recall for s in scores if s.recall is not None]
     all_gold = [float(s.all_gold) for s in scores if s.all_gold is not None]
+    characters = [s.character_recall for s in scores if s.character_recall is not None]
     if no_gold == "zero":
         recalls += [0.0] * missing
         all_gold += [0.0] * missing
+        characters += [0.0] * missing
 
     def mean(values: Sequence[float]) -> float | None:
         return sum(values) / len(values) if values else None
@@ -173,8 +217,10 @@ def summarize_recall(
     return RecallSummary(
         recall=mean(recalls),
         all_gold=mean(all_gold),
+        character_recall=mean(characters),
         retrieved_characters=mean([s.retrieved_characters for s in scores]),
         questions=len(scores),
         no_gold=missing,
         denominator=len(recalls),
+        character_denominator=len(characters),
     )

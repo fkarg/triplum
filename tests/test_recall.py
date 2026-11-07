@@ -76,7 +76,9 @@ def test_the_best_alternative_set_wins_and_sets_never_pool():
     second = [ResolvedDocument(source_id=C), _span(A, 20, 30)]
     # first: A and B covered (2/3); second: C covered, A[20,30) not (1/2).
     score = _recall([_hit(A, 0, 10), _hit(B, 0, 1), _hit(C, 7, 9)], [first, second])
-    assert score == RecallAtK(recall=2 / 3, all_gold=False, retrieved_characters=13)
+    assert score == RecallAtK(
+        recall=2 / 3, all_gold=False, character_recall=None, retrieved_characters=13
+    )
     full = _recall([_hit(C, 0, 1), _hit(A, 20, 30)], [first, second])
     assert (full.recall, full.all_gold) == (1.0, True)
 
@@ -85,9 +87,33 @@ def test_only_the_first_k_hits_count():
     hits = [_hit(B, 0, 3), _hit(B, 3, 6, 1), _hit(A, 0, 10)]
     scores = score_recall(hits, [[_span(A, 0, 10)]], ks=[2, 3])
     assert scores == {
-        2: RecallAtK(recall=0.0, all_gold=False, retrieved_characters=6),
-        3: RecallAtK(recall=1.0, all_gold=True, retrieved_characters=16),
+        2: RecallAtK(recall=0.0, all_gold=False, character_recall=0.0, retrieved_characters=6),
+        3: RecallAtK(recall=1.0, all_gold=True, character_recall=1.0, retrieved_characters=16),
     }
+
+
+@pytest.mark.parametrize(
+    ("hits", "gold", "expected"),
+    [
+        ([_hit(A, 0, 90)], [[_span(A, 0, 100)]], 0.9),  # strict recall 0, most text found
+        ([_hit(A, 0, 10)], [[_span(A, 0, 10), _span(A, 5, 15)]], 10 / 15),  # overlap once
+        ([_hit(A, 0, 6), _hit(A, 4, 10, 1)], [[_span(A, 0, 10)]], 1.0),  # hits overlap once
+        ([_hit(B, 0, 10)], [[_span(A, 0, 10)]], 0.0),  # same offsets, other source
+        (
+            [_hit(A, 0, 10), _hit(B, 0, 90)],
+            [[_span(A, 0, 10), _span(A, 20, 30)], [_span(B, 0, 100)]],
+            0.9,
+        ),
+    ],
+    ids=["partial", "gold-overlap", "hit-overlap", "other-source", "best-set-by-characters"],
+)
+def test_character_recall_is_the_covered_fraction_of_distinct_gold_characters(hits, gold, expected):
+    assert _recall(hits, gold).character_recall == pytest.approx(expected)
+
+
+def test_character_recall_needs_spans_in_every_set():
+    gold = [[_span(A, 0, 10)], [ResolvedDocument(source_id=B)]]
+    assert _recall([_hit(A, 0, 10)], gold).character_recall is None
 
 
 def test_overlapping_hits_count_their_characters_once():
@@ -97,7 +123,7 @@ def test_overlapping_hits_count_their_characters_once():
 
 def test_questions_without_gold_have_no_recall_but_characters():
     assert _recall([_hit(A, 0, 4)], []) == RecallAtK(
-        recall=None, all_gold=None, retrieved_characters=4
+        recall=None, all_gold=None, character_recall=None, retrieved_characters=4
     )
 
 
@@ -132,23 +158,32 @@ def test_an_invalid_span_is_rejected_not_read_as_a_document():
 
 def test_summaries_exclude_or_zero_questions_without_gold():
     scores = [
-        RecallAtK(recall=1.0, all_gold=True, retrieved_characters=10),
-        RecallAtK(recall=0.5, all_gold=False, retrieved_characters=20),
-        RecallAtK(recall=None, all_gold=None, retrieved_characters=60),
+        RecallAtK(recall=1.0, all_gold=True, character_recall=1.0, retrieved_characters=10),
+        RecallAtK(recall=0.5, all_gold=False, character_recall=None, retrieved_characters=20),
+        RecallAtK(recall=0.0, all_gold=False, character_recall=0.5, retrieved_characters=0),
+        RecallAtK(recall=None, all_gold=None, character_recall=None, retrieved_characters=60),
     ]
     excluded = summarize_recall(scores)
-    assert (excluded.recall, excluded.all_gold, excluded.denominator) == (0.75, 0.5, 2)
+    assert (excluded.recall, excluded.all_gold, excluded.denominator) == (
+        0.5,
+        pytest.approx(1 / 3),
+        3,
+    )
+    assert (excluded.character_recall, excluded.character_denominator) == (0.75, 2)
     zero = summarize_recall(scores, no_gold="zero")
-    assert (zero.recall, zero.all_gold, zero.denominator) == (0.5, pytest.approx(1 / 3), 3)
+    assert (zero.recall, zero.all_gold, zero.denominator) == (pytest.approx(1.5 / 4), 0.25, 4)
+    assert (zero.character_recall, zero.character_denominator) == (0.5, 3)
     for summary in (excluded, zero):
-        assert (summary.questions, summary.no_gold, summary.retrieved_characters) == (3, 1, 30)
+        assert (summary.questions, summary.no_gold, summary.retrieved_characters) == (4, 1, 22.5)
 
 
 def test_summaries_of_nothing_have_no_means():
     summary = summarize_recall([])
     assert (summary.recall, summary.all_gold, summary.retrieved_characters) == (None, None, None)
     assert (
-        summarize_recall([RecallAtK(recall=None, all_gold=None, retrieved_characters=0)]).recall
+        summarize_recall(
+            [RecallAtK(recall=None, all_gold=None, character_recall=None, retrieved_characters=0)]
+        ).recall
         is None
     )
 
@@ -166,6 +201,6 @@ def test_bm25_recall_example_on_the_hotpotqa_fixture():
         check=True,
     )
     assert result.stdout.splitlines() == [
-        "R@2 0.600  AR@2 0.300  chars 968  (20 of 20 questions with gold)",
-        "R@5 0.775  AR@5 0.600  chars 2639  (20 of 20 questions with gold)",
+        "R@2 0.600  AR@2 0.300  CR@2 0.563  chars 968  (20 of 20 questions with gold)",
+        "R@5 0.775  AR@5 0.600  CR@5 0.747  chars 2639  (20 of 20 questions with gold)",
     ]

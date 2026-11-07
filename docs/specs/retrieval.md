@@ -147,6 +147,7 @@ def resolve_evidence(
 class RecallAtK(BaseModel):  # frozen
     recall: float | None  # best set's fraction of fully covered items; None without gold
     all_gold: bool | None  # some set fully covered; None without gold
+    character_recall: float | None  # BE21; None without gold or with any document evidence
     retrieved_characters: int  # distinct source characters in the top k
 
 
@@ -162,10 +163,12 @@ def score_recall(
 class RecallSummary(BaseModel):  # frozen
     recall: float | None
     all_gold: float | None
+    character_recall: float | None
     retrieved_characters: float | None  # mean over all questions
     questions: int
     no_gold: int
     denominator: int  # questions in the recall means
+    character_denominator: int  # denominator less questions with document evidence
 
 
 def summarize_recall(
@@ -187,12 +190,18 @@ Guarantees:
 - Retrieved characters: distinct source characters (owner: overlaps count once), counted also for
   questions without gold. Delivered text, which counts overlaps twice, is a reader cost that
   belongs with LLM usage.
+- Character recall (BE21, owner "add directly" after the academic check): per set, distinct gold
+  characters (same-source gold intervals unioned) inside the union of top-`k` chunks of their
+  source, over distinct gold characters; best set chosen separately from strict recall. Chroma's
+  chunking evaluation defines token recall the same way over tokens
+  ([source](https://www.trychroma.com/research/evaluating-chunking), checked 2026-11-07); it has no
+  alternative sets. Document evidence has no character extent, so a question with any is `None`.
 - Summaries: recall means over `denominator` questions; `no_gold="zero"` adds questions without
   gold as 0. Empty denominators give `None`.
 - With one chunk per whole source and whole-document gold, `recall` equals HippoRAG's
   passage-set R@k and `all_gold` its AR@k.
 - Not included: BE3's named variants (document/title recall, answer-in-context, MultiHop-RAG fact
-  hits, character coverage/IoU; BE21 asks about a gold-coverage proportion), per-question run
+  hits, character precision/IoU), per-question run
   records (BE16), repeats and intervals (BE15).
 
 ### `WholeText` chunker (`src/triplum/steps/chunking.py`)
@@ -210,7 +219,7 @@ Takes a fixture path, stores its corpus in a `MemoryStore` with `allow=["public"
 `WholeText`, resolves all evidence, builds `BM25` with the default preset, retrieves `k=5` per
 question with the public viewer, and prints R@2, R@5, AR@2, AR@5 and mean retrieved characters.
 No API key, network or cache. On `tests/fixtures/hotpotqa.json` (observed, pinned by a test):
-R@2 0.600, AR@2 0.300, R@5 0.775, AR@5 0.600, 968 / 2639 characters, 20 of 20 questions with
+R@2 0.600, AR@2 0.300, CR@2 0.563, R@5 0.775, AR@5 0.600, CR@5 0.747, 968 / 2639 characters, 20 of 20 questions with
 gold. Not compared against published numbers (20 questions only).
 
 ## Verification
@@ -222,7 +231,8 @@ preset's k1/b; unknown, empty, punctuation-only and case-differing queries; fewe
 empty and tokenless corpora; `k < 1`; snapshot after writes; presets differ on one-character
 tokens; fingerprint follows settings. `tests/test_recall.py`: adjacent, overlapping, gapped,
 short and other-source coverage; document evidence; best set without pooling; first `k` only;
-distinct characters; no-gold; invalid `k`; resolution and unknown keys; union rejects an invalid
+distinct characters; character recall (partial, overlapping gold, overlapping hits, other source,
+best set by characters, document evidence → None); no-gold; invalid `k`; resolution and unknown keys; union rejects an invalid
 span; summary denominators; the example's output. Mutations (dropping the visibility filter,
 not merging adjacent intervals) turn tests red (observed).
 
@@ -250,7 +260,6 @@ not merging adjacent intervals) turn tests red (observed).
 
 ## Open
 
-- BE21: a gold character-coverage proportion alongside strict span recall.
 - Viewer-scoped term statistics for private corpora (RT7, deferred by the owner's privacy policy).
 - Index persistence, content identity and separate index-build runs (BE6, BE17). Until then,
   retriever calls must not be cached: the fingerprint covers settings, not the indexed chunks,

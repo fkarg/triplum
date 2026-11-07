@@ -1,4 +1,4 @@
-"""BM25 retrieval recall on a legacy fixture: R@2, R@5 and their all-gold variants. No LLM."""
+"""BM25 retrieval recall on a legacy fixture: R@k, all-gold AR@k and character CR@k. No LLM."""
 
 import sys
 from pathlib import Path
@@ -38,6 +38,7 @@ if __name__ == "__main__":
             continue
         print(
             f"R@{k} {summary.recall:.3f}  AR@{k} {summary.all_gold:.3f}  "
+            f"CR@{k} {summary.character_recall:.3f}  "
             f"chars {summary.retrieved_characters:.0f}  "
             f"({summary.denominator} of {summary.questions} questions with gold)"
         )

@@ -58,15 +58,16 @@ print(summarize_recall([scores[2]]))
 
 ```text
 [(40, 'unds take 5 days.'), (20, ' within 30 days. Ref')]
-1 recall=0.0 all_gold=False retrieved_characters=17
-2 recall=1.0 all_gold=True retrieved_characters=37
-recall=1.0 all_gold=1.0 retrieved_characters=37.0 questions=1 no_gold=0 denominator=1
+1 recall=0.0 all_gold=False character_recall=0.85 retrieved_characters=17
+2 recall=1.0 all_gold=True character_recall=1.0 retrieved_characters=37
+recall=1.0 all_gold=1.0 character_recall=1.0 retrieved_characters=37.0 questions=1 no_gold=0 denominator=1 character_denominator=1
 ```
 
 1. The gold evidence is `Refunds take 5 days.`, characters `[37, 57)` of the policy.
    `resolve_evidence` replaces the document key `"policy"` with the Source's id.
 2. `FixedSize(20)` cuts that sentence across two chunks. The best hit holds only
-   `unds take 5 days.`, so at `k=1` the span is not covered and recall is 0.
+   `unds take 5 days.`, so at `k=1` the span is not covered and recall is 0. That hit still holds
+   17 of the span's 20 characters, so character recall is 0.85.
 3. At `k=2` the two hits together contain the whole span, so recall is 1.
 
 ## Resolve evidence first
@@ -104,10 +105,16 @@ Coverage uses only each chunk's `source_id` and its character range
 `[start, start + len(text))`; it reads no store and compares no text. `k` below 1 raises
 `ValueError`.
 
-A `RecallAtK` has three fields:
+A `RecallAtK` has four fields:
 
 - `recall`: the best set's fraction of covered items.
 - `all_gold`: whether some set is covered completely.
+- `character_recall`: the best set's fraction of gold characters that lie inside top-`k` chunks
+  of the same source. Overlapping gold spans count their shared characters once. The best set is
+  chosen separately from `recall`, so the two may come from different sets. This follows
+  Chroma's token recall for chunking evaluation, counted over characters instead of tokens. A
+  document has no character extent, so `character_recall` is `None` when any set contains
+  document evidence.
 - `retrieved_characters`: how many distinct source characters the top `k` hits contain.
   Overlapping chunks count their shared characters once, so this measures how much of the corpus
   was retrieved, not how much text a reader would receive.
@@ -117,7 +124,8 @@ R@k and `all_gold` its all-gold recall AR@k.
 
 ## Questions without gold
 
-A question whose `evidence` is `[]` has nothing to cover: its `recall` and `all_gold` are `None`.
+A question whose `evidence` is `[]` has nothing to cover: its `recall`, `all_gold` and
+`character_recall` are `None`.
 Its `retrieved_characters` are still counted.
 
 `summarize_recall(scores, no_gold="exclude")` averages one `k` across questions into a
@@ -125,9 +133,12 @@ Its `retrieved_characters` are still counted.
 
 - `recall` and `all_gold`: means over the `denominator` questions. The default leaves questions
   without gold out; `no_gold="zero"` counts them as 0.
+- `character_recall`: the mean over the `character_denominator` questions, which are the
+  `denominator` questions without document evidence. With `no_gold="zero"`, questions without
+  gold count as 0 here too.
 - `retrieved_characters`: the mean over all `questions`.
 - `questions`, `no_gold` and `denominator`: how many questions were scored, how many had no gold,
-  and how many entered the recall means.
+  and how many entered the `recall` and `all_gold` means.
 
 A mean over no questions is `None`.
 
@@ -143,12 +154,14 @@ uv run python examples/bm25_recall.py tests/fixtures/hotpotqa.json
 ```
 
 ```text
-R@2 0.600  AR@2 0.300  chars 968  (20 of 20 questions with gold)
-R@5 0.775  AR@5 0.600  chars 2639  (20 of 20 questions with gold)
+R@2 0.600  AR@2 0.300  CR@2 0.563  chars 968  (20 of 20 questions with gold)
+R@5 0.775  AR@5 0.600  CR@5 0.747  chars 2639  (20 of 20 questions with gold)
 ```
 
-`AR@k` is the `all_gold` mean and `chars` the mean distinct retrieved characters. Twenty
-questions are too few to compare with published results.
+`AR@k` is the `all_gold` mean, `CR@k` the `character_recall` mean and `chars` the mean distinct
+retrieved characters. `CR@k` differs from `R@k` because the two weigh gold differently: strict
+recall gives each gold passage the same weight, while character recall weighs each passage by
+its length. Twenty questions are too few to compare with published results.
 
 ## Reference
 

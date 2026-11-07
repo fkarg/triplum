@@ -117,7 +117,7 @@ integer chunk ids that match no document id.
 | RT5 | BM25 default preset | — | Answered round 8 (HIPPORAG1) |
 | RT7 | BM25 index corpus, masking, statistics scope | RT3, RT6 | Answered round 8 (c) |
 | RT8 | Tokenizer ownership and preset fidelity | RT5 | Answered round 8 |
-| BE21 | Gold character-coverage proportion alongside strict span recall | BE12 | Presented with peer `b4732e8c…` |
+| BE21 | Gold character-coverage proportion alongside strict span recall | BE12 | Answered: added (CR@k) |
 | RT6 | Store read/write semantics under a Viewer | — | Answered round 7 (raise) |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
@@ -784,7 +784,8 @@ Dispositions:
   declarations and review dispositions. Defects fixed with red-before-fix regressions: capture
   groups (peer `d4dc780a…`), unbounded k1/b (peer and general reviewer), empty-match tokens (general
   reviewer). First measurement (observed): HotpotQA fixture, HIPPORAG1, WholeText: R@2 0.600,
-  R@5 0.775, AR@2 0.300, AR@5 0.600. Next candidates: BE21 answer; IRCOT preset with stemming;
+  R@5 0.775, AR@2 0.300, AR@5 0.600; BE21 added character recall CR@2 0.563, CR@5 0.747. Next
+  candidates: IRCOT preset with stemming;
   dense retrieval (DF) or LLM protocol (LQ1) for closed-book/oracle baselines.
 
 ## Lasting documentation targets
