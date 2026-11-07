@@ -13,6 +13,10 @@ its own contract here before implementation:
   status and offers some management (list, download ahead of use, verify, remove, show recorded
   licence terms including commercial-reuse implications). The same applies to model weights
   (embedders, rerankers, local LLMs). Datasets are currently downloaded through the library only.
+  Owner (2026-11-07): provided datasets use the same cache as computations and download
+  automatically when missing. Implemented: `utils.paths.cache_home()` (`$XDG_CACHE_HOME/triplum`)
+  holds `cache.sqlite` and `datasets/`; `datasets.files.fetch` downloads pinned files into a
+  per-call temporary file, verifies sha256, then renames.
 - Benchmark runs: launch a Python pipeline factory in benchmark mode (no cache reads or writes,
   seeded replicates, recorded run identity) with operator options only: seed, replicate count,
   dataset, output location. Depends on the unbuilt benchmark runner and run identity.

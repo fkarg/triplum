@@ -1,11 +1,10 @@
 """MultiHop-RAG corpus (Tang and Yang, 2024; ODC-BY): 609 news articles as `Source` records."""
 
-import hashlib
 import json
-import urllib.request
 from pathlib import Path
 from uuid import UUID
 
+from triplum.datasets.files import datasets_home, fetch
 from triplum.datatype import Source
 from triplum.utils.cache import content_key
 from triplum.utils.data import Dataset
@@ -14,36 +13,25 @@ URL = "https://huggingface.co/datasets/yixuantt/MultiHopRAG/resolve/main/corpus.
 SHA256 = "20b61b5ab84de84a927420c5d265b7ec8d859ae49980699958a787ade9e4d28f"
 
 
-def _verified(path: Path) -> bool:
-    return path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == SHA256
+def download(root: Path | None = None) -> Path:
+    """Fetch the pinned `corpus.json` into `root` unless a verified copy exists; return its path.
 
-
-def download(root: Path) -> Path:
-    """Fetch the pinned `corpus.json` into `root` unless a verified copy exists; return its path."""
-    path = root / "multihoprag" / "corpus.json"
-    if _verified(path):
-        return path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    part = path.with_suffix(".part")
-    urllib.request.urlretrieve(URL, part)
-    if not _verified(part):
-        raise ValueError(f"{URL} does not match the pinned sha256 {SHA256}")
-    part.replace(path)
-    return path
+    `root` defaults to `datasets_home()`.
+    """
+    root = datasets_home() if root is None else root
+    return fetch(URL, root / "multihoprag" / "corpus.json", SHA256)
 
 
 class MultiHopRAGCorpus(Dataset[Source]):
     """One `Source` per article: `origin` is the article URL, `text` is title, blank line, body.
 
-    The whole file is parsed at construction and must match the pinned hash. Sources belong to
-    the collection `collection_id`.
+    The file is downloaded into `root` on first use (`download`), verified against its pinned
+    hash and parsed at construction. Sources belong to the collection `collection_id`.
     """
 
-    def __init__(self, path: Path, *, collection_id: UUID) -> None:
+    def __init__(self, *, collection_id: UUID, root: Path | None = None) -> None:
         self.collection_id = collection_id
-        if not _verified(path):
-            raise ValueError(f"{path} does not match the pinned sha256 {SHA256}")
-        self.articles = json.loads(path.read_bytes())
+        self.articles = json.loads(download(root).read_bytes())
 
     def __len__(self) -> int:
         return len(self.articles)

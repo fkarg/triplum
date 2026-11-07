@@ -142,12 +142,12 @@ Its `retrieved_characters` are still counted.
 
 A mean over no questions is `None`.
 
-## BM25 on a fixture
+## BM25 on a fixture and on HotpotQA
 
-`examples/bm25_recall.py` scores [BM25](retrieval.md) on a repository fixture. It stores the
-fixture corpus with public access, keeps each passage as one chunk with
-[`WholeText`](chunking.md#whole-text), resolves all evidence, then retrieves five hits per
-question with the default `HIPPORAG1` settings. It needs no API key, network or cache:
+`examples/bm25_recall.py` scores [BM25](retrieval.md) on a benchmark. It stores the corpus with
+public access, keeps each passage as one chunk with [`WholeText`](chunking.md#whole-text),
+resolves all evidence, then retrieves five hits per question with the default `HIPPORAG1`
+settings. It needs no API key. Given a repository fixture, it needs no network or cache either:
 
 ```sh
 uv run python examples/bm25_recall.py tests/fixtures/hotpotqa.json
@@ -162,6 +162,27 @@ R@5 0.775  AR@5 0.600  CR@5 0.747  chars 2639  (20 of 20 questions with gold)
 retrieved characters. `CR@k` differs from `R@k` because the two weigh gold differently: strict
 recall gives each gold passage the same weight, while character recall weighs each passage by
 its length. Twenty questions are too few to compare with published results.
+
+Given `hotpotqa`, it scores the 1,000 [HotpotQA](datasets.md#load-hotpotqa) questions over
+9,811 passages, downloading them on first use. The optional second argument chooses the
+[gold unit](datasets.md#choose-the-gold-unit) and defaults to `passage`. A run takes about 30
+seconds:
+
+```sh
+uv run python examples/bm25_recall.py hotpotqa passage
+```
+
+```text
+R@2 0.562  AR@2 0.247  CR@2 0.550  chars 896  (1000 of 1000 questions with gold)
+R@5 0.732  AR@5 0.503  CR@5 0.725  chars 2451  (1000 of 1000 questions with gold)
+```
+
+With `sentence`, `R@2` is 0.571 and `R@5` 0.737, and `CR@2` 0.567 and `CR@5` 0.732; `AR@k` is
+unchanged, since a passage is retrieved whole or not at all. HippoRAG's paper
+([arXiv 2405.14831](https://arxiv.org/abs/2405.14831), Table 2) reports BM25 R@2 55.4 and R@5
+72.2 on HotpotQA, within about one point of the passage-gold run. That the pinned files are
+the corpus and questions the paper's run used has not been established, so treat the comparison
+as approximate.
 
 ## Reference
 

@@ -1,8 +1,16 @@
-"""BM25 retrieval recall on a legacy fixture: R@k, all-gold AR@k and character CR@k. No LLM."""
+"""BM25 retrieval recall: R@k, all-gold AR@k and character CR@k. No LLM, no API key.
+
+    python examples/bm25_recall.py tests/fixtures/hotpotqa.json   # a legacy fixture
+    python examples/bm25_recall.py hotpotqa [sentence|passage]    # downloaded on first use
+
+HotpotQA is downloaded into the triplum cache folder (`$XDG_CACHE_HOME/triplum/datasets`) when
+missing. The example scores passage-level gold, the unit HippoRAG's published recall counts.
+"""
 
 import sys
 from pathlib import Path
 
+from triplum.datasets import hotpotqa
 from triplum.datasets.fixture import LegacyFixture
 from triplum.datatype import Collection, Viewer
 from triplum.evaluation.recall import resolve_evidence, score_recall, summarize_recall
@@ -11,9 +19,13 @@ from triplum.steps.retrieval import BM25
 from triplum.store import MemoryStore
 
 if __name__ == "__main__":
-    path = Path(sys.argv[1])
-    fixture = LegacyFixture(path)
-    collection = Collection(name=path.stem)
+    name = sys.argv[1]
+    if name == "hotpotqa":
+        sentence = sys.argv[2:] == ["sentence"]
+        fixture = hotpotqa.HotpotQA(gold="sentence" if sentence else "passage")
+    else:
+        fixture = LegacyFixture(Path(name))
+    collection = Collection(name=Path(name).stem)
     corpus = list(fixture.corpus(collection.id))
     store = MemoryStore()
     store.add_sources(corpus, allow=["public"])

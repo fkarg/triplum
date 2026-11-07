@@ -7,6 +7,7 @@ from threading import Lock
 
 from triplum.cache.runtime import Cache
 from triplum.cache.sqlite import SQLiteBackend
+from triplum.utils.paths import cache_home
 
 _lock = Lock()
 _cache: Cache | None = None
@@ -16,10 +17,7 @@ _shutting_down = False
 
 def default_cache_path() -> Path:
     """Resolve the default database path without creating directories or files."""
-    root = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
-    if not root.is_absolute():
-        root = Path.home() / ".cache"
-    return root / "triplum" / "cache.sqlite"
+    return cache_home() / "cache.sqlite"
 
 
 def default_backend() -> SQLiteBackend:

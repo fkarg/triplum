@@ -15,7 +15,10 @@ This page follows the intended flow and shows where experiments can replace indi
 - [Benchmark inputs](concepts/benchmark-inputs.md): `QAQuestion` with its public
   `QuestionInput` and `SpanEvidence`/`DocumentEvidence` gold, the `QABenchmark` corpus and
   questions bundle, and `LegacyFixture` for the repository's fixture files. Evidence names native
-  document keys, which are the corpus Sources' `external_id`s.
+  document keys, which are the corpus Sources' `external_id`s. [`HotpotQA`](concepts/datasets.md#load-hotpotqa)
+  reads HippoRAG's 1,000-question HotpotQA sample with sentence or passage gold. It and the
+  MultiHop-RAG corpus download pinned, hash-checked files on first use into
+  [the datasets folder](concepts/datasets.md#where-downloads-go) beside the computation cache.
 - [Retrieval](concepts/retrieval.md): the `Retriever` contract returning ranked `RetrievalHit`s,
   and `BM25`, lexical search over an in-memory snapshot of a store's chunks with the `HIPPORAG1`
   (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read and returns
@@ -23,7 +26,7 @@ This page follows the intended flow and shows where experiments can replace indi
   indexed chunk. `WholeText` keeps each source as one chunk.
 - [Retrieval recall](concepts/recall.md): resolving gold evidence to Source ids, span and
   document coverage at several `k`, and means across questions. `examples/bm25_recall.py` scores
-  BM25 on a fixture. Answer scoring, baselines other than BM25 and a benchmark runner with run
+  BM25 on a fixture or on HotpotQA. Answer scoring, baselines other than BM25 and a benchmark runner with run
   identity are not implemented.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.

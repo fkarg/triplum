@@ -28,6 +28,11 @@ across nested decorated calls.
 
 ## Owner policies
 
+- **Provided datasets live in the triplum cache and download on first use** (owner, 2026-11-07;
+  scope: built-in datasets, likely model weights per the CLI contract). Applied: `cache_home()`
+  shared with the computation cache; `HotpotQA()` and `MultiHopRAGCorpus()` fetch when missing.
+  Dataset CLI management (list, download ahead, verify, remove, licence) still needs its contract.
+
 - **Simpler version now, full privacy suite eventually** (owner, round 8 RT7, 2026-11-07; scope:
   access and privacy features): ship the simplest correct access behaviour, document its
   tradeoffs, extend later. Resolves: RT7 (c), no visibility memo.
@@ -787,6 +792,16 @@ Dispositions:
   R@5 0.775, AR@2 0.300, AR@5 0.600; BE21 added character recall CR@2 0.563, CR@5 0.747. Next
   candidates: IRCOT preset with stemming;
   dense retrieval (DF) or LLM protocol (LQ1) for closed-book/oracle baselines.
+
+- **HotpotQA reference dataset** (owner request 2026-11-07, implemented): `datasets/hotpotqa.py`,
+  shared `datasets/files.fetch`, `utils/paths.cache_home`. Full protocol, HIPPORAG1, WholeText,
+  passage gold (observed): R@2 0.562, R@5 0.732 (HippoRAG Table 2 BM25: 55.4 / 72.2; corpus-file
+  equivalence not established); sentence gold R@2 0.571, R@5 0.737. Cross-model diff review
+  gpt-6.1-sol `ff93fc969e244bbfb9caefa3c14b55c5` (two-process races, Unicode offsets, XDG
+  variants): unique defect, concurrent downloads shared one `.part` file and could publish a
+  partial file → per-call temporary file, race regression red before the fix (observed); unique
+  defect, negative sentence indices accepted → bounds check, test; a test filtered evidence and
+  could miss extra items → exact comparison; nits applied (single dedupe, inline selector).
 
 ## Lasting documentation targets
 

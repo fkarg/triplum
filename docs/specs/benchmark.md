@@ -118,6 +118,32 @@ Alternative considered: rewrite the fixtures once into a new JSON shape. Rejecte
 defines a second on-disk schema and churns 34 files, while read-in-place keeps the legacy recipe in
 one module.
 
+## HotpotQA: `src/triplum/datasets/hotpotqa.py`
+
+Added on the owner's request (2026-11-07: make the BM25 example usable with an automatically
+downloaded, cached reference dataset). Implements the approved `QABenchmark`.
+
+```python
+class HotpotQA(QABenchmark):
+    def __init__(
+        self, root: Path | None = None, *, gold: Literal["sentence", "passage"] = "sentence"
+    ) -> None: ...
+```
+
+- Files: HippoRAG's `reproduce/dataset/hotpotqa{,_corpus}.json` pinned to commit `191f2811` and
+  sha256 (the hashes the deleted loader pinned; re-checked), downloaded into `root/hotpotqa` on
+  first use; `root` defaults to `datasets_home()`. 1,000 questions, 9,811 passages.
+- Sources: text `title\ntext`; `origin` and `external_id` = title (unique, observed).
+- Gold, applying BE4 (native granularity) and the configurable-evaluation policy: `sentence`
+  (default) gives one span per supporting sentence, exact because each passage equals the
+  concatenation of its context sentences (all 9,942 occurrences, observed); `passage` gives one
+  whole-passage span per supporting passage, HippoRAG's recall unit. 350 questions have several
+  supporting sentences in one passage, so item recall differs between the modes. With `passage`,
+  the 20 legacy-fixture questions have identical gold, question and answer (observed).
+- Unresolvable supporting facts (unknown title, index outside the sentences, sentences differing
+  from the corpus) raise `ValueError` at construction. `metadata` keeps `type` and `level`; the
+  distractor `context` is not carried (BE11).
+
 ## Example
 
 ```python

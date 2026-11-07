@@ -91,6 +91,6 @@ class BM25(Retriever, FingerprintedComputationMixin):
         scores = self._index.get_scores(known)
         visible = {source.id for source in self._store.sources(viewer=viewer)}
         # Lucene idf is positive, so a chunk sharing a query token scores above zero.
-        rows = [i for i, c in enumerate(self._chunks) if c.source_id in visible and scores[i] > 0]
+        rows = [i for i in (scores > 0).nonzero()[0] if self._chunks[i].source_id in visible]
         rows.sort(key=lambda i: -scores[i])  # stable: ties keep (source_id, ordinal) order
         return [RetrievalHit(chunk=self._chunks[i], score=float(scores[i])) for i in rows[:k]]

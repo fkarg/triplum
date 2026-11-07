@@ -11,10 +11,12 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Next:** choose the next interface with the owner: IRCOT preset with stemming, dense
+- **Next:** dataset CLI management contract (owner raised it 2026-11-07; research done, see the
+  capture); then choose the next interface with the owner: IRCOT preset with stemming, dense
   retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
-  ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21); P6 `Source.external_id` and P7 Viewer, store-owned access and
+  ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download
+  on first use into the shared cache folder; P6 `Source.external_id` and P7 Viewer, store-owned access and
   Viewer-taking reads ([spec](../specs/source-access.md)); P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
   records, `QABenchmark`, `LegacyFixture`; deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
