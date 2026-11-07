@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from triplum.datasets.markdownfolder import MarkdownFolder
-from triplum.datatype import Collection
+from triplum.datatype import Collection, Viewer
 from triplum.steps.chunking import FixedSize
 from triplum.store import SQLAlchemyStore
 from triplum.utils.data import DataLoader
@@ -16,7 +16,8 @@ if __name__ == "__main__":
     # IDs repeat only within the same collection.
     store = SQLAlchemyStore()
     chunker = FixedSize(1000)
+    reader = Viewer(principals=frozenset({"public"}))  # sources below are added as public
     for source in DataLoader(dataset, batch_size=None):
-        store.add_sources([source])
+        store.add_sources([source], allow=["public"])
         store.replace_chunks(source.id, chunker(source))
-        print(source.origin, len(store.chunks(source.id)), "chunks")
+        print(source.origin, len(store.chunks(source.id, viewer=reader)), "chunks")

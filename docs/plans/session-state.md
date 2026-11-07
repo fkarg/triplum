@@ -11,12 +11,14 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Waiting on the owner:** approval of the P6 (`Source.external_id`) and P7 (Viewer, store-owned
-  access, Viewer-taking reads) declarations in [source access](../specs/source-access.md).
-  Round 7 answers are in the capture and question files.
-- **Next after approval:** implement P6, P7; then draft P8 BM25 retriever and P9 recall scorers
-  plus the first BM25 R@2/R@5 example on the fixtures. No LLM or API key needed.
-- **Implemented this workstream:** P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
+- **Next:** draft P8 (BM25 retriever: `__call__(query, /, *, viewer, k)`, IRCoT/ES-like default
+  preset, mask before top-k) and P9 (recall scorers, first BM25 R@2/R@5 example) declarations,
+  peer them, present for owner approval. Open for P8: global corpus statistics leak term
+  statistics of hidden sources (owner chose global statistics for benchmarks in RT5); private
+  corpora need a decision. Constraints from the security review are in
+  [source access](../specs/source-access.md#implementation-review).
+- **Implemented this workstream:** P6 `Source.external_id` and P7 Viewer, store-owned access and
+  Viewer-taking reads ([spec](../specs/source-access.md)); P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
   records, `QABenchmark`, `LegacyFixture`; deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
   `replace_chunks` with one current chunk list per source; `SQLAlchemyStore.close()`.

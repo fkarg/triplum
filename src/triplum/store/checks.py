@@ -6,18 +6,45 @@ from uuid import UUID
 from triplum.datatype import Chunk, Source
 
 
-def new_sources(sources: Iterable[Source], stored: Callable[[UUID], Source | None]) -> list[Source]:
+def principals(allow: Iterable[str]) -> frozenset[str]:
+    """`allow` as a set; a bare string is rejected, since it would allow its single characters."""
+    if isinstance(allow, str):
+        raise TypeError(f"allow must be a collection of principals, not the string {allow!r}")
+    return frozenset(allow)
+
+
+def new_sources(
+    sources: Iterable[Source],
+    allow: frozenset[str],
+    stored: Callable[[UUID], tuple[Source, frozenset[str]] | None],
+    holder: Callable[[UUID, str], UUID | None],
+) -> list[Source]:
     """The sources of the batch that are not stored yet, in order, without duplicates.
 
-    `stored` looks up a stored source by id. Raises `ValueError` when a source differs from a
-    stored or earlier batch source with the same id.
+    `stored` looks up a stored source and its allowed principals by id; `holder` finds the id of
+    the stored source with an external id in a collection. Raises `ValueError` when a source
+    differs from a stored or earlier batch source with the same id, when a stored source is
+    re-added with another `allow`, or when another source of its collection, stored or in the
+    batch, holds its external id.
     """
     batch: dict[UUID, Source] = {}
+    held: dict[tuple[UUID, str], UUID] = {}
     for source in sources:
-        other = batch[source.id] if source.id in batch else stored(source.id)
+        record = (batch[source.id], allow) if source.id in batch else stored(source.id)
+        other, access = (None, allow) if record is None else record
         if other is not None and other != source:
             raise ValueError(f"a different source with id {source.id} is already stored or added")
+        if access != allow:
+            raise ValueError(f"source {source.id} is already stored with other access")
         if other is None:
+            if source.external_id is not None:
+                key = (source.collection_id, source.external_id)
+                owner = held.get(key) or holder(*key)
+                if owner is not None:
+                    raise ValueError(
+                        f"external id {source.external_id!r} is already held by source {owner}"
+                    )
+                held[key] = source.id
             batch[source.id] = source
     return list(batch.values())
 

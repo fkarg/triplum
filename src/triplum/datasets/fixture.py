@@ -50,9 +50,9 @@ class LegacyFixture(QABenchmark):
     """A legacy fixture file, with gold decoded to the paragraph spans it names.
 
     The file is parsed once at construction; later edits need a new instance. Each document
-    becomes a Source whose `origin` is the legacy document id. Each legacy gold id names a
-    stored segment (by its stored ordinal, not its list position) and becomes that segment's
-    `SpanEvidence`; all of a question's gold forms one evidence set. Grants, `observed_at` and
+    becomes a Source whose `origin` and `external_id` are the legacy document id. Each legacy
+    gold id names a stored segment (by its stored ordinal, not its list position) and becomes that
+    segment's `SpanEvidence`; all of a question's gold forms one evidence set. Grants, `observed_at` and
     per-question candidate restrictions are not carried; the latter stay in `metadata`.
 
     Raises `ValueError` for duplicate ids, unresolved gold or spans outside their document.
@@ -82,7 +82,12 @@ class LegacyFixture(QABenchmark):
     def corpus(self, collection_id: UUID, /) -> RecordDataset[Source]:
         return RecordDataset(
             [
-                Source(collection_id=collection_id, origin=document.id, text=document.text)
+                Source(
+                    collection_id=collection_id,
+                    origin=document.id,
+                    text=document.text,
+                    external_id=document.id,
+                )
                 for document in self._documents
             ]
         )

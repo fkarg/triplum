@@ -3,13 +3,14 @@
 from collections.abc import Iterable, Iterator
 from uuid import UUID
 
+from sqlalchemy import Exists, exists
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, col, create_engine, delete, select
 
-from triplum.datatype import Chunk, Source
-from triplum.store.checks import checked_chunks, new_sources
+from triplum.datatype import Chunk, Source, Viewer
+from triplum.store.checks import checked_chunks, new_sources, principals
 from triplum.store.protocols import RecordStore
-from triplum.store.sql.tables import ChunkRow, SourceRow
+from triplum.store.sql.tables import ChunkRow, SourceAccessRow, SourceRow
 
 
 class SQLAlchemyStore(RecordStore):
@@ -27,26 +28,47 @@ class SQLAlchemyStore(RecordStore):
             )
         else:
             self.engine = create_engine(url)
-        tables = [SQLModel.metadata.tables[row.__tablename__] for row in (SourceRow, ChunkRow)]  # pyright: ignore[reportArgumentType]
+        rows = (SourceRow, SourceAccessRow, ChunkRow)
+        tables = [SQLModel.metadata.tables[row.__tablename__] for row in rows]  # pyright: ignore[reportArgumentType]
         SQLModel.metadata.create_all(self.engine, tables=tables)  # not every imported table
 
-    def add_sources(self, sources: Iterable[Source], /) -> None:
+    def add_sources(self, sources: Iterable[Source], /, *, allow: Iterable[str]) -> None:
+        access = principals(allow)
         with Session(self.engine) as session, session.begin():
 
-            def stored(id: UUID) -> Source | None:
+            def stored(id: UUID) -> tuple[Source, frozenset[str]] | None:
                 row = session.get(SourceRow, id)
-                return None if row is None else _source(row)
+                if row is None:
+                    return None
+                principals = session.exec(
+                    select(SourceAccessRow.principal).where(SourceAccessRow.source_id == id)
+                ).all()
+                return _source(row), frozenset(principals)
 
-            for s in new_sources(sources, stored):
+            def holder(collection_id: UUID, external_id: str) -> UUID | None:
+                return session.exec(
+                    select(SourceRow.id).where(
+                        SourceRow.collection_id == collection_id,
+                        SourceRow.external_id == external_id,
+                    )
+                ).first()
+
+            added = new_sources(sources, access, stored, holder)
+            for s in added:
                 session.add(
                     SourceRow(
                         id=s.id,
                         collection_id=s.collection_id,
                         origin=s.origin,
                         text=s.text,
+                        external_id=s.external_id,
                         fingerprint=s.fingerprint(),
                     )
                 )
+            session.flush()  # sources first: access rows reference them by foreign key
+            session.add_all(
+                SourceAccessRow(source_id=s.id, principal=p) for s in added for p in access
+            )
 
     def replace_chunks(self, source_id: UUID, chunks: Iterable[Chunk], /) -> None:
         # One transaction: SQLite serializes it against other writers, so no union is visible.
@@ -75,21 +97,28 @@ class SQLAlchemyStore(RecordStore):
                     )
                 )
 
-    def source(self, id: UUID, /) -> Source:
+    def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
         with Session(self.engine) as session:
-            row = session.get(SourceRow, id)
+            row = session.exec(
+                select(SourceRow).where(SourceRow.id == id, _visible(viewer))
+            ).first()
             if row is None:
                 raise KeyError(id)
             return _source(row)
 
-    def sources(self) -> Iterator[Source]:
+    def sources(self, *, viewer: Viewer) -> Iterator[Source]:
         with Session(self.engine) as session:
-            rows = session.exec(select(SourceRow)).all()
+            rows = session.exec(select(SourceRow).where(_visible(viewer))).all()
         for row in rows:
             yield _source(row)
 
-    def chunks(self, source_id: UUID, /) -> list[Chunk]:
+    def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
         with Session(self.engine) as session:
+            visible = session.exec(
+                select(SourceRow.id).where(SourceRow.id == source_id, _visible(viewer))
+            ).first()
+            if visible is None:
+                raise KeyError(source_id)
             return _chunks(session, source_id)
 
     def close(self) -> None:
@@ -97,9 +126,23 @@ class SQLAlchemyStore(RecordStore):
         self.engine.dispose()
 
 
+def _visible(viewer: Viewer) -> Exists:
+    """Whether the source row's allowed principals meet the viewer's, decided before reading it."""
+    return exists().where(
+        col(SourceAccessRow.source_id) == col(SourceRow.id),
+        col(SourceAccessRow.principal).in_(viewer.principals),
+    )
+
+
 def _source(row: SourceRow) -> Source:
     """The stored source; its stored id is checked against the id derived from its fields."""
-    return Source(id=row.id, collection_id=row.collection_id, origin=row.origin, text=row.text)
+    return Source(
+        id=row.id,
+        collection_id=row.collection_id,
+        origin=row.origin,
+        text=row.text,
+        external_id=row.external_id,
+    )
 
 
 def _chunks(session: Session, source_id: UUID) -> list[Chunk]:

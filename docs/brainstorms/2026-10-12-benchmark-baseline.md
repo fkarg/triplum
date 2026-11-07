@@ -679,7 +679,11 @@ Dispositions:
   `docs/concepts/benchmark-inputs.md`, flow.md, README, concepts index (docs agent; inspected).
 - **P6 `Source.external_id`** and **P7 Viewer and access**: declarations drafted in
   [source access](../specs/source-access.md), peer gpt-6.1-sol `583e06a2…` dispositions there.
-  Waiting for owner approval. Then P8 BM25 retriever (`(query, *, viewer, k)`, presets) and P9
+  **Approved by the owner 2026-11-07 ("P6 go, P7 go"); implemented.** Reviews and dispositions in
+  the spec (unique defects fixed: SQL foreign-key insert order, bare-string `allow`). Verification:
+  390 passed, 91% branch coverage, store modules 100%, ty, Ruff, cargo, strict MkDocs, examples.
+  Docs: store page "Who may read", source page "External id", fingerprints, flow, decisions,
+  collection, benchmark inputs (docs agent; inspected). Next: P8 BM25 retriever (`(query, *, viewer, k)`, presets) and P9
   recall scorers with the first BM25 R@2/R@5 example.
 
 ## Lasting documentation targets

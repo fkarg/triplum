@@ -17,6 +17,7 @@ def test_source_serialization_and_default_codec():
         "collection_id": COLLECTION,
         "origin": "a.md",
         "text": "Unicode: λ",
+        "external_id": None,
     }
     codec = PydanticCodec(Source)
     assert codec.decode(codec.encode(source)) == source

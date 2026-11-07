@@ -41,7 +41,7 @@ what is one of the stars of  The Newcomers known for
 ```
 
 1. `corpus(collection.id)` is a [dataset](datasets.md) of [Sources](source.md) in the collection
-   you pass. Each `origin` is the fixture's document id.
+   you pass. Each `origin` and `external_id` is the fixture's document id.
 2. `questions()` is a dataset of `QAQuestion`s in the fixture's order.
 3. The question needs two paragraphs together; each is a `SpanEvidence` naming its document and
    a character range of that document's text.
@@ -86,15 +86,24 @@ An evidence item is one of two records:
   record pages.
 
 `document` is the benchmark's native document key, and offsets index the `Source.text` that the
-same benchmark's `corpus()` yields. Resolving an evidence key to a stored Source is not
-implemented yet. In legacy fixtures the key equals the Source's `origin`, which the example uses.
+same benchmark's `corpus()` yields. That key is the corpus Source's
+[`external_id`](source.md#external-id), unique within the collection, so the benchmark's own
+corpus maps keys to sources:
+
+```python
+by_key = {s.external_id: s for s in corpus if s.external_id is not None}
+```
+
+Resolving evidence keys to stored Sources is not implemented yet. In legacy fixtures the key also
+equals the Source's `origin`, which the example above uses.
 
 ## Legacy fixtures
 
 `LegacyFixture(path)` reads a `tests/fixtures/<name>.json` file:
 
 - The file is parsed once, when you create the benchmark; later edits need a new instance.
-- Each document becomes one Source with `origin` set to its document id and its text unchanged.
+- Each document becomes one Source with `origin` and `external_id` set to its document id and its
+  text unchanged.
 - Each gold id in the file names a stored paragraph of a document and becomes that paragraph's
   `SpanEvidence`. All of a question's gold forms one evidence set; without gold, `evidence` is
   `[]`.
@@ -108,7 +117,8 @@ implemented yet. In legacy fixtures the key equals the Source's `origin`, which 
 Some fixture data is not carried: document grants, `observed_at` timestamps and per-question
 candidate restrictions. The candidate lists remain in `metadata` with no defined meaning yet.
 Evaluations that depend on permissions, time or distractor sets are therefore not supported by
-these benchmarks.
+these benchmarks. When you store a fixture corpus, choose its access yourself, for example
+`store.add_sources(corpus, allow=["public"])`; see [Who may read](../infrastructure/store.md#who-may-read).
 
 ## Reference
 

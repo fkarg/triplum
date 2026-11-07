@@ -28,6 +28,32 @@ print(source.id.version)  # 8
    identifier works too. It is always a string.
 4. Set `text` to the full text, already decoded. The source holds it in memory.
 
+## External id
+
+When a dataset has its own key for each document, such as a benchmark's document id, set it as
+`external_id`:
+
+```python
+from triplum.datatype import Collection, Source
+
+collection = Collection(name="Articles")
+source = Source(
+    collection_id=collection.id,
+    origin="https://example.org/articles/42",
+    text="Returns are accepted within 30 days.",
+    external_id="article-42",
+)
+print(source.external_id)  # article-42
+```
+
+- `external_id` is optional and defaults to `None`.
+- It is not part of the `id`. Two sources equal in `collection_id`, `origin` and `text` but with
+  different external ids have the same `id`, so they conflict: a
+  [store](../infrastructure/store.md) refuses the second.
+- A store also refuses a source whose `external_id` another source of the same collection already
+  holds. Sources without one never conflict.
+- Two text revisions of one document therefore cannot both carry its external id.
+
 ## What it guarantees
 
 - `Source` is a [Pydantic](https://docs.pydantic.dev/) model, so construction validates the
@@ -43,7 +69,7 @@ print(source.id.version)  # 8
   that `id`.
 - `origin` and `text` enter the `id` exactly as given: `"notes/a.md"` and `"./notes/a.md"` give
   different IDs. Normalize them before creating the source if they should match.
-- `fingerprint()` hashes the same three fields as the `id`, recomputing on each call. See
+- `fingerprint()` hashes the three `id` fields plus `external_id`, recomputing on each call. See
   [Fingerprints](../infrastructure/fingerprints.md#existing-record-fingerprints) for storage and
   cache behavior.
 - `origin` is for people and for matching back to the original document; it is not checked for

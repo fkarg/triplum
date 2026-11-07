@@ -5,25 +5,33 @@ from collections.abc import Iterable, Iterator
 from typing import Protocol
 from uuid import UUID
 
-from triplum.datatype import Chunk, Source
+from triplum.datatype import Chunk, Source, Viewer
 
 
 class RecordStore(Protocol):
-    """Stores sources and the current chunks of each source.
+    """Stores sources, who may read them, and the current chunks of each source.
 
     Records have deterministic ids, so writing a record again normally writes an equal record.
     Sources are never replaced or removed: a changed text is a new source with a new `id`. Each
     source has one current chunk list, which `replace_chunks` swaps as a whole.
 
+    Every read takes a `Viewer` and sees only sources whose allowed principals meet the viewer's;
+    chunks are readable with their source. A source the viewer may not read behaves exactly like a
+    missing one. Writes are trusted ingestion: they take no viewer, and their conflict errors
+    reveal stored ids.
+
     A write checks its whole input before changing anything: when it raises, the store is unchanged.
+    Guarantees assume one writer at a time.
     """
 
     @abstractmethod
-    def add_sources(self, sources: Iterable[Source], /) -> None:
-        """Store each source that is not stored yet.
+    def add_sources(self, sources: Iterable[Source], /, *, allow: Iterable[str]) -> None:
+        """Store each source that is not stored yet, readable by the principals in `allow`.
 
-        Re-adding an equal source does nothing. A different source with the `id` of a stored
-        source, or of another source in the batch, raises `ValueError`.
+        Re-adding an equal source with the same `allow` does nothing. `ValueError` for a stored
+        source re-added with a different `allow`; for a different source with the `id` of a stored
+        source or of another source in the batch; and for an `external_id` held by another source
+        of the same collection, stored or in the batch. An empty `allow` lets nobody read.
         """
         ...
 
@@ -40,16 +48,19 @@ class RecordStore(Protocol):
         ...
 
     @abstractmethod
-    def source(self, id: UUID, /) -> Source:
-        """The source with this `id`; `KeyError` if there is none."""
+    def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
+        """The source with this `id`; `KeyError` if there is none or `viewer` may not read it."""
         ...
 
     @abstractmethod
-    def sources(self) -> Iterator[Source]:
-        """All sources, in no particular order."""
+    def sources(self, *, viewer: Viewer) -> Iterator[Source]:
+        """The sources `viewer` may read, in no particular order."""
         ...
 
     @abstractmethod
-    def chunks(self, source_id: UUID, /) -> list[Chunk]:
-        """The current chunks of one source, ordered by `ordinal`; empty if it has none."""
+    def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
+        """The current chunks of one source, ordered by `ordinal`; empty if it has none.
+
+        `KeyError` if the source is not stored or `viewer` may not read it.
+        """
         ...

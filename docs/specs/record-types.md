@@ -123,6 +123,11 @@ Everything else can arrive as new tables or optional fields.
   Bazel-style computation/output identity separation. See [cache interfaces](cache-interfaces.md)
   for the current contract. A benchmark bypass is intended; its interface remains deferred.
 
+- External ids and access (owner, round 7; [source access](source-access.md)): `Source.external_id`
+  is the dataset's own document key, nullable, unique per collection where set, outside the id and
+  inside the fingerprint. Access is store-owned, keyed by Source id and written with
+  `add_sources(..., allow=...)`; it is not a Source field. Every read takes a `Viewer`.
+
 ## Remaining ID decisions
 
 - Chunking results over 65,536 chunks currently fail Chunk validation; the intended behavior is
@@ -135,5 +140,5 @@ Everything else can arrive as new tables or optional fields.
 - IDs for additional record types follow their own interface reviews. Multi-source records must
   not be forced into a single-source prefix.
 
-Source ACL/time/metadata/supersession fields, Chunk hierarchy and dropping Chunk.origin remain
-open.
+Source time/metadata/supersession fields, access history and revocation, Chunk hierarchy and
+dropping Chunk.origin remain open.

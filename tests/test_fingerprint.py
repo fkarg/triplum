@@ -15,10 +15,14 @@ COLLECTION = UUID("01900000-0000-7000-8000-000000000001")
 OTHER = UUID("01900000-0000-7000-8000-000000000002")
 
 
-def test_source_fingerprint_follows_the_id_inputs():
+def test_source_fingerprint_follows_the_id_inputs_and_external_id():
     source = Source(collection_id=COLLECTION, origin="a.md", text="abc")
     original = source.fingerprint()
-    assert original == content_key("source", [str(COLLECTION), "a.md", "abc"])
+    assert original == content_key("source", [str(COLLECTION), "a.md", "abc", None])
+    # external_id is data evaluation reads, so it changes the fingerprint but not the id.
+    keyed = Source(collection_id=COLLECTION, origin="a.md", text="abc", external_id="d1")
+    assert keyed.id == source.id
+    assert keyed.fingerprint() != original
     assert Source(collection_id=COLLECTION, origin="a.md", text="abc").fingerprint() == original
     assert Source(collection_id=COLLECTION, origin="a.md", text="abd").fingerprint() != original
     assert Source(collection_id=COLLECTION, origin="b.md", text="abc").fingerprint() != original

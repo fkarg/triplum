@@ -15,8 +15,10 @@ class Source(BaseModel):
     It holds the full text in memory.
 
     Sources are immutable. Their `id` is derived from `collection_id`, `origin` and `text`, so an
-    equal source in the same collection always gets the same id. To change a field, construct a
-    new source; `model_copy(update=...)` skips validation and would keep a stale id.
+    equal source in the same collection always gets the same id. `external_id` is not part of the
+    id: a source with the same id but another `external_id` is a different, conflicting record.
+    To change a field, construct a new source; `model_copy(update=...)` skips validation and would
+    keep a stale id.
 
     Examples:
         >>> Source(collection_id=collection.id, origin="notes/intro.md", text="# Intro\\n...")
@@ -36,6 +38,10 @@ class Source(BaseModel):
     text: str = Field(
         description="The full source text. May be empty; chunking then produces no chunks. Used as basis for full-text-search and further processing such as chunking or knowledge graph construction.",
     )
+    external_id: str | None = Field(
+        default=None,
+        description="The dataset's own key for this document, unique within the collection when set; not part of `id`.",
+    )
 
     @model_validator(mode="after")
     def _derive_id(self) -> Self:
@@ -44,5 +50,7 @@ class Source(BaseModel):
         return self
 
     def fingerprint(self) -> str:
-        """Content hash of `collection_id`, `origin` and `text`: the same inputs as `id`."""
-        return content_key("source", [str(self.collection_id), self.origin, self.text])
+        """Content hash of `collection_id`, `origin`, `text` and `external_id`."""
+        return content_key(
+            "source", [str(self.collection_id), self.origin, self.text, self.external_id]
+        )

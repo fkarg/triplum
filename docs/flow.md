@@ -15,12 +15,15 @@ This page follows the intended flow and shows where experiments can replace indi
 - [Benchmark inputs](concepts/benchmark-inputs.md): `QAQuestion` with its public
   `QuestionInput` and `SpanEvidence`/`DocumentEvidence` gold, the `QABenchmark` corpus and
   questions bundle, and `LegacyFixture` for the repository's fixture files. Evidence names native
-  document keys; resolving them to stored Sources, scoring and a benchmark runner are not
-  implemented.
+  document keys, which are the corpus Sources' `external_id`s; resolving them to stored Sources,
+  scoring and a benchmark runner are not implemented.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are
-  insert-only and each source has one current chunk list, replaced as a whole. Temporal history
+  insert-only and each source has one current chunk list, replaced as a whole. Each source is
+  added with the principals allowed to read it, and every read takes a `Viewer` and returns only
+  what it may read; revoking access and access for derived records are not implemented. A
+  source's optional `external_id` is unique within its collection. Temporal history
   of changed documents and origin normalization are not settled.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   normalized positional/keyword call arguments, per-computation SQLite tables and CLI/library
@@ -129,10 +132,10 @@ flowchart TD
    supporting passages travel together.
 4. **Answer.** Give the question and formatted evidence to the LLM.
 
-The intended store contract requires every read to respect the permitted viewer and requested
-temporal view; current record stores do not yet implement these filters. Permission
-filtering belongs before ranking; graph traversal uses the visible graph. Derived summaries must
-preserve their supporting sources' access restrictions.
+Every record store read takes a viewer and returns only the sources and chunks it may read.
+Retrieval itself is not implemented: permission filtering belongs inside the index, before
+ranking, and graph traversal uses the visible graph. Reads do not take a temporal view yet.
+Derived summaries must preserve their supporting sources' access restrictions.
 
 ## Composing and reusing steps
 

@@ -107,7 +107,9 @@ def test_hotpotqa_question_maps_to_one_set_of_two_paragraphs():
             SpanEvidence(document="4c30d3dbd568c7c2f81a", start=0, end=396),
         ]
     ]
-    assert len(fixture.corpus(COLLECTION)) == 234
+    corpus = list(fixture.corpus(COLLECTION))
+    assert len(corpus) == 234
+    assert all(source.external_id == source.origin for source in corpus)
 
 
 def test_gold_names_the_stored_ordinal_not_the_list_position(tmp_path):

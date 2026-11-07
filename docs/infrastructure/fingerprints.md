@@ -45,16 +45,17 @@ helpers but have different equality promises; the common name does not make them
 ## Existing record fingerprints
 
 [`Source`][triplum.datatype.source.Source] and [`Chunk`][triplum.datatype.chunk.Chunk] expose
-`fingerprint()` methods, recomputed on each call. Each covers the same fields as the record's
-deterministic `id`:
+`fingerprint()` methods, recomputed on each call. Each covers the fields of the record's
+deterministic `id`; a Source's fingerprint also covers its `external_id`:
 
-| Record | Fingerprint and `id` fields | Not included |
-| --- | --- | --- |
-| Source | `collection_id`, `origin`, `text` | `id` |
-| Chunk | `collection_id`, `source_id`, `ordinal`, `start`, `text` | `id`, `origin` |
+| Record | `id` fields | Also in the fingerprint | Not included |
+| --- | --- | --- | --- |
+| Source | `collection_id`, `origin`, `text` | `external_id` | `id` |
+| Chunk | `collection_id`, `source_id`, `ordinal`, `start`, `text` | | `id`, `origin` |
 
-Records with equal fingerprints therefore have equal IDs, collections and parent references.
-`Chunk.origin` is left out because it is copied from the source that `source_id` already
+Records with equal fingerprints therefore have equal IDs, collections and parent references. The
+reverse does not hold for sources: equal IDs with different external ids give different
+fingerprints, because a computation may read the external id. `Chunk.origin` is left out because it is copied from the source that `source_id` already
 identifies. The same document in two collections, or a chunk at a different position, has a
 different fingerprint. The digest is absent from model dumps and JSON; SQL storage fills its
 indexed fingerprint column explicitly.

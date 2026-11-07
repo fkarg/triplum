@@ -1,8 +1,8 @@
 # Store
 
 A **store** keeps the records a pipeline produces, so you can read them back later or in another
-process. Today the store holds [sources](../concepts/source.md) and their
-[chunks](../concepts/chunk.md). Vectors, files and graph data are not stored yet.
+process. Today the store holds [sources](../concepts/source.md), who may read each of them, and
+their [chunks](../concepts/chunk.md). Vectors, files and graph data are not stored yet.
 
 There is one contract, [`RecordStore`][triplum.store.protocols.RecordStore], and two
 implementations:
@@ -15,7 +15,8 @@ implementations:
 All three are importable from `triplum.store`. `SQLAlchemyStore` uses SQLAlchemy for database
 access; only SQLite is covered by triplum's tests. Backend-specific stores (for
 SQLite or PostgreSQL) are planned where database-specific SQL is faster; they will share its
-tables, [`SourceRow`][triplum.store.sql.tables.SourceRow] and
+tables, [`SourceRow`][triplum.store.sql.tables.SourceRow],
+[`SourceAccessRow`][triplum.store.sql.tables.SourceAccessRow] and
 [`ChunkRow`][triplum.store.sql.tables.ChunkRow] in `triplum.store.sql.tables`.
 
 A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also available, with the
@@ -24,10 +25,9 @@ A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also avai
 collection records, `RecordStore` has no collection methods, and reads are not scoped to a
 collection.
 
-The current read methods take record IDs, with no Viewer or temporal-view argument. They do not
-filter access by principal or reconstruct historical state. Those are requirements of the
-[intended retrieval flow](../flow.md#2-retrieval-select-evidence-for-a-question), not guarantees
-of these stores. Changing a document's text gives a new source ID; the stores keep no link
+Every read takes a [`Viewer`][triplum.datatype.viewer.Viewer] and returns only what it may read;
+see [Who may read](#who-may-read). Reads take no temporal view and do not reconstruct historical
+state. Changing a document's text gives a new source ID; the stores keep no link
 between the two versions and no history.
 
 ## Example
@@ -37,7 +37,7 @@ opened on the same file, as a later run of your program would. A later run repro
 record IDs only if it reuses the same collection `id`.
 
 ```python
-from triplum.datatype import Collection, Source
+from triplum.datatype import Collection, Source, Viewer
 from triplum.steps.chunking import FixedSize
 from triplum.store import SQLAlchemyStore
 
@@ -50,13 +50,14 @@ source = Source(
 chunks = FixedSize(20)(source)
 
 store = SQLAlchemyStore("sqlite:///records.db")
-store.add_sources([source])
+store.add_sources([source], allow=["public"])
 store.replace_chunks(source.id, chunks)
 store.close()
 
+reader = Viewer(principals=frozenset({"public"}))
 reopened = SQLAlchemyStore("sqlite:///records.db")
-print(reopened.source(source.id) == source)
-for chunk in reopened.chunks(source.id):
+print(reopened.source(source.id, viewer=reader) == source)
+for chunk in reopened.chunks(source.id, viewer=reader):
     print(chunk.ordinal, chunk.start, repr(chunk.text))
 reopened.close()
 ```
@@ -72,12 +73,70 @@ True
 1. `FixedSize(20)(source)` splits the source into chunks. Each chunk's `source_id` is the
    source's `id`, which is how the store connects them.
 2. `SQLAlchemyStore("sqlite:///records.db")` opens (or creates) the SQLite file `records.db` in the
-   current working directory and creates its `source` and `chunk` tables if they are missing.
-3. `add_sources` must come before `replace_chunks`: chunks can only be given to a stored source.
+   current working directory and creates its `source`, `source_access` and `chunk` tables if they
+   are missing.
+3. `add_sources(..., allow=["public"])` stores the source and lets the principal `"public"` read
+   it. It must come before `replace_chunks`: chunks can only be given to a stored source.
    `replace_chunks(source.id, chunks)` makes `chunks` the source's complete chunk list.
 4. `close()` releases the store's database connections once you are done with it.
-5. `SQLAlchemyStore(...)` on the same URL sees everything the first store committed. `source(id)`
-   returns the source with that `id`; `chunks(source_id)` returns its chunks ordered by `ordinal`.
+5. `Viewer(principals=...)` says who is reading. `SQLAlchemyStore(...)` on the same URL sees
+   everything the first store committed. `source(id, viewer=...)` returns the source with that
+   `id`; `chunks(source_id, viewer=...)` returns its chunks ordered by `ordinal`.
+
+## Who may read
+
+Each `add_sources` call grants read access to the principals in `allow`: plain strings naming a
+user, a group or anything else your application chooses. A `Viewer` holds the principals a reader
+acts as. A source is visible to a viewer when the two sets share at least one principal.
+
+```python
+from triplum.datatype import Collection, Source, Viewer
+from triplum.store import MemoryStore
+
+collection = Collection(name="Research notes")
+public = Source(collection_id=collection.id, origin="faq.md", text="Shipping is free.")
+internal = Source(collection_id=collection.id, origin="margins.md", text="Margin is 40%.")
+
+store = MemoryStore()
+store.add_sources([public], allow=["public"])
+store.add_sources([internal], allow=["finance"])
+
+anyone = Viewer(principals=frozenset({"public"}))
+analyst = Viewer(principals=frozenset({"public", "finance"}))
+print(sorted(s.origin for s in store.sources(viewer=anyone)))
+print(sorted(s.origin for s in store.sources(viewer=analyst)))
+try:
+    store.source(internal.id, viewer=anyone)
+except KeyError:
+    print("KeyError, as for a missing source")
+```
+
+Output:
+
+```text
+['faq.md']
+['faq.md', 'margins.md']
+KeyError, as for a missing source
+```
+
+- `"public"` is an ordinary principal with no special meaning: a viewer sees public sources only
+  if it names `"public"`. A viewer without principals sees nothing, and a source added with an
+  empty `allow` is readable by nobody.
+- A source the viewer may not read behaves exactly like a missing one: `source` and `chunks`
+  raise the same `KeyError(id)`, and `sources` leaves it out. Reads therefore do not reveal that
+  it exists.
+- Chunks are readable with their source; they have no access of their own.
+- Sources with different access go in separate `add_sources` calls. Access is kept by the store,
+  keyed by source `id` (in SQL, the `source_access` table); it is not part of `Source`, its `id`
+  or its fingerprint.
+- Writes are trusted ingestion: `add_sources` and `replace_chunks` take no viewer, and their
+  conflict errors name stored ids. The store does not authorize writers.
+- `allow` must be a collection of principals; a bare string raises `TypeError` rather than
+  allowing its single characters.
+- Principals match exactly on SQLite (the tested backend) and PostgreSQL. A database whose
+  collation ignores case or trailing spaces (common MySQL and MSSQL defaults) would match more
+  loosely than `MemoryStore`.
+- Access cannot be revoked or changed yet, and it has no time axis.
 
 ## Choosing where records go
 
@@ -94,9 +153,10 @@ Practical details:
 - **The file is created for you, the folder is not.** SQLite creates `records.db` if it does not
   exist, but the directory it lives in must already exist.
 - **Tables are created when the store is constructed.** `SQLAlchemyStore(url)` runs
-  `CREATE TABLE` for its own `source` and `chunk` tables if they do not exist yet, and for no
-  other table. Existing tables and rows are left alone; there are no migrations, so a table
-  created by an older layout is not updated.
+  `CREATE TABLE` for its own `source`, `source_access` and `chunk` tables if they do not exist
+  yet, and for no other table. Existing tables and rows are left alone; there are no migrations,
+  so a table created by an older layout is not updated. A database created before source access
+  and `external_id` were added is not upgraded; recreate it.
 - **The in-memory default is shared across threads.** `SQLAlchemyStore()` keeps its in-memory
   SQLite database on a single connection, so every thread using that store instance sees the same
   records. Another store instance, even another `SQLAlchemyStore()`, gets its own empty database,
@@ -129,9 +189,12 @@ column types, but this has not been verified.
   (see [Source](../concepts/source.md) and [Chunk](../concepts/chunk.md)). Re-adding a record
   produced the same way therefore writes an equal record, and the store keeps one copy.
 - **Sources are only ever added.** `add_sources` stores each source that is not stored yet;
-  re-adding an equal source does nothing. A different source with the `id` of a stored source,
-  or of another source in the same batch, raises `ValueError`. Sources are never replaced or
-  removed.
+  re-adding an equal source with the same `allow` does nothing. `ValueError` is raised for a
+  stored source re-added with a different `allow`, and for a different source with the `id` of a
+  stored source or of another source in the same batch. Sources are never replaced or removed.
+- **External ids are unique within a collection.** A source whose `external_id` is already held
+  by another source of the same collection, stored or earlier in the batch, raises `ValueError`.
+  Sources without an `external_id` never conflict, and other collections may reuse it.
 - **Changed content is a new record.** A source with different text, origin or collection has a
   different `id` and is stored alongside the old one. Neither the old source nor its chunks are
   removed.
@@ -147,9 +210,13 @@ column types, but this has not been verified.
 - **A failed write changes nothing.** Each write checks its whole input before storing any of
   it, so when it raises, including when the iterable you pass raises partway, the store is
   unchanged. `SQLAlchemyStore` performs each write in one transaction.
-- **Reads**: `source(id)` raises `KeyError` for an unknown id. `sources()` yields every source in
-  no particular order. `chunks(source_id)` returns the current chunks ordered by `ordinal`, empty
-  if the source has none.
+- **One writer at a time.** These guarantees assume writes are not concurrent. Two
+  `SQLAlchemyStore` writers adding the same new source at once may surface the database's
+  integrity error instead of the documented `ValueError` or no-op.
+- **Reads**: `source(id, viewer=...)` raises `KeyError` for an unknown or unreadable id.
+  `sources(viewer=...)` yields every source the viewer may read, in no particular order.
+  `chunks(source_id, viewer=...)` returns the current chunks ordered by `ordinal`, empty if the
+  source has none, and raises `KeyError` if the source is unknown or unreadable.
 - **Round trip**: a record read back equals the one you stored. `SQLAlchemyStore` rebuilds each
   record from its row and checks the stored `id` against its fields; a row edited outside the
   store so that they no longer match raises a Pydantic `ValidationError` on read.
@@ -170,6 +237,9 @@ computations so they need not be repeated; the store holds the records you decid
 - [`RecordStore`][triplum.store.protocols.RecordStore]
 - [`MemoryStore`][triplum.store.memory.MemoryStore]
 - [`SQLAlchemyStore`][triplum.store.sql.generic.SQLAlchemyStore]
-- [`SourceRow`][triplum.store.sql.tables.SourceRow], [`ChunkRow`][triplum.store.sql.tables.ChunkRow]
+- [`Viewer`][triplum.datatype.viewer.Viewer]
+- [`SourceRow`][triplum.store.sql.tables.SourceRow],
+  [`SourceAccessRow`][triplum.store.sql.tables.SourceAccessRow],
+  [`ChunkRow`][triplum.store.sql.tables.ChunkRow]
 
 Next: [Fingerprints](fingerprints.md).

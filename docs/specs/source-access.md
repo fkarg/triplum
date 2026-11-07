@@ -1,6 +1,6 @@
 # External ids, Viewer and source access (draft for owner review)
 
-Status: **proposal**. Two separately approvable declarations: P6 (BE18 `external_id`) and P7
+Status: **approved** by the owner (P6 and P7, 2026-11-07) and implemented. Two separately approvable declarations: P6 (BE18 `external_id`) and P7
 (RT3/RT6 Viewer and access). Settled by the owner in round 7: BE18 (b), RT3 (a), RT6 with raising
 reads. Neither touches retrieval (P8) or scoring (P9).
 
@@ -105,6 +105,25 @@ def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
   principals; conflicting `allow` raises without writing, also for an equal stored source after a
   new one in the batch; equal re-add no-op; both stores via the existing parametrized store
   tests; `examples/naive.py` updated and run.
+
+## Implementation review
+
+Security reviewer (its peer gpt-6.1-sol `0c9c784c7c7a42a0a55ac91aeccb8bc2`, which independently found
+the same defect): unique defect, a bare string `allow="team"` allowed the principals `t`, `e`, `a`,
+`m` → `TypeError`, with a regression test. Noted: principal matching is exact on SQLite and
+PostgreSQL, the supported SQL backends; case-insensitive collations (MySQL, many MSSQL setups) would
+diverge from the memory store. Old databases fail closed. General reviewer (its peer gpt-6.1-sol `72ddfbff96824ab2b49900642498d49b`
+found the same independently): unique defect, SQL flushed access rows before their source rows, so
+`add_sources` failed wherever foreign keys are enforced (always on PostgreSQL) → sources flushed
+first, regression test with SQLite `foreign_keys=ON` (failed before the fix, observed); also
+found the bare-string `allow`; nits applied (docstring wrapping, `chunks()` on a corrupt hidden
+row). Simplicity reviewer (its peer gpt-6.1-sol `24cf857c…`): shorter test helper and a plain
+lambda applied; explicit branches in `new_sources` not applied (its peer argued against them),
+memory index and separate access dict kept (performance; spec layout). Constraints for P8 (BM25): mask to the
+viewer's sources before top-k; never return or tie-break with hidden chunks; key any index or
+result cache by the principal set; rebuild when sources or access change; global corpus
+statistics leak term statistics of hidden sources through visible scores (RT5 chose global
+statistics for benchmarks; private corpora need viewer-scoped statistics, an open P8 question).
 
 ## Peer review
 

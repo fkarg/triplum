@@ -9,6 +9,7 @@ from triplum.datatype.question import (
     SpanEvidence,
 )
 from triplum.datatype.source import Source
+from triplum.datatype.viewer import Viewer
 
 __all__ = [
     "Chunk",
@@ -21,4 +22,5 @@ __all__ = [
     "QuestionInput",
     "Source",
     "SpanEvidence",
+    "Viewer",
 ]
