@@ -4,8 +4,8 @@
 indexed and retrieved. Choosing the pieces is a retrieval decision. Keeping the whole text as one
 chunk is valid; so are fixed-size pieces, overlapping pieces, or pieces that follow sections.
 
-The library provides one naive chunker, [`FixedSize`][triplum.steps.chunking.FixedSize], which cuts
-the text every `n` characters.
+The library provides two simple chunkers: [`FixedSize`][triplum.steps.chunking.FixedSize] cuts the
+text every `n` characters, and [`WholeText`](#whole-text) keeps the whole text as one chunk.
 
 ## Example
 
@@ -37,6 +37,30 @@ for chunk in chunker(source):
 
 `FixedSize` ignores words, sentences and structure, which is why it is only a baseline.
 
+## Whole text
+
+[`WholeText`][triplum.steps.chunking.WholeText] returns one chunk holding the whole source text,
+or no chunks for an empty source. Use it when the sources already are the retrieval units, such
+as a benchmark's native passages: passage-level [recall](recall.md) assumes that each chunk is
+one whole passage.
+
+```python
+from triplum.datatype import Collection, Source
+from triplum.steps.chunking import WholeText
+
+collection = Collection(name="Research notes")
+source = Source(
+    collection_id=collection.id,
+    origin="notes/returns.md",
+    text="Returns are accepted within 30 days. Refunds take 5 days.",
+)
+for chunk in WholeText()(source):
+    print(chunk.ordinal, chunk.start, repr(chunk.text))
+# 0 0 'Returns are accepted within 30 days. Refunds take 5 days.'
+```
+
+`WholeText` takes no settings.
+
 ## The contract
 
 [`Chunker`][triplum.steps.chunking.Chunker] takes one `Source` and returns `list[Chunk]`.
@@ -49,6 +73,8 @@ for chunk in chunker(source):
   from it, so returning the same chunks in the same order gives the same IDs. Ordinals stop at
   65,535: a chunker can return at most 65,536 chunks per source, and constructing a chunk beyond
   that fails validation.
+- `WholeText` returns the whole source text as one chunk at `start` 0, or no chunks for an
+  empty source.
 - `FixedSize` additionally guarantees that its chunks do not overlap, concatenate back to the
   source text, and that an empty source produces no chunks. Other chunkers may overlap or skip
   text.
@@ -96,7 +122,7 @@ for chunk in Paragraphs()(source):
 
 Taking `start` from the match keeps each chunk an exact slice, and `enumerate` supplies the
 ordinals. `Chunker` only asks for a call, so a plain function with the same signature fits it as
-well, without subclassing (continuing the example above):
+well, without subclassing. This one behaves like `WholeText` (continuing the example above):
 
 ```python
 def whole_text(source: Source, /) -> list[Chunk]:

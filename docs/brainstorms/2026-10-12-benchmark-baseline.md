@@ -28,6 +28,10 @@ across nested decorated calls.
 
 ## Owner policies
 
+- **Simpler version now, full privacy suite eventually** (owner, round 8 RT7, 2026-11-07; scope:
+  access and privacy features): ship the simplest correct access behaviour, document its
+  tradeoffs, extend later. Resolves: RT7 (c), no visibility memo.
+
 - **One Q&A file per design area** (owner, 2026-10-12, this request). Implemented as
   `docs/plans/questions/` with area prefixes. Scope: all design questions going forward. The
   existing `open-questions.md` stays the ingress/cache file until its concurrent session allows a
@@ -102,7 +106,7 @@ integer chunk ids that match no document id.
 | RT3 | Viewer contract; where access lives | — | Answered round 7 |
 | LQ1 | LLM request/response protocol | BE16 | Queued |
 | RT4 | Evidence formatting and citation format | LQ1 | Queued |
-| BE12 | Retrieval-metric interface | RT1 | Round 8 |
+| BE12 | Retrieval-metric interface | RT1 | Answered round 8 (b) |
 | BE13 | Multi-session / episodic benchmarks (LongMemEval) | BE1 | Deferred |
 | BE6 | Run identity record and benchmark-wide cache bypass | BE1, LQ protocol | Backlog |
 | BE7 | Unanswerable / no-gold handling and eligibility reporting | BE1, BE3 | Backlog |
@@ -110,9 +114,10 @@ integer chunk ids that match no document id.
 | BE9 | Judge protocol (prompt, binary, validation sample) | LQ protocol | Backlog |
 | BE18 | Evidence key → Source resolution | — | Answered round 7 (external_id) |
 | BE19 | Revisions of one document vs unique external_id | BE18, history | Flagged |
-| RT5 | BM25 default preset | — | Reopened round 8 (HippoRAG 1 premise wrong) |
-| RT7 | BM25 index corpus, masking, statistics scope | RT3, RT6 | Round 8 |
-| RT8 | Tokenizer ownership and preset fidelity | RT5 | Round 8 |
+| RT5 | BM25 default preset | — | Answered round 8 (HIPPORAG1) |
+| RT7 | BM25 index corpus, masking, statistics scope | RT3, RT6 | Answered round 8 (c) |
+| RT8 | Tokenizer ownership and preset fidelity | RT5 | Answered round 8 |
+| BE21 | Gold character-coverage proportion alongside strict span recall | BE12 | Asked round 8 follow-up |
 | RT6 | Store read/write semantics under a Viewer | — | Answered round 7 (raise) |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
@@ -196,6 +201,24 @@ integer chunk ids that match no document id.
   FlashRAG silently drops raising metrics; DSPy substitutes failure scores.
 
 ## Rounds
+
+### Round 8 owner answers (checkpoint, 2026-11-07)
+
+- RT5 (answered): **(a) `HIPPORAG1` default "for now"**; agrees with session and peer.
+- RT7 (answered): **(c)** global statistics over the declared corpus for now, leak documented,
+  viewer-scoped indexes later. **Policy: simpler version now, full privacy suite eventually**
+  (scope: access/privacy features; tradeoffs documented and fixable later). Applied: no memoized
+  visibility; each call reads `sources(viewer=)` (session had proposed a memo; dropped as the
+  less simple version).
+- RT8 (answered): tokenizer is part of indexing; stemming etc. later, possibly moving towards
+  database-level analysis where supported. Applied: P8 tokenizer has pattern and lowercase only;
+  `IRCOT` (stopwords, possessive, Porter) and the PyStemmer dependency are deferred, not dropped.
+- BE12 (answered): **leaning (b)**, peer's functions with evidence resolved to Source ids during
+  preparation. Retrieved characters: **unique source characters, overlaps not counted twice**.
+  Owner asked why double counting was considered (answered in chat: delivered text is a reader
+  cost, which belongs with LLM usage). Owner also floated a gold-overlap proportion; not decided,
+  asked as a follow-up (it is BE3's named character-coverage variant).
+- P8, P9: **go** (declarations as adjusted by these answers).
 
 ### Round 8 (RT5 reopened, RT7, RT8, BE12): session assessment before peer (2026-11-07)
 
@@ -755,6 +778,14 @@ Dispositions:
   Docs: store page "Who may read", source page "External id", fingerprints, flow, decisions,
   collection, benchmark inputs (docs agent; inspected). Next: P8 BM25 retriever (`(query, *, viewer, k)`, presets) and P9
   recall scorers with the first BM25 R@2/R@5 example.
+
+- **P8 BM25 retriever** and **P9 recall scorers** (owner "go P8, go P9", 2026-11-07, declarations as
+  adjusted by round 8): **implemented**, [retrieval spec](../specs/retrieval.md) holds the approved
+  declarations and review dispositions. Defects fixed with red-before-fix regressions: capture
+  groups (peer `d4dc780a…`), unbounded k1/b (peer and general reviewer), empty-match tokens (general
+  reviewer). First measurement (observed): HotpotQA fixture, HIPPORAG1, WholeText: R@2 0.600,
+  R@5 0.775, AR@2 0.300, AR@5 0.600. Next candidates: BE21 answer; IRCOT preset with stemming;
+  dense retrieval (DF) or LLM protocol (LQ1) for closed-book/oracle baselines.
 
 ## Lasting documentation targets
 

@@ -80,6 +80,8 @@ nav:
       - Chunk preprocessing: concepts/chunk-preprocessing.md
       - Embedding: concepts/embedding.md
       - Benchmark inputs: concepts/benchmark-inputs.md
+      - Retrieval: concepts/retrieval.md
+      - Retrieval recall: concepts/recall.md
   - Infrastructure:
       - Store: infrastructure/store.md
       - Fingerprints: infrastructure/fingerprints.md

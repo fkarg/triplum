@@ -94,8 +94,9 @@ corpus maps keys to sources:
 by_key = {s.external_id: s for s in corpus if s.external_id is not None}
 ```
 
-Resolving evidence keys to stored Sources is not implemented yet. In legacy fixtures the key also
-equals the Source's `origin`, which the example above uses.
+[Retrieval recall](recall.md#resolve-evidence-first) resolves these keys to Source ids before
+scoring. In legacy fixtures the key also equals the Source's `origin`, which the example above
+uses.
 
 ## Legacy fixtures
 
@@ -129,4 +130,4 @@ these benchmarks. When you store a fixture corpus, choose its access yourself, f
 - [`QABenchmark`][triplum.datasets.benchmark.QABenchmark] and
   [`LegacyFixture`][triplum.datasets.fixture.LegacyFixture]
 
-Next: [Decision points](decisions.md), every place you choose an implementation.
+Next: [Retrieval](retrieval.md), finding the chunks that answer a question.

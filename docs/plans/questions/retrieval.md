@@ -4,32 +4,26 @@ Questions use the `RT` prefix. Process: [questions index](README.md).
 
 ## Open
 
-Round 8, presented 2026-11-07. Peer: gpt-6.1-sol, `2093cf26166c43c998114f9d3709ff77`. Declarations
-in the [retrieval spec](../../specs/retrieval.md) (P8).
-
-### RT5 (reopened). BM25 default preset
-
-Round 6 said the IRCoT/ES-like preset matched IRCoT and HippoRAG 1. Research found HippoRAG 1 used
-the ES `standard` analyzer (lowercase only) on one `title\ntext` field; IRCoT used `english` on
-two summed fields. Claude and peer both: default `HIPPORAG1` (k1 1.2, b 0.75, lowercase, no
-stopwords or stemming), `IRCOT` (one-field approximation) and `BM25S_DEFAULT` as presets.
-
-### RT7. Index corpus, masking and statistics scope
-
-Claude and peer: `BM25(store, *, viewer, settings)` indexes what a declared corpus viewer sees
-(term statistics over that set); each call intersects the query viewer's visible source ids with
-the index before ranking; snapshot, rebuilt after writes. Divergence: Claude memoizes visible ids
-per principal set, peer re-reads per query except a fixed viewer. Open sub-question: private
-corpora, global statistics over the declared corpus (leaks term statistics) or viewer-scoped
-indexes (one per visible corpus).
-
-### RT8. Tokenizer ownership and fidelity
-
-Claude and peer: a small library tokenizer described by data settings (pattern, lowercase,
-possessive, stopwords, PyStemmer `porter`), bm25s for scoring only, own visible-row selection and
-`(source_id, ordinal)` tie order; presets documented as approximations, no JVM.
+None. Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
+remains under LQ1).
 
 ## Answered
+
+### RT5 (answered round 8). BM25 default preset, after the corrected HippoRAG 1 facts
+
+Owner: **(a) `HIPPORAG1`** for now (ES `standard` analyzer approximation: lowercase, no stopwords or
+stemming); Claude and peer agreed. `BM25S_DEFAULT` ships; `IRCOT` waits for stemming (RT8).
+
+### RT7 (answered round 8). Index corpus, masking and statistics scope
+
+Owner: **(c)** global statistics over the declared corpus viewer's chunks now, leak documented,
+viewer-scoped indexes later; policy "simpler version now, full privacy suite eventually". Applied:
+visibility read on every call (Claude's memo dropped; the peer's per-call read is simpler).
+
+### RT8 (answered round 8). Tokenizer
+
+Owner: the tokenizer is part of indexing; stemming etc. later, possibly towards database-level
+analysis. Applied: pattern and lowercase only; stopwords, possessives, Porter deferred.
 
 ### RT1/RT2 (answered round 7). Hit and Retriever call
 

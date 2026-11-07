@@ -17,6 +17,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
+  "bm25s>=0.3.16",
   "numpy>=2.5.3",
   "polars>=1.44",
   "pyarrow>=25",

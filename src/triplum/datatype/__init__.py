@@ -1,6 +1,7 @@
 from triplum.datatype.chunk import Chunk
 from triplum.datatype.collection import Collection
 from triplum.datatype.fingerprint import FingerprintedDataModel, FingerprintedDataModelMixin
+from triplum.datatype.hit import RetrievalHit
 from triplum.datatype.question import (
     DocumentEvidence,
     Evidence,
@@ -20,6 +21,7 @@ __all__ = [
     "FingerprintedDataModelMixin",
     "QAQuestion",
     "QuestionInput",
+    "RetrievalHit",
     "Source",
     "SpanEvidence",
     "Viewer",

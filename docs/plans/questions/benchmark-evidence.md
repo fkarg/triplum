@@ -12,15 +12,11 @@ alternative sets `list[list[Evidence]]` (peer); small `QABenchmark` bundle (Clau
 BE2 options: `Source.origin` = native key, validated unique (Claude) vs an explicit adapter-built
 key → Source.id binding (peer). Four fixtures repeat titles.
 
-### BE12. Recall scoring interface (round 8)
+### BE21. Gold character-coverage proportion (round 8 follow-up)
 
-Declarations in the [retrieval spec](../../specs/retrieval.md) (P9). Peer: gpt-6.1-sol,
-`2093cf26166c43c998114f9d3709ff77`. Claude: `SpanRecall`/`AllGoldRecall` classes configured with `k`
-and an evidence-key → Source id map, `KeyError` on a missing key when scoring, `summarize` with
-eligible/excluded counts. Peer: plain `score_recall(hits, resolved_evidence, *, ks)` and
-`summarize_recall` with explicit denominators; evidence resolved to Source ids once during
-preparation, so a missing key fails before retrieval. Sub-question: retrieved characters count
-delivered text (overlaps twice) or unique source characters.
+Owner floated "total target (gold) overlap proportion" next to strict span recall. Open: add BE3's
+character-coverage variant (fraction of gold characters covered by the top k, best set) as a
+`RecallAtK` field, or keep it as a later named variant. Prerequisite: BE12 (answered).
 
 ### BE14. Benchmark run lifecycle and interface map
 
@@ -148,6 +144,13 @@ questions.
 Mixed: nested public `QuestionInput`, small `QABenchmark` bundle (`corpus(collection_id)`,
 `questions()`), evidence as alternative sets `list[list[Evidence]]`. Declaration draft:
 [benchmark spec](../../specs/benchmark.md) (P5, under review).
+
+### BE12 (answered round 8). Recall scoring interface
+
+Owner: leaning **(b)**, the peer's functions: `resolve_evidence` before retrieval (missing key
+raises), `score_recall(hits, evidence, *, ks)`, `summarize_recall` with explicit denominators.
+Retrieved characters are **distinct source characters**; overlaps count once (delivered text is a
+reader cost for LLM usage). Implemented: [retrieval spec](../../specs/retrieval.md).
 
 ### BE3 (answered). Evidence recall counting
 

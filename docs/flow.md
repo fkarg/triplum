@@ -15,8 +15,16 @@ This page follows the intended flow and shows where experiments can replace indi
 - [Benchmark inputs](concepts/benchmark-inputs.md): `QAQuestion` with its public
   `QuestionInput` and `SpanEvidence`/`DocumentEvidence` gold, the `QABenchmark` corpus and
   questions bundle, and `LegacyFixture` for the repository's fixture files. Evidence names native
-  document keys, which are the corpus Sources' `external_id`s; resolving them to stored Sources,
-  scoring and a benchmark runner are not implemented.
+  document keys, which are the corpus Sources' `external_id`s.
+- [Retrieval](concepts/retrieval.md): the `Retriever` contract returning ranked `RetrievalHit`s,
+  and `BM25`, lexical search over an in-memory snapshot of a store's chunks with the `HIPPORAG1`
+  (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read and returns
+  only what each query's viewer may read; scores still depend on the term statistics of every
+  indexed chunk. `WholeText` keeps each source as one chunk.
+- [Retrieval recall](concepts/recall.md): resolving gold evidence to Source ids, span and
+  document coverage at several `k`, and means across questions. `examples/bm25_recall.py` scores
+  BM25 on a fixture. Answer scoring, baselines other than BM25 and a benchmark runner with run
+  identity are not implemented.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are
@@ -40,8 +48,8 @@ This page follows the intended flow and shows where experiments can replace indi
   for use with the cache decorators, with explicit bookkeeping exclusions; a separate mixin
   supports existing Pydantic bases. Source/Chunk implement
   [record fingerprint methods](infrastructure/fingerprints.md#existing-record-fingerprints).
-- Indexing/ingestion prototypes remain under review. Text/vector search, graph retrieval and
-  answer generation are intended responsibilities, not a supported end-to-end pipeline.
+- Indexing/ingestion prototypes remain under review. Vector search, graph retrieval and answer
+  generation are intended responsibilities, not a supported end-to-end pipeline.
 
 The diagrams below show those responsibilities, not a mandatory sequence of classes.
 
@@ -128,13 +136,14 @@ flowchart TD
    may encode the user's question; this is separate from embedding source chunks during indexing.
 2. **Optionally rerank.** Reassess candidate relevance to the question.
 3. **Format.** Present the selected evidence to the model: for example passages, triples or graph
-   structure. The retrieval output's exact shape is undecided, including how graph facts and
-   supporting passages travel together.
+   structure. Chunk retrieval returns ranked hits; how graph facts and supporting passages
+   travel together is undecided.
 4. **Answer.** Give the question and formatted evidence to the LLM.
 
 Every record store read takes a viewer and returns only the sources and chunks it may read.
-Retrieval itself is not implemented: permission filtering belongs inside the index, before
-ranking, and graph traversal uses the visible graph. Reads do not take a temporal view yet.
+[BM25 retrieval](concepts/retrieval.md) filters by the query's viewer before ranking; its term
+statistics are not yet scoped to the viewer. Vector and graph retrieval are not implemented;
+graph traversal is to use the visible graph. Reads do not take a temporal view yet.
 Derived summaries must preserve their supporting sources' access restrictions.
 
 ## Composing and reusing steps

@@ -24,12 +24,14 @@ Indexing turns input material into searchable chunks. The concepts in pipeline o
 [Indexing and retrieval](flow.md) shows the larger flow; [Decision points](concepts/decisions.md)
 explains the shared Protocol and configuration conventions.
 
-## Retrieval
+## Retrieval and evaluation
 
-Retrieval concepts are not written yet; see [Indexing and retrieval](flow.md) for the intended
-flow.
+1. [Benchmark inputs](concepts/benchmark-inputs.md): a benchmark's corpus and its questions,
+   with the answers and gold evidence that only evaluation reads.
+2. [Retrieval](concepts/retrieval.md): the chunks a viewer may read that best answer a query,
+   ranked by BM25.
+3. [Retrieval recall](concepts/recall.md): how much of a question's gold evidence the top `k`
+   hits contain.
 
-## Evaluation
-
-[Benchmark inputs](concepts/benchmark-inputs.md): a benchmark's corpus and its questions, with
-the answers and gold evidence that only evaluation reads. Scoring is not implemented yet.
+Answer generation and answer scoring are not implemented yet; see
+[Indexing and retrieval](flow.md) for the intended flow.

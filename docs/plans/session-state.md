@@ -11,10 +11,11 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Next:** owner answers to round 8 (RT5 reopened, RT7, RT8, BE12), presented 2026-11-07 with
-  peer `2093cf26166c43c998114f9d3709ff77`; then owner approval of the P8/P9 declarations in the
-  [retrieval spec](../specs/retrieval.md) (draft). Nothing implemented for P8/P9 yet.
-- **Implemented this workstream:** P6 `Source.external_id` and P7 Viewer, store-owned access and
+- **Next:** BE21 (gold character-coverage proportion, open in
+  [benchmark evidence](questions/benchmark-evidence.md)); then choose the next interface with the
+  owner: IRCOT preset with stemming, dense retrieval/fusion (DF) or the LLM protocol (LQ1).
+- **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
+  ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example; P6 `Source.external_id` and P7 Viewer, store-owned access and
   Viewer-taking reads ([spec](../specs/source-access.md)); P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
   records, `QABenchmark`, `LegacyFixture`; deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and

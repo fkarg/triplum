@@ -40,3 +40,27 @@ class FixedSize(Chunker, FingerprintedComputationMixin):
             )
             for ordinal, start in enumerate(range(0, len(source.text), self.size))
         ]
+
+
+class WholeText(Chunker, FingerprintedComputationMixin):
+    """One chunk holding the whole source text; empty text yields no chunks.
+
+    Keeps a benchmark's native passages as retrieval units, as passage-level recall assumes.
+    """
+
+    def fingerprint_config(self) -> dict[str, object]:
+        return {}
+
+    def __call__(self, source: Source, /) -> list[Chunk]:
+        if not source.text:
+            return []
+        return [
+            Chunk(
+                collection_id=source.collection_id,
+                source_id=source.id,
+                origin=source.origin,
+                ordinal=0,
+                start=0,
+                text=source.text,
+            )
+        ]

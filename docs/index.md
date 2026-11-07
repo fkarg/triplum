@@ -31,5 +31,6 @@ for the full sequence of building blocks. For intermediate-result reuse, see the
 ## Project status
 
 [Indexing and retrieval](flow.md) distinguishes implemented foundations from the intended flow.
-Indexing prototypes remain under review; there is no supported end-to-end retrieval pipeline.
+BM25 retrieval and retrieval recall work; indexing prototypes remain under review, and there is
+no answer generation or benchmark runner yet.
 The Python package and Rust workspace are independent, so the example requires no Rust build.

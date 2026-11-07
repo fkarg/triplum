@@ -11,9 +11,9 @@ reference material, not the current architecture contract. The old CLI and bench
 not working entry points. The current CLI provides cache inspection and clearing.
 
 The Python foundation includes datasets/loaders, Source and Chunk records, benchmark question
-records with a fixture loader, step Protocols, memory/SQL record stores, and optional computation
-caching. Indexing prototypes remain under review; there is no supported end-to-end retrieval
-pipeline. The pure Python package uses `uv_build`; the independent Rust workspace is not built or
+records with a fixture loader, step Protocols, memory/SQL record stores, BM25 retrieval with
+retrieval-recall scoring, and optional computation caching. Indexing prototypes remain under
+review; there is no answer generation or benchmark runner yet. The pure Python package uses `uv_build`; the independent Rust workspace is not built or
 linked during Python installation.
 
 ## Try it

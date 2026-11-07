@@ -1,12 +1,12 @@
-# BM25 retrieval and recall scoring (draft for owner review)
+# BM25 retrieval and recall scoring
 
-Status: **draft**, not approved. Two separately approvable declarations: P8 (retrieval hit,
-Retriever Protocol, BM25) and P9 (recall scorers, `WholeText` chunker, first BM25 R@2/R@5
-example). Settled by the owner: RT1/RT2 (hit record, `(query, /, *, viewer, k)`), RT3/RT6 (store-owned
-access, [source access](source-access.md)), RT4 (bm25s, presets; RT5's default is reopened
-by new evidence), BE3/BE4 (span coverage, native granularity), the policy that established
-baselines are named, tunable presets. Open: RT7, RT8 and BE12 in [retrieval](../plans/questions/retrieval.md)
-and [benchmark evidence](../plans/questions/benchmark-evidence.md).
+Status: **approved** by the owner (P8 and P9, 2026-11-07, "go P8, go P9") after round 8 (RT5 (a),
+RT7 (c), RT8, BE12 (b)); implemented: `datatype/hit.py`, `steps/retrieval.py`, `WholeText` in
+`steps/chunking.py`, `evaluation/recall.py`, `examples/bm25_recall.py`. Approval covers this page
+only. Settled earlier: RT1/RT2 (hit record, `(query, /, *, viewer, k)`), RT3/RT6 ([source
+access](source-access.md)), RT4 (bm25s, presets), BE3/BE4 (span coverage, native granularity).
+Answers are in [retrieval](../plans/questions/retrieval.md) and
+[benchmark evidence](../plans/questions/benchmark-evidence.md).
 
 ## P8: hits, Retriever and BM25
 
@@ -37,27 +37,19 @@ class Retriever(Protocol):
         ...
 
 
-@dataclass(frozen=True)
-class BM25Settings:
-    """Tokenization and scoring of one BM25 configuration; every field can be changed."""
+class BM25Settings(FingerprintedDataModel):
+    """Tokenization and Lucene BM25 scoring of one configuration; every field can be changed."""
 
-    k1: float
-    b: float
-    method: Literal["lucene", "robertson", "atire", "bm25l", "bm25+"] = "lucene"
-    token_pattern: str = r"\w+"  # regex whose matches are tokens; keeps one-character tokens
+    model_config = ConfigDict(frozen=True)
+
+    k1: float = Field(ge=0)  # bounds keep every matching chunk's score positive
+    b: float = Field(ge=0, le=1)
+    token_pattern: str = r"\w+"  # whole nonempty matches are tokens, for chunks and queries
     lowercase: bool = True
-    # drop a trailing 's before splitting (ES english_possessive_stemmer)
-    strip_possessive: bool = False
-    stopwords: frozenset[str] = frozenset()
-    stemmer: Literal["porter", "english"] | None = None  # PyStemmer algorithm: Porter or Porter2
 
 
-HIPPORAG1 = BM25Settings(k1=1.2, b=0.75)  # ES `standard` analyzer on title\ntext, as HippoRAG 1
-IRCOT = BM25Settings(  # ES `english` analyzer, one field (IRCoT sums separate title/text fields)
-    k1=1.2, b=0.75, strip_possessive=True, stopwords=LUCENE_ENGLISH_STOPWORDS, stemmer="porter"
-)
+HIPPORAG1 = BM25Settings(k1=1.2, b=0.75)  # default: ES `standard` analyzer, as HippoRAG 1
 BM25S_DEFAULT = BM25Settings(k1=1.5, b=0.75, token_pattern=r"(?u)\b\w\w+\b")  # bm25s defaults
-# Which preset is the default: RT5 (reopened). LUCENE_ENGLISH_STOPWORDS: Lucene's 33-word set.
 
 
 class BM25(Retriever, FingerprintedComputationMixin):
@@ -70,7 +62,7 @@ class BM25(Retriever, FingerprintedComputationMixin):
 
     def __init__(
         self, store: RecordStore, /, *, viewer: Viewer, settings: BM25Settings = HIPPORAG1
-    ) -> None: ...  # default pending RT5
+    ) -> None: ...
 
     def fingerprint_config(self) -> dict[str, object]: ...  # settings only
 
@@ -83,16 +75,19 @@ Guarantees:
   replacements or grants do not reach it; build a new `BM25`. (No revoke operation exists, so a
   snapshot cannot keep a source readable after its access was withdrawn.)
 - **Mask before ranking.** A call ranks only chunks whose source is in
-  `{s.id for s in store.sources(viewer=viewer)}`, computed once per distinct principal set and
-  kept with the snapshot. Hidden chunks are never returned, never fill a top-k slot and never
+  `{s.id for s in store.sources(viewer=viewer)}`, read on every call (no memo: the owner's
+  simpler-first privacy policy; `sources()` loads texts, a known cost). Hidden chunks are never returned, never fill a top-k slot and never
   break a tie. The query viewer may see sources the index does not hold; they are not returned.
 - **Term statistics** (document frequencies, average length) come from the indexed set, not from
   the query viewer's projection. With global statistics, a visible chunk's score depends on
   hidden texts: scores leak term statistics of hidden sources (Elasticsearch document-level
-  security behaves the same). See RT7.
+  security behaves the same). RT7 (c): accepted for now; viewer-scoped indexes later.
 - Only chunks sharing at least one query token are hits, so fewer than `k` hits is normal; a
-  query with no indexable token returns `[]`. Matching is decided by tokens, not by score sign:
-  the `robertson` idf is negative for terms in most documents. `k < 1` raises `ValueError`.
+  query with no indexed token returns `[]`. Only the `lucene` variant is offered: its idf is
+  positive, so sharing a token is the same as scoring above zero (the `robertson` idf can be
+  negative; adding variants must keep matching separate from score sign). `k < 1` raises.
+- A repeated query token counts again (`cat cat` scores twice `cat`), as Lucene sums repeated
+  term clauses.
 - Order: score descending, ties by `(chunk.source_id, chunk.ordinal)`. The index order is sorted
   the same way, so results do not depend on store iteration order.
 - Indexed text is `chunk.text`. Fixture texts begin with `title\n`, so titles are indexed as
@@ -101,17 +96,18 @@ Guarantees:
   (BE6) and the separate-index-run question (BE17).
 - Construction reads everything into memory; no persistence of the index yet. An empty
   index (no visible chunks) is allowed and returns `[]`.
-- Tokenization is ours, not `bm25s.tokenize`: lowercase, optional possessive strip, regex
-  matches, stopword removal, optional PyStemmer stem; the same function for chunks and queries.
-  bm25s scores token lists (exact `lucene` formula, observed). Ranking is ours too: full score
-  vector, keep visible matching rows, stable sort. bm25s's `weight_mask` only zeroes masked scores
+- Tokenization is ours, not `bm25s.tokenize`: optional lowercasing, then regex matches; the same
+  for chunks and queries (RT8: part of indexing; stopwords, possessives and stemming later,
+  possibly database-level analysis). bm25s scores token lists (exact `lucene` formula, observed).
+  Ranking is ours too: full score vector, keep visible matching rows, stable sort. bm25s's `weight_mask` only zeroes masked scores
   (masked documents can still be returned at score 0, observed), and its top-k tie order changes
   when jax is installed; neither is relied on.
 - Presets approximate Elasticsearch, they do not reproduce it: no UAX#29 tokenizer (`U.S.`,
-  `3.14`, `don't` split), PyStemmer's Porter is the 1980 algorithm while Lucene uses Porter's
-  release-3 code (a few stems differ), Lucene stores document lengths in one lossy byte, and
-  IRCoT's two-field title/text scoring is not available (chunks have no title field). Expect
-  small score differences and occasional rank swaps against published numbers.
+  `3.14`, `don't` split) and Lucene stores document lengths in one lossy byte. Expect small score
+  differences and occasional rank swaps against published numbers.
+- Deferred: an `IRCOT` preset (ES `english`: possessive, Lucene's 33 stopwords, Porter via
+  PyStemmer, whose 1980 Porter differs slightly from Lucene's) and IRCoT's two-field title/text
+  scoring, which needs a title field chunks do not have.
 
 Example:
 
@@ -123,70 +119,81 @@ hits = retriever(question.input.text, viewer=public, k=5)
 [h.chunk.origin for h in hits]  # legacy document ids, best first
 ```
 
-Dependencies: `bm25s` 0.3.16 (MIT; numpy only, no extras) and `PyStemmer` 3.1.0 (MIT/BSD), recorded
-in `docs/licences.md`.
+Dependency: `bm25s` 0.3.16 (MIT; numpy only, no extras), recorded in `docs/licences.md`.
 
 ## P9: recall scorers and the first BM25 example
 
 ### `src/triplum/evaluation/recall.py`
 
 ```python
-class RetrievalScorer(Protocol):
-    """Score one question's ranked hits against its gold evidence; None when it has none."""
-
-    @abstractmethod
-    def __call__(
-        self, hits: list[RetrievalHit], evidence: list[list[Evidence]], /
-    ) -> float | None: ...
+class ResolvedSpan(BaseModel):  # frozen, extra="forbid"; end > start
+    source_id: UUID
+    start: int
+    end: int
 
 
-class SpanRecall(RetrievalScorer, FingerprintedComputationMixin):
-    """Fraction of gold units the top `k` hits cover completely; best alternative set.
-
-    A `SpanEvidence` unit is covered when the union of the top-`k` chunks of its source covers
-    `[start, end)`; a `DocumentEvidence` unit when any top-`k` chunk is from its source.
-    """
-
-    def __init__(self, *, k: int, sources: Mapping[str, UUID]) -> None: ...
+class ResolvedDocument(BaseModel):  # frozen, extra="forbid"
+    source_id: UUID
 
 
-class AllGoldRecall(RetrievalScorer, FingerprintedComputationMixin):
-    """1.0 when some alternative set is covered completely by the top `k` hits, else 0.0."""
-
-    def __init__(self, *, k: int, sources: Mapping[str, UUID]) -> None: ...
+type ResolvedEvidence = ResolvedSpan | ResolvedDocument
 
 
-def retrieved_characters(hits: list[RetrievalHit], /, *, k: int) -> int:
-    """Characters of text in the top `k` hits."""
+def resolve_evidence(
+    question: QAQuestion, sources: Mapping[str, UUID], /
+) -> list[list[ResolvedEvidence]]: ...
 
 
-class RecallSummary(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    mean: float | None  # None when no question is eligible
-    eligible: int
-    excluded: int  # questions without gold
+class RecallAtK(BaseModel):  # frozen
+    recall: float | None  # best set's fraction of fully covered items; None without gold
+    all_gold: bool | None  # some set fully covered; None without gold
+    retrieved_characters: int  # distinct source characters in the top k
 
 
-def summarize(scores: Iterable[float | None], /, *, missing_as_zero: bool = False) -> RecallSummary:
-    """Mean over questions with gold; `missing_as_zero` scores questions without gold as 0."""
+def score_recall(
+    hits: Sequence[RetrievalHit],
+    evidence: Sequence[Sequence[ResolvedEvidence]],
+    /,
+    *,
+    ks: Sequence[int] = (2, 5),
+) -> dict[int, RecallAtK]: ...
+
+
+class RecallSummary(BaseModel):  # frozen
+    recall: float | None
+    all_gold: float | None
+    retrieved_characters: float | None  # mean over all questions
+    questions: int
+    no_gold: int
+    denominator: int  # questions in the recall means
+
+
+def summarize_recall(
+    scores: Iterable[RecallAtK], /, *, no_gold: Literal["exclude", "zero"] = "exclude"
+) -> RecallSummary: ...  # one k at a time
 ```
 
 Guarantees:
 
-- `sources` maps each evidence key (`Evidence.document`, a native key) to the Source id it names:
-  `{s.external_id: s.id for s in corpus if s.external_id is not None}`. A key missing from it
-  raises `KeyError`: a mapping error, never a silent zero.
-- Hits beyond `k` are ignored; fewer than `k` hits are scored as they are. `k < 1` raises.
-- Per set: the fraction of its units covered (equal weight per unit). Per question: the best set.
-  No evidence (`[]`) returns `None`.
-- Coverage uses `chunk.source_id` and `[chunk.start, chunk.start + len(chunk.text))`; it does not
-  read the store and does not compare texts.
-- With one chunk per whole source and whole-document gold, `SpanRecall` equals HippoRAG's
-  passage-set R@k and `AllGoldRecall` its AR@k.
-- Not included yet: the named variants of BE3 (document/title recall, answer-in-context,
-  MultiHop-RAG fact hits, character coverage/IoU), per-question records (BE16), repeats and
-  intervals (BE15).
+- Evidence is resolved once, before retrieval: `sources` maps native document keys to Source ids
+  of one collection, usually `{s.external_id: s.id for s in corpus if s.external_id is not None}`.
+  A missing key raises `KeyError` naming question and key: a preparation error, never a zero.
+- For each `k`, the first `k` hits, without reranking or deduplication. A span is covered when
+  the union of the top-`k` chunks of its source contains all of `[start, end)`; a document when any
+  top-`k` chunk is from its source. Per set: fraction of items covered (equal weight); per
+  question: the best set; items of different sets never combine. `[]` evidence → `None`.
+- Coverage uses `chunk.source_id` and `[chunk.start, chunk.start + len(chunk.text))`; it reads no
+  store and compares no texts.
+- Retrieved characters: distinct source characters (owner: overlaps count once), counted also for
+  questions without gold. Delivered text, which counts overlaps twice, is a reader cost that
+  belongs with LLM usage.
+- Summaries: recall means over `denominator` questions; `no_gold="zero"` adds questions without
+  gold as 0. Empty denominators give `None`.
+- With one chunk per whole source and whole-document gold, `recall` equals HippoRAG's
+  passage-set R@k and `all_gold` its AR@k.
+- Not included: BE3's named variants (document/title recall, answer-in-context, MultiHop-RAG fact
+  hits, character coverage/IoU; BE21 asks about a gold-coverage proportion), per-question run
+  records (BE16), repeats and intervals (BE15).
 
 ### `WholeText` chunker (`src/triplum/steps/chunking.py`)
 
@@ -199,28 +206,52 @@ Needed so chunks equal the native passages of the fixtures, as HippoRAG's R@k as
 
 ### Example: `examples/bm25_recall.py`
 
-Loads `tests/fixtures/hotpotqa.json`, stores the corpus in a `MemoryStore` with `allow=["public"]`,
-chunks with `WholeText`, builds `BM25` with the default preset, retrieves `k=5` per question with
-the public viewer, and prints R@2, R@5, AR@2, AR@5 and mean retrieved characters. No API key, no
-network, no cache.
+Takes a fixture path, stores its corpus in a `MemoryStore` with `allow=["public"]`, chunks with
+`WholeText`, resolves all evidence, builds `BM25` with the default preset, retrieves `k=5` per
+question with the public viewer, and prints R@2, R@5, AR@2, AR@5 and mean retrieved characters.
+No API key, network or cache. On `tests/fixtures/hotpotqa.json` (observed, pinned by a test):
+R@2 0.600, AR@2 0.300, R@5 0.775, AR@5 0.600, 968 / 2639 characters, 20 of 20 questions with
+gold. Not compared against published numbers (20 questions only).
 
-## Verification plan
+## Verification
 
-- P8: hidden top-scoring chunk never returned and never displaces a visible one (the round-7
-  forbidden-outranks-visible case), with two viewers over one index; ties ordered by
-  `(source_id, ordinal)` independent of insertion order; zero-score and no-term queries; `k`
-  larger than the visible set; snapshot ignores later writes; memory and SQL stores; preset values
-  pinned against their published sources; tokenizer cases for RT8.
-- P9: partial coverage by two adjacent chunks; a one-character gap scores 0; chunks of another
-  source with overlapping offsets do not count; document evidence; best of two sets; `[]` → None;
-  unknown key raises; `summarize` counts and `missing_as_zero`; the example runs as a test on the
-  20-question fixture, with its numbers recorded.
-- Docs: concept pages for retrieval and recall (one each), flow.md, licences.md.
+`tests/test_retrieval.py` (memory and SQL stores): hidden best match never returned or
+displacing visible hits; only the corpus viewer's sources indexed; ties by source id in both
+insertion orders and by ordinal within a source; score equals the Lucene formula with the
+preset's k1/b; unknown, empty, punctuation-only and case-differing queries; fewer than `k`;
+empty and tokenless corpora; `k < 1`; snapshot after writes; presets differ on one-character
+tokens; fingerprint follows settings. `tests/test_recall.py`: adjacent, overlapping, gapped,
+short and other-source coverage; document evidence; best set without pooling; first `k` only;
+distinct characters; no-gold; invalid `k`; resolution and unknown keys; union rejects an invalid
+span; summary denominators; the example's output. Mutations (dropping the visibility filter,
+not merging adjacent intervals) turn tests red (observed).
 
-## Unresolved tradeoffs
+## Implementation review
 
-- RT7: where the index gets its chunks, access and term-statistics scope.
-- RT5 (reopened): the round-6 premise that HippoRAG 1 used the ES `english` analyzer was wrong;
-  which preset is the default.
-- RT8: own tokenizer versus `bm25s.tokenize`, and how presets document their fidelity.
-- BE12: scorer interface shape; location `evaluation/` (a new package) versus elsewhere.
+- Cross-model diff review gpt-6.1-sol `d4dc780ad083409db6402a4d09ee3845` (ran both test modules;
+  1,140 three-interval combinations against character-set unions; tokenless corpora in both
+  orders; capture-group patterns; k1 0 vs negative). Unique defect: capture groups made `findall`
+  return groups or tuples (retrieval raised) → whole matches, regression test (red before the fix,
+  observed). Defect, also found by the general reviewer: unbounded `k1`/`b` made matching chunks
+  score ≤ 0 and vanish → `k1 ≥ 0`, `0 ≤ b ≤ 1` (Lucene's own bounds), test. Nits applied
+  (redundant `bool`, default `ks` in the example). No impact: inconsistent hand-built `RecallAtK`.
+- General reviewer (no peer call): unique defect, patterns matching the empty string indexed `""`,
+  turning non-matching chunks into hits, and `""` in bm25s's vocabulary crashed `get_scores` →
+  empty matches skipped, test (red before the fix, observed). Added: example names its
+  collection after the fixture and prints `n/a` without gold; `WholeText` fingerprint covered;
+  repeated query tokens documented. Docs gap: closed by the docs sync in the same commit.
+- Simplicity reviewer: test parametrized by expected result, docstring layout, comment placement,
+  private `_store`, clearer `_covered` parameter applied. Not applied: nesting `_covered` inside the
+  loop (Ruff B023, loop-variable closure); merging the two interval dicts (readability).
+- Security reviewer: no access defects (mask before ranking, ties, construction scope, no
+  existence oracle for hidden-only tokens, gold isolation). Confirmed the accepted global
+  statistics leak with numbers. Latent: the fingerprint omits index scope, so caching retriever
+  calls could serve another store's chunks; nothing caches retrievers today (Open below).
+
+## Open
+
+- BE21: a gold character-coverage proportion alongside strict span recall.
+- Viewer-scoped term statistics for private corpora (RT7, deferred by the owner's privacy policy).
+- Index persistence, content identity and separate index-build runs (BE6, BE17). Until then,
+  retriever calls must not be cached: the fingerprint covers settings, not the indexed chunks,
+  construction viewer or store grants (security review).
