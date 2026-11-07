@@ -1,9 +1,12 @@
 # Benchmark inputs (draft for owner review)
 
-Status: **proposal** (P5). Nothing here is approved. Direction settled by the owner: BE1 round 6
-(nested public input, small `QABenchmark` bundle, alternative evidence sets), BE3/BE4 (native
-granularity, span coverage), the list-not-tuple policy. Open neighbours: BE18 (how an evidence key
-resolves to a Source), BE7 (unanswerable scoring), BE11 (per-question contexts).
+Status: **approved** by the owner (P5, 2026-11-07) and implemented: `datatype/question.py`,
+`datasets/benchmark.py`, `datasets/fixture.py`, tests in `tests/test_benchmark_inputs.py`.
+Approval covers this page only. Direction: BE1 round 6 (nested public input, small `QABenchmark`
+bundle, alternative evidence sets), BE3/BE4 (native granularity, span coverage), the list-not-tuple
+policy. Decided since: BE18, evidence keys resolve through a nullable `Source.external_id`, unique
+per collection where set (not yet implemented; the fixture sets it in a later step). Open
+neighbours: BE7 (unanswerable scoring), BE11 (per-question contexts).
 
 ## Records: `src/triplum/datatype/question.py`
 

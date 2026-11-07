@@ -79,6 +79,7 @@ nav:
       - Chunking: concepts/chunking.md
       - Chunk preprocessing: concepts/chunk-preprocessing.md
       - Embedding: concepts/embedding.md
+      - Benchmark inputs: concepts/benchmark-inputs.md
   - Infrastructure:
       - Store: infrastructure/store.md
       - Fingerprints: infrastructure/fingerprints.md

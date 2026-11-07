@@ -12,6 +12,11 @@ This page follows the intended flow and shows where experiments can replace indi
   `ordinal` in the chunker's result. Their IDs are deterministic UUIDv8s derived from the same
   fields as their fingerprints, so re-creating equal records reproduces their IDs. Dataset and
   converter producers take the collection as an argument.
+- [Benchmark inputs](concepts/benchmark-inputs.md): `QAQuestion` with its public
+  `QuestionInput` and `SpanEvidence`/`DocumentEvidence` gold, the `QABenchmark` corpus and
+  questions bundle, and `LegacyFixture` for the repository's fixture files. Evidence names native
+  document keys; resolving them to stored Sources, scoring and a benchmark runner are not
+  implemented.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are

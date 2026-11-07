@@ -28,3 +28,8 @@ explains the shared Protocol and configuration conventions.
 
 Retrieval concepts are not written yet; see [Indexing and retrieval](flow.md) for the intended
 flow.
+
+## Evaluation
+
+[Benchmark inputs](concepts/benchmark-inputs.md): a benchmark's corpus and its questions, with
+the answers and gold evidence that only evaluation reads. Scoring is not implemented yet.

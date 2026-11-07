@@ -12,14 +12,6 @@ alternative sets `list[list[Evidence]]` (peer); small `QABenchmark` bundle (Clau
 BE2 options: `Source.origin` = native key, validated unique (Claude) vs an explicit adapter-built
 key → Source.id binding (peer). Four fixtures repeat titles.
 
-### BE18. Evidence key → Source resolution (round 7)
-
-Follow-up to BE2. Owner: origin is meant to be the native key, but nothing checks it unique; maybe a
-nullable extra identifier, unique where set. Options: validate origin uniqueness within the
-benchmark corpus at load (Claude, peer `c047f9c1…`); nullable `Source.external_id`, store-enforced
-unique; explicit native key → Source.id binding. Peer argument: store-wide uniqueness would forbid
-text revisions of one document under one origin.
-
 ### BE14. Benchmark run lifecycle and interface map
 
 From owner round 2: identify the full lifecycle and every interface for indexing, retrieval and
@@ -131,6 +123,15 @@ reproductions; empty-after-normalization answers need explicit handling.
 
 
 ## Answered
+
+### BE18 (answered round 7). Evidence key → Source resolution
+
+Owner: (b), a nullable `Source.external_id`, unique per collection where set; evidence keys resolve
+through it. Claude and peer (`c047f9c1…`) both recommended validating origin within the benchmark
+corpus instead; owner chose the field. It stays outside the Source id (settled identity), so an
+equal id with another external id is an unequal duplicate and raises. Follow-up BE19 (open): two
+text revisions of one document cannot both carry the same external id; decide with the history
+questions.
 
 ### BE1 (answered round 6). QA input representation
 

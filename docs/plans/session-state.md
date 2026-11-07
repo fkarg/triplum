@@ -11,15 +11,13 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Waiting on the owner:** round 7, presented 2026-11-04 (BE18 evidence key resolution; RT1/RT2
-  hit and retriever call, with producer/consumer walkthrough; RT3 where access lives; RT6 reads and
-  writes under a Viewer; RT5 which part of BM25 option A is excluded), and approval of the exact P5
-  declaration in [benchmark spec](../specs/benchmark.md). Round 6 answers (BE1 mixed, RT4 mostly A
-  with the presets policy) are in the capture.
-- **Next after answers:** implement P5 once its declaration is approved; then offer P6 Viewer,
-  access and Viewer-taking reads, P7 BM25 retriever, P8 recall scorers plus the first BM25 R@2/R@5
-  example on the fixtures. No LLM or API key needed for this path (owner: lowest complexity first).
-- **Implemented this workstream:** deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
+- **Waiting on the owner:** approval of the P6 (`Source.external_id`) and P7 (Viewer, store-owned
+  access, Viewer-taking reads) declarations in [source access](../specs/source-access.md).
+  Round 7 answers are in the capture and question files.
+- **Next after approval:** implement P6, P7; then draft P8 BM25 retriever and P9 recall scorers
+  plus the first BM25 R@2/R@5 example on the fixtures. No LLM or API key needed.
+- **Implemented this workstream:** P5 benchmark inputs ([spec](../specs/benchmark.md)): QA
+  records, `QABenchmark`, `LegacyFixture`; deterministic UUIDv8 Source/Chunk ids, `collection_id`, chunk
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
   `replace_chunks` with one current chunk list per source; `SQLAlchemyStore.close()`.
 - **Open but deferred** (documented, revisit later): Q13–Q17, Q28–Q33 ingestion items, BE10,

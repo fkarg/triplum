@@ -95,11 +95,11 @@ integer chunk ids that match no document id.
 | Q22, Q23, Q9 | Source id, collection, fingerprints | — | Answered round 4 |
 | Q24, Q25 | Chunking result membership; store writes | — | Re-present with context |
 | BE17 | Persistence between stages; separate index-build and retrieval runs | BE16, Q22–Q25 | Ready later |
-| RT1 | Retrieval hit record | BE14 | Round 7 (with context) |
-| RT2 | Retriever and oracle selector | BE14 | Round 7 (with context) |
+| RT1 | Retrieval hit record | BE14 | Answered round 7 |
+| RT2 | Retriever and oracle selector | BE14 | Answered round 7 |
 | BE15 | Evaluation layering | BE14 | Round 3 |
 | BE16 | Sample/run records, usage, errors | BE14 | Round 3 |
-| RT3 | Viewer contract; where access lives | — | Round 7 (with context) |
+| RT3 | Viewer contract; where access lives | — | Answered round 7 |
 | LQ1 | LLM request/response protocol | BE16 | Queued |
 | RT4 | Evidence formatting and citation format | LQ1 | Queued |
 | BE12 | Retrieval-metric interface | RT result type | Blocked |
@@ -108,9 +108,10 @@ integer chunk ids that match no document id.
 | BE7 | Unanswerable / no-gold handling and eligibility reporting | BE1, BE3 | Backlog |
 | BE8 | Oracle-passage baseline construction | BE2, BE4 | Backlog |
 | BE9 | Judge protocol (prompt, binary, validation sample) | LQ protocol | Backlog |
-| BE18 | Evidence key → Source resolution (follow-up to BE2) | BE2 partial | Round 7 |
-| RT5 | Which part of BM25 option A the owner excludes | RT4 | Round 7 |
-| RT6 | Store read/write semantics under a Viewer | RT3 | Round 7 |
+| BE18 | Evidence key → Source resolution | — | Answered round 7 (external_id) |
+| BE19 | Revisions of one document vs unique external_id | BE18, history | Flagged |
+| RT5 | BM25 default preset | — | Answered round 7 (A) |
+| RT6 | Store read/write semantics under a Viewer | — | Answered round 7 (raise) |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
 ## Investigations
@@ -193,6 +194,25 @@ integer chunk ids that match no document id.
   FlashRAG silently drops raising metrics; DSPy substitutes failure scores.
 
 ## Rounds
+
+### Round 7 owner answers (checkpoint, 2026-11-07)
+
+- BE18 (answered): **(b)** nullable `Source.external_id`, unique per collection where set. Owner chose
+  it over session and peer (both (a)); dissent recorded. Follows from settled identity: the field
+  stays outside the Source id, so an equal id with a different external id is an unequal duplicate
+  and raises. Consequence flagged (BE19): two text revisions of one document cannot both carry the
+  same external id; revision semantics stay with the history questions.
+- RT1/RT2 (answered): `RetrievalHit(chunk, score | None)`, list order is rank; **(b)**
+  `__call__(query: str, /, *, viewer: Viewer, k: int)`; fuser, reranker, oracle get their own inputs.
+- RT3 (answered): **(a)** store-owned grants keyed by Source id; `Viewer(principals: frozenset[str])`;
+  `"public"` an ordinary principal; empty principals see nothing; time later.
+- RT6 (answered with change): no existence leak, missing policy denies, grants written atomically
+  with sources, equal repeat no-op, conflict raises, no revoke yet. Owner: result types (None) fit
+  sometimes but must always be checked; **prefers raising here**: `source(id, *, viewer)` raises the
+  same error for missing and invisible. Applying it to `chunks()` of an invisible parent goes into
+  the P6 declaration for owner review.
+- RT5 (answered): default preset exactly as option A.
+- P5 declaration (approved): implementation starts.
 
 ### Round 7 (BE18, RT1/RT2, RT3, RT6, RT5): session assessment before peer
 
@@ -648,11 +668,19 @@ Dispositions:
 
 - **P5 QA records and legacy fixture loader** (accepted 2026-11-04): declaration drafted in
   [benchmark spec](../specs/benchmark.md), peer `7ab5b020457144abaf7832b011016aec` dispositions
-  recorded there. Waiting for owner approval of the exact declaration before implementation.
-  Plan: `datatype/question.py`, `datasets/benchmark.py`, `datasets/fixture.py`; tests: every
-  fixture loads and all 704 gold references decode; union/validators via `QAQuestion`; content
-  fingerprints; docs page + flow.md after approval. Budget: no Viewer, no resolution helper (BE18),
-  no scorer.
+  recorded there. Declaration approved 2026-11-07;
+  **implemented**. Plan was: `datatype/question.py`, `datasets/benchmark.py`, `datasets/fixture.py`.
+  Reviews: simplicity reviewer (private `_documents`, simpler test helper → applied; dropping `...`
+  after docstrings rejected, store Protocols use the same form; its peer gpt-6.1-sol `dfdda3a7…`
+  no findings, no impact); general reviewer (no must-fix; segment-error path prefix and null-qtype
+  nits not applied, no fixture affected; its peer gpt-6.1-sol `5560a063…` re-ran checks and 704
+  hashes, no findings, no impact). Mutations (no `extra="forbid"`; decode by position) turn tests
+  red. Verification: 376 passed, 91% branch coverage, ty, Ruff, strict MkDocs, naive.py. Docs:
+  `docs/concepts/benchmark-inputs.md`, flow.md, README, concepts index (docs agent; inspected).
+- **P6 `Source.external_id`** and **P7 Viewer and access**: declarations drafted in
+  [source access](../specs/source-access.md), peer gpt-6.1-sol `583e06a2…` dispositions there.
+  Waiting for owner approval. Then P8 BM25 retriever (`(query, *, viewer, k)`, presets) and P9
+  recall scorers with the first BM25 R@2/R@5 example.
 
 ## Lasting documentation targets
 

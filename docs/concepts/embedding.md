@@ -79,4 +79,4 @@ Unlike the other steps, a plain function does not fit `Embedder`: the protocol a
 How an embedder identifies itself (model, revision, settings) so that its vectors can be cached
 and recorded in a run's identity is not decided yet.
 
-Next: [Decision points](decisions.md), every place you choose an implementation.
+Next: [Benchmark inputs](benchmark-inputs.md), the questions and gold evidence over a corpus.
