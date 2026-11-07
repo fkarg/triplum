@@ -11,6 +11,7 @@ answers, and link to the spec that takes over.
 | Retrieval results, Viewer and BM25 baseline | [retrieval.md](retrieval.md) | RT | Queued, priority 2 |
 | LLM protocol and QA workflow | [llm-qa.md](llm-qa.md) | LQ | Queued, priority 3 |
 | Dense retrieval and fusion | [dense-fusion.md](dense-fusion.md) | DF | Queued, priority 4 |
+| Dataset downloads and management | [datasets.md](datasets.md) | DS | Active (round 9) |
 
 Cache binding against a concrete expensive block (priority 5) continues under the `Q` series.
 
