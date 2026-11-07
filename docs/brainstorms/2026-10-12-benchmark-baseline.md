@@ -117,7 +117,7 @@ integer chunk ids that match no document id.
 | RT5 | BM25 default preset | — | Answered round 8 (HIPPORAG1) |
 | RT7 | BM25 index corpus, masking, statistics scope | RT3, RT6 | Answered round 8 (c) |
 | RT8 | Tokenizer ownership and preset fidelity | RT5 | Answered round 8 |
-| BE21 | Gold character-coverage proportion alongside strict span recall | BE12 | Asked round 8 follow-up |
+| BE21 | Gold character-coverage proportion alongside strict span recall | BE12 | Presented with peer `b4732e8c…` |
 | RT6 | Store read/write semantics under a Viewer | — | Answered round 7 (raise) |
 | new | Source provenance to the original document (goals edit) | ingress area | Candidate, to raise with concurrent session's Q series or here |
 
