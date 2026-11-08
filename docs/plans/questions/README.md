@@ -13,6 +13,7 @@ answers, and link to the spec that takes over.
 | Dense retrieval and fusion | [dense-fusion.md](dense-fusion.md) | DF | Queued, priority 4 |
 | Dataset downloads and management | [datasets.md](datasets.md) | DS | Contract approved, implemented |
 | Test-suite quality | [testing.md](testing.md) | TQ | Active (round 10) |
+| Storage, indexing and retrieval building blocks | [storage.md](storage.md) | ST | Active, current topic |
 
 Cache binding against a concrete expensive block (priority 5) continues under the `Q` series.
 
