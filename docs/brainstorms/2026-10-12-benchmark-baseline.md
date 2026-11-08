@@ -28,6 +28,19 @@ across nested decorated calls.
 
 ## Owner policies
 
+- **Collections are corpus boundaries, not access; the store is the source of truth for records
+  (later permissions)** (owner, 2026-11-08; scope: all storage, retrieval and evaluation design).
+  Recorded in AGENTS.md. Resolves: Collection never moves into Viewer (RT10 option E dropped).
+
+- **Viewers deferred** (owner, 2026-11-08): focus on storage, retrieval and evaluation pipelines
+  first; Viewer design (construction viewer, per-viewer statistics, concept page) returns later.
+  Existing rule stands: reads take a Viewer.
+
+- **Explicit building blocks over interfaces for their own sake** (owner, 2026-11-08; scope:
+  storage/indexing/retrieval design): indexing and retrieval are tied to the storage backend and
+  its optimization targets; do not abstract across backends where it is lossy. Owner leaning:
+  indexes store-managed; the value of a backend-independent Retriever is open.
+
 - **Mutation coverage measures test quality; do not wait on CI** (owner, 2026-11-08; scope: all
   testing work). Line/branch coverage is only a zero-coverage indicator; Google-style mutant
   rules apply; checks stay local and non-blocking. Details: [testing questions](../plans/questions/testing.md).

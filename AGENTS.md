@@ -54,6 +54,8 @@ planning work and whenever a decision depends on direction; do not edit it unles
 - `store/protocols.py`: one Protocol per capability. Implementations are grouped by technology;
   `store/sql/` shares table mappings, with specialized subclasses where faster SQL is justified.
   Graph backend selection and the remaining record types are open. Store and cache are separate.
+- Collections are corpus boundaries (scope, record identity, statistics, comparison), never
+  access control. The store is the source of truth for records, and later for permissions.
 - `utils.data`: datasets choose their record type and implement `fingerprint()`; loaders control
   consumption. Built-in datasets belong in `datasets/`, not `eval`. Corpus and optional QA or
   extraction inputs compose separately; there is no universal benchmark-task schema.

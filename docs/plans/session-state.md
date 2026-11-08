@@ -14,8 +14,12 @@ and the question files; then check `git log` against the state below.
 - **Done (2026-11-08):** persona documentation wave (two rounds,
   [run report](../personae/runs/2026-11-08-persona-wave.md)); P13 strict records and P14
   collection-scoped `sources()`/BM25 implemented ([spec](../specs/retrieval.md)). RT9 answered
-  (keep). **Running:** RT10: investigation done ([record](rt10-collection-scope.md)); Claude's view in the question file; second peer pass done (dispositions in the question file); RT10 presented to the owner. Owner direction: storage interfaces
-  are the next main topic (after RT10); docs gap: Viewer and similar concepts lack concept pages.
+  (keep). **Current topic: storage, indexing and retrieval building blocks** (owner, 2026-11-08). Policies
+  recorded (AGENTS.md, capture): collections are corpus boundaries, never access; the store is the
+  source of truth; Viewers deferred; explicit building blocks over interfaces for their own sake.
+  RT10 folds into this topic (owner leaning: indexes store-managed; Retriever's value open).
+  Running: web research on store-managed indexing/retrieval (machine-local
+  `/tmp/claude-1000/pr/storage-research.md`); then a design sketch, peer pass and questions.
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
   TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
   P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"
