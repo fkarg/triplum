@@ -124,3 +124,55 @@ Toy experiments only (coverage 7.16.1, pytest-cov 7.1.0, Python 3.14); not run o
 - Estimated cost (inferred): ~3 s fixed per mutant (collection, imports) plus selected tests and
   ~1 s per CLI subprocess: ~3–8 s versus ~35 s full suite. Unknown until one real coverage pass:
   tests per line, ctrace overhead, share of import-time mutants.
+
+### Clean-run investigation (subagent, 2026-11-08; scratch under `/tmp/fpinv`, does not travel)
+
+None of mutmut's 30 clean-run failures were stale hits: 24 were extra computations, 6 crashes.
+
+- Cause A (24 tests, tool artifact, conservative): mutmut wraps `tracing._observe`, the
+  `sys.monitoring` callback; its `sys._getframe(1)` then sees mutmut's frame, resolution fails and
+  nothing is admitted. Observed: restoring the original callback makes 23 of 24 pass.
+- Cause B (6 tests): two stacked triplum defects (below, 1 and 3); after patching the slice case
+  the same tests fail on mutmut's `os.environ` read inside a walked wrapper (defect 2).
+- Slowdown: no evidence of larger fingerprint graphs; trampolines cost ~2× on tiny functions; a
+  one-off cold start of ~70 s is unexplained and may account for most of the reported 111 s.
+
+**Defects affecting ordinary users (observed with plain Python reproductions):**
+
+1. **High, stale results.** In a flat/script layout, a root computation that carries a
+   third-party `functools.wraps` decorator moves the inferred application directory to the
+   decorator's library (`_Definitions.directory` comes from the first code object's file), so
+   sibling helpers are treated as external by name and editing them does not change identity:
+   `h(x)=x+1` then `x+2` both return 11. Contradicts the spec's standalone-directory promise.
+2. **Medium, loud failure.** Third-party `wraps` decorators are walked as application code
+   because `__module__` is copied from the wrapped function; a wrapper reading `os.environ` or
+   doing a local import makes static `@cached` raise. Contradicts "external functions stop at the
+   qualified-name boundary".
+3. **Medium-high, crash on valid 3.14 code.** Python 3.14 compiles literal slices (`text[1:]`)
+   to a constant `slice`; `_constant` rejects it, so static `@cached` raises and traced mode never
+   caches. `_constant` claims a lossless projection of compiler constants.
+
+Not a defect: a `wraps`-decorated helper already hashes both wrapper and wrapped (the wrapped
+function is reached through the wrapper's closure); editing the wrapped body changes identity.
+Proposal sketch (wrapper and wrapped): classify functions by real origin
+(`__globals__["__name__"]`, `__code__.co_filename`), never copied `__module__`; project a
+`__wrapped__` function as `{wrapper: definition-or-external-name, wrapped: reference}`; derive
+the application scope from the root after following `__wrapped__`, and a class's scope from its
+module file; `_triplum_compute` and `lru_cache` handling unchanged; cycles end through existing
+visited references. Optional: `_observe` checks `frame.f_code is code` and taints on mismatch.
+
+Fix-proposal peer: gpt-6.1-sol, review `9f361d40c48c463387043948c6e95f8f` (thought experiments:
+reversed ownership, decorator factory arguments, edited external wrapper body, wrappers that never
+call `__wrapped__`, non-function and cyclic `__wrapped__`, mixed stacks). Dispositions:
+- Unique defect in the sketch: deriving scope from the end of the `__wrapped__` chain makes an
+  application wrapper around an external function external (its edits stop counting) → scope
+  discovery needs its own rule; open question FP2.
+- Unique defect: an external decorator factory (`factor * wrapped(x)`, factors 2 and 3) gives
+  equal identities under name-only wrapper identity → stale hits unless captured arguments enter
+  identity or admission declines; open question FP1, which also settles how "cover both" applies
+  to external wrappers.
+- Added verification: bounded scope discovery on `__wrapped__` cycles; defined handling of
+  non-function `__wrapped__`; mixed stacks with `_triplum_compute` and `lru_cache`; slice tests for
+  stability, omitted and negative bounds, each component, static and traced caching.
+- Agreed: the slice fix is independent; the tracing frame guard stays out without a reproducer;
+  fixing omitted dependencies may legitimately invalidate existing caches.
