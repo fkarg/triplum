@@ -134,7 +134,7 @@ def test_verify_fails_on_a_corrupt_file_and_download_refuses_to_replace_it(entry
     code, out, _ = _run(capsys, "datasets", "verify", "demo", "--json")
     assert (code, json.loads(out)["ok"]) == (1, False)
     code, _, err = _run(capsys, "datasets", "download", "demo")
-    assert code == 2 and "remove it to download again" in err
+    assert code == 1 and "remove it to download again" in err and "usage:" not in err
     assert (folder / "a.json").read_bytes() == b"[9]"
 
 
@@ -153,11 +153,12 @@ def test_names_match_forgivingly_and_report_the_match(entry, capsys):
         (["datasets", "list", "demo"], "takes no dataset name"),
         (["datasets", "list", "--path", "x"], "apply only to cache commands"),
         (["cache", "stats", "demo"], "take no dataset name"),
+        (["datasets", "verify", "nosuch"], "unknown dataset 'nosuch'; choices: demo"),
     ],
 )
 def test_misused_commands_explain_themselves(entry, capsys, args, message):
     code, _, err = _run(capsys, *args)
-    assert code == 2 and message in err and "Traceback" not in err
+    assert code == 2 and message in err and "usage:" in err and "Traceback" not in err
 
 
 class _Terminal(io.StringIO):
@@ -212,7 +213,7 @@ def test_licence_json_and_tls_failures_explain_themselves(entry, capsys, monkeyp
 
     monkeypatch.setattr(files.urllib.request, "urlopen", untrusted)
     code, _, err = _run(capsys, "datasets", "download", "demo")
-    assert code == 2 and "Traceback" not in err
+    assert code == 1 and "Traceback" not in err and "usage:" not in err
     assert "a.json failed" in err and "point SSL_CERT_FILE at your CA bundle" in err
 
 

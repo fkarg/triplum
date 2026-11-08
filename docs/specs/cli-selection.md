@@ -57,6 +57,9 @@ triplum cache clear [--path PATH] [--computation SHA256 | --name NAME] [--json] 
   cache_entries table, remain untouched; there is no migration or legacy cleanup.
 - Human output is concise; --json produces structured stdout. Errors/diagnostics go to stderr
   without tracebacks. Plain text is the baseline so NO_COLOR requires no special handling.
+- Errors (owner, 2026-11-08): misuse (missing, unknown, ambiguous or conflicting arguments)
+  prints usage and the message and exits 2; a failed operation (storage, download, hash, the
+  over-5 GB refusal) prints one `triplum: error: …` line and exits 1. Applies to all commands.
 - --name selects recorded function names across computation fingerprints with the same forgiving
   matching as commands. The resolved names are reported on stderr and included in --json output.
 - Commands wrap importable cache_stats(path, ...) and clear_cache(path, ...).

@@ -50,7 +50,11 @@ def _resolve(value: str, choices: Sequence[str], kind: str) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run a cache or datasets command; only removing more than 5 GB of datasets asks first."""
+    """Run a cache or datasets command; only removing more than 5 GB of datasets asks first.
+
+    Misuse (missing, unknown or conflicting arguments) prints usage and exits 2; a failed
+    operation prints one `triplum: error:` line and returns 1.
+    """
     parser = argparse.ArgumentParser(
         prog="triplum",
         description="Operator commands: cache stats | cache clear | "
@@ -82,11 +86,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if command == "cache":
             return _cache(parser, args)
         return _datasets(parser, args)
-    except (OSError, ValueError, sqlite3.Error, argparse.ArgumentTypeError) as error:
+    except argparse.ArgumentTypeError as error:  # an unknown or ambiguous name: misuse
+        parser.error(str(error))
+    except (OSError, ValueError, sqlite3.Error) as error:  # the operation itself failed
         message = str(error)
         if "CERTIFICATE_VERIFY_FAILED" in message:
             message += " (point SSL_CERT_FILE at your CA bundle; do not disable verification)"
-        parser.error(message)
+        print(f"triplum: error: {message}", file=sys.stderr)
+        return 1
 
 
 def _cache(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
@@ -176,7 +183,11 @@ def _datasets(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         size = sum(f.bytes or 0 for f in dataset_status(entry).files)
         if size > PROMPT_BYTES and not args.yes:
             if args.no_input or not sys.stdin.isatty():
-                parser.error(f"{entry.name} holds {size} bytes; pass --yes to remove it")
+                print(
+                    f"triplum: error: {entry.name} holds {size} bytes; pass --yes to remove it",
+                    file=sys.stderr,
+                )
+                return 1
             print(f"Remove {size} bytes of {entry.name}? [y/N] ", end="", file=sys.stderr)
             if sys.stdin.readline().strip().lower() not in ("y", "yes"):
                 print("Nothing removed.", file=sys.stderr)

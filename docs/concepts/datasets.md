@@ -137,8 +137,9 @@ triplum datasets licence NAME
 Every command accepts `--json` for structured output on stdout and `--no-input`. A name may be
 shortened or slightly misspelled: an exact match wins, then a unique prefix, substring or close
 typo. Any match other than an exact one is reported on stderr. An ambiguous or unknown name lists
-the choices and does nothing. Progress, errors and these reports go to stderr; errors exit
-nonzero without a traceback.
+the choices and does nothing. Progress, errors and these reports go to stderr, never as a
+traceback: a mistyped command prints usage and exits 2, a failed operation prints one
+`triplum: error:` line and exits 1.
 
 The output below comes from a fresh, temporary `XDG_CACHE_HOME`. `list` shows each dataset as
 `missing`, `partial` or `present`, with its bytes on disk and its expected size:

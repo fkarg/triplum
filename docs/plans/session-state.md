@@ -12,8 +12,8 @@ historical. To resume on any machine: pull `main`, read this section, the captur
 and the question files; then check `git log` against the state below.
 
 - **Next:** mutation testing options (owner, 2026-11-08: mutation coverage instead of line/branch
-  coverage; research subagent running, results go to `docs/plans/questions/testing.md`); owner
-  decision pending on argparse usage blocks before runtime errors; then the next interface: IRCOT preset with stemming, dense
+  coverage; research subagent running, results go to `docs/plans/questions/testing.md`); then the next
+  interface: IRCOT preset with stemming, dense
   retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download

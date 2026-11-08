@@ -48,13 +48,14 @@ def test_missing_unknown_or_ambiguous_commands_offer_choices(
     result = run_cli(tmp_path, *args)
     assert result.returncode == 2
     assert result.stdout == ""
-    assert "choices:" in result.stderr
+    assert "choices:" in result.stderr and "usage:" in result.stderr
     assert "Traceback" not in result.stderr
 
 
 def test_invalid_computation_is_not_fuzzily_matched(tmp_path: Path) -> None:
     result = run_cli(tmp_path, "cache", "clear", "--computation", "a")
-    assert result.returncode == 2
+    assert result.returncode == 1
+    assert result.stderr.startswith("triplum: error: computation must be")
     assert result.stdout == ""
     assert "Traceback" not in result.stderr
 
@@ -117,10 +118,10 @@ def test_storage_errors_are_diagnostics(tmp_path: Path) -> None:
     path = tmp_path / "broken.sqlite3"
     path.write_text("not a database")
     result = run_cli(tmp_path, "cache", "stats", "--path", str(path), "--json")
-    assert result.returncode == 2
+    assert result.returncode == 1
     assert result.stdout == ""
-    assert "error:" in result.stderr
-    assert "Traceback" not in result.stderr
+    assert result.stderr.startswith("triplum: error: ")
+    assert "usage:" not in result.stderr and "Traceback" not in result.stderr
 
 
 def test_stats_text_and_metadata_only_json(
@@ -224,11 +225,9 @@ def test_main_empty_cache_and_storage_errors(
             assert "Cleared 0 computation" in output.out
         assert output.err == ""
     path.write_text("not a database")
-    with pytest.raises(SystemExit) as exc:
-        main(["cache", "stats", "--path", str(path)])
-    assert exc.value.code == 2
+    assert main(["cache", "stats", "--path", str(path)]) == 1
     output = capsys.readouterr()
-    assert "error:" in output.err
+    assert output.err.startswith("triplum: error: ") and "usage:" not in output.err
     assert output.out == ""
 
 
