@@ -47,7 +47,7 @@ These answer different questions:
 
 A collection scopes the material considered; permissions further restrict what a viewer may
 access within that scope. Collection membership alone does not grant access. Stores grant read
-access per source and filter every read through a viewer; see
+access per source and filter a read through a viewer when one is given; see
 [Who may read](../infrastructure/store.md#who-may-read). Access for derived records is not
 designed yet.
 

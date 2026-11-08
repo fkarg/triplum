@@ -15,9 +15,9 @@ class RecordStore(Protocol):
     Sources are never replaced or removed: a changed text is a new source with a new `id`. Each
     source has one current chunk list, which `replace_chunks` swaps as a whole.
 
-    Every read takes a `Viewer` and sees only sources whose allowed principals meet the viewer's;
-    chunks are readable with their source. A source the viewer may not read behaves exactly like a
-    missing one. Writes are trusted ingestion: they take no viewer, and their conflict errors
+    A read given a `Viewer` sees only sources whose allowed principals meet the viewer's; chunks
+    are readable with their source, and a source the viewer may not read behaves exactly like a
+    missing one. A read without a viewer is not filtered by access (access control is deferred). Writes are trusted ingestion: they take no viewer, and their conflict errors
     reveal stored ids.
 
     A write checks its whole input before changing anything: when it raises, the store is unchanged.
@@ -48,12 +48,12 @@ class RecordStore(Protocol):
         ...
 
     @abstractmethod
-    def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
+    def source(self, id: UUID, /, *, viewer: Viewer | None = None) -> Source:
         """The source with this `id`; `KeyError` if there is none or `viewer` may not read it."""
         ...
 
     @abstractmethod
-    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+    def sources(self, *, collection_id: UUID, viewer: Viewer | None = None) -> Iterator[Source]:
         """The sources of collection `collection_id` that `viewer` may read, in no particular order.
 
         An unknown collection gives no sources.
@@ -61,7 +61,7 @@ class RecordStore(Protocol):
         ...
 
     @abstractmethod
-    def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
+    def chunks(self, source_id: UUID, /, *, viewer: Viewer | None = None) -> list[Chunk]:
         """The current chunks of one source, ordered by `ordinal`; empty if it has none.
 
         `KeyError` if the source is not stored or `viewer` may not read it.

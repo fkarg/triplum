@@ -26,8 +26,9 @@ A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also avai
 collection records. Listing sources takes a collection id and returns only that collection's
 sources; an id no source carries gives none. There is no listing across all collections.
 
-Every read takes a [`Viewer`][triplum.datatype.viewer.Viewer] and returns only what it may read;
-see [Who may read](#who-may-read). Reads take no temporal view and do not reconstruct historical
+A read given a [`Viewer`][triplum.datatype.viewer.Viewer] returns only what it may read; see
+[Who may read](#who-may-read). Access control is not settled yet, so the viewer is optional: a
+read without one returns everything stored, whatever its grants. Reads take no temporal view and do not reconstruct historical
 state. Changing a document's text gives a new source ID; the stores keep no link
 between the two versions and no history.
 

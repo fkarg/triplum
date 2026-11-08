@@ -81,8 +81,9 @@ These requirements describe the intended architecture, not current capabilities 
 - Benchmark tables carry closed-book, BM25-only and oracle-passage baselines; report EM, F1,
   Contain-Acc, Judge-Acc, R@2, R@5 and indexing cost. Hold the embedder fixed across compared
   pipelines. The judge must come from a different model family than any reader under test.
-- Every store read must take a Viewer. Filter within the index before ranking; graph kernels
-  operate on the viewer's projection. Derived content may never widen input ACLs. Community
+- Access control is deferred (owner, 2026-11-08): store reads and retrievers take an optional
+  Viewer, and omitting it means no access filtering. Given a Viewer, filter within the index
+  before ranking; graph kernels operate on the viewer's projection. Derived content may never widen input ACLs. Community
   and global summaries must be principal-scoped.
 - Bi-temporal facts use UTC integer instants and closed-open intervals, with a maximum sentinel
   for open ends. Historical rows are not overwritten/deleted; invalidation closes them and

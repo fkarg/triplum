@@ -148,7 +148,8 @@ flowchart TD
    travel together is undecided.
 4. **Answer.** Give the question and formatted evidence to the LLM.
 
-Every record store read takes a viewer and returns only the sources and chunks it may read.
+A record store read given a viewer returns only the sources and chunks it may read; without a
+viewer it is not filtered by access (access control is deferred).
 [BM25 retrieval](concepts/retrieval.md) searches one collection and filters by the query's viewer
 before ranking; its term statistics are per collection but not yet scoped to the viewer. Vector and graph retrieval are not implemented;
 graph traversal is to use the visible graph. Reads do not take a temporal view yet.

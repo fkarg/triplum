@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Iterator
 from uuid import UUID
 
-from sqlalchemy import Exists, exists
+from sqlalchemy import ColumnElement, exists, true
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, col, create_engine, delete, select
 
@@ -97,7 +97,7 @@ class SQLAlchemyStore(RecordStore):
                     )
                 )
 
-    def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
+    def source(self, id: UUID, /, *, viewer: Viewer | None = None) -> Source:
         with Session(self.engine) as session:
             row = session.exec(
                 select(SourceRow).where(SourceRow.id == id, _visible(viewer))
@@ -106,7 +106,7 @@ class SQLAlchemyStore(RecordStore):
                 raise KeyError(id)
             return _source(row)
 
-    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+    def sources(self, *, collection_id: UUID, viewer: Viewer | None = None) -> Iterator[Source]:
         with Session(self.engine) as session:
             rows = session.exec(
                 select(SourceRow).where(SourceRow.collection_id == collection_id, _visible(viewer))
@@ -114,7 +114,7 @@ class SQLAlchemyStore(RecordStore):
         for row in rows:
             yield _source(row)
 
-    def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
+    def chunks(self, source_id: UUID, /, *, viewer: Viewer | None = None) -> list[Chunk]:
         with Session(self.engine) as session:
             visible = session.exec(
                 select(SourceRow.id).where(SourceRow.id == source_id, _visible(viewer))
@@ -128,8 +128,13 @@ class SQLAlchemyStore(RecordStore):
         self.engine.dispose()
 
 
-def _visible(viewer: Viewer) -> Exists:
-    """Whether the source row's allowed principals meet the viewer's, decided before reading it."""
+def _visible(viewer: Viewer | None) -> ColumnElement[bool]:
+    """Whether the source row's allowed principals meet the viewer's, decided before reading it.
+
+    Without a viewer, every stored source is visible.
+    """
+    if viewer is None:
+        return true()
     return exists().where(
         col(SourceAccessRow.source_id) == col(SourceRow.id),
         col(SourceAccessRow.principal).in_(viewer.principals),

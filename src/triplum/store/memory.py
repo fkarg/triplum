@@ -37,15 +37,17 @@ class MemoryStore(RecordStore):
         self._chunks[source_id] = checked
         self._chunk_ids.update((chunk.id, chunk) for chunk in checked)
 
-    def _visible(self, id: UUID, viewer: Viewer) -> bool:
-        return id in self._access and not self._access[id].isdisjoint(viewer.principals)
+    def _visible(self, id: UUID, viewer: Viewer | None) -> bool:
+        if id not in self._access:
+            return False
+        return viewer is None or not self._access[id].isdisjoint(viewer.principals)
 
-    def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
+    def source(self, id: UUID, /, *, viewer: Viewer | None = None) -> Source:
         if not self._visible(id, viewer):
             raise KeyError(id)
         return self._sources[id]
 
-    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+    def sources(self, *, collection_id: UUID, viewer: Viewer | None = None) -> Iterator[Source]:
         return iter(
             [
                 s
@@ -54,7 +56,7 @@ class MemoryStore(RecordStore):
             ]
         )
 
-    def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
+    def chunks(self, source_id: UUID, /, *, viewer: Viewer | None = None) -> list[Chunk]:
         if not self._visible(source_id, viewer):
             raise KeyError(source_id)
         return list(self._chunks.get(source_id, []))

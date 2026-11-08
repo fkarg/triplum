@@ -56,6 +56,7 @@ def add_sources(self, sources: Iterable[Source], /, *, allow: Iterable[str]) -> 
     """
 
 
+# P15 (retrieval spec): every viewer below is now `Viewer | None = None`; None filters nothing.
 def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
     """The source with this `id`; `KeyError` if there is none or `viewer` may not read it."""
 

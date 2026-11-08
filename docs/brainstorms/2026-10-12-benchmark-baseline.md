@@ -28,6 +28,12 @@ across nested decorated calls.
 
 ## Owner policies
 
+- **Easy generic path plus override points** (owner, 2026-11-08; scope: storage, indexing,
+  querying and later stages): always offer a generic common path (e.g. SQLAlchemy-level defaults)
+  and ways to override parts where quality, benchmark or performance reasons justify it;
+  specialized versions for popular backends are chosen by popularity vs specialization cost vs
+  performance gain. Keep reference implementations even when they do not map cleanly.
+
 - **Collections are corpus boundaries, not access; the store is the source of truth for records
   (later permissions)** (owner, 2026-11-08; scope: all storage, retrieval and evaluation design).
   Recorded in AGENTS.md. Resolves: Collection never moves into Viewer (RT10 option E dropped).
@@ -224,6 +230,28 @@ integer chunk ids that match no document id.
   FlashRAG silently drops raising metrics; DSPy substitutes failure scores.
 
 ## Rounds
+
+### Round 13 owner answers (storage topic, checkpoint, 2026-11-08)
+
+- Viewer rule: **remove "every read takes a Viewer", or at least allow / default to no-op until
+  revisited.** Applied: P15 (viewer optional, omitted means no access filtering).
+- ST1 (answered, owner's own direction): **rebuild BM25 to require a store that supports it**,
+  enforced through types/interfaces; Postgres does not support it natively (extensions to try
+  eventually). "Via <storage>" matters for measurement, like the other exchangeable blocks.
+  **Keep reference implementations** (bm25s/HippoRAG) even when they do not map cleanly yet.
+  Differs from both Claude (store-managed with bm25s as memory index) and peer (both paths) by
+  making store capability a typed requirement.
+- ST2 (answered in direction): a SQLAlchemy-level generic default for indexes and queries where
+  SQLAlchemy supports it, overridable per backend; later stages such as RRF may be Python or
+  SQLAlchemy→SQL, and both must be possible and tested. Typed capability requirements are wanted,
+  so per-capability interfaces are acceptable where they enforce support.
+- ST3: "via <storage>" is part of what is measured (agrees with Claude and peer).
+- Policy: **easy generic path plus override points** (below).
+- Collection isolation via database tables for clean benchmarks, despite management overhead;
+  index rebuilding and management come on top.
+- Direction: start expanding with sophisticated example setups and satisfy more of them over
+  time, showcased for all persona reader types.
+- Note: mutation-testing runs on jolly are ongoing in parallel (P10 pilot commits landed).
 
 ### Round 12 owner answers (checkpoint, 2026-11-08)
 

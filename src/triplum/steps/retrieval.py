@@ -17,8 +17,10 @@ class Retriever(Protocol):
     """Find the chunks that best answer a query, among those `viewer` may read."""
 
     @abstractmethod
-    def __call__(self, query: str, /, *, viewer: Viewer, k: int) -> list[RetrievalHit]:
-        """At most `k` hits, best first; only chunks of sources `viewer` may read."""
+    def __call__(
+        self, query: str, /, *, viewer: Viewer | None = None, k: int
+    ) -> list[RetrievalHit]:
+        """At most `k` hits, best first; only chunks of sources `viewer` may read, if given."""
         ...
 
 
@@ -48,11 +50,12 @@ class BM25(Retriever, FingerprintedComputationMixin):
     """Lexical retrieval over a snapshot of one collection's chunks, scored by bm25s.
 
     Indexes the current chunks of every source of collection `collection_id` that `viewer` may
-    read at construction. Those chunks are the term-statistics scope: scores of visible chunks depend on indexed chunks a query's
-    viewer may not read. Later writes do not reach the index; build a new one.
+    read at construction (all of them without a viewer). Those chunks are the term-statistics
+    scope: scores of visible chunks depend on indexed chunks a query's viewer may not read. Later
+    writes do not reach the index; build a new one.
 
-    Each call ranks only indexed chunks whose source its own viewer may read, before choosing
-    the top `k`. Hits share at least one token with the query, so there may be fewer than `k`.
+    Each call ranks only indexed chunks whose source its own viewer may read (all indexed chunks
+    without a viewer), before choosing the top `k`. Hits share at least one token with the query, so there may be fewer than `k`.
     Equal scores are ordered by `(source_id, ordinal)`.
     """
 
@@ -62,7 +65,7 @@ class BM25(Retriever, FingerprintedComputationMixin):
         /,
         *,
         collection_id: UUID,
-        viewer: Viewer,
+        viewer: Viewer | None = None,
         settings: BM25Settings = HIPPORAG1,
     ) -> None:
         self._store = store
@@ -88,7 +91,9 @@ class BM25(Retriever, FingerprintedComputationMixin):
         text = text.lower() if self.settings.lowercase else text
         return [m.group() for m in self._pattern.finditer(text) if m.group()]
 
-    def __call__(self, query: str, /, *, viewer: Viewer, k: int) -> list[RetrievalHit]:
+    def __call__(
+        self, query: str, /, *, viewer: Viewer | None = None, k: int
+    ) -> list[RetrievalHit]:
         if k < 1:
             raise ValueError("k must be at least 1")
         if self._index is None:

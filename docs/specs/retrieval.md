@@ -314,6 +314,15 @@ top `k` (its probes: scores 0.2380 vs 0.2037, empty result) → added; rerun wor
 changed; `naive.py` listed wrongly → removed. P13: tests assert `extra_forbidden` on otherwise
 valid input → added. RT10: independently recommends binding at construction (same as Claude).
 
+## P15: optional Viewer (owner instruction, 2026-11-08)
+
+Owner: "remove the rule that every read needs/takes a viewer, or at least allow/default to no-ops
+for now until we revisit." Implemented: `viewer: Viewer | None = None` on `RecordStore.source`,
+`sources` and `chunks`, on `BM25.__init__` and on `Retriever.__call__` (and BM25's). An omitted
+viewer filters nothing: every stored source is readable, including sources with an empty grant.
+A given viewer behaves as before. AGENTS.md's access rule records the deferral. Tests: store
+reads without a viewer on both backends; BM25 without viewers, and with only a corpus viewer.
+
 ## Verification
 
 `tests/test_retrieval.py` (memory and SQL stores): hidden best match never returned or

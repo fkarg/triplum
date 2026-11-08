@@ -227,3 +227,12 @@ def test_whole_text_is_one_chunk_and_empty_text_none():
     ]
     assert WholeText()(Source(collection_id=COLLECTION, origin="e", text="")) == []
     assert WholeText().fingerprint() != FixedSize(3).fingerprint()
+
+
+def test_without_viewers_every_chunk_is_indexed_and_returned(store: RecordStore):
+    # Owner (2026-11-08): access control is deferred; omitted viewers do not filter.
+    _add(store, "cat cat cat", allow="team")
+    _add(store, "cat dog")
+    assert _texts(BM25(store, collection_id=COLLECTION)("cat", k=2)) == ["cat cat cat", "cat dog"]
+    retriever = BM25(store, collection_id=COLLECTION, viewer=PUBLIC)
+    assert _texts(retriever("cat", k=2)) == ["cat dog"]  # only the index's own scope applies

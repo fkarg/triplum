@@ -70,10 +70,13 @@ run that calls the retriever does.
 `Retriever` is a Protocol with one method:
 
 ```python
-def __call__(self, query: str, /, *, viewer: Viewer, k: int) -> list[RetrievalHit]: ...
+def __call__(
+    self, query: str, /, *, viewer: Viewer | None = None, k: int
+) -> list[RetrievalHit]: ...
 ```
 
-- Input: the query text, the viewer on whose behalf to search, and the maximum number of hits.
+- Input: the query text, optionally the viewer on whose behalf to search, and the maximum
+  number of hits. Without a viewer, nothing is filtered by access.
 - Output: at most `k` hits, best first, only from sources `viewer` may read. The hits are the
   best among what `viewer` may read: filter before choosing the top `k`, not after, so hidden
   chunks never take the places of visible ones.
@@ -92,7 +95,7 @@ The rules in this section belong to `BM25`, not to the `Retriever` Protocol.
 
 ### Two viewers
 
-`BM25` uses a viewer twice:
+Both viewers are optional; an omitted one filters nothing. `BM25` uses a viewer twice:
 
 - **The corpus viewer**, passed at construction, decides which chunks are indexed: the current
   chunks of every source of the collection that it may read.

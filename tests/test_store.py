@@ -404,3 +404,21 @@ def test_sources_lists_one_collections_readable_sources(store: RecordStore):
     assert list(store.sources(collection_id=OTHER, viewer=team)) == [theirs_hidden]
     unknown = UUID("01900000-0000-7000-8000-000000000009")
     assert list(store.sources(collection_id=unknown, viewer=PUBLIC)) == []
+
+
+def test_reads_without_a_viewer_do_not_filter_by_access(store: RecordStore):
+    # Owner (2026-11-08): access control is deferred; an omitted viewer reads everything.
+    public, team, nobody = _source("p", "pub"), _source("t", "team"), _source("n", "none")
+    store.add_sources([public], allow=["public"])
+    store.add_sources([team], allow=["team"])
+    store.add_sources([nobody], allow=[])
+    store.replace_chunks(team.id, FixedSize(2)(team))
+    assert sorted(store.sources(collection_id=COLLECTION), key=lambda s: s.text) == [
+        nobody,
+        public,
+        team,
+    ]
+    assert store.source(nobody.id) == nobody
+    assert store.chunks(team.id) == FixedSize(2)(team)
+    with pytest.raises(KeyError):
+        store.source(uuid4())
