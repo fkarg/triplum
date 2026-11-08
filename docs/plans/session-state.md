@@ -18,8 +18,10 @@ and the question files; then check `git log` against the state below.
   recorded (AGENTS.md, capture): collections are corpus boundaries, never access; the store is the
   source of truth; Viewers deferred; explicit building blocks over interfaces for their own sake.
   RT10 folds into this topic (owner leaning: indexes store-managed; Retriever's value open).
-  Research recorded ([storage research](storage-research.md)); ST1-ST5 with Claude and peer answers in
-  [storage questions](questions/storage.md), presented to the owner.
+  ST1-ST5 answered by the owner ([storage questions](questions/storage.md)). P15 optional Viewer
+  implemented. P16 store-managed text search drafted and peer-revised
+  ([draft](../specs/text-search.md)); awaiting owner approval. Known: `uv run ty check` needs
+  `uv sync --group mutation` since the P10 pilot added `scripts/mutation.py`.
 - **Done (2026-11-08, jolly):** P10 mutation pilot ([record](mutation-pilot.md)):
   `scripts/mutation.py`, full pass and diff-scoped run, survivor review; tests for top gaps 1–4
   added, each verified against its mutant. **Next on this track:** the record's remaining queue;
