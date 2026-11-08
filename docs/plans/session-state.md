@@ -18,8 +18,8 @@ and the question files; then check `git log` against the state below.
   recorded (AGENTS.md, capture): collections are corpus boundaries, never access; the store is the
   source of truth; Viewers deferred; explicit building blocks over interfaces for their own sake.
   RT10 folds into this topic (owner leaning: indexes store-managed; Retriever's value open).
-  Running: web research on store-managed indexing/retrieval (machine-local
-  `/tmp/claude-1000/pr/storage-research.md`); then a design sketch, peer pass and questions.
+  Research recorded ([storage research](storage-research.md)); ST1-ST5 with Claude and peer answers in
+  [storage questions](questions/storage.md), presented to the owner.
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
   TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
   P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"

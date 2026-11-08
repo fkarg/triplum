@@ -24,6 +24,12 @@ owns and refreshes indexes for a collection from a backend-specific spec), or bo
 - Claude: store-managed. A store creates an index for a collection from a backend-specific spec
   (bm25s settings for memory, an FTS5 spec for SQLite, ...), owns its refresh, and records the
   spec in its identity. bm25s stays as the memory store's lexical index (the HippoRAG reference).
+- Peer (gpt-6.1-sol, 2026-11-08): both, with different purposes: keep `BM25` over `RecordStore`
+  as the portable reference; a concrete store builds native indexes as objects holding one built
+  snapshot (building again gives a new object); no registry, automatic refresh or universal spec
+  language. Store-managed does not mean live: snapshot semantics need an explicit contract, and
+  ingestion finishes before building. Observed: a snapshot BM25 returned a chunk no longer in the
+  store after rechunking.
 
 ### ST2. What is shared across backends
 
@@ -34,6 +40,11 @@ fusion, reranking, baselines and evaluation; or also minimal per-capability sear
 - Claude: the ranked list is the cross-backend contract. Search calls stay minimal (query or
   vector, collection, viewer, k); every backend knob lives in the index spec, never in a shared
   query object (avoids LlamaIndex's accreting `VectorStoreQuery`).
+- Peer: ranked output is the common data boundary, but keep payload-bearing `list[RetrievalHit]`
+  (ids-only needs historical chunk lookup the store lacks; oracle hits have no score). No lexical
+  or vector search Protocol until a real composition needs one; native operations stay concrete
+  methods. Scores are not comparable across lists; legs of one experiment need the same collection
+  and indexed state; eligibility before top `k`.
 
 ### ST3. What "the same technique" means
 
@@ -43,6 +54,11 @@ implementation claims equivalence.
 
 - Claude: backend and spec are part of identity; agreement tests (fixture top-k or a stated
   tolerance) only when an implementation claims to match a reference.
+- Peer: distinguish method family (BM25), configured implementation (FTS5 vs bm25s), indexed
+  state (canonical indexed chunk fingerprints plus collection id, since empty indexes collide) and
+  request (query, k, visibility). Observed: two BM25 instances over different corpora share a
+  computation fingerprint but give different results. Agreement tests only for claimed
+  equivalence; fixture agreement is not general equivalence.
 
 ### ST4. The Retriever protocol
 
@@ -51,6 +67,8 @@ replace by a ranked-list record plus plain functions, or drop.
 
 - Claude: keep the thin role; store searches and later stages (fusion, rerank, oracle) all fit it.
   Weakly held.
+- Peer: keep unchanged; a native index object implements it directly (no forwarding class);
+  the collection stays bound at construction.
 
 ### ST5. First backends
 
@@ -58,3 +76,9 @@ Which stores get indexes first.
 
 - Claude: memory (bm25s lexical, exact numpy dense) and SQLite (FTS5 lexical; dense brute force)
   now; Postgres when a concrete need appears.
+- Peer: bm25s first (already covers memory), SQLite FTS5 as the first native prototype, one
+  FTS5 table per built collection index, with FTS5's real controls as settings (not
+  `BM25Settings`), literal query handling, higher-is-better scores and deterministic ties. Observed:
+  in one shared FTS5 table, adding collection B changed collection A's scores and even reversed
+  A's order despite `WHERE collection='A'` (FTS5 statistics are table-wide; reproduced by Claude: order reversed); default FTS5 matches
+  "cafe" to "café", unlike our tokenizer.
