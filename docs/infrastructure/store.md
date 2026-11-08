@@ -12,7 +12,8 @@ implementations:
   database through [SQLModel](https://sqlmodel.tiangolo.com/) (which is built on SQLAlchemy). By
   default it uses SQLite, which ships with Python and needs no server.
 
-All three are importable from `triplum.store`. `SQLAlchemyStore` uses SQLAlchemy for database
+The contract and both implementations, `RecordStore`, `MemoryStore` and `SQLAlchemyStore`, are
+importable from `triplum.store`. `SQLAlchemyStore` uses SQLAlchemy for database
 access; only SQLite is covered by triplum's tests. Backend-specific stores (for
 SQLite or PostgreSQL) are planned where database-specific SQL is faster; they will share its
 tables, [`SourceRow`][triplum.store.sql.tables.SourceRow],
@@ -78,7 +79,8 @@ True
 3. `add_sources(..., allow=["public"])` stores the source and lets the principal `"public"` read
    it. It must come before `replace_chunks`: chunks can only be given to a stored source.
    `replace_chunks(source.id, chunks)` makes `chunks` the source's complete chunk list.
-4. `close()` releases the store's database connections once you are done with it.
+4. `close()` releases the store's database connections once you are done with it. Only
+   `SQLAlchemyStore` has it: `close()` is not part of `RecordStore`, and `MemoryStore` has none.
 5. `Viewer(principals=...)` says who is reading. `SQLAlchemyStore(...)` on the same URL sees
    everything the first store committed. `source(id, viewer=...)` returns the source with that
    `id`; `chunks(source_id, viewer=...)` returns its chunks ordered by `ordinal`.

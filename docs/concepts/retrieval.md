@@ -2,7 +2,7 @@
 
 **Retrieval** finds the chunks that best answer a query, among the chunks the reader may see.
 A [`Retriever`][triplum.steps.retrieval.Retriever] takes the query text, a
-[`Viewer`][triplum.datatype.viewer.Viewer] and a number `k`, and returns at most `k`
+[`Viewer`](../infrastructure/store.md#who-may-read) and a number `k`, and returns at most `k`
 [`RetrievalHit`][triplum.datatype.hit.RetrievalHit]s, best first.
 
 The library provides one retriever, [`BM25`][triplum.steps.retrieval.BM25]: lexical search over
@@ -72,10 +72,17 @@ def __call__(self, query: str, /, *, viewer: Viewer, k: int) -> list[RetrievalHi
 - Input: the query text, the viewer on whose behalf to search, and the maximum number of hits.
 - Output: at most `k` hits, best first, only from sources `viewer` may read.
 
+These three rules are all the Protocol requires. Tie order, determinism, what happens for `k`
+below 1 and whether the retriever reads a snapshot or the live store are left to each
+implementation; the [BM25](#bm25) section states its choices.
+
 Configuration such as the store and the scoring settings belongs in `__init__`, as for the other
-[steps](decisions.md#how-the-pieces-fit).
+[steps](decisions.md#how-the-pieces-fit). How a custom retriever, or the content it indexed,
+enters a fingerprint or a run's identity is not defined yet.
 
 ## BM25
+
+The rules in this section belong to `BM25`, not to the `Retriever` Protocol.
 
 ### Two viewers
 
@@ -144,12 +151,29 @@ indexes only public sources, so even a staff query finds just the policy.
 replaced chunk lists and new grants do not reach it; build a new `BM25` to see them. The index is
 not persisted. A store with no visible chunks gives an empty index, which returns `[]`.
 
+### Every collection in the store
+
+Store reads are not scoped to a [collection](collection.md), so `BM25` indexes every visible
+source of every collection in the store. This matters when you rerun an example against the same
+database file. `Collection(name=...)` gets a new random `id` on each run, so the same texts become
+new sources with new ids, and the store keeps both copies. The second run then returns every
+hit twice.
+
+To rerun without duplicates, either start from a fresh database (a `MemoryStore`, or a new
+SQLite file), or give the collection a fixed `id`, such as
+`Collection(id=UUID("019a0000-0000-7000-8000-000000000001"), name="Shop policies")` with
+`from uuid import UUID`. With a fixed `id`, the sources get the same ids again, and `add_sources`
+skips sources that are already stored.
+
 ### Matching and order
 
 - Chunks and queries are tokenized the same way: the text is lowercased (if the settings say
   so), and every whole, nonempty match of the settings' `token_pattern` is a token (capture groups
   do not change tokens). Indexed text is `chunk.text`
   only; benchmark passages that begin with their title therefore index the title as text.
+- Matching is on whole tokens. With the default settings, a token is a lowercased match of
+  `\w+`, so `return` does not match `returns`. There is no stemming and no stop-word removal, so
+  common words such as `the` or `are` match and add to scores.
 - A chunk is a hit only if it shares at least one token with the query, so fewer than `k` hits is
   normal. A query without any indexed token returns `[]`. `k` below 1 raises `ValueError`.
 - Hits are ordered by score, highest first. Equal scores are ordered by the chunk's

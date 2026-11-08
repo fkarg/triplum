@@ -230,6 +230,115 @@ configuration. An explicit `process_id` remains available for applications that 
 complete computation identity; it replaces automatic inference. There is no manual dependency
 parameter.
 
+## Cache a chunker
+
+A cached computation must return a Pydantic model that implements `fingerprint()`. A bare
+`list[Chunk]` is not one, so `@cached` raises `TypeError` and asks you to wrap the list in a
+model or supply an `output_type` or codec. Wrap the chunks in a small
+`FingerprintedDataModel`:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from uuid import UUID
+
+from triplum.cache import Cache, SQLiteBackend
+from triplum.datatype import Chunk, Collection, FingerprintedDataModel, Source
+from triplum.steps.chunking import FixedSize
+
+
+class Chunks(FingerprintedDataModel):
+    chunks: list[Chunk]
+
+
+chunker = FixedSize(20)
+text = "Returns are accepted within 30 days."
+
+with TemporaryDirectory() as directory:
+    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
+
+        @cache.cached
+        def chunk(source: Source) -> Chunks:
+            print("Chunking", source.origin)
+            return Chunks(chunks=chunker(source))
+
+        pinned = Collection(id=UUID("019a0000-0000-7000-8000-000000000001"), name="Notes")
+        for collection in (pinned, pinned, Collection(name="Notes")):
+            source = Source(collection_id=collection.id, origin="returns.md", text=text)
+            print([c.text for c in chunk(source).chunks])
+```
+
+Output:
+
+```text
+Chunking returns.md
+['Returns are accepted', ' within 30 days.']
+['Returns are accepted', ' within 30 days.']
+Chunking returns.md
+['Returns are accepted', ' within 30 days.']
+```
+
+The third call computes again although the text is the same. A Source's fingerprint includes
+its `collection_id`, and `Collection(name=...)` without an `id` gets a new random `id` each
+time. A program that creates its collection that way therefore misses the cache on every run.
+To reuse results across runs, keep the collection's `id` fixed, as `pinned` does above; see
+[Collection](../../concepts/collection.md).
+
+## Report progress from a cached step
+
+Globals and captured values that a cached step references must be fingerprintable, and an open
+stream is not. A step
+that calls `print(..., file=sys.stderr)` therefore raises `TypeError` with
+`cannot fingerprint TextIOWrapper`. A module-level `logger = logging.getLogger(__name__)` fails
+the same way, because a `Logger` cannot be fingerprinted either. Look the logger up inside the
+step instead; the `logging` calls are library calls, which count by name only:
+
+```python
+import logging
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from triplum.cache import Cache, SQLiteBackend
+from triplum.datatype import FingerprintedDataModel
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+
+class Text(FingerprintedDataModel):
+    text: str
+
+
+with TemporaryDirectory() as directory:
+    with Cache(SQLiteBackend(Path(directory) / "cache.sqlite")) as cache:
+
+        @cache.cached
+        def shout(value: Text) -> Text:
+            logging.getLogger(__name__).info("Computing %s", value.text)
+            return Text(text=value.text.upper())
+
+        print(shout(Text(text="hello")).text)
+        print(shout(Text(text="hello")).text)
+```
+
+This prints `HELLO` twice on stdout, and `INFO Computing hello` once on stderr: the second call
+reuses the result. A plain `print(...)` to stdout also works.
+
+## Keep restricted text out of a shared cache
+
+The cache stores each result as plain bytes in its SQLite file. By default that is
+`cache.sqlite` in your user cache folder, shared by every program that uses the default cache
+(see [ownership](policies.md#choose-and-close-the-owner)). Cached results are not scoped to a
+viewer: anyone who can read the file can read the text, and any program using that cache can
+reuse the result.
+
+- Do not cache steps over restricted text into a shared cache. Give them their own cache file
+  with `Cache(SQLiteBackend(path))`, as in the examples above.
+- `triplum cache clear` drops tables but does not run `VACUUM`, so the freed pages in the file
+  can still contain the text (see [administration](administration.md#clear-without-expecting-file-shrinkage)).
+  If those bytes must be gone, stop every writer, clear, then run `VACUUM` on the file, for
+  example `sqlite3 <path> VACUUM` if the `sqlite3` tool is installed, or
+  `python -c "import sqlite3; sqlite3.connect('<path>').execute('VACUUM')"`.
+
 ## Use a class when the operation needs one
 
 [`CachedStep`][triplum.cache.CachedStep] is optional. It supplies cache lookup and `__call__` for

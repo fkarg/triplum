@@ -581,7 +581,15 @@ def _globals(function: FunctionType, active: _Definitions) -> object:
             if value is _MISSING:
                 raise UnsupportedFingerprint(f"cannot resolve computation dependency {path}")
             references[path] = value
-    return {name: _reference(value, active) for name, value in sorted(references.items())}
+    projection = {}
+    for name, value in sorted(references.items()):
+        try:
+            projection[name] = _reference(value, active)
+        except UnsupportedFingerprint as error:
+            raise UnsupportedFingerprint(
+                f"{_qualified(function)} references {name}: {error}"
+            ) from error
+    return projection
 
 
 def _definition(value: object, active: _Definitions) -> object:

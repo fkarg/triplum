@@ -935,3 +935,25 @@ def test_function_local_application_imports_are_rejected(
             definition_hash(namespace["operation"])
     else:
         definition_hash(namespace["operation"])
+
+
+def test_unsupported_dependency_errors_name_the_function_and_reference(tmp_path: Path) -> None:
+    # Persona report: `print(..., file=sys.stderr)` inside a cached step raised only
+    # "cannot fingerprint TextIOWrapper", naming neither the reference nor the function.
+    from triplum.utils.fingerprint import definition_hash
+
+    namespace = {"__name__": "application"}
+    exec(  # noqa: S102 - controlled Python fixture
+        compile(
+            "import sys\ndef log(text): print(text, file=sys.stderr)\ndef step(text): log(text)",
+            str(tmp_path / "app.py"),
+            "exec",
+        ),
+        namespace,
+    )
+    with pytest.raises(
+        TypeError,
+        match=r"^application\.step references log: application\.log references sys\.stderr: "
+        r"cannot fingerprint \w+",  # TextIOWrapper, or pytest's capture object
+    ):
+        definition_hash(namespace["step"])

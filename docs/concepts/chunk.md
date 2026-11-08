@@ -44,6 +44,8 @@ assert source.text[chunk.start : chunk.start + len(chunk.text)] == chunk.text
   (descriptions, questions, context) is a separate concern; see
   [chunk preprocessing](chunk-preprocessing.md).
 - `ordinal` is between 0 and 65,535, so one source yields at most 65,536 chunks.
+- Unknown field names are silently ignored, as for sources: a stray `startt=3` passed next to
+  `start=0` is dropped without an error.
 - Chunks are immutable, like sources. The `id` is a deterministic UUIDv8 derived from
   `collection_id`, `source_id`, `ordinal`, `start` and `text`. Running the same chunker on the
   same source again gives the same IDs. The chunker itself does not enter the `id`: two chunkers

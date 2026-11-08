@@ -44,7 +44,9 @@ what is one of the stars of  The Newcomers known for
    you pass. Each `origin` and `external_id` is the fixture's document id.
 2. `questions()` is a dataset of `QAQuestion`s in the fixture's order.
 3. The question needs two paragraphs together; each is a `SpanEvidence` naming its document and
-   a character range of that document's text.
+   a character range of that document's text. In this fixture every document is a single
+   paragraph, so each gold span covers its document's whole text and span gold equals passage
+   gold.
 
 ## The bundle
 

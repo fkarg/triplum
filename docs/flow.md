@@ -30,8 +30,8 @@ This page follows the intended flow and shows where experiments can replace indi
   indexed chunk. `WholeText` keeps each source as one chunk.
 - [Retrieval recall](concepts/recall.md): resolving gold evidence to Source ids, span and
   document coverage at several `k`, and means across questions. `examples/bm25_recall.py` scores
-  BM25 on a fixture or on HotpotQA. Answer scoring, baselines other than BM25 and a benchmark runner with run
-  identity are not implemented.
+  BM25 on a fixture or on HotpotQA. Answer scoring, dense retrieval, fusion and the other
+  baselines besides BM25, and a benchmark runner with run identity are not implemented.
 - [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
   operations and derived-record scope enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are

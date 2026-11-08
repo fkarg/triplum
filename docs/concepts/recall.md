@@ -105,6 +105,12 @@ Coverage uses only each chunk's `source_id` and its character range
 `[start, start + len(text))`; it reads no store and compares no text. `k` below 1 raises
 `ValueError`.
 
+Recall trusts its inputs. It does not remove duplicate hits, and it does not check that the
+viewer could read each hit; a duplicate still takes one of the top `k` places. It also does not
+know who asked: gold in a source the viewer cannot read is never retrieved, so it counts as a
+miss. Benchmark fixtures carry no document grants, so evaluations that depend on permissions are
+not supported yet; see [Legacy fixtures](benchmark-inputs.md#legacy-fixtures).
+
 A `RecallAtK` has four fields:
 
 - `recall`: the best set's fraction of covered items.

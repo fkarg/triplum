@@ -174,3 +174,20 @@ def test_custom_codec_for_fingerprintable_non_pydantic_value(tmp_path: Path) -> 
         assert identity(Blob(b"")) == Blob(b"")
         assert identity(Blob(b"")) == Blob(b"")
         assert calls == 1
+
+
+def test_a_list_output_annotation_is_refused_with_guidance(tmp_path: Path) -> None:
+    # Persona report: caching a chunker annotated `-> list[Chunk]` failed with a message that did
+    # not say lists are unsupported or how to wrap them.
+    with (
+        Cache(SQLiteBackend(tmp_path / "cache.sqlite")) as cache,
+        pytest.raises(
+            TypeError, match=r"output annotation list\[.*TextValue\] is not a model class.*wrap"
+        ),
+    ):
+
+        @cached(cache=cache)  # ty: ignore[invalid-argument-type] - the refused annotation
+        def split(item: TextValue) -> list[TextValue]:
+            return [item]
+
+        split(TextValue(text="a"))

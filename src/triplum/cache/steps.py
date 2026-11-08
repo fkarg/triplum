@@ -109,7 +109,10 @@ def _codec[O: Fingerprintable](
     except (NameError, TypeError) as error:
         raise TypeError("cannot resolve output annotation; supply output_type or codec") from error
     if not isinstance(model, type):
-        raise TypeError("annotate a concrete output model or supply output_type/codec")
+        raise TypeError(
+            f"output annotation {model} is not a model class; annotate a Pydantic model with "
+            "fingerprint() (wrap lists in one) or supply output_type/codec"
+        )
     return PydanticCodec[O](model)
 
 
