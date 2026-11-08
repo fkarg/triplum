@@ -3,8 +3,9 @@
 Run with ``uv run --group mutation python scripts/mutation.py [--diff REF]``.
 
 1. Copy the working tree (tracked and untracked, not ignored) into ``--out``, once per worker.
-2. Generate mutants with cosmic-ray; skip arid ones (inside annotations) and, with ``--diff``,
-   those outside the lines changed since REF.
+2. Generate mutants with cosmic-ray, plus one body-removal mutant per function (body replaced by
+   ``return None``, after any docstring; the pseudo-tested check). Skip arid ones (inside
+   annotations) and, with ``--diff``, those outside the lines changed since REF.
 3. Run the suite once under coverage with per-test contexts, subprocesses included, to map each
    line to the tests that execute it. The run must pass.
 4. Per mutant, run only the tests covering its lines. Mutants on import-time lines run the full
@@ -12,9 +13,13 @@ Run with ``uv run --group mutation python scripts/mutation.py [--diff REF]``.
    Every survivor of a selected run is re-run against the full suite before it is reported, so
    selection can cost time but cannot invent survivors.
 
+Every selected or full run goes to completion (no ``-x``) and records each failing test with its
+kind (assertion or crash), so ``results.jsonl`` holds a kill matrix; ``scripts/mutation_report.py``
+derives test-quality indicators from it.
+
 Results: ``results.jsonl`` (one line per mutant), ``survivors.md`` and cosmic-ray's
-``session.sqlite`` (for ``cr-report``/``cr-html``) in ``--out``. Mutants are not a score to
-gate on: review the survivors.
+``session.sqlite`` (for ``cr-report``/``cr-html``; cosmic-ray mutants only) in ``--out``.
+Mutants are not a score to gate on: review the survivors.
 """
 
 import argparse
@@ -34,13 +39,15 @@ import tempfile
 import time
 import warnings
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 
 import coverage
 from cosmic_ray.commands import init
 from cosmic_ray.modules import find_modules
-from cosmic_ray.mutating import _make_diff, use_mutation
+from cosmic_ray.mutating import _make_diff, mutate_code
 from cosmic_ray.plugins import get_operator
 from cosmic_ray.work_db import WorkDB, use_db
 from cosmic_ray.work_item import MutationSpec, TestOutcome, WorkerOutcome, WorkResult
@@ -48,6 +55,7 @@ from cosmic_ray.work_item import MutationSpec, TestOutcome, WorkerOutcome, WorkR
 REPO = Path(__file__).resolve().parent.parent
 PACKAGE = Path("src/triplum")
 PYTEST = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"]
+BODY = "body/ReturnNone"
 COVERAGE_RC = """\
 [run]
 source = {package}
@@ -82,6 +90,7 @@ def environment(tree: Path) -> dict[str, str]:
         PYTHONPATH=os.pathsep.join([str(tree / "src"), str(REPO / "scripts")]),
         PYTHONDONTWRITEBYTECODE="1",  # a same-size mutant in the same second could hit a stale pyc
         XDG_CACHE_HOME=str(tree / ".cache"),
+        TRIPLUM_MUTATION_FAILURES=str(tree / ".failures"),  # written by mutation_context
         # numpy's BLAS threads otherwise multiply each process's CPU use about sixfold.
         OPENBLAS_NUM_THREADS="1",
         OMP_NUM_THREADS="1",
@@ -113,9 +122,21 @@ def run(command: list[str], tree: Path, timeout: float) -> tuple[int | None, str
         process.wait()
 
 
-def pytest(tree: Path, tests: list[str] | None, timeout: float) -> tuple[int | None, str]:
-    command = [*PYTEST, f"--basetemp={tree / '.pytest-tmp'}", "-x"]
-    return run([*command, *(tests or [])], tree, timeout)
+def pytest(
+    tree: Path, tests: list[str] | None, timeout: float
+) -> tuple[int | None, str, dict[str, str]]:
+    """Exit code, output tail and every failing test with its kind ("assert" or "error"): no
+    `-x`, so the kill matrix is complete. An assertion in the test body outranks a teardown
+    error of the same test."""
+    failures = tree / ".failures"
+    failures.unlink(missing_ok=True)
+    command = [*PYTEST, f"--basetemp={tree / '.pytest-tmp'}", "-p", "mutation_context"]
+    code, output = run([*command, *(tests or [])], tree, timeout)
+    killers: dict[str, str] = {}
+    for line in failures.read_text().splitlines() if failures.exists() else ():
+        test, kind = line.rsplit("\t", 1)
+        killers[test] = "assert" if "assert" in (kind, killers.get(test)) else kind
+    return code, output, killers
 
 
 def coverage_map(tree: Path, out: Path) -> tuple[Lines, set[tuple[str, int]], float]:
@@ -147,6 +168,17 @@ def coverage_map(tree: Path, out: Path) -> tuple[Lines, set[tuple[str, int]], fl
     return covered, unexecuted, seconds
 
 
+def _trivial(statement: ast.stmt) -> bool:
+    if isinstance(statement, ast.Pass):
+        return True
+    if isinstance(statement, ast.Expr):
+        return isinstance(statement.value, ast.Constant)
+    if isinstance(statement, ast.Return):
+        value = statement.value
+        return value is None or (isinstance(value, ast.Constant) and value.value is None)
+    return False
+
+
 class Module:
     """Annotation spans (arid code) and statement extents of one source file."""
 
@@ -160,6 +192,8 @@ class Module:
 
         self.annotations: list[tuple[tuple[int, int], tuple[int, int]]] = []
         self.statements: list[tuple[int, int]] = []
+        self.bodies: list[tuple[str, int, int, str]] = []  # name, first and last line, mutant
+        self._bodies(tree, lines, "")
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
                 first = min([node.lineno, *(d.lineno for d in node.decorator_list)])
@@ -177,6 +211,34 @@ class Module:
                 start = position(annotation.lineno, annotation.col_offset)
                 end = position(annotation.end_lineno, annotation.end_col_offset or 0)
                 self.annotations.append((start, end))
+
+    def _bodies(self, node: ast.AST, lines: list[str], prefix: str) -> None:
+        """Body-removal mutants: functions whose body (after any docstring) starts on a line of
+        its own; trivial bodies (`pass`, `...`, `return`/`return None`) give none."""
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.ClassDef):
+                self._bodies(child, lines, f"{prefix}{child.name}.")
+                continue
+            if not isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
+                self._bodies(child, lines, prefix)  # definitions under if/try/with/...
+                continue
+            name = f"{prefix}{child.name}"
+            self._bodies(child, lines, f"{name}.")
+            body = child.body
+            if isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                body = body[1:]  # keep the docstring
+            if not body or (len(body) == 1 and _trivial(body[0])):
+                continue
+            head = body[0]
+            decorators = getattr(head, "decorator_list", [])
+            first = min([head.lineno, *(d.lineno for d in decorators)])
+            column = decorators[0].col_offset - 1 if decorators else head.col_offset
+            indent = lines[first - 1][:column]
+            if indent.strip():
+                continue  # the body shares its first line with the header or the docstring
+            last = child.end_lineno or head.lineno
+            mutant = [*lines[: first - 1], f"{indent}return None", *lines[last:]]
+            self.bodies.append((name, first, last, "\n".join(mutant) + "\n"))
 
     def arid(self, spec: MutationSpec) -> bool:
         return any(a <= spec.start_pos and spec.end_pos <= b for a, b in self.annotations)
@@ -229,6 +291,11 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=os.cpu_count())
     parser.add_argument("--out", type=Path, help="results directory (default: a new temp dir)")
     parser.add_argument(
+        "--full",
+        action="store_true",
+        help="run the full suite for every mutant: complete killer sets for mutation_report.py",
+    )
+    parser.add_argument(
         "--verify-selection",
         action="store_true",
         help="also run the full suite after selected kills, to measure selection soundness",
@@ -253,42 +320,59 @@ def main() -> None:
     covered, unexecuted, suite_seconds = coverage_map(base, out)
     timeout = 3 * suite_seconds + 30
 
-    modules: dict[str, Module] = {}
+    modules = {str(path.relative_to(base)): Module(path) for path in find_modules([base / PACKAGE])}
     changed = changed_lines(args.diff) if args.diff else None
     results: list[dict] = []
-    pending = []
+    pending: list[tuple[dict, Callable[[str], str | None]]] = []
+    candidates: list[tuple[dict, range, set[int], Callable[[str], str | None]]] = []
     for item in items:
         (spec,) = item.mutations
         name = str(Path(spec.module_path).relative_to(base))
-        if name not in modules:
-            modules[name] = Module(spec.module_path)
-        module = modules[name]
-        record = {
+        operator = get_operator(spec.operator_name)(**spec.operator_args)
+        record: dict = {
             "job_id": item.job_id,
             "module": name,
+            "function": spec.definition_name,
             "start": list(spec.start_pos),
             "end": list(spec.end_pos),
             "operator": spec.operator_name,
-            "occurrence": spec.occurrence,
         }
-        span = range(spec.start_pos[0], spec.end_pos[0] + 1)
+        if modules[name].arid(spec):
+            record["status"] = "arid"
+        lines = modules[name].lines(spec)
+        mutate = partial(mutate_code, operator=operator, occurrence=spec.occurrence)
+        candidates.append((record, range(spec.start_pos[0], spec.end_pos[0] + 1), lines, mutate))
+    for name, module in modules.items():
+        for function, first, last, mutant in module.bodies:
+            record: dict = {
+                "job_id": f"body:{name}:{first}",
+                "module": name,
+                "function": function,
+                "start": [first, 0],
+                "end": [last, 0],
+                "operator": BODY,
+            }
+            body = range(first, last + 1)
+            candidates.append((record, body, set(body), lambda _, m=mutant: m))
+    for record, span, lines, mutate in candidates:
+        name = record["module"]
         if changed is not None and not any((name, n) in changed for n in span):
             continue
-        lines = module.lines(spec)
-        if module.arid(spec):
-            results.append(record | {"status": "arid"})
+        if record.get("status") == "arid":
+            results.append(record)
             continue
         contexts = [covered[name, n] for n in lines if (name, n) in covered]
+        record["covering"] = sorted({test for tests in contexts for test in tests if test})
         if not contexts:
             if any((name, n) in unexecuted for n in lines):
                 results.append(record | {"status": "uncovered"})
                 continue
             record["tests"] = None  # no statement found: be safe
-        elif any("" in c for c in contexts):
-            record["tests"] = None  # import-time code affects every test
+        elif args.full or any("" in c for c in contexts):
+            record["tests"] = None  # full suite: requested, or import-time code affects all
         else:
-            record["tests"] = sorted({test for tests in contexts for test in tests})
-        pending.append((item, record))
+            record["tests"] = record["covering"]
+        pending.append((record, mutate))
     if args.sample is not None and args.sample < len(pending):
         pending = random.Random(args.seed).sample(pending, args.sample)
     print(f"running {len(pending)} mutants on {args.workers} workers", file=sys.stderr)
@@ -297,32 +381,40 @@ def main() -> None:
     for tree in trees:
         free.put(tree)
 
-    def mutate_and_test(job: tuple) -> dict:
-        item, record = job
-        (spec,) = item.mutations
+    def mutate_and_test(job: tuple[dict, Callable[[str], str | None]]) -> dict:
+        record, mutate = job
         tree = free.get()
         try:
             path = tree / record["module"]
-            operator = get_operator(spec.operator_name)(**spec.operator_args)
+            original = path.read_text()
             began = time.monotonic()
-            with use_mutation(path, operator, spec.occurrence) as (original, mutated):
-                if mutated is None:
-                    return record | {"status": "no-mutation"}
-                record["diff"] = "\n".join(_make_diff(original, mutated, record["module"]))
-                try:  # cosmic-ray 8.8 rewrites e.g. `{**x}` to `{>>x}`
-                    with warnings.catch_warnings(action="ignore"):  # tests still see them
-                        compile(mutated, path, "exec")
-                except SyntaxError:
-                    return record | {"status": "invalid"}
+            mutated = mutate(original)
+            if mutated is None or mutated == original:
+                return record | {"status": "no-mutation"}
+            record["diff"] = "\n".join(_make_diff(original, mutated, record["module"]))
+            try:  # cosmic-ray 8.8 rewrites e.g. `{**x}` to `{>>x}`
+                with warnings.catch_warnings(action="ignore"):  # tests still see them
+                    compile(mutated, path, "exec")
+            except SyntaxError:
+                return record | {"status": "invalid"}
+            try:
+                path.write_text(mutated)
                 runs = []
                 if record["tests"] is not None:
                     runs.append(("selected", *pytest(tree, record["tests"], timeout)))
                 verify = args.verify_selection and runs and runs[0][1] is not None
                 if record["tests"] is None or runs[0][1] == 0 or verify:
                     runs.append(("full", *pytest(tree, None, timeout)))
-            record["runs"] = [(phase, code) for phase, code, _ in runs]
+            finally:
+                path.write_text(original)
+            record["runs"] = [(phase, code) for phase, code, _, _ in runs]
+            record["killers"] = {}
+            for *_, killers in runs:  # an assertion seen in either run outranks an error
+                for test, kind in killers.items():
+                    if record["killers"].get(test) != "assert":
+                        record["killers"][test] = kind
             # Keep diagnostics where the exit code alone does not say a test failed.
-            record["output"] = [out for _, code, out in runs if code not in (0, 1, None)]
+            record["output"] = [out for _, code, out, _ in runs if code not in (0, 1, None)]
             record["seconds"] = round(time.monotonic() - began, 2)
             final = runs[-1][1] if runs[0][1] == 0 else runs[0][1]
             # Nonzero is a kill, as in cosmic-ray: exit 2 or 4 when a mutant breaks importing a
@@ -343,6 +435,8 @@ def main() -> None:
 
     with use_db(session, WorkDB.Mode.open) as db:
         for record in results:
+            if record["operator"] == BODY:
+                continue
             if record["status"] in ("killed", "survived", "timeout"):
                 outcome = (
                     TestOutcome.SURVIVED if record["status"] == "survived" else TestOutcome.KILLED

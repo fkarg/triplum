@@ -44,6 +44,15 @@ It skips mutants inside annotations and reports mutants on statements no test ru
 uncovered. Review `survivors.md` in the printed output directory: a survivor is either a missing
 test or an equivalent mutant. There is no score threshold.
 
+Each run records which tests fail for each mutant, and how. `scripts/mutation_report.py` turns
+that into test-side indicators in `tests.md`: how mutants died (assertion or crash), tests that
+run much code but check little of it, tests that are the only guard of some behaviour, and
+functions whose body can be removed without any test noticing (with the tests that ran them):
+
+```sh
+uv run python scripts/mutation_report.py <output directory>
+```
+
 ## Pre-commit
 
 `.githooks/pre-commit` exports the Git index to a temporary directory and runs `cargo check`,

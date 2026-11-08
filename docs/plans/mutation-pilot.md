@@ -191,3 +191,71 @@ Remaining queue: gap 5 and the call-shape survivors touch the store, which the c
 topic is redesigning; the `frozen=` record test touches records (Viewer is deferred) and waits
 for the same reason. The other minor gaps in the sample (admin `reusable_bytes`, default
 `chunk_size`, `ResolvedSpan` ordering, budget edges, S19 counter position) are open.
+
+## Test-side indicators: research (web subagent, 2026-11-08)
+
+The owner's second purpose: mutation results as a measure of individual tests, not only a
+list of survivors. Sources were read in full text except where marked.
+
+- **Oracle strength, not execution.** Checked coverage (Schuler & Zeller, ICST 2011,
+  doi:10.1109/ICST.2011.32; abstract only) counts covered statements that feed an assertion;
+  it ran 24% below statement coverage. The mutation analogue per test: kills over mutants it
+  covers. Raw kill counts mostly reward broad tests; suite size confounds coverage–effectiveness
+  correlations (Inozemtseva & Holmes, ICSE 2014; Chen et al., ASE 2020).
+- **Subsumed mutants inflate scores.** Many mutants die collaterally; mixing them led to
+  Type I errors in ~62% of comparisons; use subsuming (dominator) mutants, MS\* (Papadakis et
+  al., ISSTA 2016). Dominators are approximated from the current suite (Ammann, Delamaro &
+  Offutt, ICST 2014, abstract only; Kaufman et al., ICSE 2022, doi:10.1145/3510003.3510187).
+- **Crash kills.** Up to 43.8% of kills came from crashes rather than assertions (Du, Palepu &
+  Jones, ISSTA 2023, doi:10.1145/3597926.3598090): they count as kills but say little about
+  a test's checks.
+- **Pseudo-tested methods.** Covered, yet no test fails when the body is removed: 6–53% of
+  methods (Niedermayr, Juergens & Wagner, CSED 2016); 1–46% in 21 projects, but developers
+  judged only 30 of 101 worth acting on (Vera-Pérez et al., EMSE 2019, arXiv:1807.05030). No
+  Python tool; a body-removal operator gives one mutant per function.
+- **Redundancy is a snapshot.** Mutant-based suite reduction loses fault detection on later
+  versions (Shi et al., FSE 2014): a test without unique kills is a review candidate, never a
+  deletion candidate.
+- **Presentation.** Google reports no score ("neither concrete nor actionable"), one survivor
+  per changed covered line, arid nodes suppressed (productive share 15% → 89%; Petrović et
+  al., TSE 2022, arXiv:2102.11378). Facebook showed which tests reached a mutant without killing
+  it; 85% of developers agreed it exposed missing tests (Beller et al., ICSE-SEIP 2021,
+  arXiv:2010.13464).
+- **Kills without running the line.** PIT runs only covering tests and does not mutate static
+  initialisers; module-level Python code is the analogue. Kills by non-covering tests point to
+  compile/import-time effects, leaked state or order dependence: report them apart.
+
+Indicators adopted for `scripts/mutation_report.py`: kill provenance (assertion, crash only,
+collection, timeout, only non-covering tests); dominator groups per module; per test over
+dominators it covers, the share killed by assertion and the unique dominators; pseudo-tested
+functions with the tests that reached them. Not adopted: a suite or per-test score, deletion
+advice. The runner now runs selected tests to completion (no `-x`) to fill the matrix, records
+each failure's kind, and adds one `return None` body-removal mutant per non-trivial function.
+
+Peer on the matrix and indicator code: gpt-6.1-sol, review `0ee5c7de9e374ddbb7c7ad4912ec56b5`
+(a first call, `731c1ea2…`, received no material and returned insufficient evidence). Executed
+falsifications: dominators against the direct definition over all 128 killer-set families of
+three tests (no discrepancy); a shared session fixture under selected versus full runs; body
+mutants for decorated nested definitions, conditional definitions, continued headers, shared
+docstring lines and async generators; pytest probes for assert, `pytest.fail`, `raises`
+mismatches, exception groups, strict XPASS, subtests and teardown failures; fault injection into
+the worker. Dispositions:
+
+- **Unique defect, changed the method:** selected runs give incomplete killer sets when a test
+  relies on state another test computed (observed with a session fixture; this suite has none,
+  but `lru_cache` memoisation and the default-cache singleton have the same effect). Test-side
+  indicators now come from `--full` runs only; diff-scoped survivor runs keep selection.
+- Unique defects, fixed: a body that already only returns None gave an unchanged mutant
+  reported as pseudo-tested (trivial `return`/`return None` bodies are skipped, and a mutant
+  equal to the original is `no-mutation`); the line edit broke decorated nested definitions,
+  continued headers and docstrings sharing a line (decorators now start the body; bodies not on
+  a line of their own are skipped); definitions under `if`/`try`/`with` were never visited;
+  assertion credit could pair one member's coverage with another member's assertion (now per
+  mutant); pseudo-tested required no reaching test (now required); a later run's error could
+  overwrite an earlier assertion (assertion now wins); a failed read or partial write could
+  leave a worker unreturned or a tree mutated (cleanup now covers both).
+- Added verification, narrowed the claim: the kinds classify exception types, not oracle
+  intent. An `AssertionError` raised inside the package source (four `assert`s exist) now
+  counts as a crash; wrong-type `pytest.raises`, exception groups and strict XPASS stay
+  `error`. Documented in the plugin.
+- Nits applied: `isdisjoint`, plain strict-subset test, reused covering list, table literal.
