@@ -106,9 +106,11 @@ class SQLAlchemyStore(RecordStore):
                 raise KeyError(id)
             return _source(row)
 
-    def sources(self, *, viewer: Viewer) -> Iterator[Source]:
+    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
         with Session(self.engine) as session:
-            rows = session.exec(select(SourceRow).where(_visible(viewer))).all()
+            rows = session.exec(
+                select(SourceRow).where(SourceRow.collection_id == collection_id, _visible(viewer))
+            ).all()
         for row in rows:
             yield _source(row)
 

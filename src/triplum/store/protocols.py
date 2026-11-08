@@ -53,8 +53,11 @@ class RecordStore(Protocol):
         ...
 
     @abstractmethod
-    def sources(self, *, viewer: Viewer) -> Iterator[Source]:
-        """The sources `viewer` may read, in no particular order."""
+    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+        """The sources of collection `collection_id` that `viewer` may read, in no particular order.
+
+        An unknown collection gives no sources.
+        """
         ...
 
     @abstractmethod

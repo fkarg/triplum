@@ -6,8 +6,8 @@ compares the available implementations and explains how to plug in your own.
 ## Indexing
 
 The examples work directly with Sources. A [Collection](concepts/collection.md) identifies a
-corpus scope, but is not an executable prerequisite: its baseline record exists while source
-membership and scope enforcement remain unimplemented.
+corpus scope: listing sources and BM25 search take a collection id, but collection records are
+not stored yet.
 
 Indexing turns input material into searchable chunks. The concepts in pipeline order:
 

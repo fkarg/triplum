@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from triplum.cache import PydanticCodec
 from triplum.datatype import Chunk, Collection, Source
+from triplum.datatype.hit import RetrievalHit
 from triplum.datatype.ids import chunk_id, source_id
 
 COLLECTION = UUID("01900000-0000-7000-8000-000000000001")
@@ -106,3 +107,28 @@ def test_chunk_ordinal_is_bounded(ordinal: int):
             start=0,
             text="x",
         )
+
+
+_CHUNK: dict[str, object] = {
+    "collection_id": COLLECTION,
+    "source_id": UUID(int=1),
+    "origin": "a.md",
+    "ordinal": 0,
+    "start": 0,
+    "text": "x",
+}
+
+
+@pytest.mark.parametrize(
+    ("model", "fields", "typo"),
+    [
+        (Source, {"collection_id": COLLECTION, "origin": "a.md", "text": "x"}, "externalid"),
+        (Chunk, _CHUNK, "startt"),
+        (RetrievalHit, {"chunk": Chunk.model_validate(_CHUNK), "score": 1.0}, "scroe"),
+    ],
+)
+def test_unknown_fields_are_rejected(model, fields, typo):
+    # Owner (Q34): a misspelt field must fail at construction instead of being dropped.
+    with pytest.raises(ValidationError) as error:
+        model(**fields, **{typo: "x"})
+    assert [e["type"] for e in error.value.errors()] == ["extra_forbidden"]

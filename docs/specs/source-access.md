@@ -60,8 +60,12 @@ def source(self, id: UUID, /, *, viewer: Viewer) -> Source:
     """The source with this `id`; `KeyError` if there is none or `viewer` may not read it."""
 
 
-def sources(self, *, viewer: Viewer) -> Iterator[Source]:
-    """The sources `viewer` may read, in no particular order."""
+# P14 (retrieval spec) added `collection_id`; it was `sources(self, *, viewer: Viewer)`.
+def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+    """The sources of collection `collection_id` that `viewer` may read, in no particular order.
+
+    An unknown collection gives no sources.
+    """
 
 
 def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:

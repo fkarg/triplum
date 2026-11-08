@@ -24,22 +24,23 @@ This page follows the intended flow and shows where experiments can replace indi
   [`triplum datasets` commands](concepts/datasets.md#manage-downloads-from-the-command-line)
   `list`, `download`, `verify`, `remove` and `licence` manage these downloads.
 - [Retrieval](concepts/retrieval.md): the `Retriever` contract returning ranked `RetrievalHit`s,
-  and `BM25`, lexical search over an in-memory snapshot of a store's chunks with the `HIPPORAG1`
-  (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read and returns
-  only what each query's viewer may read; scores still depend on the term statistics of every
-  indexed chunk. `WholeText` keeps each source as one chunk.
+  and `BM25`, lexical search over an in-memory snapshot of one collection's chunks with the
+  `HIPPORAG1` (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read in
+  that collection and returns only that collection's chunks each query's viewer may read; term
+  statistics are per collection, and scores still depend on every indexed chunk. `WholeText` keeps each source as one chunk.
 - [Retrieval recall](concepts/recall.md): resolving gold evidence to Source ids, span and
   document coverage at several `k`, and means across questions. `examples/bm25_recall.py` scores
   BM25 on a fixture or on HotpotQA. Answer scoring, dense retrieval, fusion and the other
   baselines besides BM25, and a benchmark runner with run identity are not implemented.
-- [Collection](concepts/collection.md) has a baseline record and SQL mapping; collection storage
-  operations and derived-record scope enforcement are not implemented.
+- [Collection](concepts/collection.md) has a baseline record and SQL mapping; listing sources and
+  BM25 are scoped to one collection. Collection storage operations and derived-record scope
+  enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are
   insert-only and each source has one current chunk list, replaced as a whole. Each source is
   added with the principals allowed to read it, and every read takes a `Viewer` and returns only
-  what it may read; revoking access and access for derived records are not implemented. A
-  source's optional `external_id` is unique within its collection. Temporal history
-  of changed documents and origin normalization are not settled.
+  what it may read; listing sources takes one collection id. Revoking access and access for
+  derived records are not implemented. A source's optional `external_id` is unique within its
+  collection. Temporal history of changed documents and origin normalization are not settled.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   normalized positional/keyword call arguments, per-computation SQLite tables and CLI/library
   inspection and clearing, including retained function names and source locations for selecting
@@ -148,8 +149,8 @@ flowchart TD
 4. **Answer.** Give the question and formatted evidence to the LLM.
 
 Every record store read takes a viewer and returns only the sources and chunks it may read.
-[BM25 retrieval](concepts/retrieval.md) filters by the query's viewer before ranking; its term
-statistics are not yet scoped to the viewer. Vector and graph retrieval are not implemented;
+[BM25 retrieval](concepts/retrieval.md) searches one collection and filters by the query's viewer
+before ranking; its term statistics are per collection but not yet scoped to the viewer. Vector and graph retrieval are not implemented;
 graph traversal is to use the visible graph. Reads do not take a temporal view yet.
 Derived summaries must preserve their supporting sources' access restrictions.
 

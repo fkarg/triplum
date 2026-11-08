@@ -48,7 +48,8 @@ question = QAQuestion(
 gold = resolve_evidence(question, {"policy": source.id})
 
 public = Viewer(principals=frozenset({"public"}))
-hits = BM25(store, viewer=public)(question.input.text, viewer=public, k=2)
+retriever = BM25(store, collection_id=collection.id, viewer=public)
+hits = retriever(question.input.text, viewer=public, k=2)
 print([(h.chunk.start, h.chunk.text) for h in hits])
 scores = score_recall(hits, gold, ks=(1, 2))
 for k, score in scores.items():
@@ -110,9 +111,10 @@ viewer could read each hit; a duplicate still takes one of the top `k` places. I
 know who asked: gold in a source the viewer cannot read is never retrieved, so it counts as a
 miss. Benchmark fixtures carry no document grants, so evaluations that depend on permissions are
 not supported yet; see [Legacy fixtures](benchmark-inputs.md#legacy-fixtures). Copies of the
-same texts left in the store by an earlier run are different sources, so a hit on a stale copy
-covers no gold and can push the current copy out of the top `k`; see
-[every collection in the store](retrieval.md#every-collection-in-the-store).
+same texts left in the store by an earlier run with another collection id are different sources
+in another collection; `BM25` searches only the collection you name, so they do not reach the
+hits. Resolve evidence against the Sources of that same collection; see
+[one collection](retrieval.md#one-collection).
 
 A `RecallAtK` has four fields:
 

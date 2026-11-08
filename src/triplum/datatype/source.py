@@ -24,7 +24,7 @@ class Source(BaseModel):
         >>> Source(collection_id=collection.id, origin="notes/intro.md", text="# Intro\\n...")
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: UUID = Field(
         default=ids.UNSET,

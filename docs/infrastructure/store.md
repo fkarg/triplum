@@ -23,8 +23,8 @@ tables, [`SourceRow`][triplum.store.sql.tables.SourceRow],
 A [`CollectionRow`][triplum.store.sql.tables.CollectionRow] mapping is also available, with the
 `id` and `name` of a [collection](../concepts/collection.md). Source and chunk rows store their
 `collection_id`, but `SQLAlchemyStore` does not yet create the collection table or manage
-collection records, `RecordStore` has no collection methods, and reads are not scoped to a
-collection.
+collection records. Listing sources takes a collection id and returns only that collection's
+sources; an id no source carries gives none. There is no listing across all collections.
 
 Every read takes a [`Viewer`][triplum.datatype.viewer.Viewer] and returns only what it may read;
 see [Who may read](#who-may-read). Reads take no temporal view and do not reconstruct historical
@@ -109,8 +109,8 @@ store.add_sources([internal], allow=["finance"])
 
 anyone = Viewer(principals=frozenset({"public"}))
 analyst = Viewer(principals=frozenset({"public", "finance"}))
-print(sorted(s.origin for s in store.sources(viewer=anyone)))
-print(sorted(s.origin for s in store.sources(viewer=analyst)))
+print(sorted(s.origin for s in store.sources(collection_id=collection.id, viewer=anyone)))
+print(sorted(s.origin for s in store.sources(collection_id=collection.id, viewer=analyst)))
 try:
     store.source(internal.id, viewer=anyone)
 except KeyError:
@@ -220,7 +220,8 @@ column types, but this has not been verified.
   `SQLAlchemyStore` writers adding the same new source at once may surface the database's
   integrity error instead of the documented `ValueError` or no-op.
 - **Reads**: `source(id, viewer=...)` raises `KeyError` for an unknown or unreadable id.
-  `sources(viewer=...)` yields every source the viewer may read, in no particular order.
+  `sources(collection_id=..., viewer=...)` yields the sources of that collection the viewer may
+  read, in no particular order; an unknown collection gives none.
   `chunks(source_id, viewer=...)` returns the current chunks ordered by `ordinal`, empty if the
   source has none, and raises `KeyError` if the source is unknown or unreadable.
 - **Round trip**: a record read back equals the one you stored. `SQLAlchemyStore` rebuilds each

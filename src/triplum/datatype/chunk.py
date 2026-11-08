@@ -29,7 +29,7 @@ class Chunk(BaseModel):
         ... )
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: UUID = Field(
         default=ids.UNSET,

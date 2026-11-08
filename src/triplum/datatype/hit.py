@@ -10,7 +10,7 @@ class RetrievalHit(BaseModel):
     the run, not by the hit.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     chunk: Chunk = Field(description="The retrieved chunk.")
     score: float | None = Field(

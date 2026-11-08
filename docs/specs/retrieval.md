@@ -222,7 +222,19 @@ No API key, network or cache. On `tests/fixtures/hotpotqa.json` (observed, pinne
 R@2 0.600, AR@2 0.300, CR@2 0.563, R@5 0.775, AR@5 0.600, CR@5 0.747, 968 / 2639 characters, 20 of 20 questions with
 gold. Not compared against published numbers (20 questions only).
 
-## P13 and P14: strict records and collection-scoped retrieval (proposal, under owner review)
+## P13 and P14: strict records and collection-scoped retrieval
+
+Status: **approved** by the owner 2026-11-08 ("P13 … for now, forbid … go ahead"; "P14: go ahead")
+and implemented. BM25's construction-bound collection is provisional until RT10 settles. Owner
+notes: records may become adaptable later (Q35); a sources query may take several collection
+ids later.
+
+Implementation review: cross-model diff review gpt-6.1-sol (Codex, verdict supports). It applied
+four mutations (extra policy back to ignore; no collection filter in source listings; index of
+both collections with query-time filtering; filtering after top `k`), each turning the new tests
+red on both backends, and found no missed callers. Dispositions: two test nits (redundant
+baseline construction, single-use helper) applied; no correctness findings. The session
+separately mutated the memory filter, the SQL filter and the BM25 construction scope: all red.
 
 Owner answers 2026-11-08: Q34 reject unknown record fields; Q33 queries select one collection,
 are optimized per collection only, and return hits only from their own collection.

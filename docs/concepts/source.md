@@ -58,8 +58,8 @@ print(source.external_id)  # article-42
 
 - `Source` is a [Pydantic](https://docs.pydantic.dev/) model, so construction validates the
   field types. It has no storage behavior of its own.
-- Unknown field names are silently ignored, so a misspelt field is lost without an error:
-  `Source(..., externalid="x")` leaves `external_id` as `None`.
+- Unknown field names are rejected, so a misspelt field fails at once instead of being lost:
+  `Source(..., externalid="x")` raises a validation error of type `extra_forbidden`.
 - Sources are immutable: assigning to a field raises a validation error. To change the text,
   create a new `Source`.
 - `text` may be empty; chunking then produces no chunks.

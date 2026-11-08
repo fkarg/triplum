@@ -6,7 +6,7 @@ A [`Retriever`][triplum.steps.retrieval.Retriever] takes the query text, a
 [`RetrievalHit`][triplum.datatype.hit.RetrievalHit]s, best first.
 
 The library provides one retriever, [`BM25`][triplum.steps.retrieval.BM25]: lexical search over
-the chunks in a [store](../infrastructure/store.md), scored by the
+the chunks of one [collection](collection.md) in a [store](../infrastructure/store.md), scored by the
 [bm25s](https://github.com/xhluca/bm25s) library with the Lucene BM25 formula.
 
 ## Example
@@ -32,7 +32,7 @@ for source in sources:
     store.replace_chunks(source.id, chunker(source))
 
 public = Viewer(principals=frozenset({"public"}))
-retriever = BM25(store, viewer=public)
+retriever = BM25(store, collection_id=collection.id, viewer=public)
 for hit in retriever("Are returns accepted after 30 days?", viewer=public, k=2):
     print(f"{hit.score:.3f} {hit.chunk.origin}")
 ```
@@ -44,8 +44,9 @@ for hit in retriever("Are returns accepted after 30 days?", viewer=public, k=2):
 
 1. [`WholeText`](chunking.md#whole-text) keeps each source as one chunk, so each policy is one
    retrieval unit.
-2. `BM25(store, viewer=public)` reads every chunk `public` may read and indexes them. The
-   retriever is configured once; each call takes only the query, the viewer and `k`.
+2. `BM25(store, collection_id=collection.id, viewer=public)` reads every chunk of the collection
+   that `public` may read and indexes them. The retriever is configured once; each call takes only
+   the query, the viewer and `k`.
 3. The call returns the two best hits. `shipping.md` matches only on `days`, and scores above
    `refunds.md` because it is shorter.
 
@@ -57,7 +58,8 @@ A `RetrievalHit` has two fields:
 - `score`: the retriever's score, higher is better. It is `None` for producers that have no
   score, such as an oracle that returns the gold passages.
 
-As for sources and chunks, unknown field names passed to `RetrievalHit` are silently ignored.
+As for sources and chunks, unknown field names passed to `RetrievalHit` raise a validation error
+of type `extra_forbidden`.
 
 A list of hits is ranked: earlier hits rank higher. Scores are comparable only within one result
 list, not across queries or retrievers. A hit does not record which retriever produced it; the
@@ -93,7 +95,7 @@ The rules in this section belong to `BM25`, not to the `Retriever` Protocol.
 `BM25` uses a viewer twice:
 
 - **The corpus viewer**, passed at construction, decides which chunks are indexed: the current
-  chunks of every source it may read.
+  chunks of every source of the collection that it may read.
 - **The query viewer**, passed on every call, decides which indexed chunks may be returned.
   Each call reads the query viewer's sources from the store and drops every other chunk before
   ranking. A hidden chunk is never returned, never takes a top-`k` slot and never decides a tie.
@@ -124,11 +126,11 @@ for source in (policy, memo):
 
 public = Viewer(principals=frozenset({"public"}))
 staff = Viewer(principals=frozenset({"public", "staff"}))
-retriever = BM25(store, viewer=staff)  # indexes both sources
+retriever = BM25(store, collection_id=collection.id, viewer=staff)  # indexes both sources
 query = "returns after 30 days"
 print([h.chunk.origin for h in retriever(query, viewer=staff, k=5)])
 print([h.chunk.origin for h in retriever(query, viewer=public, k=5)])
-print(len(BM25(store, viewer=public)(query, viewer=staff, k=5)))
+print(len(BM25(store, collection_id=collection.id, viewer=public)(query, viewer=staff, k=5)))
 ```
 
 ```text
@@ -155,19 +157,24 @@ indexes only public sources, so even a staff query finds just the policy.
 replaced chunk lists and new grants do not reach it; build a new `BM25` to see them. The index is
 not persisted. A store with no visible chunks gives an empty index, which returns `[]`.
 
-### Every collection in the store
+### One collection
 
-Store reads are not scoped to a [collection](collection.md), so `BM25` indexes every visible
-source of every collection in the store. This matters when you rerun an example against the same
-database file. `Collection(name=...)` gets a new random `id` on each run, so the same texts become
-new sources with new ids, and the store keeps both copies. The second run then returns every
-hit twice.
+`collection_id` is required and selects the one [collection](collection.md) to search. `BM25`
+indexes only that collection's chunks, so its term statistics come from that collection alone,
+and it returns hits only from that collection: sources of other collections in the same store
+neither appear in results nor change scores. There is no search across all collections. An id
+that no stored source carries gives an empty index.
 
-To rerun without duplicates, either start from a fresh database (a `MemoryStore`, or a new
-SQLite file), or give the collection a fixed `id`, such as
+This matters when you rerun an example against the same database file. `Collection(name=...)`
+gets a new random `id` on each run, so the same texts become new sources with new ids, and the
+store keeps both copies. A `BM25` over the new collection does not return the earlier copies, but
+they stay in the store and the new ids differ from the earlier ones, so earlier record ids and
+cached results do not carry over.
+
+To get the same ids on every run, give the collection a fixed `id`, such as
 `Collection(id=UUID("019a0000-0000-7000-8000-000000000001"), name="Shop policies")` with
-`from uuid import UUID`. With a fixed `id`, the sources get the same ids again, and `add_sources`
-skips sources that are already stored.
+`from uuid import UUID`. The sources then get the same ids again, and `add_sources` skips sources
+that are already stored.
 
 ### Matching and order
 
@@ -200,9 +207,10 @@ Two presets are provided:
 | [`HIPPORAG1`][triplum.steps.retrieval.HIPPORAG1] (default) | 1.2 | 0.75 | lowercased `\w+` | approximates the Elasticsearch `standard` analyzer used by HippoRAG 1 |
 | [`BM25S_DEFAULT`][triplum.steps.retrieval.BM25S_DEFAULT] | 1.5 | 0.75 | lowercased `\b\w\w+\b` | the bm25s defaults; one-character tokens are dropped |
 
-Pass another preset or your own settings with `BM25(store, viewer=public, settings=BM25S_DEFAULT)`.
-The retriever's fingerprint follows its settings only; which chunks it indexed is not part of it,
-so do not cache retriever calls.
+Pass another preset or your own settings with
+`BM25(store, collection_id=collection.id, viewer=public, settings=BM25S_DEFAULT)`.
+The retriever's fingerprint follows its settings only; which collection and chunks it indexed are
+not part of it, so do not cache retriever calls.
 
 ### Differences from Elasticsearch
 

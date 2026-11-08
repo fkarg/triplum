@@ -61,9 +61,11 @@ Every `Source` and `Chunk` carries a required `collection_id`, and their IDs are
 so the same document in two collections gives two different records. A collection's `id` is a
 random UUIDv7 created once; keep and reuse it to reproduce the same record IDs in a later run. The SQL store keeps
 `collection_id` on source and chunk rows, and
-[`CollectionRow`][triplum.store.sql.tables.CollectionRow] maps `Collection` itself. Stores do not
-yet create or manage collection records, have no collection methods and do not enforce collection
-scope. See the [store guide](../infrastructure/store.md).
+[`CollectionRow`][triplum.store.sql.tables.CollectionRow] maps `Collection` itself. Listing
+sources is scoped to one collection: `sources(collection_id=..., viewer=...)` returns only that
+collection's sources, and [BM25](retrieval.md#one-collection) searches one collection. Stores do
+not yet create or manage collection records, so nothing checks that a collection id names a known
+collection. See the [store guide](../infrastructure/store.md).
 
 ## Reference
 

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     gold = [resolve_evidence(q, keys) for q in questions]  # fails here on unknown keys
 
     reader = Viewer(principals=frozenset({"public"}))
-    retriever = BM25(store, viewer=reader)  # default preset: HIPPORAG1
+    retriever = BM25(store, collection_id=collection.id, viewer=reader)  # preset: HIPPORAG1
     scores = [
         score_recall(retriever(q.input.text, viewer=reader, k=5), evidence)
         for q, evidence in zip(questions, gold, strict=True)

@@ -1,6 +1,7 @@
 import re
 from abc import abstractmethod
 from typing import Protocol
+from uuid import UUID
 
 import bm25s
 from pydantic import ConfigDict, Field
@@ -44,10 +45,10 @@ BM25S_DEFAULT = BM25Settings(k1=1.5, b=0.75, token_pattern=r"(?u)\b\w\w+\b")
 
 
 class BM25(Retriever, FingerprintedComputationMixin):
-    """Lexical retrieval over a snapshot of a store's chunks, scored by bm25s.
+    """Lexical retrieval over a snapshot of one collection's chunks, scored by bm25s.
 
-    Indexes the current chunks of every source `viewer` may read at construction. Those chunks
-    are the term-statistics scope: scores of visible chunks depend on indexed chunks a query's
+    Indexes the current chunks of every source of collection `collection_id` that `viewer` may
+    read at construction. Those chunks are the term-statistics scope: scores of visible chunks depend on indexed chunks a query's
     viewer may not read. Later writes do not reach the index; build a new one.
 
     Each call ranks only indexed chunks whose source its own viewer may read, before choosing
@@ -56,14 +57,21 @@ class BM25(Retriever, FingerprintedComputationMixin):
     """
 
     def __init__(
-        self, store: RecordStore, /, *, viewer: Viewer, settings: BM25Settings = HIPPORAG1
+        self,
+        store: RecordStore,
+        /,
+        *,
+        collection_id: UUID,
+        viewer: Viewer,
+        settings: BM25Settings = HIPPORAG1,
     ) -> None:
         self._store = store
+        self._collection_id = collection_id
         self.settings = settings
         self._pattern = re.compile(settings.token_pattern)
         chunks = [
             chunk
-            for source in store.sources(viewer=viewer)
+            for source in store.sources(collection_id=collection_id, viewer=viewer)
             for chunk in store.chunks(source.id, viewer=viewer)
         ]
         self._chunks = sorted(chunks, key=lambda c: (c.source_id, c.ordinal))
@@ -89,7 +97,10 @@ class BM25(Retriever, FingerprintedComputationMixin):
         if not known:  # bm25s raises on an empty query
             return []
         scores = self._index.get_scores(known)
-        visible = {source.id for source in self._store.sources(viewer=viewer)}
+        visible = {
+            source.id
+            for source in self._store.sources(collection_id=self._collection_id, viewer=viewer)
+        }
         # Lucene idf is positive, so a chunk sharing a query token scores above zero.
         rows = [i for i in (scores > 0).nonzero()[0] if self._chunks[i].source_id in visible]
         rows.sort(key=lambda i: -scores[i])  # stable: ties keep (source_id, ordinal) order

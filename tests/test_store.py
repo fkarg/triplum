@@ -41,7 +41,10 @@ def test_sources_and_chunks_round_trip(store: RecordStore):
 
     assert store.source(a.id, viewer=PUBLIC) == a
     assert store.source(b.id, viewer=PUBLIC) == b
-    assert sorted(store.sources(viewer=PUBLIC), key=lambda s: s.text) == [a, b]
+    assert sorted(store.sources(collection_id=COLLECTION, viewer=PUBLIC), key=lambda s: s.text) == [
+        a,
+        b,
+    ]
     assert store.chunks(a.id, viewer=PUBLIC) == chunks
     assert store.chunks(b.id, viewer=PUBLIC) == []
 
@@ -53,7 +56,7 @@ def test_re_adding_equal_records_keeps_one_copy(store: RecordStore):
     store.replace_chunks(a.id, FixedSize(2)(a))
     store.add_sources([_source("a", "abc")], allow=["public"])
     store.replace_chunks(a.id, FixedSize(2)(_source("a", "abc")))
-    assert list(store.sources(viewer=PUBLIC)) == [a]
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [a]
     assert store.chunks(a.id, viewer=PUBLIC) == FixedSize(2)(a)
 
 
@@ -67,7 +70,7 @@ def test_a_different_source_under_a_known_id_is_rejected(store: RecordStore):
     c = _source("c", "123")
     with pytest.raises(ValueError, match="different source"):
         store.add_sources([c, c.model_copy(update={"text": "124"})], allow=["public"])
-    assert list(store.sources(viewer=PUBLIC)) == [a]
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [a]
 
 
 def test_changing_the_chunker_replaces_a_sources_chunks(store: RecordStore):
@@ -181,12 +184,17 @@ def test_an_external_id_is_unique_within_its_collection(store: RecordStore):
             [within, _source("f", "f", "d2")],
             allow=["public"],
         )
-    assert list(store.sources(viewer=PUBLIC)) == [held]
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [held]
 
     elsewhere = Source(collection_id=OTHER, origin="c", text="other", external_id="d1")
     unset = [_source("g", "1"), _source("h", "2")]
     store.add_sources([held, elsewhere, *unset], allow=["public"])  # an equal re-add is not a clash
-    assert sorted(s.origin for s in store.sources(viewer=PUBLIC)) == ["a", "c", "g", "h"]
+    assert sorted(s.origin for s in store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [
+        "a",
+        "g",
+        "h",
+    ]
+    assert list(store.sources(collection_id=OTHER, viewer=PUBLIC)) == [elsewhere]
 
 
 def test_the_same_source_with_another_external_id_is_rejected(store: RecordStore):
@@ -213,26 +221,38 @@ def test_an_unreadable_source_looks_missing(store: RecordStore):
     assert error(lambda: store.source(team.id, viewer=PUBLIC)) == (team.id,)
     assert error(lambda: store.chunks(team.id, viewer=PUBLIC)) == (team.id,)
     assert error(lambda: store.chunks(missing, viewer=PUBLIC)) == (missing,)
-    assert list(store.sources(viewer=PUBLIC)) == [public]
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [public]
 
     both = Viewer(principals=frozenset({"public", "team", "admins"}))
-    assert sorted(store.sources(viewer=both), key=lambda s: s.text) == [public, team]
+    assert sorted(store.sources(collection_id=COLLECTION, viewer=both), key=lambda s: s.text) == [
+        public,
+        team,
+    ]
     assert store.chunks(team.id, viewer=both) == FixedSize(2)(team)
-    assert list(store.sources(viewer=Viewer(principals=frozenset()))) == []
+    assert (
+        list(store.sources(collection_id=COLLECTION, viewer=Viewer(principals=frozenset()))) == []
+    )
 
 
 def test_a_bare_string_is_not_a_set_of_principals(store: RecordStore):
     # A str is an Iterable[str]: "team" used to allow the principals "t", "e", "a" and "m".
     with pytest.raises(TypeError, match="not the string 'team'"):
         store.add_sources([_source("a", "abc")], allow="team")
-    assert list(store.sources(viewer=Viewer(principals=frozenset({"t", "team"})))) == []
+    assert (
+        list(
+            store.sources(
+                collection_id=COLLECTION, viewer=Viewer(principals=frozenset({"t", "team"}))
+            )
+        )
+        == []
+    )
 
 
 def test_a_source_nobody_may_read(store: RecordStore):
     hidden = _source("h", "hidden")
     store.add_sources([hidden], allow=[])
     everyone = Viewer(principals=frozenset({"public", "team"}))
-    assert list(store.sources(viewer=everyone)) == []
+    assert list(store.sources(collection_id=COLLECTION, viewer=everyone)) == []
     with pytest.raises(KeyError):
         store.source(hidden.id, viewer=everyone)
 
@@ -244,8 +264,14 @@ def test_re_adding_a_source_with_other_access_is_rejected(store: RecordStore):
     fresh = _source("b", "new")
     with pytest.raises(ValueError, match="other access"):
         store.add_sources([fresh, a], allow=["public"])
-    assert list(store.sources(viewer=Viewer(principals=frozenset({"public", "team"})))) == [a]
-    assert list(store.sources(viewer=Viewer(principals=frozenset({"team"})))) == [a]
+    assert list(
+        store.sources(
+            collection_id=COLLECTION, viewer=Viewer(principals=frozenset({"public", "team"}))
+        )
+    ) == [a]
+    assert list(
+        store.sources(collection_id=COLLECTION, viewer=Viewer(principals=frozenset({"team"})))
+    ) == [a]
 
 
 def test_a_failing_source_iterable_stores_nothing(store: RecordStore):
@@ -255,7 +281,7 @@ def test_a_failing_source_iterable_stores_nothing(store: RecordStore):
 
     with pytest.raises(RuntimeError):
         store.add_sources(failing(), allow=["public"])
-    assert list(store.sources(viewer=PUBLIC)) == []
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == []
 
 
 def test_a_failing_chunk_iterable_keeps_the_previous_chunks(store: RecordStore):
@@ -323,7 +349,7 @@ def test_sql_rows_that_do_not_match_their_id_are_rejected_on_read(tmp_path: Path
         with pytest.raises(ValidationError, match="does not match"):
             store.source(source.id, viewer=PUBLIC)
         with pytest.raises(ValidationError, match="does not match"):
-            list(store.sources(viewer=PUBLIC))
+            list(store.sources(collection_id=COLLECTION, viewer=PUBLIC))
         with pytest.raises(ValidationError, match="does not match"):
             store.chunks(source.id, viewer=PUBLIC)
     finally:
@@ -343,7 +369,7 @@ def test_sql_access_is_checked_before_a_row_is_read(tmp_path: Path):
             store.source(hidden.id, viewer=PUBLIC)
         with pytest.raises(KeyError):
             store.chunks(hidden.id, viewer=PUBLIC)
-        assert list(store.sources(viewer=PUBLIC)) == []
+        assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == []
     finally:
         store.close()
 
@@ -363,3 +389,18 @@ def test_sql_writes_respect_foreign_keys(tmp_path: Path):
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
     finally:
         store.close()
+
+
+def test_sources_lists_one_collections_readable_sources(store: RecordStore):
+    # Owner (Q33): a sources query selects a collection; access still applies within it.
+    mine, mine_hidden = _source("a", "a"), _source("b", "b")
+    theirs = Source(collection_id=OTHER, origin="a", text="a")
+    theirs_hidden = Source(collection_id=OTHER, origin="b", text="b")
+    store.add_sources([mine, theirs], allow=["public"])
+    store.add_sources([mine_hidden, theirs_hidden], allow=["team"])
+    assert list(store.sources(collection_id=COLLECTION, viewer=PUBLIC)) == [mine]
+    assert list(store.sources(collection_id=OTHER, viewer=PUBLIC)) == [theirs]
+    team = Viewer(principals=frozenset({"team"}))
+    assert list(store.sources(collection_id=OTHER, viewer=team)) == [theirs_hidden]
+    unknown = UUID("01900000-0000-7000-8000-000000000009")
+    assert list(store.sources(collection_id=unknown, viewer=PUBLIC)) == []

@@ -11,11 +11,13 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Done (2026-11-08):** persona documentation wave, two rounds, recorded in
-  [the run report](../personae/runs/2026-11-08-persona-wave.md). Owner answered Q34 (reject
-  unknown fields) and Q33 (collection-scoped queries, per-collection only). P13 and P14
-  declarations drafted in [the retrieval spec](../specs/retrieval.md); peer review running, then
-  owner approval. Open: RT9, RT10 (collection at construction or per query).
+- **Done (2026-11-08):** persona documentation wave (two rounds,
+  [run report](../personae/runs/2026-11-08-persona-wave.md)); P13 strict records and P14
+  collection-scoped `sources()`/BM25 implemented ([spec](../specs/retrieval.md)). RT9 answered
+  (keep). **Running:** RT10 investigation (collection at retriever construction or per query;
+  walkthroughs, options, external evidence), machine-local report at
+  `/tmp/claude-1000/pr/rt10-research.md`; then present RT10. Owner direction: storage interfaces
+  are the next main topic (after RT10); docs gap: Viewer and similar concepts lack concept pages.
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
   TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
   P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"

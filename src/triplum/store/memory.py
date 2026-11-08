@@ -45,8 +45,14 @@ class MemoryStore(RecordStore):
             raise KeyError(id)
         return self._sources[id]
 
-    def sources(self, *, viewer: Viewer) -> Iterator[Source]:
-        return iter([s for id, s in self._sources.items() if self._visible(id, viewer)])
+    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+        return iter(
+            [
+                s
+                for id, s in self._sources.items()
+                if s.collection_id == collection_id and self._visible(id, viewer)
+            ]
+        )
 
     def chunks(self, source_id: UUID, /, *, viewer: Viewer) -> list[Chunk]:
         if not self._visible(source_id, viewer):
