@@ -80,3 +80,22 @@ criticism; diff-only blind spots; Rust cost generalisation.
 - TQ4: agree, with peer adding PR CI when `crates/` changes; no score gate.
 - Both: review survivors; record CPU time, elapsed time and review effort in the pilot; no
   score thresholds.
+
+### Round 10 owner answers (2026-11-08)
+
+- **Policy: mutation coverage is the measure of test-suite quality**, substantially better than
+  line or branch coverage. Google's mutant rules (changed covered lines, skip arid lines, review
+  survivors) apply generally. **Do not wait on CI**: keep checks local and non-blocking for now.
+- Owner on the clean-run failures: surprising; investigate for learnings and potential bugs via a
+  subagent. Parts of the caching may be excluded from mutation testing (function-based caching
+  versus function mutation is a fair conflict). **Direction: code hashing should cover both a
+  wrapper and the function it wraps** (today `_wrapped` unwraps only `lru_cache` wrappers);
+  becomes a concrete proposal after the investigation.
+- TQ1 (partial): **(b) on-disk mutation, but with a filtered test suite instead of the full
+  one, if that is possible**; mutmut stays useful as a compromise. Follow-up TQ5: feasibility of
+  per-mutant test selection for on-disk runs (coverage contexts, subprocess tests).
+- TQ2 (answered): keep the coverage report as a zero-coverage indicator only; drop "required".
+- TQ3 (deferred): until the mutmut vs cosmic-ray decision; for cosmic-ray, the local script on an
+  isolated copy is agreed.
+- TQ4 (closed): Rust is currently unused; no action.
+- **Constraint (2026-11-08): no CPU-intensive runs for now** (owner is mobile); P10's pilot waits.

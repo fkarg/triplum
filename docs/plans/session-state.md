@@ -11,9 +11,10 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Next:** mutation testing options (owner, 2026-11-08: mutation coverage instead of line/branch
-  coverage; research subagent running, results go to `docs/plans/questions/testing.md`); then the next
-  interface: IRCOT preset with stemming, dense
+- **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
+  two light subagents running (mutmut clean-run failures and wrapper hashing; TQ5 on-disk test
+  selection); then a proposal for hashing wrapper and wrapped, and the mutmut vs cosmic-ray
+  decision. No CPU-intensive runs for now (owner mobile). Then the next interface: IRCOT preset with stemming, dense
   retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download

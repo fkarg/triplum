@@ -122,9 +122,10 @@ These requirements describe the intended architecture, not current capabilities 
 - Spec, then plan, then code. Test observable behavior across boundaries with real temporary
   stores and deterministic fakes. The 20-question fixture is the integration test for every
   pipeline. Mark real-model tests `model` for fast non-model runs.
-- Run the checks in CONTRIBUTING.md, including branch coverage, test durations, Cargo and strict
-  MkDocs. Fix contracts/narrowing rather than hiding errors with broad ignores, `Any`, exclusions
-  or skipped CLI coverage. Do not add test parallelism without measuring it.
+- Run the checks in CONTRIBUTING.md, including test durations, Cargo and strict MkDocs. Judge tests
+  by mutation coverage (would a test fail if the code were wrong?); the coverage report is only a
+  zero-coverage indicator, never a requirement. Fix contracts/narrowing rather than hiding errors
+  with broad ignores, `Any`, exclusions or skipped CLI tests. Do not add test parallelism without measuring it.
 - Pre-commit checks an exported index, never unstaged/untracked work. Never stash concurrent
   edits. Modifying Ruff commands are fine during development; hooks and CI check without edits.
 - Commit coherent, verified changes periodically. Never add attribution or `Co-Authored-By`

@@ -24,9 +24,10 @@ cargo test
 uv run mkdocs build --strict
 ```
 
-Measure branch coverage and test durations. Fix type errors at their contracts; do not hide them
-behind broad ignores, `Any` or excluded modules. New behavior should have focused coverage of its
-observable contract. Review prototypes remain separate from cleanup commits until approved.
+Test quality is measured by mutation coverage: whether some test fails when the code is changed.
+The coverage report only points at code no test runs; it is not a target or a requirement. Watch
+test durations. Fix type errors at their contracts; do not hide them behind broad ignores, `Any`
+or excluded modules. New behavior should have focused tests of its observable contract. Review prototypes remain separate from cleanup commits until approved.
 
 ## Pre-commit
 

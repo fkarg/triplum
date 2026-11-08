@@ -28,6 +28,10 @@ across nested decorated calls.
 
 ## Owner policies
 
+- **Mutation coverage measures test quality; do not wait on CI** (owner, 2026-11-08; scope: all
+  testing work). Line/branch coverage is only a zero-coverage indicator; Google-style mutant
+  rules apply; checks stay local and non-blocking. Details: [testing questions](../plans/questions/testing.md).
+
 - **Provided datasets live in the triplum cache and download on first use** (owner, 2026-11-07;
   scope: built-in datasets, likely model weights per the CLI contract). Applied: `cache_home()`
   shared with the computation cache; `HotpotQA()` and `MultiHopRAGCorpus()` fetch when missing.
