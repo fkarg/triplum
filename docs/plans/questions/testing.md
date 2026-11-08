@@ -99,3 +99,28 @@ criticism; diff-only blind spots; Rust cost generalisation.
   isolated copy is agreed.
 - TQ4 (closed): Rust is currently unused; no action.
 - **Constraint (2026-11-08): no CPU-intensive runs for now** (owner is mobile); P10's pilot waits.
+
+### TQ5 research: per-mutant test selection for on-disk mutation (subagent, 2026-11-08)
+
+Toy experiments only (coverage 7.16.1, pytest-cov 7.1.0, Python 3.14); not run on the repo.
+
+- Feasible with cosmic-ray (latest 8.8.0) plus a ~30-line distributor plugin: cosmic-ray passes no
+  mutation location to the test command, but a distributor sees each work item's `module_path`,
+  `start_pos` and `end_pos` and can run `pytest <nodeids>` for the tests covering those lines.
+  Zero selected tests makes pytest exit 5, which cosmic-ray would count as killed: the plugin must
+  record "no coverage" itself.
+- Line → tests map from coverage contexts (`--cov-context=test`, `contexts_by_lineno`). Trap
+  (observed): Python 3.14's default `sysmon` core records only the first test per line with
+  dynamic contexts; `[run] core = ctrace` fixes it. Import-time lines (defs, decorators, module
+  constants, defaults, class bodies) get the empty context: fall back to the full suite there.
+- Subprocesses (CLI tests in six files): pytest-cov 7 dropped subprocess support; coverage's
+  `[run] patch = subprocess` measures them but credits their lines to no test. Observed workaround:
+  an autouse fixture sets the child's coverage context to the calling test via
+  `COVERAGE_PROCESS_CONFIG` (relies on coverage internals that may change). Tests passing `env=`
+  without `os.environ` stay unmeasured.
+- mutmut's selection and pytest-testmon both miss subprocess dependencies (testmon documents it).
+- Safety: every survivor is re-run against the full suite before it is reported (only survivors
+  pay full cost), which bounds false survivors.
+- Estimated cost (inferred): ~3 s fixed per mutant (collection, imports) plus selected tests and
+  ~1 s per CLI subprocess: ~3–8 s versus ~35 s full suite. Unknown until one real coverage pass:
+  tests per line, ctrace overhead, share of import-time mutants.
