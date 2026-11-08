@@ -323,6 +323,12 @@ viewer filters nothing: every stored source is readable, including sources with 
 A given viewer behaves as before. AGENTS.md's access rule records the deferral. Tests: store
 reads without a viewer on both backends; BM25 without viewers, and with only a corpus viewer.
 
+Review: cross-model diff review gpt-6.1-sol (verdict supports; probed all nine BM25
+construction/call viewer combinations and store reads against public, team and empty grants on
+both backends). Dispositions: coverage gaps (chunks of an empty-grant source; unrestricted index
+queried with a viewer) → tests added; single-expression visibility → applied; removing the owner
+comments in tests → rejected, the repo's tests cite owner decisions as their reason.
+
 ## Verification
 
 `tests/test_retrieval.py` (memory and SQL stores): hidden best match never returned or

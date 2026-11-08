@@ -413,6 +413,7 @@ def test_reads_without_a_viewer_do_not_filter_by_access(store: RecordStore):
     store.add_sources([team], allow=["team"])
     store.add_sources([nobody], allow=[])
     store.replace_chunks(team.id, FixedSize(2)(team))
+    store.replace_chunks(nobody.id, FixedSize(2)(nobody))
     assert sorted(store.sources(collection_id=COLLECTION), key=lambda s: s.text) == [
         nobody,
         public,
@@ -420,5 +421,6 @@ def test_reads_without_a_viewer_do_not_filter_by_access(store: RecordStore):
     ]
     assert store.source(nobody.id) == nobody
     assert store.chunks(team.id) == FixedSize(2)(team)
+    assert store.chunks(nobody.id) == FixedSize(2)(nobody)
     with pytest.raises(KeyError):
         store.source(uuid4())

@@ -232,7 +232,15 @@ def test_whole_text_is_one_chunk_and_empty_text_none():
 def test_without_viewers_every_chunk_is_indexed_and_returned(store: RecordStore):
     # Owner (2026-11-08): access control is deferred; omitted viewers do not filter.
     _add(store, "cat cat cat", allow="team")
+    nobody = Source(collection_id=COLLECTION, origin="n", text="cat cat dog")
+    store.add_sources([nobody], allow=[])
+    store.replace_chunks(nobody.id, WholeText()(nobody))
     _add(store, "cat dog")
-    assert _texts(BM25(store, collection_id=COLLECTION)("cat", k=2)) == ["cat cat cat", "cat dog"]
+    _add(store, "cat dog eel")
+    unrestricted = BM25(store, collection_id=COLLECTION)
+    assert _texts(unrestricted("cat", k=3)) == ["cat cat cat", "cat cat dog", "cat dog"]
+    # A query viewer still filters an unrestricted index before choosing the top k.
+    assert _texts(unrestricted("cat", viewer=PUBLIC, k=2)) == ["cat dog", "cat dog eel"]
+    assert unrestricted("cat", viewer=Viewer(principals=frozenset()), k=2) == []
     retriever = BM25(store, collection_id=COLLECTION, viewer=PUBLIC)
-    assert _texts(retriever("cat", k=2)) == ["cat dog"]  # only the index's own scope applies
+    assert _texts(retriever("cat", k=3)) == ["cat dog", "cat dog eel"]  # the index scope only

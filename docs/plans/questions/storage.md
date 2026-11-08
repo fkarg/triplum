@@ -31,6 +31,10 @@ owns and refreshes indexes for a collection from a backend-specific spec), or bo
   ingestion finishes before building. Observed: a snapshot BM25 returned a chunk no longer in the
   store after rechunking.
 
+Owner (2026-11-08): **both, but primarily storage where possible/reasonable.** Earlier in the
+same round: rebuild BM25 to require a store that supports it, enforced through types; keep
+reference implementations (bm25s/HippoRAG).
+
 ### ST2. What is shared across backends
 
 Only a ranked list (query → ranked chunk ids and scores, the "run" of IR tooling) consumed by
@@ -46,6 +50,10 @@ fusion, reranking, baselines and evaluation; or also minimal per-capability sear
   methods. Scores are not comparable across lists; legs of one experiment need the same collection
   and indexed state; eligibility before top `k`.
 
+Owner (2026-11-08): **whatever is possible/reasonable as a SQLAlchemy abstraction, but not more
+than makes sense.** Generic default path, overridable per backend; later stages (RRF) may be
+Python or SQL, both possible and tested.
+
 ### ST3. What "the same technique" means
 
 Backend and index spec are part of the technique's identity (FTS5 BM25 and bm25s BM25 are
@@ -60,6 +68,9 @@ implementation claims equivalence.
   computation fingerprint but give different results. Agreement tests only for claimed
   equivalence; fixture agreement is not general equivalence.
 
+Owner (2026-11-08): no definition yet; **roughly anything within a few points on
+reproduction.**
+
 ### ST4. The Retriever protocol
 
 Keep as the thin "produces a ranked list for a query" role for composition (fusion, evaluation),
@@ -69,6 +80,9 @@ replace by a ranked-list record plus plain functions, or drop.
   Weakly held.
 - Peer: keep unchanged; a native index object implements it directly (no forwarding class);
   the collection stays bound at construction.
+
+Owner (2026-11-08): **no native index object competing with the Retriever protocol**; the
+Retriever abstraction itself is worth revisiting (store-level retrieval, lossy abstractions).
 
 ### ST5. First backends
 
@@ -82,3 +96,6 @@ Which stores get indexes first.
   in one shared FTS5 table, adding collection B changed collection A's scores and even reversed
   A's order despite `WHERE collection='A'` (FTS5 statistics are table-wide; reproduced by Claude: order reversed); default FTS5 matches
   "cafe" to "café", unlike our tokenizer.
+
+Owner (2026-11-08): **memory, SQLite, Postgres first**, then go from there (Postgres BM25
+extensions to try eventually).

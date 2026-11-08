@@ -38,9 +38,9 @@ class MemoryStore(RecordStore):
         self._chunk_ids.update((chunk.id, chunk) for chunk in checked)
 
     def _visible(self, id: UUID, viewer: Viewer | None) -> bool:
-        if id not in self._access:
-            return False
-        return viewer is None or not self._access[id].isdisjoint(viewer.principals)
+        return id in self._access and (
+            viewer is None or not self._access[id].isdisjoint(viewer.principals)
+        )
 
     def source(self, id: UUID, /, *, viewer: Viewer | None = None) -> Source:
         if not self._visible(id, viewer):
