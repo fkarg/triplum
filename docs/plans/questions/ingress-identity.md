@@ -90,6 +90,24 @@ deriving ids, since changing it later re-keys every source.
 Chunk validation rejects ordinals above 65,535. Decide whether larger results are an error, split,
 or need another layout.
 
+## Answered
+
+### Q34. Unknown fields on Source and Chunk
+
+`Source` and `Chunk` use `ConfigDict(frozen=True)`, so unknown keyword fields are silently
+dropped: `Source(..., externalid="x")` leaves `external_id=None`. Benchmark records already use
+`extra="forbid"`; `RetrievalHit` also ignores unknown fields (round-2 reader). No loader in `src/` passes surplus fields (checked 2026-11-08: no
+`Source(**...)`, `Chunk(**...)` or `model_validate` on records). The pages now state the current
+behaviour.
+
+- Claude: forbid on both; a typo in an identity field should fail at construction.
+- Peer (gpt-6.1-sol, 2026-11-08): forbid on both, set directly on the two models without a shared
+  base or identity change; loaders select fields at their boundary. Notes it does not catch a
+  typo that names another valid field or an omitted optional field.
+
+Owner (2026-11-08): **reject** unknown fields; RetrievalHit included. Agrees with Claude and peer.
+Implementation: P13.
+
 ### Q33. Collection storage operations
 
 Collection records are not created, read or scoped by stores. Decide the store methods and whether
@@ -110,20 +128,11 @@ avoids it (verified); the retrieval page now warns.
   with no default, so a broad search is never accidental. Agrees scoping does not make random
   ids reproducible.
 
-### Q34. Unknown fields on Source and Chunk
-
-`Source` and `Chunk` use `ConfigDict(frozen=True)`, so unknown keyword fields are silently
-dropped: `Source(..., externalid="x")` leaves `external_id=None`. Benchmark records already use
-`extra="forbid"`; `RetrievalHit` also ignores unknown fields (round-2 reader). No loader in `src/` passes surplus fields (checked 2026-11-08: no
-`Source(**...)`, `Chunk(**...)` or `model_validate` on records). The pages now state the current
-behaviour.
-
-- Claude: forbid on both; a typo in an identity field should fail at construction.
-- Peer (gpt-6.1-sol, 2026-11-08): forbid on both, set directly on the two models without a shared
-  base or identity change; loaders select fields at their boundary. Notes it does not catch a
-  typo that names another valid field or an omitted optional field.
-
-## Answered
+Owner (2026-11-08): **queries select / filter on collection, optimized individually per
+collection only; hits count and are returned only from their own collection.** Derived: source
+listing requires a collection, BM25 indexes and computes statistics per collection, and there is
+no all-collections search for now. Collection record storage operations (create, read) remain
+open under Q13. Follow-up: [RT10](retrieval.md). Implementation: P14.
 
 ### Q22. What a Source id identifies
 

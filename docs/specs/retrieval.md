@@ -222,6 +222,68 @@ No API key, network or cache. On `tests/fixtures/hotpotqa.json` (observed, pinne
 R@2 0.600, AR@2 0.300, CR@2 0.563, R@5 0.775, AR@5 0.600, CR@5 0.747, 968 / 2639 characters, 20 of 20 questions with
 gold. Not compared against published numbers (20 questions only).
 
+## P13 and P14: strict records and collection-scoped retrieval (proposal, under owner review)
+
+Owner answers 2026-11-08: Q34 reject unknown record fields; Q33 queries select one collection,
+are optimized per collection only, and return hits only from their own collection.
+
+### P13: `extra="forbid"` on `Source`, `Chunk` and `RetrievalHit`
+
+```python
+model_config = ConfigDict(frozen=True, extra="forbid")  # each of the three models
+```
+
+Unknown keyword fields raise `ValidationError` at construction. Ids, fingerprints and stored
+rows do not change. Docs: replace the "silently ignored" notes on the source, chunk and retrieval
+pages. Test: one parametrized test per model that an unknown field raises.
+
+### P14: collection-scoped source listing and BM25
+
+```python
+# src/triplum/store/protocols.py
+class RecordStore(Protocol):
+    @abstractmethod
+    def sources(self, *, collection_id: UUID, viewer: Viewer) -> Iterator[Source]:
+        """The sources of collection `collection_id` that `viewer` may read, in no particular order.
+
+        An unknown collection gives no sources.
+        """
+
+
+# src/triplum/steps/retrieval.py
+class BM25(Retriever, FingerprintedComputationMixin):
+    def __init__(
+        self,
+        store: RecordStore,
+        /,
+        *,
+        collection_id: UUID,
+        viewer: Viewer,
+        settings: BM25Settings = HIPPORAG1,
+    ) -> None: ...
+```
+
+- `collection_id` is required: there is no all-collections listing or search (owner: per
+  collection only). `source(id)` and `chunks(source_id)` stay as they are; ids already belong to
+  one collection.
+- BM25 indexes the chunks of that collection's sources visible to the construction viewer, so
+  term statistics are per collection; each call masks to that collection's sources visible to the
+  query viewer. Hits therefore come only from that collection. The `Retriever` call is unchanged
+  (RT10 asks whether it should take the collection instead).
+- Fingerprint: still `settings` only; `collection_id` selects content, which belongs to run
+  identity like the store (BE6).
+- SQL: `WHERE collection_id = ?` together with the visibility filter; memory: filter in the
+  comprehension. Collections are not stored records yet (Q13), so nothing checks that the id
+  names a known collection.
+- Callers updated: BM25 call sites in `examples/`, docs examples and tests; `examples/bm25_recall.py`
+  and `naive.py` pass their collection's id.
+- Tests: two collections in one store with overlapping texts: `sources()` returns each one's own;
+  BM25 over one never returns the other's chunks and its scores equal a BM25 built on a store
+  holding only that collection (statistics per collection); the rerun duplication from the
+  persona wave no longer duplicates hits. Both backends.
+- Docs: retrieval page (replace "Every collection in the store" with collection selection),
+  store page, recall note on stale copies, flow.
+
 ## Verification
 
 `tests/test_retrieval.py` (memory and SQL stores): hidden best match never returned or

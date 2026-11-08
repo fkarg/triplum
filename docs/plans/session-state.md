@@ -11,10 +11,11 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Done (2026-11-08):** persona documentation wave (owner request), two rounds, recorded in
-  [the run report](../personae/runs/2026-11-08-persona-wave.md). Owner questions pending: Q34
-  (forbid unknown record fields; also covers `RetrievalHit`), Q33 (collection-scoped reads, new
-  evidence), RT9 (retriever protocol obligations).
+- **Done (2026-11-08):** persona documentation wave, two rounds, recorded in
+  [the run report](../personae/runs/2026-11-08-persona-wave.md). Owner answered Q34 (reject
+  unknown fields) and Q33 (collection-scoped queries, per-collection only). P13 and P14
+  declarations drafted in [the retrieval spec](../specs/retrieval.md); peer review running, then
+  owner approval. Open: RT9, RT10 (collection at construction or per query).
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
   TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
   P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"

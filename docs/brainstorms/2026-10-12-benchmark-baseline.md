@@ -212,6 +212,24 @@ integer chunk ids that match no document id.
 
 ## Rounds
 
+### Round 11 owner answers (persona wave, checkpoint, 2026-11-08)
+
+Questions from the [persona wave](../personae/runs/2026-11-08-persona-wave.md); session and peer
+(gpt-6.1-sol) answers in the question files.
+
+- Q34 (answered): **reject unknown fields** ("Reject") on Source and Chunk; RetrievalHit
+  included, as presented. Agrees with session and peer. Implementation is P13 (needs acceptance).
+- Q33 (answered): **queries select / filter on collection; optimize individually per collection
+  only; hits count and are returned only from their own collection.** Closer to the peer's
+  scoping than the session's docs-only answer, and stricter than the peer (no all-collections
+  option). Derived: `sources()` requires a collection; BM25 indexes and computes statistics over
+  one collection; no cross-collection search for now. Open follow-up: whether the collection is
+  fixed when a retriever is built or chosen per query (RT10). Implementation is P14 (declaration
+  under review).
+- RT9: unanswered; stays open.
+- Owner instruction (global, not repo): do not mention omitting the harness's co-author trailer;
+  recorded in the owner's global agent instructions.
+
 ### Round 8 owner answers (checkpoint, 2026-11-07)
 
 - RT5 (answered): **(a) `HIPPORAG1` default "for now"**; agrees with session and peer.
