@@ -24,8 +24,9 @@ and the question files; then check `git log` against the state below.
   `uv sync --group mutation` since the P10 pilot added `scripts/mutation.py`.
 - **Done (2026-11-08, jolly):** P10 mutation pilot ([record](mutation-pilot.md)):
   `scripts/mutation.py`, full pass and diff-scoped run, survivor review; tests for top gaps 1–4
-  added, each verified against its mutant. **Next on this track:** the record's remaining queue;
-  store/record gaps wait for the storage topic. Interface work after storage: IRCOT preset with
+  added, each verified against its mutant; full kill-matrix pass done (test-side indicators,
+  unanalysed; raw results only on jolly). **Next on this track:** analyse the matrix and the
+  record's remaining queue; store/record gaps wait for the storage topic. Interface work after storage: IRCOT preset with
   stemming, dense retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download

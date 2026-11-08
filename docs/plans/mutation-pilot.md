@@ -259,3 +259,25 @@ the worker. Dispositions:
   counts as a crash; wrong-type `pytest.raises`, exception groups and strict XPASS stay
   `error`. Documented in the plugin.
 - Nits applied: `isdisjoint`, plain strict-subset test, reused covering list, table literal.
+
+## Full kill-matrix pass (observed, not yet analysed)
+
+`--full` on base `0eac71b` (includes P15): 6,407 mutants (6,197 operator, 210 body removals
+run), 2,792 s elapsed on 30 workers, 58,992 child CPU-s (16.4 CPU-hours). Statuses: 3,279
+killed, 616 survived, 55 timeout, 1,441 arid, 1,150 invalid, 79 uncovered. Generated report:
+[mutation-matrix-tests.md](mutation-matrix-tests.md); the 34 MB `results.jsonl` stays under
+`/tmp/p10/matrix` on jolly.
+
+- Kill provenance of 3,128 non-surviving operator mutants: 1,987 assertion, 865 crash only,
+  155 collection only, 67 only by tests not running the line, 54 timeout. About a third of
+  kills say nothing about assertions.
+- Killed mutants form 169 dominator groups. 342 of 522 tests covering a dominator kill none by
+  assertion; whether that is weak checking or an artefact of large full-suite killer sets needs
+  the analysis below before any conclusion.
+- Body removal: 205 of 210 killed; 4 pseudo-tested: `_shutdown_default_cache`,
+  `CachePolicy.__post_init__`, `SQLiteBackend.close`, `SQLAlchemyStore.close` (each with the
+  tests that reached it in the report).
+
+Next: analyse the matrix (dominator count looks low; check the per-test share against a few
+hand-read tests), review the weakest-checking tests and the four pseudo-tested functions, and
+add tests where worthwhile.
