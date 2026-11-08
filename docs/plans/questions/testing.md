@@ -193,3 +193,18 @@ call `__wrapped__`, non-function and cyclic `__wrapped__`, mixed stacks). Dispos
 P11 done: `_constant` projects `slice` constants by start, stop and step; regression tests
 (every component distinguishes, stable repeats, static and traced caching) fail before the fix
 and pass after (observed); 512 tests pass.
+
+P12 draft peer: gpt-6.1-sol, review `0bd2a8a637e242f4a5123bd672a582c3` (11 falsifications, several
+executed: factory wrappers differing only in keyword defaults; `_triplum_compute` copied by
+`wraps`; same-named external targets; synthetic editable, site-packages, zipapp and `<string>`
+paths; self-containing captured list; raising descriptor; memoizing wrapper; missing
+`__globals__["__name__"]`; staticmethod-only class). Dispositions, folded into the draft:
+unique defect, defaults omitted → `__defaults__`/`__kwdefaults__` projected; **unique defect,
+existing: a `wraps` outer wrapper inherits `_triplum_compute` and is skipped (stale)** → marker
+trusted only on triplum's own wrapper; unique defect, external wrapped targets referenced by name
+only → shallow projection for every function on a wrapper edge; unique defect, the
+installed-location anchor misclassifies editable libraries, site-packages applications, zipapps
+and `<string>` → anchor rule reopened as FP2 with an innermost-function alternative; added
+verification, container cycles and raising descriptors decline cleanly, missing metadata falls
+back; limit recorded, split namespace packages; no impact (owner-settled), external global helpers
+stay name-only.

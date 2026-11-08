@@ -40,6 +40,61 @@ qualified-name boundary; external implementation changes are not covered. Pydant
 remain outside this bounded inference. Keep inputs and effective context stable during identity
 calculation and the entire computation; between-call changes to represented state are supported.
 
+### Wrappers and application scope (draft for owner review, P12)
+
+Fixes two observed defects ([investigation](../plans/questions/testing.md#clean-run-investigation-subagent-2026-11-08-scratch-under-tmpfpinv-does-not-travel)):
+a third-party `functools.wraps` decorator on the root moves the application scope into the
+decorator's library (stale hits on helper edits), and third-party wrappers are walked as
+application code because `wraps` copies `__module__`. Owner direction: hash both a wrapper and
+the function it wraps; external wrappers at least by captured values, and by their own code too;
+skip third-party decorators when choosing the application scope.
+
+- **Application** means the root's application: its top-level package, or for a script layout
+  its source directory. Everything else is external (standard library, installed packages,
+  triplum itself unless the root is triplum code).
+- **Real origin.** A function belongs to the module named by `__globals__["__name__"]` and the
+  file `__code__.co_filename`, never the `__module__`/`__qualname__` a decorator copied.
+- **Scope anchor (open, FP2):** (A) the innermost function of the root's `__wrapped__` chain
+  (bounded, cycle-safe; no filesystem heuristic; limit: an application wrapper around an external
+  function gets the shallow projection below, so its own helpers count by name only); or (B) the
+  first function outside installed locations (`sysconfig`/`site` paths), which the peer refuted
+  for editable libraries, application code under `site-packages`, zipapps and `<string>` code.
+- **`_triplum_compute`** is trusted only on triplum's own call wrapper. `functools.wraps` copies
+  `__dict__`, so an ordinary outer wrapper inherits the marker and is currently skipped entirely,
+  a stale hit when it changes the result (observed by the peer; an existing defect).
+- **Wrapper projection.** A function with `__wrapped__` in its own namespace projects as its
+  usual identity plus `wrapped`, a projection of the `__wrapped__` target, followed even when only
+  reachable through that attribute. Every function on a wrapper edge (wrapper or wrapped) is
+  covered by its code:
+  - in the application: full definition, as today;
+  - external: **shallow projection**: real qualified name (`co_qualname` of the code, not the
+    copied `__qualname__`), code identity, `__defaults__`, `__kwdefaults__` and captured cell
+    values; its globals count by name and are not followed (the owner-settled boundary: external
+    helpers and global state stay outside identity).
+  - `lru_cache` targets keep today's handling; other non-function targets use the ordinary value
+    projection or decline.
+- **Declines, not crashes:** captured values that cannot be projected (resources, classes,
+  memoization caches once populated, self-containing containers) raise `UnsupportedFingerprint`;
+  container cycles and raising `fingerprint` attributes must not surface as `RecursionError` or
+  arbitrary exceptions. Missing `__globals__["__name__"]` and classes without a bare function
+  member fall back to the root's existing behaviour.
+- Limits: a namespace package split across distributions (`acme.app`, `acme.vendor`) is one
+  application by its top-level package, as today.
+- Existing visited references end projection cycles; the anchor walk keeps its own visited set.
+- Every fingerprint involving wrappers changes once; omitted dependencies may legitimately
+  invalidate caches.
+
+Tests: flat layout plus external decorator, a helper edit changes identity (real SQLite cache);
+external factory wrappers differing only in positional or keyword defaults differ; an outer
+`wraps` wrapper around a triplum-cached function changes identity when its body changes;
+same-named external wrapped targets with different bodies differ;
+application wrapper around an external function, wrapper and wrapper-helper edits change
+identity; external factory wrappers with different arguments differ; an external wrapper reading
+`os.environ` fingerprints, and wrapped edits change identity; target only via `__wrapped__`;
+local decorator edits; `__wrapped__` self- and two-cycles in the scope walk and projection;
+mixed stacks with `_triplum_compute` and `lru_cache` in both orders; class whose first method is
+externally decorated keeps its scope.
+
 ## Traced discovery and storage
 
 On a miss, use sys.monitoring PY_START to collect executed application code objects only;
