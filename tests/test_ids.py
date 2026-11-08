@@ -23,14 +23,17 @@ def _payload(id: UUID) -> int:
     return ((value >> 80) << 74) | (((value >> 64) & 0xFFF) << 62) | (value & ((1 << 62) - 1))
 
 
-def test_ids_are_uuidv8_with_the_documented_layout():
-    source = source_id(COLLECTION, "notes.md", "A")
+# A single origin left payload bit 62 at 0, so a chunk id that dropped that bit of its source
+# prefix still matched; "other.md" sets it.
+@pytest.mark.parametrize("origin", ["notes.md", "other.md"])
+def test_ids_are_uuidv8_with_the_documented_layout(origin):
+    source = source_id(COLLECTION, origin, "A")
     chunk = chunk_id(COLLECTION, source, 7, 3, "x")
     for id in (source, chunk):
         assert id.version == 8
         assert id.variant == "specified in RFC 4122"
     tag = _leading_bits("collection-tag", [str(COLLECTION)], 24)
-    digest = _leading_bits("source-id", [str(COLLECTION), "notes.md", "A"], 98)
+    digest = _leading_bits("source-id", [str(COLLECTION), origin, "A"], 98)
     assert _payload(source) == (tag << 98) | digest
     chunk_digest = _leading_bits("chunk-id", [str(COLLECTION), str(source), 7, 3, "x"], 48)
     expected = (tag >> 8) << 106 | (digest >> 56) << 64 | 7 << 48 | chunk_digest

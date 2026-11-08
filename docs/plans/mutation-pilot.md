@@ -173,4 +173,21 @@ unreachable bytecode-end guards, `Literal`-domain comparisons.
   needs changing for diff-scoped use. Possible later optimisations, only if runs get slow: a
   per-mutant timeout from measured test durations (timeouts cost 10%), and finding out why
   `datatype/ids.py` lines count as import-time.
-- Not done: no survivors were fixed in this pilot; the gap list above is the work queue.
+
+## Follow-up tests (observed)
+
+Each new test fails against its mutant in a scratch copy and passes on the real code:
+
+- Gap 1: the mutated-global rejection test is parametrized with a body that puts `queue.pop()`
+  past the bytecode midpoint (`tests/test_computation_identity.py`).
+- Gap 2: the HotpotQA fixture title `B` became `Bb` (offset 3), and each gold span is checked
+  against the text it selects (`tests/test_dataset_files.py`).
+- Gap 3: the id layout test runs over `notes.md` and `other.md`, whose payload bit 62 differ
+  (`tests/test_ids.py`).
+- Gap 4: after `close_default_cache()`, `default_cache()` must return a new owner
+  (`tests/test_cache_defaults.py`).
+
+Remaining queue: gap 5 and the call-shape survivors touch the store, which the concurrent storage
+topic is redesigning; the `frozen=` record test touches records (Viewer is deferred) and waits
+for the same reason. The other minor gaps in the sample (admin `reusable_bytes`, default
+`chunk_size`, `ResolvedSpan` ordering, budget edges, S19 counter position) are open.

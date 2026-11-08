@@ -32,10 +32,13 @@ def test_bare_decorator_opens_default_lazily_and_reopens(tmp_path: Path, monkeyp
         assert uppercase(Text(text="hi")) == Text(text="HI")
         assert uppercase(Text(text="hi")) == Text(text="HI")
         assert CALLS == ["hi"]
-        assert default_cache() is default_cache()
+        first = default_cache()
+        assert default_cache() is first
         close_default_cache()
         assert uppercase(Text(text="hi")) == Text(text="HI")
         assert CALLS == ["hi"]
+        # Reuse alone also passed when close was a no-op; the reopened owner must be new.
+        assert default_cache() is not first
     finally:
         close_default_cache()
 

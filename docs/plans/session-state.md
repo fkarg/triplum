@@ -21,9 +21,9 @@ and the question files; then check `git log` against the state below.
   Research recorded ([storage research](storage-research.md)); ST1-ST5 with Claude and peer answers in
   [storage questions](questions/storage.md), presented to the owner.
 - **Done (2026-11-08, jolly):** P10 mutation pilot ([record](mutation-pilot.md)):
-  `scripts/mutation.py`, full pass and diff-scoped run, survivor review. **Next on this track:**
-  tests for the record's top gaps and recurring weaknesses, each verified against its mutant with
-  the tool (CPU-light per mutant, any machine). Interface work after storage: IRCOT preset with
+  `scripts/mutation.py`, full pass and diff-scoped run, survivor review; tests for top gaps 1–4
+  added, each verified against its mutant. **Next on this track:** the record's remaining queue;
+  store/record gaps wait for the storage topic. Interface work after storage: IRCOT preset with
   stemming, dense retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download

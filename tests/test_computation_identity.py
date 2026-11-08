@@ -777,12 +777,24 @@ class Step(FingerprintedComputationMixin):
     assert first.fingerprint() != changed.fingerprint()
 
 
-def test_mutating_global_result_is_not_treated_as_instrumentation(tmp_path: Path) -> None:
+# Detection once depended on the call's position in the bytecode: a mutation late in a longer
+# body went unnoticed. The second body places it past the middle.
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def operation(): return queue.pop()",
+        "def operation(x):\n    a = x + 1\n    b = a * 2\n    c = b - a\n    return queue.pop()",
+    ],
+    ids=["only-statement", "late-in-body"],
+)
+def test_mutating_global_result_is_not_treated_as_instrumentation(
+    tmp_path: Path, source: str
+) -> None:
     from triplum.utils.fingerprint import definition_hash
 
     namespace: dict[str, object] = {"__name__": "application", "queue": ["first", "second"]}
     exec(  # noqa: S102 - controlled Python fixture
-        compile("def operation(): return queue.pop()", str(tmp_path / "app.py"), "exec"), namespace
+        compile(source, str(tmp_path / "app.py"), "exec"), namespace
     )
     with pytest.raises(TypeError, match="mutated global"):
         definition_hash(namespace["operation"])

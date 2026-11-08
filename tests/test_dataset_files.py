@@ -138,7 +138,8 @@ def test_download_fetches_entry_files_in_order_and_keeps_them_on_failure(tmp_pat
     assert [p.name for p in (tmp_path / "root" / "demo").iterdir()] == ["a.json"]
 
 
-SENTENCES = {"A": ["Alpha one.", " Alpha two."], "B": ["Beta."], "C": ["Gamma."]}
+# Title lengths give offsets 2 and 3, so offset arithmetic is not hidden by bit coincidences.
+SENTENCES = {"A": ["Alpha one.", " Alpha two."], "Bb": ["Beta."], "C": ["Gamma."]}
 
 
 def _hotpotqa(tmp_path: Path, monkeypatch, supporting_facts, sentences=SENTENCES) -> Path:
@@ -171,27 +172,31 @@ def _span(document: str, start: int, end: int) -> SpanEvidence:
     ("gold", "expected"),
     [
         # "A\nAlpha one. Alpha two.": "Alpha one." is [2, 12), " Alpha two." [12, 23).
-        ("sentence", [_span("A", 12, 23), _span("B", 2, 7), _span("A", 2, 12)]),
-        ("passage", [_span("A", 0, 23), _span("B", 0, 7)]),
+        ("sentence", [_span("A", 12, 23), _span("Bb", 3, 8), _span("A", 2, 12)]),
+        ("passage", [_span("A", 0, 23), _span("Bb", 0, 8)]),
     ],
 )
 def test_hotpotqa_gold_spans_select_the_supporting_text(tmp_path, monkeypatch, gold, expected):
-    root = _hotpotqa(tmp_path, monkeypatch, [["A", 1], ["B", 0], ["A", 0], ["A", 1]])
+    root = _hotpotqa(tmp_path, monkeypatch, [["A", 1], ["Bb", 0], ["A", 0], ["A", 1]])
     benchmark = hotpotqa.HotpotQA(root, gold=gold)
     [question] = benchmark.questions()
     assert question.evidence == [expected]
     texts = {s.external_id: s.text for s in benchmark.corpus(COLLECTION)}
-    assert texts["A"][12:23] == " Alpha two."
+    selected = [texts[span.document][span.start : span.end] for span in expected]
+    if gold == "sentence":
+        assert selected == [" Alpha two.", "Beta.", "Alpha one."]
+    else:
+        assert selected == [texts["A"], texts["Bb"]]
     assert (question.id, question.input.text, question.answers) == ("q1", "Which?", ["Alpha"])
     assert question.metadata == {"type": "bridge", "level": "easy"}
     assert (root / "hotpotqa" / "hotpotqa.json").is_file()
 
 
 def test_hotpotqa_corpus_is_title_newline_text_keyed_by_title(tmp_path, monkeypatch):
-    benchmark = hotpotqa.HotpotQA(_hotpotqa(tmp_path, monkeypatch, [["B", 0]]))
+    benchmark = hotpotqa.HotpotQA(_hotpotqa(tmp_path, monkeypatch, [["Bb", 0]]))
     assert [(s.origin, s.external_id, s.text) for s in benchmark.corpus(COLLECTION)] == [
         ("A", "A", "A\nAlpha one. Alpha two."),
-        ("B", "B", "B\nBeta."),
+        ("Bb", "Bb", "Bb\nBeta."),
         ("C", "C", "C\nGamma."),
     ]
 

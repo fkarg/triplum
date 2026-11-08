@@ -227,4 +227,5 @@ under a minute. Selection soundness sample: no selected kill contradicted. Survi
 14/30 real gaps (5 that could hide user-visible bugs), 10 equivalent, 6 defensive. Caching and
 fingerprint modules are not excluded: their survivors include the top gap. Runner peer:
 gpt-6.1-sol, dispositions in the record. Next: tests for the top gaps and the recurring
-weaknesses listed in the record, each verified to kill its mutant.
+weaknesses listed in the record, each verified to kill its mutant. Gaps 1–4 done (record,
+"Follow-up tests"); store and record gaps wait for the storage topic.
