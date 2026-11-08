@@ -109,7 +109,10 @@ Recall trusts its inputs. It does not remove duplicate hits, and it does not che
 viewer could read each hit; a duplicate still takes one of the top `k` places. It also does not
 know who asked: gold in a source the viewer cannot read is never retrieved, so it counts as a
 miss. Benchmark fixtures carry no document grants, so evaluations that depend on permissions are
-not supported yet; see [Legacy fixtures](benchmark-inputs.md#legacy-fixtures).
+not supported yet; see [Legacy fixtures](benchmark-inputs.md#legacy-fixtures). Copies of the
+same texts left in the store by an earlier run are different sources, so a hit on a stale copy
+covers no gold and can push the current copy out of the top `k`; see
+[every collection in the store](retrieval.md#every-collection-in-the-store).
 
 A `RecallAtK` has four fields:
 

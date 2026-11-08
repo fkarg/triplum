@@ -57,6 +57,8 @@ A `RetrievalHit` has two fields:
 - `score`: the retriever's score, higher is better. It is `None` for producers that have no
   score, such as an oracle that returns the gold passages.
 
+As for sources and chunks, unknown field names passed to `RetrievalHit` are silently ignored.
+
 A list of hits is ranked: earlier hits rank higher. Scores are comparable only within one result
 list, not across queries or retrievers. A hit does not record which retriever produced it; the
 run that calls the retriever does.
@@ -70,9 +72,11 @@ def __call__(self, query: str, /, *, viewer: Viewer, k: int) -> list[RetrievalHi
 ```
 
 - Input: the query text, the viewer on whose behalf to search, and the maximum number of hits.
-- Output: at most `k` hits, best first, only from sources `viewer` may read.
+- Output: at most `k` hits, best first, only from sources `viewer` may read. The hits are the
+  best among what `viewer` may read: filter before choosing the top `k`, not after, so hidden
+  chunks never take the places of visible ones.
 
-These three rules are all the Protocol requires. Tie order, determinism, what happens for `k`
+These rules are all the Protocol requires. Tie order, determinism, what happens for `k`
 below 1 and whether the retriever reads a snapshot or the live store are left to each
 implementation; the [BM25](#bm25) section states its choices.
 

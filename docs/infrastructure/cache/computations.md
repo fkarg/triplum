@@ -282,7 +282,9 @@ The third call computes again although the text is the same. A Source's fingerpr
 its `collection_id`, and `Collection(name=...)` without an `id` gets a new random `id` each
 time. A program that creates its collection that way therefore misses the cache on every run.
 To reuse results across runs, keep the collection's `id` fixed, as `pinned` does above; see
-[Collection](../../concepts/collection.md).
+[Collection](../../concepts/collection.md). The example's temporary cache disappears when it
+ends; to reuse results in a later process, use the persistent default cache (bare `@cached`, see
+[ownership](policies.md#choose-and-close-the-owner)) or a fixed cache path.
 
 ## Report progress from a cached step
 

@@ -33,7 +33,7 @@ The `pydantic-ai` rows were checked against installed package metadata. `pydanti
 extras install further packages (among them `logfire`, `fastmcp-slim`, `tiktoken`, `starlette`,
 `uvicorn` and the CLI helpers) whose terms are not recorded here. These rows cover the SDK code
 only; each provider's API terms, including whether it trains on request data, are separate and
-not recorded.
+not recorded. Apart from the rows marked "via", transitive dependencies are not recorded either.
 
 The `uv_build` row follows the [uv-build package metadata](https://github.com/astral-sh/uv/blob/main/crates/uv-build/pyproject.toml);
 the former full dependency ledger remains in Git history.

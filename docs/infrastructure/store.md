@@ -91,6 +91,10 @@ Each `add_sources` call grants read access to the principals in `allow`: plain s
 user, a group or anything else your application chooses. A `Viewer` holds the principals a reader
 acts as. A source is visible to a viewer when the two sets share at least one principal.
 
+Access is enforced only for reads through triplum. A SQLite database file holds every source's
+text in plain form, readable by anyone who can read the file, so restrict the file's permissions
+for confidential corpora.
+
 ```python
 from triplum.datatype import Collection, Source, Viewer
 from triplum.store import MemoryStore

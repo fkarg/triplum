@@ -60,4 +60,28 @@ behaviour as returning `[]`; it raises `ValueError`, noted with RT9.
 
 ## Round 2: retry with fresh readers
 
-Pending.
+Three fresh readers, blind to round 1 and the fixes, retried the affected tasks on a site built
+from the fixed working tree, with the same access limits.
+
+| Reader | Task | Outcome |
+| --- | --- | --- |
+| KG researcher (K2) | Cached chunking reused by a second process; progress to stderr; graph retrieval status | Completed: second process reused results, a changed chunk size recomputed and switching back reused; logging worked; the `sys.stderr` error named the reference. Graph retrieval correctly identified as unavailable |
+| Senior integrator (S2) | Custom retriever from the docs and API reference; protocol vs BM25 rules; field mistakes; fusion status | Completed: signatures (including `/` and `*`) right from the API pages, ty accepted the retriever, recall ran over SQLite. Fusion correctly identified as unavailable |
+| Industry evaluator (I2) | Private-corpus suitability: licences, restricted text, recall under access, reruns; dense comparison status | Completed: licences found; cache advice found; rerun duplication reproduced and the documented fixed id fixed it. Dense comparison correctly identified as not possible yet |
+
+Verified round-2 findings and dispositions:
+
+| Finding | Class | Disposition |
+| --- | --- | --- |
+| "Filter before choosing the top `k`" in the decisions table but not in the retrieval contract, which round 1 had called complete (S2) | Materially misleading (introduced by round 1) | Fixed: the contract states it, matching the Protocol docstring and AGENTS.md |
+| SQLite store file holds restricted text readable by other local users (I2) | Materially misleading | Fixed: store page says access is enforced only through triplum; restrict file permissions |
+| Stale copies from an earlier run zero recall silently (I2) | Avoidable friction | Fixed: recall page note linking the rerun warning |
+| Transitive dependencies not recorded (I2) | Avoidable friction | Fixed: stated on the licences page |
+| `RetrievalHit` ignores unknown fields (S2) | Avoidable friction | Documented; same decision as Q34 |
+| Cross-process reuse needs facts from three places (K2) | Avoidable friction | Fixed: one sentence and link in "Cache a chunker" |
+| Empty graph API page (K2) | Avoidable friction | Fixed: module docstring says not implemented |
+| `cache stats` shows only digests (K2) | Rejected | `--details` and `--name` show names; documented in administration |
+| Logfire telemetry default, per-viewer BM25 statistics, access revocation (I2) | Open | Unverified or planned; no change |
+
+The wave stops here: no task was blocked in either round, and the remaining items are owner
+questions (Q33, Q34, RT9) or deferred by owner policy (RT7, RT8).
