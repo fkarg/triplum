@@ -95,6 +95,34 @@ or need another layout.
 Collection records are not created, read or scoped by stores. Decide the store methods and whether
 reads are scoped to a collection.
 
+Evidence from the 2026-11-08 persona wave ([run](../../personae/runs/2026-11-08-persona-wave.md)):
+rerunning a docs example into the same SQLite file with a new `Collection(name=...)` (random id)
+stored every source twice; `BM25` indexes every visible source of every collection, so every hit
+came back twice and a tie could silently zero R@1. A pinned collection id or a fresh database
+avoids it (verified); the retrieval page now warns.
+
+- Claude: keep reads unscoped for now and rely on the documented workaround; decide scoping with
+  the rest of Q33/Q13 when collection storage operations are designed. Scoping alone does not fix
+  the random-id rerun (sources get new ids either way).
+- Peer (gpt-6.1-sol, 2026-11-08): add an optional exact `collection_id` filter to `sources()`
+  only (`source(id)` and `chunks(source_id)` are already selected by id), applied together with
+  Viewer filtering; make `BM25` callers choose a collection id or `None` (all visible) explicitly,
+  with no default, so a broad search is never accidental. Agrees scoping does not make random
+  ids reproducible.
+
+### Q34. Unknown fields on Source and Chunk
+
+`Source` and `Chunk` use `ConfigDict(frozen=True)`, so unknown keyword fields are silently
+dropped: `Source(..., externalid="x")` leaves `external_id=None`. Benchmark records already use
+`extra="forbid"`. No loader in `src/` passes surplus fields (checked 2026-11-08: no
+`Source(**...)`, `Chunk(**...)` or `model_validate` on records). The pages now state the current
+behaviour.
+
+- Claude: forbid on both; a typo in an identity field should fail at construction.
+- Peer (gpt-6.1-sol, 2026-11-08): forbid on both, set directly on the two models without a shared
+  base or identity change; loaders select fields at their boundary. Notes it does not catch a
+  typo that names another valid field or an omitted optional field.
+
 ## Answered
 
 ### Q22. What a Source id identifies

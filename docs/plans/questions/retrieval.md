@@ -4,7 +4,24 @@ Questions use the `RT` prefix. Process: [questions index](README.md).
 
 ## Open
 
-None. Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
+### RT9. Retriever protocol obligations beyond the approved three
+
+The approved `Retriever` rules are: at most `k` hits, best first, only visible sources. `BM25`
+additionally orders ties by `(source_id, ordinal)`, is deterministic, raises `ValueError` for
+`k < 1` and reads a snapshot. A persona integrator asked which of these a custom retriever must
+meet; the retrieval page now says only the three are required. Fusion consumes ranks, and recall
+trusts hit lists, so tie order can change R@k at the cutoff.
+
+- Claude: keep the protocol at the three rules; each implementation states its own tie and
+  determinism behaviour; reproducibility belongs to the benchmark runner's run identity when it
+  is designed.
+- Peer (gpt-6.1-sol, 2026-11-08): promote only cheap universal behaviour (the `k < 1` rule) into
+  the protocol; keep the tie key and snapshot reads implementation-specific; add a separate
+  benchmark requirement: same ordered results for fixed inputs, configuration, randomness and
+  corpus. Note: the brief sent to the peer misstated BM25's `k < 1` behaviour as returning `[]`;
+  it raises `ValueError`, so the peer's rule would be "`k < 1` raises `ValueError`".
+
+Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
 remains under LQ1).
 
 ## Answered
