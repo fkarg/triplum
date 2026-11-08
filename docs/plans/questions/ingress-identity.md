@@ -114,7 +114,7 @@ avoids it (verified); the retrieval page now warns.
 
 `Source` and `Chunk` use `ConfigDict(frozen=True)`, so unknown keyword fields are silently
 dropped: `Source(..., externalid="x")` leaves `external_id=None`. Benchmark records already use
-`extra="forbid"`. No loader in `src/` passes surplus fields (checked 2026-11-08: no
+`extra="forbid"`; `RetrievalHit` also ignores unknown fields (round-2 reader). No loader in `src/` passes surplus fields (checked 2026-11-08: no
 `Source(**...)`, `Chunk(**...)` or `model_validate` on records). The pages now state the current
 behaviour.
 
