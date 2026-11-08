@@ -1,12 +1,14 @@
 import hashlib
+import http.client
+import io
 import json
 from pathlib import Path
 from uuid import UUID
 
 import pytest
 
-from triplum.datasets import hotpotqa, multihoprag
-from triplum.datasets.files import datasets_home, fetch
+from triplum.datasets import files, hotpotqa, multihoprag
+from triplum.datasets.files import DatasetEntry, PinnedFile, datasets_home, download, fetch
 from triplum.datatype import SpanEvidence
 
 COLLECTION = UUID("01900000-0000-7000-8000-000000000001")
@@ -16,6 +18,20 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _entry(name: str, remote: Path, *names: str) -> DatasetEntry:
+    """An entry whose files are served from `remote` over file:// URLs."""
+    pinned = [
+        PinnedFile(
+            name=n,
+            url=(remote / n).as_uri(),
+            sha256=_sha((remote / n).read_bytes()),
+            bytes=len((remote / n).read_bytes()),
+        )
+        for n in names
+    ]
+    return DatasetEntry(name=name, files=pinned, licence="L", commercial_reuse="C")
+
+
 def test_datasets_live_beside_the_computation_cache(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
     assert datasets_home() == tmp_path / "triplum" / "datasets"
@@ -23,27 +39,109 @@ def test_datasets_live_beside_the_computation_cache(tmp_path: Path, monkeypatch)
     assert datasets_home() == Path.home() / ".cache" / "triplum" / "datasets"
 
 
-def test_fetch_downloads_once_and_keeps_only_verified_files(tmp_path: Path):
+def test_fetch_downloads_once_then_keeps_the_verified_file(tmp_path: Path):
     remote = tmp_path / "remote.json"
     remote.write_bytes(b"[1]")
     target = tmp_path / "cache" / "data.json"
-    assert fetch(remote.as_uri(), target, _sha(b"[1]")) == target
-    assert target.read_bytes() == b"[1]"
-
-    remote.write_bytes(b"[2]")  # upstream changed: the verified copy is kept, no download
+    assert fetch(remote.as_uri(), target, _sha(b"[1]")).read_bytes() == b"[1]"
+    remote.write_bytes(b"[2]")  # upstream changed: the verified copy is used, nothing fetched
     assert fetch(remote.as_uri(), target, _sha(b"[1]")).read_bytes() == b"[1]"
 
-    with pytest.raises(ValueError, match="does not match the pinned sha256"):
-        fetch(remote.as_uri(), tmp_path / "cache" / "other.json", _sha(b"[1]"))
-    with pytest.raises(OSError):  # a failed transfer leaves nothing behind either
-        fetch((tmp_path / "missing").as_uri(), tmp_path / "cache" / "gone.json", _sha(b"[1]"))
-    assert sorted(p.name for p in (tmp_path / "cache").iterdir()) == ["data.json"]
+
+def test_an_existing_corrupt_file_raises_and_is_kept(tmp_path: Path):
+    remote = tmp_path / "remote.json"
+    remote.write_bytes(b"[1]")
+    target = tmp_path / "data.json"
+    target.write_bytes(b"[9]")
+    with pytest.raises(ValueError, match=f"has sha256 {_sha(b'[9]')}, expected {_sha(b'[1]')}"):
+        fetch(remote.as_uri(), target, _sha(b"[1]"))
+    assert target.read_bytes() == b"[9]"
+
+
+@pytest.mark.parametrize("name", ["../keep.txt", "sub/a.json", "..", "", "a\\b"])
+def test_file_and_dataset_names_must_stay_inside_their_folder(name: str):
+    with pytest.raises(ValueError, match="plain name"):
+        PinnedFile(name=name, url="file:///x", sha256="0" * 64, bytes=0)
+    with pytest.raises(ValueError, match="plain name"):
+        DatasetEntry(name=name, files=[], licence="L", commercial_reuse="C")
+
+
+@pytest.mark.parametrize("field", ["licence", "commercial_reuse"])
+def test_licence_terms_must_be_recorded_explicitly(field: str):
+    terms = {"licence": "L", "commercial_reuse": "C", field: ""}
+    with pytest.raises(ValueError, match="at least 1 character"):
+        DatasetEntry(name="demo", files=[], **terms)
+
+
+def test_protocol_failures_name_the_url_and_destination(tmp_path: Path, monkeypatch):
+    def malformed(url, timeout):
+        raise http.client.BadStatusLine("not an HTTP status")
+
+    monkeypatch.setattr(files.urllib.request, "urlopen", malformed)
+    target = tmp_path / "demo" / "a.json"
+    with pytest.raises(OSError, match=f"downloading file:///x to {target} failed: not an HTTP"):
+        fetch("file:///x", target, _sha(b""))
+
+
+def test_a_directory_at_the_file_path_raises(tmp_path: Path):
+    (tmp_path / "data.json").mkdir()
+    with pytest.raises(ValueError, match="is not a file"):
+        fetch("file:///unused", tmp_path / "data.json", _sha(b""))
+
+
+def test_failed_or_unexpected_downloads_leave_nothing(tmp_path: Path):
+    remote = tmp_path / "remote.json"
+    remote.write_bytes(b"[2]")
+    cache = tmp_path / "cache"
+    with pytest.raises(ValueError, match=f"to {cache / 'other.json'} failed: sha256"):
+        fetch(remote.as_uri(), cache / "other.json", _sha(b"[1]"))
+    with pytest.raises(OSError):
+        fetch((tmp_path / "missing").as_uri(), cache / "gone.json", _sha(b"[1]"))
+    assert list(cache.iterdir()) == []
+
+
+def test_concurrent_fetches_do_not_share_a_partial_file(tmp_path: Path, monkeypatch):
+    # Regression: both calls once wrote `<name>.part`; a second download failing mid-transfer
+    # truncated (and then deleted) the first one's file before it was renamed into place.
+    target = tmp_path / "data.json"
+
+    class First(io.BytesIO):
+        def read(self, size=-1):
+            if self.tell() == 0:  # the second download runs while the first is writing
+                with pytest.raises(OSError):
+                    fetch("second", target, _sha(b"[1]"))
+            return super().read(size)
+
+    class Dropped(io.BytesIO):
+        def read(self, size=-1):
+            if self.tell():
+                raise OSError("connection reset")
+            return super().read(1)
+
+    def urlopen(url, timeout):
+        return First(b"[1]") if url == "first" else Dropped(b"[1]")
+
+    monkeypatch.setattr(files.urllib.request, "urlopen", urlopen)
+    assert fetch("first", target, _sha(b"[1]")).read_bytes() == b"[1]"
+    assert [p.name for p in tmp_path.iterdir()] == ["data.json"]
+
+
+def test_download_fetches_entry_files_in_order_and_keeps_them_on_failure(tmp_path: Path):
+    remote = tmp_path / "remote"
+    remote.mkdir()
+    (remote / "a.json").write_bytes(b"[1]")
+    (remote / "b.json").write_bytes(b"[2]")
+    entry = _entry("demo", remote, "a.json", "b.json")
+    (remote / "b.json").write_bytes(b"[3]")  # b no longer matches its pin
+    with pytest.raises(ValueError, match="expected the pinned"):
+        download(entry, tmp_path / "root")
+    assert [p.name for p in (tmp_path / "root" / "demo").iterdir()] == ["a.json"]
 
 
 SENTENCES = {"A": ["Alpha one.", " Alpha two."], "B": ["Beta."], "C": ["Gamma."]}
 
 
-def _files(tmp_path: Path, monkeypatch, supporting_facts, sentences=SENTENCES) -> Path:
+def _hotpotqa(tmp_path: Path, monkeypatch, supporting_facts, sentences=SENTENCES) -> Path:
     corpus = [
         {"idx": i, "title": t, "text": "".join(s)} for i, (t, s) in enumerate(SENTENCES.items())
     ]
@@ -58,11 +156,10 @@ def _files(tmp_path: Path, monkeypatch, supporting_facts, sentences=SENTENCES) -
     }
     remote = tmp_path / "remote"
     remote.mkdir()
-    files = {"hotpotqa.json": [question], "hotpotqa_corpus.json": corpus}
-    for name, content in files.items():
-        (remote / name).write_text(json.dumps(content))
-    monkeypatch.setattr(hotpotqa, "BASE", remote.as_uri() + "/")
-    monkeypatch.setattr(hotpotqa, "FILES", {n: _sha((remote / n).read_bytes()) for n in files})
+    (remote / "hotpotqa.json").write_text(json.dumps([question]))
+    (remote / "hotpotqa_corpus.json").write_text(json.dumps(corpus))
+    entry = _entry("hotpotqa", remote, "hotpotqa.json", "hotpotqa_corpus.json")
+    monkeypatch.setattr(hotpotqa, "ENTRY", entry)
     return tmp_path / "root"
 
 
@@ -79,7 +176,7 @@ def _span(document: str, start: int, end: int) -> SpanEvidence:
     ],
 )
 def test_hotpotqa_gold_spans_select_the_supporting_text(tmp_path, monkeypatch, gold, expected):
-    root = _files(tmp_path, monkeypatch, [["A", 1], ["B", 0], ["A", 0], ["A", 1]])
+    root = _hotpotqa(tmp_path, monkeypatch, [["A", 1], ["B", 0], ["A", 0], ["A", 1]])
     benchmark = hotpotqa.HotpotQA(root, gold=gold)
     [question] = benchmark.questions()
     assert question.evidence == [expected]
@@ -87,10 +184,11 @@ def test_hotpotqa_gold_spans_select_the_supporting_text(tmp_path, monkeypatch, g
     assert texts["A"][12:23] == " Alpha two."
     assert (question.id, question.input.text, question.answers) == ("q1", "Which?", ["Alpha"])
     assert question.metadata == {"type": "bridge", "level": "easy"}
+    assert (root / "hotpotqa" / "hotpotqa.json").is_file()
 
 
 def test_hotpotqa_corpus_is_title_newline_text_keyed_by_title(tmp_path, monkeypatch):
-    benchmark = hotpotqa.HotpotQA(_files(tmp_path, monkeypatch, [["B", 0]]))
+    benchmark = hotpotqa.HotpotQA(_hotpotqa(tmp_path, monkeypatch, [["B", 0]]))
     assert [(s.origin, s.external_id, s.text) for s in benchmark.corpus(COLLECTION)] == [
         ("A", "A", "A\nAlpha one. Alpha two."),
         ("B", "B", "B\nBeta."),
@@ -110,36 +208,15 @@ def test_hotpotqa_corpus_is_title_newline_text_keyed_by_title(tmp_path, monkeypa
 )
 def test_hotpotqa_unresolvable_supporting_facts_raise(tmp_path, monkeypatch, facts, sentences):
     with pytest.raises(ValueError, match="question q1"):
-        hotpotqa.HotpotQA(_files(tmp_path, monkeypatch, facts, sentences))
+        hotpotqa.HotpotQA(_hotpotqa(tmp_path, monkeypatch, facts, sentences))
 
 
 def test_multihoprag_downloads_into_root_on_first_use(tmp_path: Path, monkeypatch):
+    remote = tmp_path / "remote"
+    remote.mkdir()
     articles = [{"url": "https://example.org/a", "title": "T", "body": "Body."}]
-    remote = tmp_path / "corpus.json"
-    remote.write_text(json.dumps(articles))
-    monkeypatch.setattr(multihoprag, "URL", remote.as_uri())
-    monkeypatch.setattr(multihoprag, "SHA256", _sha(remote.read_bytes()))
+    (remote / "corpus.json").write_text(json.dumps(articles))
+    monkeypatch.setattr(multihoprag, "ENTRY", _entry("multihoprag", remote, "corpus.json"))
     corpus = multihoprag.MultiHopRAGCorpus(collection_id=COLLECTION, root=tmp_path / "root")
     assert (tmp_path / "root" / "multihoprag" / "corpus.json").is_file()
     assert [(s.origin, s.text) for s in corpus] == [("https://example.org/a", "T\n\nBody.")]
-
-
-def test_concurrent_fetches_do_not_share_a_partial_file(tmp_path: Path, monkeypatch):
-    # Regression: both calls once wrote `<name>.part`; a second download failing mid-transfer
-    # truncated the first one's verified file before it was renamed into place.
-    from triplum.datasets import files
-
-    target = tmp_path / "data.json"
-
-    def interleaved(url: str, filename: Path):
-        if url == "first":
-            Path(filename).write_bytes(b"[1]")
-            with pytest.raises(OSError):
-                fetch("second", target, _sha(b"[1]"))
-            return filename, None
-        Path(filename).write_bytes(b"[")  # partial transfer, then the connection drops
-        raise OSError("connection reset")
-
-    monkeypatch.setattr(files.urllib.request, "urlretrieve", interleaved)
-    assert fetch("first", target, _sha(b"[1]")).read_bytes() == b"[1]"
-    assert [p.name for p in tmp_path.iterdir()] == ["data.json"]

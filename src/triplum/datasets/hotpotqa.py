@@ -8,16 +8,32 @@ from uuid import UUID
 from pydantic import BaseModel, Field, TypeAdapter
 
 from triplum.datasets.benchmark import QABenchmark
-from triplum.datasets.files import datasets_home, fetch
+from triplum.datasets.files import DatasetEntry, PinnedFile, download
 from triplum.datatype import Source
 from triplum.datatype.question import QAQuestion, QuestionInput, SpanEvidence
 from triplum.utils.data import RecordDataset
 
 BASE = "https://raw.githubusercontent.com/OSU-NLP-Group/HippoRAG/191f281122e2437743daf1dd2dae23059a14c088/reproduce/dataset/"
-FILES = {
-    "hotpotqa.json": "3ad9c0bcbf93f41d7004ca6007049c904d2605046b314a2f7ecfb379c64cba6d",
-    "hotpotqa_corpus.json": "9333647b922382776cd2cb02893b390d77984df85a91bfa8be411284978aca7d",
-}
+ENTRY = DatasetEntry(
+    name="hotpotqa",
+    files=[
+        PinnedFile(
+            name="hotpotqa.json",
+            url=BASE + "hotpotqa.json",
+            sha256="3ad9c0bcbf93f41d7004ca6007049c904d2605046b314a2f7ecfb379c64cba6d",
+            bytes=8183058,
+        ),
+        PinnedFile(
+            name="hotpotqa_corpus.json",
+            url=BASE + "hotpotqa_corpus.json",
+            sha256="9333647b922382776cd2cb02893b390d77984df85a91bfa8be411284978aca7d",
+            bytes=6414109,
+        ),
+    ],
+    licence="HotpotQA content CC BY-SA 4.0; HippoRAG protocol files (commit 191f2811) MIT",
+    commercial_reuse="Permitted with attribution; adaptations must be shared under CC BY-SA 4.0; "
+    "retain HippoRAG's MIT copyright notice and licence text",
+)
 
 
 class _Passage(BaseModel):
@@ -35,20 +51,8 @@ class _Question(BaseModel):
     level: str
 
 
-def download(root: Path | None = None) -> Path:
-    """Fetch both pinned files into `root/hotpotqa` unless verified copies exist; return it.
-
-    `root` defaults to `datasets_home()`.
-    """
-    root = datasets_home() if root is None else root
-    folder = root / "hotpotqa"
-    for name, sha256 in FILES.items():
-        fetch(BASE + name, folder / name, sha256)
-    return folder
-
-
 class HotpotQA(QABenchmark):
-    """The HippoRAG HotpotQA files, downloaded into `root` on first use (`download`).
+    """The HippoRAG HotpotQA files, downloaded into `root/hotpotqa` on first use.
 
     Each passage becomes a Source with text `title\\ntext` (HippoRAG's passage format); `origin`
     and `external_id` are its Wikipedia title, unique in this corpus. Evidence is one set per
@@ -56,14 +60,15 @@ class HotpotQA(QABenchmark):
     supporting sentence; with `gold="passage"` one span per supporting passage, covering its
     whole text, which is the gold HippoRAG's passage recall counts.
 
-    Both files are verified, parsed and checked at construction. Raises `ValueError` if a
-    download does not match its pinned hash, or a supporting fact names no passage or sentence.
+    `root` defaults to `datasets_home()`. Both files are verified, parsed and checked at
+    construction. Raises `ValueError` if a file does not match its pinned hash, or a supporting
+    fact names no passage or sentence.
     """
 
     def __init__(
         self, root: Path | None = None, *, gold: Literal["sentence", "passage"] = "sentence"
     ) -> None:
-        folder = download(root)
+        folder = download(ENTRY, root)
         self._passages = TypeAdapter(list[_Passage]).validate_json(
             (folder / "hotpotqa_corpus.json").read_bytes()
         )

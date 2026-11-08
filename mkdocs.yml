@@ -27,7 +27,7 @@ theme:
       toggle: { icon: material/brightness-4, name: light mode }
 # `serve` only watches docs/ by default; API pages are generated from src/.
 watch: [src, scripts]
-hooks: [scripts/api_reference.py]
+hooks: [scripts/api_reference.py, scripts/dataset_licences.py]
 plugins:
   - search
   - mkdocstrings:

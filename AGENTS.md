@@ -90,8 +90,9 @@ These requirements describe the intended architecture, not current capabilities 
 - Every expensive stage is content-addressed on its inputs/configuration and must work with an
   empty cache. Everything changing an answer belongs in run identity. Benchmark runs neither
   read nor write the cache.
-- Record all third-party dataset/model/code terms in `docs/licences.md`, including commercial
-  reuse implications, when introducing or restoring a dependency. Never claim commercial reuse
+- Record all third-party dataset/model/code terms, including commercial reuse implications,
+  when introducing or restoring a dependency: dataset terms in their catalogue entry
+  (`triplum.datasets.catalogue`, rendered into `docs/licences.md`), others in `docs/licences.md`. Never claim commercial reuse
   the recorded terms do not support. Research-only terms do not disqualify candidates; code without a licence
   is read-only. Never route private corpora through training-on-traffic providers. API keys come
   from the environment; never read, print or commit secrets.

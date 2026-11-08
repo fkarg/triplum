@@ -96,3 +96,10 @@ remove is not cancellation; changed wording, guarantees limited to per-file inst
 non-file paths are errors, flat file names, chunked hashing. Rejected: immutable tuples instead of
 a frozen model with a list (owner policy: lists in record fields; Pydantic frozen records are the
 repo's convention).
+
+### Contract approval (owner, 2026-11-08)
+
+Owner: "sounds good, agreed" — the Dataset utilities contract in the
+[command line spec](../specs/cli-selection.md) is approved. Licence rows: **one source of truth,
+generated/extracted automatically** from the catalogue (the peer's option; Claude had proposed a
+test cross-check).

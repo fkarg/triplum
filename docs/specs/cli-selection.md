@@ -6,13 +6,14 @@ configured through command-line options, and no step runs as its own command.
 
 ## Scope
 
-Implemented: cache management (below). Owner-agreed but not yet specified or built; each needs
+Implemented: cache management and dataset utilities (below). Owner-agreed but not yet specified or built; each needs
 its own contract here before implementation:
 
 - Datasets and models: datasets download automatically on first use; the CLI shows download
   status and offers some management (list, download ahead of use, verify, remove, show recorded
   licence terms including commercial-reuse implications). The same applies to model weights
-  (embedders, rerankers, local LLMs). Datasets are currently downloaded through the library only.
+  (embedders, rerankers, local LLMs). Dataset utilities are specified and implemented below;
+  model weights are not.
   Owner (2026-11-07): provided datasets use the same cache as computations and download
   automatically when missing. Implemented: `utils.paths.cache_home()` (`$XDG_CACHE_HOME/triplum`)
   holds `cache.sqlite` and `datasets/`; `datasets.files.fetch` downloads pinned files into a
@@ -60,7 +61,12 @@ triplum cache clear [--path PATH] [--computation SHA256 | --name NAME] [--json] 
   matching as commands. The resolved names are reported on stderr and included in --json output.
 - Commands wrap importable cache_stats(path, ...) and clear_cache(path, ...).
 
-## Dataset utilities (draft for owner review)
+## Dataset utilities
+
+Status: **approved** by the owner (2026-11-08) and implemented: `datasets/files.py` (`PinnedFile`,
+`DatasetEntry`, `fetch`, `download`), `datasets/catalogue.py`, `datasets/admin.py`, the `datasets`
+commands in `cli.py`, and `scripts/dataset_licences.py`, which renders the dataset rows of
+`docs/licences.md` from the catalogue (owner: one source of truth, generated).
 
 Settled in round 9 ([questions](../plans/questions/datasets.md)): DS2 commands with the peer's
 additions and a prompt above 5 GB, DS3 hash on every construction, DS4 no offline mode, DS1
@@ -97,8 +103,8 @@ CATALOGUE: dict[str, DatasetEntry] = {e.name: e for e in (hotpotqa.ENTRY, multih
 ```
 
 - Each dataset module keeps its own entry beside its parser; the catalogue is the explicit list
-  the CLI iterates. A test checks that every entry has a `docs/licences.md` row naming the same
-  terms (alternative: generate those rows from the catalogue).
+  the CLI iterates. The licences page's dataset rows are generated from the entries at build
+  time; the page keeps only a marker, and a missing marker fails the build.
 - Per-module `download()` functions become `download(ENTRY, root)`. Shared parsers for format
   families wait until more loaders exist; `manifest.json` stays, unused, until the full list.
 
@@ -145,3 +151,23 @@ triplum datasets licence NAME [--json] [--no-input]
   and resolutions on stderr, no tracebacks, nonzero exit on failure. Download failures name the
   dataset, file, destination and cause; TLS failures mention `SSL_CERT_FILE` and never suggest
   disabling verification.
+
+### Implementation review (dataset utilities)
+
+- Cross-model diff review gpt-6.1-sol `861532b54aee45408c54444387c602e8` (traversal in a
+  disposable folder, permission-denied files and folders, malformed HTTP over loopback, injected
+  connection resets, hashing and empty-catalogue mutations). Unique defects, all fixed with tests:
+  `../` file names escaped the dataset folder; unreadable files read as present and unreadable
+  folders as missing; protocol errors escaped as tracebacks; download errors lacked file and
+  destination; human `list` lacked per-file sizes; the HippoRAG licence-text obligation was
+  dropped in migration. Added verification: the status test fails if status hashes; the catalogue
+  test fails on empty file lists. Nits applied (unreachable return, inlined helper).
+- General reviewer (its peer gpt-6.1-sol, same findings independently, plus cache-command parity
+  against HEAD in 8 cases): no must-fix in the final code. Applied: dataset names validated like
+  file names; licence and commercial-reuse terms must be non-empty ("unknown" recorded
+  explicitly); hash-mismatch downloads name the destination; a TLS-hint test; `remove` tolerates a
+  concurrent download's temporary file (`ENOTEMPTY`) and needs no read permission, so an
+  unreadable corrupt file can be removed; downloads time out after 60 s without data. Not
+  changed: argparse prints its usage block before every error, as the cache commands always have
+  (owner decision pending); the licence table assumes module name = dataset name and no `|` in
+  terms.

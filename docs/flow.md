@@ -19,6 +19,10 @@ This page follows the intended flow and shows where experiments can replace indi
   reads HippoRAG's 1,000-question HotpotQA sample with sentence or passage gold. It and the
   MultiHop-RAG corpus download pinned, hash-checked files on first use into
   [the datasets folder](concepts/datasets.md#where-downloads-go) beside the computation cache.
+  Each declares its files and licence terms in a `DatasetEntry`, listed in
+  `triplum.datasets.catalogue.CATALOGUE`. The
+  [`triplum datasets` commands](concepts/datasets.md#manage-downloads-from-the-command-line)
+  `list`, `download`, `verify`, `remove` and `licence` manage these downloads.
 - [Retrieval](concepts/retrieval.md): the `Retriever` contract returning ranked `RetrievalHit`s,
   and `BM25`, lexical search over an in-memory snapshot of a store's chunks with the `HIPPORAG1`
   (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read and returns

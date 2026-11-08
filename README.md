@@ -8,7 +8,8 @@ provenance-derived permissions remain design requirements; evidence must respect
 
 The rebuild continues on `main`, one owner-reviewed interface at a time. Historical code is
 reference material, not the current architecture contract. The old CLI and benchmark runner are
-not working entry points. The current CLI provides cache inspection and clearing.
+not working entry points. The current CLI provides cache inspection and clearing, and
+listing, downloading, verifying and removing the provided datasets (`triplum datasets`).
 
 The Python foundation includes datasets/loaders, Source and Chunk records, benchmark question
 records with a fixture loader, step Protocols, memory/SQL record stores, BM25 retrieval with
