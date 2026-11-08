@@ -46,6 +46,9 @@ docs = [
     "mkdocs-material>=9.7",
     "mkdocstrings[python]>=1.0",
 ]
+mutation = [
+    "cosmic-ray>=8.8.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.12,<0.13"]

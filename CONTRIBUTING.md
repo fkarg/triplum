@@ -29,6 +29,21 @@ The coverage report only points at code no test runs; it is not a target or a re
 test durations. Fix type errors at their contracts; do not hide them behind broad ignores, `Any`
 or excluded modules. New behavior should have focused tests of its observable contract. Review prototypes remain separate from cleanup commits until approved.
 
+### Mutation testing
+
+`scripts/mutation.py` runs cosmic-ray mutants on an isolated copy of the working tree, one copy
+per worker, and runs only the tests that cover each mutant's lines. Survivors are confirmed
+against the full suite. It is local, CPU-heavy and not part of pre-commit or CI:
+
+```sh
+uv run --group mutation python scripts/mutation.py --diff origin/main   # lines changed since main
+uv run --group mutation python scripts/mutation.py                      # every module
+```
+
+It skips mutants inside annotations and reports mutants on statements no test runs as
+uncovered. Review `survivors.md` in the printed output directory: a survivor is either a missing
+test or an equivalent mutant. There is no score threshold.
+
 ## Pre-commit
 
 `.githooks/pre-commit` exports the Git index to a temporary directory and runs `cargo check`,

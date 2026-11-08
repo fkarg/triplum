@@ -20,11 +20,11 @@ and the question files; then check `git log` against the state below.
   RT10 folds into this topic (owner leaning: indexes store-managed; Retriever's value open).
   Research recorded ([storage research](storage-research.md)); ST1-ST5 with Claude and peer answers in
   [storage questions](questions/storage.md), presented to the owner.
-- **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
-  TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
-  P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"
-  (CPU-heavy; coverage map pass, plugin, diff-scoped script). Then the next interface: IRCOT preset with stemming, dense
-  retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
+- **Done (2026-11-08, jolly):** P10 mutation pilot ([record](mutation-pilot.md)):
+  `scripts/mutation.py`, full pass and diff-scoped run, survivor review. **Next on this track:**
+  tests for the record's top gaps and recurring weaknesses, each verified against its mutant with
+  the tool (CPU-light per mutant, any machine). Interface work after storage: IRCOT preset with
+  stemming, dense retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download
   on first use into the shared cache folder, `triplum datasets` commands and catalogue-generated

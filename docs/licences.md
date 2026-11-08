@@ -28,6 +28,8 @@ is built.
 | `openai` (via `pydantic-ai`) | OpenAI provider SDK | Apache-2.0 | Permitted; retain licence text and any NOTICE file, state changes |
 | `google-genai` (via `pydantic-ai`) | Google Gemini provider SDK | Apache-2.0 | Permitted; retain licence text and any NOTICE file, state changes |
 | `griffe-fieldz` (docs group) | Render model fields as attribute tables in the API reference | BSD-3-Clause | Permitted; retain copyright notice and licence text |
+| `cosmic-ray` (mutation group) | Mutant generation for `scripts/mutation.py`; development only, not shipped | MIT | Permitted; retain copyright notice and licence text |
+| `yattag` (via `cosmic-ray`) | HTML report generation inside cosmic-ray; development only, not shipped | LGPL (version not stated in package metadata) | Development use unaffected; redistributing it would carry LGPL obligations |
 
 The `pydantic-ai` rows were checked against installed package metadata. `pydantic-ai`'s default
 extras install further packages (among them `logfire`, `fastmcp-slim`, `tiktoken`, `starlette`,

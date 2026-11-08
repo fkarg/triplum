@@ -217,3 +217,14 @@ P12 implemented (owner "P12 go"): wrapper and wrapped identity, innermost-wrappe
 markers trusted only on triplum's own wrapper; reviews and dispositions in the
 [identity spec](../specs/automatic-helper-identity.md#wrappers-and-application-scope-p12).
 533 tests pass. Remaining: P10 pilot with cosmic-ray plus the test-selection plugin on "jolly".
+
+### P10 pilot (2026-11-08, on jolly)
+
+Done; [pilot record](../mutation-pilot.md). `scripts/mutation.py` (cosmic-ray 8.8.0 in the
+non-default `mutation` group, coverage-context test selection, full-suite confirmation of
+survivors). Full pass: 6,249 mutants, 669 survivors, 16.5 min on 30 workers. Diff-scoped run:
+under a minute. Selection soundness sample: no selected kill contradicted. Survivor sample:
+14/30 real gaps (5 that could hide user-visible bugs), 10 equivalent, 6 defensive. Caching and
+fingerprint modules are not excluded: their survivors include the top gap. Runner peer:
+gpt-6.1-sol, dispositions in the record. Next: tests for the top gaps and the recurring
+weaknesses listed in the record, each verified to kill its mutant.
