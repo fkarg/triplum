@@ -150,10 +150,13 @@ def test_resolve_evidence_maps_keys_and_keeps_kinds():
         resolve_evidence(question, {"doc-a": A})
 
 
-def test_an_invalid_span_is_rejected_not_read_as_a_document():
+@pytest.mark.parametrize(
+    ("start", "end"), [(3, 3), (5, 3), (-1, 2)], ids=["empty", "reversed", "negative"]
+)
+def test_an_invalid_span_is_rejected_not_read_as_a_document(start, end):
     adapter = TypeAdapter(ResolvedEvidence)
     with pytest.raises(ValidationError):
-        adapter.validate_python({"source_id": str(A), "start": 3, "end": 3})
+        adapter.validate_python({"source_id": str(A), "start": start, "end": end})
 
 
 def test_summaries_exclude_or_zero_questions_without_gold():

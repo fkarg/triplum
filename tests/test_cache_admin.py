@@ -44,6 +44,21 @@ def test_stats_fast_and_exact_snapshot(tmp_path: Path) -> None:
     assert cache_stats(path, computation=Q, details=True).computations == (exact.computations[1],)
 
 
+def test_reusable_bytes_are_the_free_pages(tmp_path: Path) -> None:
+    path = tmp_path / "cache.sqlite"
+    populate(path)
+    assert cache_stats(path).reusable_bytes == 0
+    clear_cache(path, computation=P)  # dropping a table frees its pages for reuse
+    connection = sqlite3.connect(path)
+    try:
+        free_pages = connection.execute("PRAGMA freelist_count").fetchone()[0]
+        page_size = connection.execute("PRAGMA page_size").fetchone()[0]
+    finally:
+        connection.close()
+    assert free_pages > 0
+    assert cache_stats(path).reusable_bytes == free_pages * page_size
+
+
 def test_targeted_clear_isolates_computation_and_preserves_other_tables(tmp_path: Path) -> None:
     path = tmp_path / "cache.sqlite"
     populate(path)

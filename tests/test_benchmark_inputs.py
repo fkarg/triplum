@@ -65,6 +65,7 @@ def test_evidence_union_keeps_valid_spans_and_documents():
     "span",
     [
         {"document": "d", "start": 3, "end": 3},
+        {"document": "d", "start": 5, "end": 3},
         {"document": "d", "start": -1, "end": 2},
         {"document": "d", "start": 3},
     ],

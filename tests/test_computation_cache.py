@@ -108,6 +108,24 @@ def test_oversize_never_waits_for_impossible_admission(tmp_path: Path) -> None:
         assert cache.skipped_writes == 1
 
 
+@pytest.mark.parametrize(("slack", "accepted"), [(0, True), (-1, False)])
+def test_budget_charges_key_payload_and_bookkeeping_exactly(
+    tmp_path: Path, slack: int, accepted: bool
+) -> None:
+    payload = b"a" * 100
+    charge = 256 + len(KEY.process) + len(KEY.input) + len(payload)  # documented charge
+    with Cache(SQLiteBackend(tmp_path / "cache.sqlite"), pending_bytes=charge + slack) as cache:
+        assert cache.put(KEY, payload) is accepted
+        assert cache.skipped_writes == (0 if accepted else 1)
+
+
+def test_smallest_budget_is_valid_and_admits_nothing(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        Cache(SQLiteBackend(tmp_path / "zero.sqlite"), pending_bytes=0)
+    with Cache(SQLiteBackend(tmp_path / "one.sqlite"), pending_bytes=1) as cache:
+        assert not cache.put(KEY, b"")
+
+
 def test_writer_failure_wakes_blocked_put_and_surfaces_on_close(tmp_path: Path) -> None:
     backend = GatedSQLite(tmp_path / "cache.sqlite", fail=True)
     cache = Cache(backend, pending_bytes=4096, policy=CachePolicy(on_full="block"))

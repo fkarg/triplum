@@ -212,13 +212,16 @@ def test_changed_unsupported_global_errors_before_reusing_entry(
         assert calls == ["x"]
 
 
+# The counter pattern is matched on bytecode offsets; one position hid an offset mistake.
+@pytest.mark.parametrize("preamble", ["", "    a = 1\n", "    a = 1\n    b = a\n"])
 def test_fresh_identity_excludes_counter_and_log_growth_and_reuses_immutable_code(
-    tmp_path: Path,
+    tmp_path: Path, preamble: str
 ) -> None:
     calls: list[str] = []
     namespace = application(
         "def operation():\n"
         "    global count\n"
+        f"{preamble}"
         "    count += 1\n"
         "    calls.append(DESCRIPTION)\n"
         "    return DESCRIPTION\n",
