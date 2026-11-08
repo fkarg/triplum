@@ -32,6 +32,22 @@ job, documented (a check needs a protocol attribute). Snapshot vs live: stated p
 implementation. Collection is selection, not authorization (not E). Unknown collection: raise once
 collections are stored records (Q13).
 
+Peer, second pass (gpt-6.1-sol, 2026-11-08, over the investigation; ran 10 focused tests and
+probes on both backends, spot-checked Elastic RRF and Qdrant): keep A; do not add D's index
+object or a multi-collection composite now (several-collection retrieval is outside the owner's
+single-collection rule; the "several ids" remark concerns listing). Strongest alternatives: B1
+(per-call selection over eagerly built indexes, no lazy cache: the research overstated B's cache
+cost), D without routing, F (collection-scoped store handle). Sub-questions: unknown collection
+stays empty and raising is not pre-decided (existence disclosure is a storage question); fusion
+legs on one collection are the caller's stated obligation; BE11/time filters stay deferred. Most
+discriminating scenario: fusion (A permits legs on different collections; probe confirmed mixed
+output). Dispositions: unique defect, run identity must include access state (identical content
+and viewers, different grants, different results; observed) and the selected collection
+explicitly (two empty collections give equal chunk digests; observed) → added to the record and
+the owner presentation; changed framing, B1 compared separately from lazy B2 → accepted;
+dissent kept: Claude's D-later and composite-for-several and raise-on-unknown versus the peer's
+deferring all three.
+
 Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
 remains under LQ1).
 
