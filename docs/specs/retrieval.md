@@ -235,7 +235,8 @@ model_config = ConfigDict(frozen=True, extra="forbid")  # each of the three mode
 
 Unknown keyword fields raise `ValidationError` at construction. Ids, fingerprints and stored
 rows do not change. Docs: replace the "silently ignored" notes on the source, chunk and retrieval
-pages. Test: one parametrized test per model that an unknown field raises.
+pages. Test: one parametrized test that an unknown field on otherwise valid input raises with
+error type `extra_forbidden`, per model.
 
 ### P14: collection-scoped source listing and BM25
 
@@ -275,14 +276,31 @@ class BM25(Retriever, FingerprintedComputationMixin):
 - SQL: `WHERE collection_id = ?` together with the visibility filter; memory: filter in the
   comprehension. Collections are not stored records yet (Q13), so nothing checks that the id
   names a known collection.
-- Callers updated: BM25 call sites in `examples/`, docs examples and tests; `examples/bm25_recall.py`
-  and `naive.py` pass their collection's id.
-- Tests: two collections in one store with overlapping texts: `sources()` returns each one's own;
-  BM25 over one never returns the other's chunks and its scores equal a BM25 built on a store
-  holding only that collection (statistics per collection); the rerun duplication from the
-  persona wave no longer duplicates hits. Both backends.
+- Callers updated: both store implementations, every `sources()` and `BM25` caller in `src/`,
+  `examples/bm25_recall.py`, docs examples and tests (`examples/naive.py` calls neither and stays).
+  The store test that lists sources of two collections at once is split per collection. The
+  old declaration in [source access](source-access.md) and the "stores do not enforce collection
+  scope" wording in the collection guide are updated.
+- Tests, both backends: two collections in one store, the other holding a stronger match and a
+  long document that would shift statistics. `sources()` returns the intersection of membership
+  and visibility (visible and hidden sources in each collection; unknown collection and empty
+  viewer give nothing). BM25 over one collection returns a full eligible top `k` (filtering after
+  top `k` would leave it short) with scores equal to a BM25 on a store holding only that
+  collection (global scoring then filtering changes them).
+- Reruns: scoping keeps hits from earlier collections out of results; it neither removes their
+  rows nor repeats record ids. Reusing a fixed collection id stays the advice for reproducible
+  ids and cache reuse.
 - Docs: retrieval page (replace "Every collection in the store" with collection selection),
-  store page, recall note on stale copies, flow.
+  store page, recall note on stale copies, collection guide, flow.
+
+Peer gpt-6.1-sol (Codex, 2026-11-08, verdict supports; executed in-memory P13 changes and P14
+prototypes on memory and SQLite, global-scoring-then-filter and filter-after-top-k variants, and
+the existing 131 store/retrieval/recall tests). Dispositions: unique defect, incomplete
+migration list (cross-collection store test, source-access spec, collection guide) → added;
+added verification, tests that separate filtering before indexing, before ranking and after
+top `k` (its probes: scores 0.2380 vs 0.2037, empty result) → added; rerun wording made precise →
+changed; `naive.py` listed wrongly → removed. P13: tests assert `extra_forbidden` on otherwise
+valid input → added. RT10: independently recommends binding at construction (same as Claude).
 
 ## Verification
 

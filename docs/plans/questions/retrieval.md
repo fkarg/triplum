@@ -21,6 +21,19 @@ trusts hit lists, so tie order can change R@k at the cutoff.
   corpus. Note: the brief sent to the peer misstated BM25's `k < 1` behaviour as returning `[]`;
   it raises `ValueError`, so the peer's rule would be "`k < 1` raises `ValueError`".
 
+### RT10. Collection at retriever construction or per query
+
+Follows Q33 (queries select one collection, per-collection optimization only). Either a retriever
+is bound to one collection when built (`BM25(store, collection_id=..., viewer=...)`, `Retriever`
+call unchanged), or the call takes it (`(query, /, *, collection_id, viewer, k)`).
+
+- Claude: bind at construction; it matches the snapshot index and keeps statistics per
+  collection without index routing; fusion components must be built for the same collection.
+- Peer (gpt-6.1-sol, 2026-11-08): same, independently. Per-call selection would need BM25 to
+  route to or build per-collection indexes (new lifecycle decisions); a constructor plus a call
+  override duplicates selection. Neither gives run identity automatically: runs must record the
+  collection, indexed content and construction viewer.
+
 Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
 remains under LQ1).
 
