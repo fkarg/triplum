@@ -17,6 +17,21 @@ call unchanged), or the call takes it (`(query, /, *, collection_id, viewer, k)`
   override duplicates selection. Neither gives run identity automatically: runs must record the
   collection, indexed content and construction viewer.
 
+Owner (2026-11-08): explore further before storage: expand options and tradeoffs, starting with
+detailed walkthroughs. Investigation: [RT10 collection scope](../rt10-collection-scope.md)
+(designs A–J, six walkthroughs, external evidence, 14 sub-questions).
+
+Claude, after the investigation and before the second peer pass: RT10 is three decisions:
+index scope (which chunks define statistics), per-query eligibility (viewer; later time and
+per-question sets), and index lifecycle/identity. Keep index scope at construction (A), and move
+to an explicit index object (D) when indexes persist or need content identity (BE6, BE17);
+several collections through a composite retriever that merges per-collection results (I),
+matching "optimize per collection only". Per-call selection (B/C) suits per-query eligibility
+filters, not index scope; decide that with BE11 and time. Fusion legs on one collection: caller's
+job, documented (a check needs a protocol attribute). Snapshot vs live: stated per
+implementation. Collection is selection, not authorization (not E). Unknown collection: raise once
+collections are stored records (Q13).
+
 Next interfaces: dense retrieval and fusion ([DF](dense-fusion.md)), evidence formatting (RT4
 remains under LQ1).
 

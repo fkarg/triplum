@@ -14,9 +14,7 @@ and the question files; then check `git log` against the state below.
 - **Done (2026-11-08):** persona documentation wave (two rounds,
   [run report](../personae/runs/2026-11-08-persona-wave.md)); P13 strict records and P14
   collection-scoped `sources()`/BM25 implemented ([spec](../specs/retrieval.md)). RT9 answered
-  (keep). **Running:** RT10 investigation (collection at retriever construction or per query;
-  walkthroughs, options, external evidence), machine-local report at
-  `/tmp/claude-1000/pr/rt10-research.md`; then present RT10. Owner direction: storage interfaces
+  (keep). **Running:** RT10: investigation done ([record](rt10-collection-scope.md)); Claude's view in the question file; second peer pass running, then present expanded options. Owner direction: storage interfaces
   are the next main topic (after RT10); docs gap: Viewer and similar concepts lack concept pages.
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
   TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
