@@ -72,3 +72,27 @@ downloads; CLI licence prose diverging from docs/licences.md.
 - DS4 (answered): **no offline mode now** ("much later, if ever"). Applied: no environment
   variables; no `--root` either (XDG and the library's `root=` suffice; the owner's simpler-first
   stance).
+
+Catalogue research (web subagent, primary sources, 2026-11-08): metadata mostly lives beside the
+loader (scikit-learn `RemoteFileMetadata(filename, url, checksum)` module constants; torchvision
+class attributes `resources`/`mirrors`; TFDS per-dataset folder with `checksums.tsv` and
+`DatasetInfo(license=...)`; HF dataset card YAML `license`); ir_datasets is the exception with a
+central `etc/downloads.json` plus per-dataset YAML and module code. Registration is an explicit
+list in practice (torchvision `__all__`, ir_datasets import list; TFDS `__init_subclass__` still
+needs imports; lm-eval scans folders). Formats: a module per dataset (torchvision, TFDS, sklearn)
+or shared format components/config (ir_datasets `TsvDocs`/`TrecQrels`, HF `data_files`); FlashRAG
+and BEIR pre-convert to one schema. HF `datasets` 4.0 removed loading scripts. Licence as a
+structured field: TFDS, HF; free text: ir_datasets DUA; none: torchvision, sklearn.
+
+Contract draft peer: gpt-6.1-sol, review `d5e73b3fa0b8488f9911a0e7b87b8d39` (traced a corrupt
+existing file through `fetch`; unknown sizes; threshold under partial and oversized files;
+temporary-file/remove/rename interleaving; two-file failure; verify-then-remove-then-parse).
+Dispositions, all in the draft: unique defect, `fetch` silently replaces a corrupt existing file,
+contradicting DS2 → constructors fail too (implementation change); unique defect, no unknown-size
+representation → every entry records sizes, `list` promise narrowed; unique defect, threshold
+undefined → actual sizes of present declared files, `> 5_000_000_000` bytes; added verification,
+per-file installation, stop at first download failure, verify continues; added verification,
+remove is not cancellation; changed wording, guarantees limited to per-file installation; added,
+non-file paths are errors, flat file names, chunked hashing. Rejected: immutable tuples instead of
+a frozen model with a list (owner policy: lists in record fields; Pydantic frozen records are the
+repo's convention).

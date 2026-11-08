@@ -59,3 +59,89 @@ triplum cache clear [--path PATH] [--computation SHA256 | --name NAME] [--json] 
 - --name selects recorded function names across computation fingerprints with the same forgiving
   matching as commands. The resolved names are reported on stderr and included in --json output.
 - Commands wrap importable cache_stats(path, ...) and clear_cache(path, ...).
+
+## Dataset utilities (draft for owner review)
+
+Settled in round 9 ([questions](../plans/questions/datasets.md)): DS2 commands with the peer's
+additions and a prompt above 5 GB, DS3 hash on every construction, DS4 no offline mode, DS1
+direction (dataset modules with their constants, a small catalogue now, the full manifest list
+later).
+
+Catalogue (proposal, following scikit-learn's per-fetcher `RemoteFileMetadata` and torchvision's
+explicit dataset list; research in the questions file):
+
+```python
+# src/triplum/datasets/files.py
+class PinnedFile(BaseModel):  # frozen
+    name: str  # path inside the dataset's folder
+    url: str
+    sha256: str
+    bytes: int  # recorded for every file; list shows it as the expected size
+
+
+class DatasetEntry(BaseModel):  # frozen
+    name: str  # catalogue key and folder name under datasets_home()
+    files: list[PinnedFile]
+    licence: str  # the recorded terms, e.g. "CC BY-SA 4.0 (HippoRAG files MIT)"
+    commercial_reuse: str  # implications, as in docs/licences.md
+
+
+def download(entry: DatasetEntry, root: Path | None = None) -> Path: ...  # the entry's folder
+
+
+# src/triplum/datasets/hotpotqa.py (likewise multihoprag.py)
+ENTRY = DatasetEntry(name="hotpotqa", files=[...], licence=..., commercial_reuse=...)
+
+# src/triplum/datasets/catalogue.py
+CATALOGUE: dict[str, DatasetEntry] = {e.name: e for e in (hotpotqa.ENTRY, multihoprag.ENTRY)}
+```
+
+- Each dataset module keeps its own entry beside its parser; the catalogue is the explicit list
+  the CLI iterates. A test checks that every entry has a `docs/licences.md` row naming the same
+  terms (alternative: generate those rows from the catalogue).
+- Per-module `download()` functions become `download(ENTRY, root)`. Shared parsers for format
+  families wait until more loaders exist; `manifest.json` stays, unused, until the full list.
+
+```text
+triplum datasets list [--json] [--no-input]
+triplum datasets download NAME [--json] [--no-input]
+triplum datasets verify NAME [--json] [--no-input]
+triplum datasets remove NAME [--yes] [--json] [--no-input]
+triplum datasets licence NAME [--json] [--no-input]
+```
+
+- Location: `datasets_home()` (`$XDG_CACHE_HOME/triplum/datasets`); no `--root` and no offline
+  mode. Commands wrap importable library functions, as the cache commands do.
+- Names: the catalogue's dataset names, matched like command names (exact, unique prefix,
+  substring, close typo); a resolution other than exact is reported on stderr; ambiguity lists
+  the choices and does nothing. One dataset per command.
+- list: every catalogued dataset with status `missing` (no expected file), `partial` (some) or
+  `present` (all), per-file sizes on disk and expected sizes. It never downloads
+  or hashes, so `present` does not mean verified. Unreadable files are errors, not `missing`.
+- download: what constructors do on first use, file by file in catalogue order: a verified file is
+  kept, a missing one is fetched into a per-call temporary file, verified, then renamed into place.
+  Files installed before a failure stay; the first failure stops the command. An existing file
+  whose hash does not match fails with expected and actual digests, **in constructors too**
+  (today `fetch` silently re-downloads it; this changes), and is left untouched; recovery is
+  `remove`, then `download`.
+- verify: hashes every expected file, continuing past failures, and reports each missing,
+  mismatched or unreadable one; nonzero exit if any. It never downloads or repairs. Hashing reads
+  in bounded chunks.
+- remove: deletes only the dataset's declared files and its folder if then empty; missing files
+  succeed. Re-downloadable data needs no prompt, except **above 5 GB**: the sum of the actual
+  sizes of the declared files present, compared as `> 5_000_000_000` bytes. On a terminal it asks;
+  `--yes` skips the question; without a terminal or with `--no-input` and no `--yes` it refuses
+  with guidance. `cache.sqlite` and unrelated files are untouched. Remove is not cancellation: a
+  download running at the same time may reinstall files afterwards, and its temporary file can
+  keep the folder from being removed.
+- licence: the recorded terms and commercial-reuse implications, without downloading; unknown
+  implications are shown as unknown.
+- Paths: a declared file is a plain name inside the dataset's folder (no subfolders). A directory,
+  broken link or other non-file at its path is an error, not `missing`.
+- Guarantees cover installing each downloaded file (never a partial or unverified file under its
+  name); they do not make a multi-file dataset atomic or keep a file in place against a
+  concurrent `remove`.
+- Output follows the cache commands: concise human text, `--json` structured stdout, diagnostics
+  and resolutions on stderr, no tracebacks, nonzero exit on failure. Download failures name the
+  dataset, file, destination and cause; TLS failures mention `SSL_CERT_FILE` and never suggest
+  disabling verification.
