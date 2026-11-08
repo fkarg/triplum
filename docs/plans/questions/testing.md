@@ -208,3 +208,7 @@ and `<string>` → anchor rule reopened as FP2 with an innermost-function altern
 verification, container cycles and raising descriptors decline cleanly, missing metadata falls
 back; limit recorded, split namespace packages; no impact (owner-settled), external global helpers
 stay name-only.
+
+Owner (2026-11-08): "external" = external to the application being cached/modified; **FP2 (A)**,
+the innermost function of the root's wrapper chain anchors the scope. P12 draft finalised;
+implementation awaits the owner's go.

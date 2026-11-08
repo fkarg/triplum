@@ -40,7 +40,7 @@ qualified-name boundary; external implementation changes are not covered. Pydant
 remain outside this bounded inference. Keep inputs and effective context stable during identity
 calculation and the entire computation; between-call changes to represented state are supported.
 
-### Wrappers and application scope (draft for owner review, P12)
+### Wrappers and application scope (draft for owner review, P12; FP1 and FP2 settled)
 
 Fixes two observed defects ([investigation](../plans/questions/testing.md#clean-run-investigation-subagent-2026-11-08-scratch-under-tmpfpinv-does-not-travel)):
 a third-party `functools.wraps` decorator on the root moves the application scope into the
@@ -49,16 +49,17 @@ application code because `wraps` copies `__module__`. Owner direction: hash both
 the function it wraps; external wrappers at least by captured values, and by their own code too;
 skip third-party decorators when choosing the application scope.
 
-- **Application** means the root's application: its top-level package, or for a script layout
-  its source directory. Everything else is external (standard library, installed packages,
+- **Application** means the application being cached (owner): the root's top-level package, or
+  for a script layout its source directory. Everything else is external (standard library, installed packages,
   triplum itself unless the root is triplum code).
 - **Real origin.** A function belongs to the module named by `__globals__["__name__"]` and the
   file `__code__.co_filename`, never the `__module__`/`__qualname__` a decorator copied.
-- **Scope anchor (open, FP2):** (A) the innermost function of the root's `__wrapped__` chain
-  (bounded, cycle-safe; no filesystem heuristic; limit: an application wrapper around an external
-  function gets the shallow projection below, so its own helpers count by name only); or (B) the
-  first function outside installed locations (`sysconfig`/`site` paths), which the peer refuted
-  for editable libraries, application code under `site-packages`, zipapps and `<string>` code.
+- **Scope anchor (owner, FP2 (A)):** the innermost function of the root's `__wrapped__` chain,
+  after `_triplum_compute`, followed through functions only, with a visited set (a cycle or a
+  non-function target stops at the last function reached). Its real package, or for a script its
+  source directory, is the application scope; a class root uses its module's file. No filesystem
+  heuristic. Limit: an application wrapper around an external function gets the shallow
+  projection below, so its own code counts but its helpers count by name only.
 - **`_triplum_compute`** is trusted only on triplum's own call wrapper. `functools.wraps` copies
   `__dict__`, so an ordinary outer wrapper inherits the marker and is currently skipped entirely,
   a stale hit when it changes the result (observed by the peer; an existing defect).
