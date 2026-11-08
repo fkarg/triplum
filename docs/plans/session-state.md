@@ -12,9 +12,9 @@ historical. To resume on any machine: pull `main`, read this section, the captur
 and the question files; then check `git log` against the state below.
 
 - **Next:** mutation testing ([testing questions](questions/testing.md), round 10 answered):
-  two light subagents running (mutmut clean-run failures and wrapper hashing; TQ5 on-disk test
-  selection); then a proposal for hashing wrapper and wrapped, and the mutmut vs cosmic-ray
-  decision. No CPU-intensive runs for now (owner mobile). Then the next interface: IRCOT preset with stemming, dense
+  TQ1 decided (cosmic-ray with a per-mutant test-selection plugin);
+  P11 slice constants and P12 wrapper identity implemented. Next: P10 pilot on the machine "jolly"
+  (CPU-heavy; coverage map pass, plugin, diff-scoped script). Then the next interface: IRCOT preset with stemming, dense
   retrieval/fusion (DF) or the LLM protocol (LQ1) for closed-book/oracle baselines.
 - **Implemented this workstream:** P8 BM25 retriever and P9 recall scorers
   ([spec](../specs/retrieval.md)), first BM25 R@2/R@5 example, character recall (BE21), HotpotQA reference dataset with download

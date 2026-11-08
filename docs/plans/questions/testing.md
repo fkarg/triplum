@@ -212,3 +212,8 @@ stay name-only.
 Owner (2026-11-08): "external" = external to the application being cached/modified; **FP2 (A)**,
 the innermost function of the root's wrapper chain anchors the scope. P12 draft finalised;
 implementation awaits the owner's go.
+
+P12 implemented (owner "P12 go"): wrapper and wrapped identity, innermost-wrapper scope anchor,
+markers trusted only on triplum's own wrapper; reviews and dispositions in the
+[identity spec](../specs/automatic-helper-identity.md#wrappers-and-application-scope-p12).
+533 tests pass. Remaining: P10 pilot with cosmic-ray plus the test-selection plugin on "jolly".

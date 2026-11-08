@@ -230,6 +230,8 @@ def cached[**P, O: Fingerprintable](
 
         vars(call)["_triplum_compute"] = function
         vars(call)["_triplum_process_id"] = process_id
+        vars(call)["_triplum_wrapper"] = call  # `functools.wraps` copies the markers, not this
+
         return call
 
     return decorate if compute is None else decorate(compute)

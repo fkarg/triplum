@@ -40,7 +40,24 @@ qualified-name boundary; external implementation changes are not covered. Pydant
 remain outside this bounded inference. Keep inputs and effective context stable during identity
 calculation and the entire computation; between-call changes to represented state are supported.
 
-### Wrappers and application scope (draft for owner review, P12; FP1 and FP2 settled)
+### Wrappers and application scope (P12)
+
+Status: **approved** (owner "P12 go", 2026-11-08) and implemented in `utils/fingerprint.py`
+(`_marker`, `_module`, `_anchor`, `_shallow`, `_register`) and `cache/steps.py`
+(`_triplum_wrapper`); tests in `tests/test_wrapper_identity.py`.
+
+Implementation review: cross-model diff review gpt-6.1-sol `8667b7206fd34b77a5e1fa4234fc4d93`
+(compared against the previous code): unique defects, all fixed with regression tests that fail
+before the fix (observed): roots without `__globals__["__name__"]` lost their package fallback;
+`lru_cache(cached(f))` stopped unwrapping; shallow projections did not register their code, so
+traced caching declined external wrappers with named parameters; added verification, the real
+SQLite test now shows a repeat hit before the edit miss. General reviewer (its peer gpt-6.1-sol
+`9d329ef3fa4f47aaa3ca393e85428e66`): unique defect, application code calling library functions
+decorated inside their library descended into library captures and failed (`warnings.deprecated`,
+`validate_call`) → shallow projection only for wrapper edges and library decorators on
+application code; unique defect (peer), name-only identity used `co_qualname`, merging renamed
+factory functions → public name; nit, a self-wrapping `lru_cache` recursed → cycle-safe
+unwrapping (declines); FP2 regression against the previous rule recorded as a limit; nits applied.
 
 Fixes two observed defects ([investigation](../plans/questions/testing.md#clean-run-investigation-subagent-2026-11-08-scratch-under-tmpfpinv-does-not-travel)):
 a third-party `functools.wraps` decorator on the root moves the application scope into the
@@ -68,7 +85,9 @@ skip third-party decorators when choosing the application scope.
   reachable through that attribute. Every function on a wrapper edge (wrapper or wrapped) is
   covered by its code:
   - in the application: full definition, as today;
-  - external: **shallow projection**: real qualified name (`co_qualname` of the code, not the
+  - external, when it is a wrapper edge or decorates application code (the innermost function of
+    its `__wrapped__` chain is application code, e.g. `@extlib.logged` on an application helper):
+    **shallow projection**: real qualified name (`co_qualname` of the code, not the
     copied `__qualname__`), code identity, `__defaults__`, `__kwdefaults__` and captured cell
     values; its globals count by name and are not followed (the owner-settled boundary: external
     helpers and global state stay outside identity).
@@ -79,6 +98,12 @@ skip third-party decorators when choosing the application scope.
   container cycles and raising `fingerprint` attributes must not surface as `RecursionError` or
   arbitrary exceptions. Missing `__globals__["__name__"]` and classes without a bare function
   member fall back to the root's existing behaviour.
+- A library function decorated inside its own library (`@warnings.deprecated`, `@validate_call`)
+  and reached from application code stays name-only, under its public
+  `__module__.__qualname__` (so renamed factory functions stay distinct).
+- Limits: under FP2 (A), an application wrapper around a library function loses its own helpers
+  (they count by name), which the previous scope rule happened to catch; an exec'd class with
+  `__name__ == "__main__"` under another `__main__` takes that host's file for its scope.
 - Limits: a namespace package split across distributions (`acme.app`, `acme.vendor`) is one
   application by its top-level package, as today.
 - Existing visited references end projection cycles; the anchor walk keeps its own visited set.

@@ -184,8 +184,15 @@ can call further helpers; recursive calls are supported. Direct global names and
 chains are resolved without executing properties or descriptors.
 
 Application helpers belong to the same top-level package, or the same source directory for a
-standalone script. Calls outside that boundary contribute the callable's qualified name, not
-its implementation. Supported referenced global settings contribute too, including mappings of
+standalone script, as the decorated computation. A function counts where it was defined, not
+where a decorator's `functools.wraps` says it was. Calls outside that boundary contribute the
+callable's qualified name, not its implementation.
+Decorators are the exception: a decorated function contributes both the wrapper and the function
+it wraps (`__wrapped__`). When either comes from a library, its own code, default arguments and
+captured values count, so `@scale(2)` and `@scale(3)` differ; the library functions it calls
+still count by name, as does a library function decorated inside its own library. A library decorator also does not move the application boundary: that is
+taken from the innermost decorated function. Captured values that cannot be fingerprinted, such
+as a decorator's populated memoization cache, raise `TypeError` rather than risk a stale result. Supported referenced global settings contribute too, including mappings of
 application helpers. Discarded append-only instrumentation on plain lists or sets, and counters
 updated only by `NAME += constant`, are excluded. Semantic mutation of global settings is
 unsupported: a global that the computation assigns and otherwise reads raises `TypeError`. Keep

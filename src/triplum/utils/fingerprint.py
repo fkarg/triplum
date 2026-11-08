@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import inspect
 import math
+import sys
 import textwrap
 import typing
 from abc import ABC
@@ -64,7 +65,12 @@ def _state(value: object, active: _Definitions, *, ordered: bool = False) -> obj
         raise UnsupportedFingerprint(
             "nested configured computations require fresh dependency identity"
         )
-    fingerprint = getattr(value, "fingerprint", None)
+    try:
+        fingerprint = getattr(value, "fingerprint", None)
+    except Exception as error:  # a raising descriptor: decline rather than crash
+        raise UnsupportedFingerprint(
+            f"cannot read fingerprint of {type(value).__qualname__}"
+        ) from error
     if callable(fingerprint):
         active.receivers.add(id(value))
         return {"fingerprint": fingerprint()}
@@ -76,13 +82,25 @@ def _state(value: object, active: _Definitions, *, ordered: bool = False) -> obj
         return {"float": value.hex()}
     if isinstance(value, Path):
         return {"path": str(value)}
-    if type(value) is list or type(value) is tuple:
-        return {type(value).__name__: [_state(item, active, ordered=ordered) for item in value]}
-    if type(value) is dict:
-        if not all(type(key) is str for key in value):
-            raise UnsupportedFingerprint("fingerprint configuration requires string mapping keys")
-        items = value.items() if ordered else sorted(value.items())
-        return {"dict": [[key, _state(item, active, ordered=ordered)] for key, item in items]}
+    if isinstance(value, (list, tuple, dict)) and type(value) in (
+        list,
+        tuple,
+        dict,
+    ):  # narrows for ty
+        if id(value) in active.containers:
+            raise UnsupportedFingerprint("cannot fingerprint a container that contains itself")
+        active.containers.add(id(value))
+        try:
+            if isinstance(value, dict):
+                if not all(type(key) is str for key in value):
+                    raise UnsupportedFingerprint(
+                        "fingerprint configuration requires string mapping keys"
+                    )
+                items = value.items() if ordered else sorted(value.items())
+                return {"dict": [[k, _state(item, active, ordered=ordered)] for k, item in items]}
+            return {type(value).__name__: [_state(item, active, ordered=ordered) for item in value]}
+        finally:
+            active.containers.discard(id(value))
     raise UnsupportedFingerprint(
         f"cannot fingerprint {type(value).__qualname__}; select plain settings or fingerprint()"
     )
@@ -155,33 +173,79 @@ _FRAMEWORK_FUNCTIONS = {
 }
 
 
-def _wrapped(value: object) -> object:
-    # Only documented wrapper metadata stored directly on the object; never descriptors.
-    if not isinstance(value, (FunctionType, functools._lru_cache_wrapper)):
-        return value
+def _marker(value: object, name: str) -> object:
+    """A triplum wrapper attribute, read only from triplum's own wrapper.
+
+    `functools.wraps` copies `__dict__`, so an ordinary decorator around a cached function
+    inherits the markers; trusting them would skip that decorator's code entirely.
+    """
     namespace = vars(value)
-    original = namespace.get("_triplum_compute")
-    if original is None and not isinstance(value, FunctionType):
-        original = namespace.get("__wrapped__")
-    return original if isinstance(original, FunctionType) else value
+    return namespace.get(name) if namespace.get("_triplum_wrapper") is value else None
+
+
+def _wrapped(value: object) -> object:
+    """Unwrap triplum's own wrapper and `lru_cache`, in any order (`lru_cache(cached(f))`).
+
+    Only documented wrapper metadata stored directly on the object; never descriptors.
+    """
+    seen: set[int] = set()
+    while isinstance(value, (FunctionType, functools._lru_cache_wrapper)) and id(value) not in seen:
+        seen.add(id(value))
+        if isinstance(value, FunctionType):
+            original = _marker(value, "_triplum_compute")
+        else:
+            original = vars(value).get("__wrapped__")
+        if not isinstance(original, (FunctionType, functools._lru_cache_wrapper)):
+            break
+        value = original
+    return value
+
+
+def _module(function: FunctionType) -> str:
+    """The module that defined `function`; `functools.wraps` copies `__module__`, not globals."""
+    name = function.__globals__.get("__name__")
+    if not isinstance(name, str):  # globals without a name: fall back to the attribute
+        name = getattr(function, "__module__", None)
+    return name if isinstance(name, str) else ""
+
+
+def _qualified(function: FunctionType) -> str:
+    return f"{_module(function)}.{function.__code__.co_qualname}"
+
+
+def _anchor(root: object) -> object:
+    """The innermost function of the root's `__wrapped__` chain, or the root itself."""
+    seen: set[int] = set()
+    while isinstance(root, FunctionType) and id(root) not in seen:
+        seen.add(id(root))
+        inner = _wrapped(vars(root).get("__wrapped__"))
+        if not isinstance(inner, FunctionType):
+            break
+        root = inner
+    return root
 
 
 class _Definitions:
     def __init__(self, root: object, *, strict_mutation: bool = False) -> None:
-        root = _wrapped(root)
+        root = _anchor(_wrapped(root))
         self.strict_mutation = strict_mutation
         self.receivers: set[int] = set()
         self.instrumentation_mutables: set[int] = set()
         self.semantic_mutables: set[int] = set()
-        self.package = getattr(root, "__module__", "").partition(".")[0]
-        function = (
-            root
-            if isinstance(root, FunctionType)
-            else next(
-                (member for member in vars(root).values() if isinstance(member, FunctionType)), None
+        self.containers: set[int] = set()
+        if isinstance(root, FunctionType):
+            module, filename = _module(root), root.__code__.co_filename
+        else:
+            module = getattr(root, "__module__", "")
+            filename = getattr(sys.modules.get(module), "__file__", None) or next(
+                (
+                    member.__code__.co_filename
+                    for member in vars(root).values()
+                    if isinstance(member, FunctionType)
+                ),
+                "",
             )
-        )
-        filename = function.__code__.co_filename if function else ""
+        self.package = module.partition(".")[0]
         self.directory = (
             Path(filename).parent if filename and not filename.startswith("<") else None
         )
@@ -189,7 +253,8 @@ class _Definitions:
         self.codes: dict[tuple[int, int, tuple[tuple[str, int], ...]], CodeType] = {}
 
     def contains(self, function: FunctionType) -> bool:
-        return function.__module__.partition(".")[0] == self.package or (
+        package = _module(function).partition(".")[0]
+        return (package != "" and package == self.package) or (
             self.directory is not None
             and not function.__code__.co_filename.startswith("<")
             and Path(function.__code__.co_filename).parent == self.directory
@@ -219,15 +284,25 @@ def _codes(code: CodeType):
             yield from _codes(value)
 
 
-def _reference(value: object, active: _Definitions) -> object:
+def _reference(value: object, active: _Definitions, *, wrapper_edge: bool = False) -> object:
+    """Identity of a dependency. `wrapper_edge`: reached as a wrapper's `__wrapped__` target."""
     if active.strict_mutation and isinstance(value, functools._lru_cache_wrapper):
         raise UnsupportedFingerprint("external memoization has no runtime dependency manifest")
-    if isinstance(value, FunctionType) and vars(value).get("_triplum_process_id") is not None:
-        return {"cached_process": vars(value)["_triplum_process_id"]}
+    process = _marker(value, "_triplum_process_id") if isinstance(value, FunctionType) else None
+    if process is not None:
+        return {"cached_process": process}
     value = _wrapped(value)
     if isinstance(value, FunctionType):
         if active.contains(value):
             return _definition(value, active)
+        # A library decorator applied to application code counts as wrapper and wrapped; a
+        # library function decorated inside its own library stays outside identity.
+        if wrapper_edge or (
+            "__wrapped__" in vars(value)
+            and isinstance(inner := _anchor(value), FunctionType)
+            and active.contains(inner)
+        ):
+            return _shallow(value, active)
         return {"external": f"{value.__module__}.{value.__qualname__}"}
     if isinstance(value, type):
         name = {"external": f"{value.__module__}.{value.__qualname__}"}
@@ -254,6 +329,53 @@ def _reference(value: object, active: _Definitions) -> object:
     if isinstance(value, typing.TypeVar | typing.ParamSpec | typing.TypeVarTuple):
         return _type_parameter(value, active)
     return _state(value, active, ordered=True)
+
+
+def _register(function: FunctionType, captures: dict[str, object], active: _Definitions) -> None:
+    """Record the function's code bindings as covered, so traced discovery accepts them."""
+    active.codes.update(
+        (
+            (
+                id(code),
+                id(function.__globals__),
+                tuple(
+                    (name, id(captures[name]) if name in captures else -1)
+                    for name in code.co_freevars
+                ),
+            ),
+            code,
+        )
+        for code in _codes(function.__code__)
+    )
+
+
+def _shallow(function: FunctionType, active: _Definitions) -> object:
+    """An external function on a wrapper edge: its own code, defaults and captured values.
+
+    Its globals (library helpers, module state) count by name only, as for any external code.
+    """
+    if id(function) in active.visited:
+        return {"reference": active.visited[id(function)]}
+    active.visited[id(function)] = len(active.visited)
+    result: dict[str, object] = {"external_function": _qualified(function)}
+    if "__wrapped__" in vars(function):  # first, so a captured copy becomes a reference
+        result["wrapped"] = _reference(vars(function)["__wrapped__"], active, wrapper_edge=True)
+    captures = _captures(function)
+    _register(function, captures, active)
+    result |= {
+        "code": _code_identity(function.__code__),
+        "defaults": _state(function.__defaults__, active, ordered=True),
+        "kwdefaults": _state(function.__kwdefaults__, active, ordered=True),
+        "captures": {
+            name: (
+                {"module": item.__name__}
+                if isinstance(item, ModuleType)
+                else _state(item, active, ordered=True)
+            )
+            for name, item in captures.items()
+        },
+    }
+    return result
 
 
 def _type_parameter(
@@ -464,28 +586,26 @@ def _globals(function: FunctionType, active: _Definitions) -> object:
 
 def _definition(value: object, active: _Definitions) -> object:
     value = _wrapped(value)
+    if (
+        isinstance(value, FunctionType)
+        and "__wrapped__" in vars(value)
+        and not active.contains(value)
+    ):  # an external decorator's wrapper, also as the root or a class member
+        return _shallow(value, active)
     if id(value) in active.visited:
         return {"reference": active.visited[id(value)]}
     active.visited[id(value)] = len(active.visited)
     if isinstance(value, FunctionType):
         captures = _captures(value)
-        active.codes.update(
-            (
-                (
-                    id(code),
-                    id(value.__globals__),
-                    tuple(
-                        (name, id(captures[name]) if name in captures else -1)
-                        for name in code.co_freevars
-                    ),
-                ),
-                code,
-            )
-            for code in _codes(value.__code__)
-        )
+        _register(value, captures, active)
         captures.pop("__class__", None)  # super() is covered by the class ancestry.
         captures.pop("__classdict__", None)  # Python 3.14 annotation namespace.
-        return {
+        wrapped = (
+            {"wrapped": _reference(vars(value)["__wrapped__"], active, wrapper_edge=True)}
+            if "__wrapped__" in vars(value)
+            else {}
+        )
+        return wrapped | {
             "function": f"{value.__module__}.{value.__qualname__}",
             "code": _code_identity(value.__code__),
             "globals": {} if value.__name__ == "__annotate__" else _globals(value, active),
