@@ -123,6 +123,8 @@ def _constant(value: object) -> object:
         return {"tuple": [_constant(item) for item in value]}
     if type(value) is frozenset:
         return {"frozenset": sorted((_constant(item) for item in value), key=canonical_json)}
+    if type(value) is slice:  # Python 3.14 compiles literal slices such as `x[1:]` to constants
+        return {"slice": [_constant(value.start), _constant(value.stop), _constant(value.step)]}
     raise UnsupportedFingerprint(f"unsupported Python constant: {type(value).__qualname__}")
 
 

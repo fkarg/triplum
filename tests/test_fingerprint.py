@@ -129,3 +129,58 @@ def test_source_hash_without_source_is_refused():
     exec(source, {"FingerprintedComputationMixin": FingerprintedComputationMixin}, namespace)  # noqa: S102 - a class with no file
     with pytest.raises(TypeError, match="source is unavailable"):
         source_hash(namespace["Step"])
+
+
+def _slicer(body: str):
+    """A function `cut(text)` returning `body`, compiled under one fixed name and file."""
+    namespace: dict[str, object] = {"__name__": "slice_application"}
+    code = compile(f"def cut(text):\n    return {body}\n", "/application/slices.py", "exec")
+    exec(code, namespace)  # noqa: S102 - controlled fixture
+    return namespace["cut"]
+
+
+def test_literal_slices_fingerprint_by_every_component():
+    # Regression: Python 3.14 compiles literal slices to `slice` constants, which fingerprinting
+    # rejected ("unsupported Python constant: slice"), so any function using `x[1:]` failed.
+    from triplum.utils.fingerprint import definition_hash
+
+    bodies = [
+        "text[1:]",
+        "text[2:]",
+        "text[:1]",
+        "text[1:3]",
+        "text[1:3:2]",
+        "text[-1:]",
+        "text[::-1]",
+    ]
+    hashes = [definition_hash(_slicer(body)) for body in bodies]
+    assert len(set(hashes)) == len(bodies)
+    assert [definition_hash(_slicer(body)) for body in bodies] == hashes
+
+
+@pytest.mark.parametrize("mode", ["static", "traced"])
+def test_functions_with_literal_slices_are_cached(tmp_path, monkeypatch, mode):
+    import sys
+    from types import ModuleType
+
+    from triplum.cache import Cache, SQLiteBackend
+
+    calls: list[str] = []
+    module = ModuleType("slice_cached_application")
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    with Cache(SQLiteBackend(tmp_path / "slices.sqlite")) as cache:
+        vars(module).update(cache=cache, calls=calls)
+        source = f"""from triplum.cache import cached
+from triplum.datatype import FingerprintedDataModel
+class Text(FingerprintedDataModel):
+    value: str
+@cached(cache=cache, dependency_mode="{mode}")
+def tail(text: Text) -> Text:
+    calls.append(text.value)
+    return Text(value=text.value[1:])
+"""
+        code = compile(source, "/application/slice_cached.py", "exec")
+        exec(code, vars(module))  # noqa: S102 - controlled fixture
+        hello = module.Text(value="hello")
+        assert [module.tail(hello).value, module.tail(hello).value] == ["ello", "ello"]
+    assert calls == ["hello"]

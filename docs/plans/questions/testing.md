@@ -176,3 +176,20 @@ call `__wrapped__`, non-function and cyclic `__wrapped__`, mixed stacks). Dispos
   stability, omitted and negative bounds, each component, static and traced caching.
 - Agreed: the slice fix is independent; the tracing frame guard stays out without a reproducer;
   fixing omitted dependencies may legitimately invalidate existing caches.
+
+### Owner answers (2026-11-08, after the investigation)
+
+- P11 (slice constants): **go**.
+- FP1: **at least (b)**, captured values of external wrappers enter identity; **(c)** (hash the
+  external wrapper's code too) if not too complicated. Owner asks what "external" means here:
+  external to Python, to triplum, or to the application. Session to answer from the spec.
+- FP2: direction agreed (scope from the outermost function whose source is outside installed
+  packages and the standard library); skipping third-party decorators is right. Needs its own
+  declaration and peer round.
+- TQ1 (answered): **cosmic-ray with the per-mutant test-selection plugin**. TQ3 (cosmic-ray
+  half) applies: local script on an isolated copy.
+- CPU-heavy runs (P10 pilot, coverage map pass): later on the machine "jolly", not yet.
+
+P11 done: `_constant` projects `slice` constants by start, stop and step; regression tests
+(every component distinguishes, stable repeats, static and traced caching) fail before the fix
+and pass after (observed); 512 tests pass.
