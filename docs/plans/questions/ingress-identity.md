@@ -90,6 +90,11 @@ deriving ids, since changing it later re-keys every source.
 Chunk validation rejects ordinals above 65,535. Decide whether larger results are an error, split,
 or need another layout.
 
+### Q35. Adaptable records (deferred)
+
+Owner, accepting P13: should users be able to adapt Source and Chunk (extra fields, subclasses)
+as needed? Forbid for now; revisit once the rest is more mature.
+
 ## Answered
 
 ### Q34. Unknown fields on Source and Chunk
@@ -106,7 +111,7 @@ behaviour.
   typo that names another valid field or an omitted optional field.
 
 Owner (2026-11-08): **reject** unknown fields; RetrievalHit included. Agrees with Claude and peer.
-Implementation: P13.
+Implementation: P13 (accepted). Follow-up: Q35.
 
 ### Q33. Collection storage operations
 
@@ -132,7 +137,8 @@ Owner (2026-11-08): **queries select / filter on collection, optimized individua
 collection only; hits count and are returned only from their own collection.** Derived: source
 listing requires a collection, BM25 indexes and computes statistics per collection, and there is
 no all-collections search for now. Collection record storage operations (create, read) remain
-open under Q13. Follow-up: [RT10](retrieval.md). Implementation: P14.
+open under Q13. Follow-up: [RT10](retrieval.md). Implementation: P14 (accepted). Owner, accepting P14: a
+sources query may take several collection ids, maybe later.
 
 ### Q22. What a Source id identifies
 

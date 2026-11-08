@@ -212,6 +212,22 @@ integer chunk ids that match no document id.
 
 ## Rounds
 
+### Round 12 owner answers (checkpoint, 2026-11-08)
+
+- RT9 (answered): **keep as is**: the protocol stays at its rules (at most `k`, best first,
+  visible only, filter before top `k`); tie order, determinism, `k < 1`, snapshot remain
+  per implementation. Agrees with Claude; peer's `k < 1` promotion and benchmark requirement not
+  adopted.
+- P13 (accepted, "go ahead"): forbid unknown fields for now. Owner wonders whether users should
+  be able to adapt records; follow-up once everything is more mature (Q35, deferred).
+- P14 (accepted, "go ahead"). Owner: a sources query may take several collection ids, maybe
+  later (recorded with Q33; not in P14). BM25's constructor-bound collection is provisional
+  until RT10 settles.
+- RT10 (not answered): explore further before storage: expand options and tradeoffs, starting
+  with detailed walkthroughs. Investigation launched.
+- Direction: storage interfaces as the next main topic. Docs gap noted: concepts such as Viewer
+  have no concept page, only API reference.
+
 ### Round 11 owner answers (persona wave, checkpoint, 2026-11-08)
 
 Questions from the [persona wave](../personae/runs/2026-11-08-persona-wave.md); session and peer
