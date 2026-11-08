@@ -119,6 +119,11 @@ def test_budget_charges_key_payload_and_bookkeeping_exactly(
         assert cache.skipped_writes == (0 if accepted else 1)
 
 
+def test_unknown_admission_policy_is_rejected() -> None:
+    with pytest.raises(ValueError, match="on_full"):
+        CachePolicy(on_full="wait")  # ty: ignore[invalid-argument-type] - the point of the test
+
+
 def test_smallest_budget_is_valid_and_admits_nothing(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="positive"):
         Cache(SQLiteBackend(tmp_path / "zero.sqlite"), pending_bytes=0)

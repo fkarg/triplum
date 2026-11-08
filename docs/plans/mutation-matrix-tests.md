@@ -59,410 +59,89 @@
 | `src/triplum/utils/cache.py` | 2 | 0 | 0 | 2 |
 | `src/triplum/cache/identity.py` | 3 | 0 | 0 | 1 |
 
-## Weakest checking (covers ≥ 10 dominators; share killed by assertion)
+## Run ≥ 20 killed mutants, kill none by assertion (54; read them)
 
-| Test | Covered | Asserted | Share | Unique |
-| --- | ---: | ---: | ---: | ---: |
-| `tests/test_cache_admin.py::test_existing_writer_recreates_cleared_table` | 13 | 0 | 0.00 | 0 |
-| `tests/test_cache_admin.py::test_unknown_computation_is_not_an_error_or_creation` | 13 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_direct_fingerprints_normalize_hex_in_named_and_variadic_values` | 20 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_miss_preserves_caller_spelling_for_wrapped_function[static]` | 42 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_miss_preserves_caller_spelling_for_wrapped_function[traced]` | 39 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_named_defaults_and_mutation_reopen[False]` | 20 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_named_defaults_and_mutation_reopen[True]` | 20 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_primitive_arguments_swaps_types_and_containers` | 20 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_public_signature_types_and_keyword_only_defaults` | 41 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_static_binding_refreshes_defaults_without_changing_computation_identity` | 19 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_type_checking_only_parameter_annotation_does_not_block_binding[static]` | 43 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_type_checking_only_parameter_annotation_does_not_block_binding[traced]` | 39 | 0 | 0.00 | 0 |
-| `tests/test_cache_arguments.py::test_zeroargs_and_variadic_order` | 20 | 0 | 0.00 | 1 |
-| `tests/test_cache_cli.py::test_help_lists_commands` | 15 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_installed_command` | 18 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_invalid_computation_is_not_fuzzily_matched` | 19 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_cache_stats_do_not_create_files[command0]` | 18 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_cache_stats_do_not_create_files[command1]` | 18 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args0]` | 15 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args1]` | 16 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args2]` | 15 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args3]` | 17 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_stats_text_and_metadata_only_json` | 11 | 0 | 0.00 | 0 |
-| `tests/test_cache_cli.py::test_storage_errors_are_diagnostics` | 19 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_cached_step_refreshes_helper_globals_with_unchanged_configuration` | 43 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_changed_unsupported_global_errors_before_reusing_entry[missing]` | 40 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_changed_unsupported_global_errors_before_reusing_entry[unsupported]` | 42 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_custom_step_fingerprint_keeps_full_control_over_changed_context` | 17 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_description_refreshes_same_decorator_and_reuses_a_after_reopen[False]` | 43 | 0 | 0.00 | 0 |
-| `tests/test_cache_context.py::test_fixed_process_identity_keeps_full_control_over_changed_context` | 20 | 0 | 0.00 | 0 |
+| Test | Runs | Crash kills | Unique |
+| --- | ---: | ---: | ---: |
+| `tests/test_traced_cache.py::test_shared_code_with_distinct_closures_cannot_hide_receiver_alias[False]` | 677 | 206 | 0 |
+| `tests/test_retrieval.py::test_the_index_is_a_snapshot[sqlite]` | 581 | 158 | 0 |
+| `tests/test_traced_cache.py::test_unresolvable_runtime_local_method_is_not_cached` | 561 | 147 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-empty]` | 550 | 83 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-punctuation]` | 550 | 83 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-unknown]` | 550 | 83 | 0 |
+| `tests/test_retrieval.py::test_an_empty_or_tokenless_corpus_returns_nothing[sqlite]` | 548 | 85 | 0 |
+| `tests/test_retrieval.py::test_the_index_is_a_snapshot[memory]` | 544 | 135 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-empty]` | 513 | 70 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-punctuation]` | 513 | 70 | 0 |
+| `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-unknown]` | 513 | 70 | 0 |
+| `tests/test_retrieval.py::test_an_empty_or_tokenless_corpus_returns_nothing[memory]` | 511 | 72 | 0 |
+| `tests/test_store.py::test_a_failing_chunk_iterable_keeps_the_previous_chunks[memory]` | 506 | 75 | 0 |
+| `tests/test_steps.py::test_utf8_file_fingerprint_covers_the_collection` | 494 | 211 | 0 |
+| `tests/test_store.py::test_chunks_are_returned_in_ordinal_order[memory]` | 486 | 70 | 0 |
+| `tests/test_recall.py::test_character_recall_needs_spans_in_every_set` | 456 | 12 | 0 |
+| `tests/test_wrapper_identity.py::test_lru_cache_around_a_triplum_cached_function_unwraps_both` | 428 | 120 | 0 |
+| `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[from dataclasses import dataclass\n@dataclass\nclass Helper:\n    text: str\n]` | 426 | 130 | 0 |
+| `tests/test_wrapper_identity.py::test_library_functions_decorated_inside_their_library_stay_name_only` | 422 | 133 | 1 |
+| `tests/test_computation_identity.py::test_class_discovery_does_not_execute_custom_hash_or_fingerprint[def __hash__(cls): raise AssertionError('class hash executed')]` | 396 | 94 | 0 |
+| `tests/test_records.py::test_chunk_id_is_derived_and_reproducible` | 392 | 7 | 0 |
+| `tests/test_records.py::test_records_are_frozen` | 392 | 6 | 1 |
+| `tests/test_steps.py::test_original_text` | 392 | 6 | 0 |
+| `tests/test_records.py::test_chunk_serialization_and_default_codec` | 386 | 23 | 0 |
+| `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[class Helper(Exception): pass\n]` | 383 | 95 | 0 |
+| `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[from functools import cached_property\nclass Helper:\n    @cached_property\n    def text(self): return 'hello'\n]` | 380 | 100 | 0 |
+| `tests/test_records.py::test_unknown_fields_are_rejected[RetrievalHit-fields2-scroe]` | 367 | 0 | 0 |
+| `tests/test_computation_identity.py::test_recursive_function_capture_has_finite_identity` | 365 | 80 | 0 |
+| `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-closure]` | 363 | 111 | 0 |
+| `tests/test_ids.py::test_largest_ordinal_is_accepted` | 359 | 7 | 1 |
+| `tests/test_cache_context.py::test_custom_step_fingerprint_keeps_full_control_over_changed_context` | 279 | 147 | 0 |
+| `tests/test_cached_steps.py::test_different_computation_kinds_do_not_share` | 266 | 97 | 0 |
+| `tests/test_cache_defaults.py::test_specialized_global_decorator_needs_only_overrides` | 248 | 92 | 0 |
+| `tests/test_computation_identity.py::test_function_local_application_imports_are_rejected[from json import dumps as fold-False]` | 208 | 108 | 1 |
+| `tests/test_wrapper_identity.py::test_wrapped_cycles_terminate[pair]` | 203 | 56 | 0 |
+| `tests/test_wrapper_identity.py::test_wrapped_cycles_terminate[self]` | 203 | 56 | 0 |
+| `tests/test_store.py::test_in_memory_sql_store_is_shared_across_threads` | 183 | 41 | 1 |
+| `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-defaults]` | 178 | 68 | 0 |
+| `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[0.0--0.0]` | 175 | 65 | 0 |
+| `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[1-1.0]` | 175 | 66 | 0 |
+| `tests/test_benchmark_inputs.py::test_fingerprints_follow_content_and_collection` | 173 | 25 | 0 |
+| `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[True-1]` | 168 | 59 | 0 |
+| `tests/test_records.py::test_source_serialization_and_default_codec` | 150 | 23 | 0 |
+| `tests/test_fingerprint.py::test_source_fingerprint_follows_the_id_inputs_and_external_id` | 131 | 3 | 0 |
+| `tests/test_steps.py::test_utf8_file_keeps_newlines` | 131 | 3 | 0 |
+| `tests/test_data_fingerprint.py::test_model_kind_and_field_projection_are_independent_of_schema_metadata` | 101 | 48 | 0 |
+| `tests/test_computation_cache.py::test_close_reports_both_failures_and_allows_cleanup_retry` | 95 | 31 | 1 |
+| `tests/test_data_fingerprint.py::test_bookkeeping_stays_serialized` | 82 | 64 | 0 |
+| `tests/test_dataset_files.py::test_fetch_downloads_once_then_keeps_the_verified_file` | 42 | 33 | 1 |
+| `tests/test_dataset_files.py::test_concurrent_fetches_do_not_share_a_partial_file` | 33 | 29 | 0 |
+| `tests/test_cache_cli.py::test_main_reports_usage_errors[args1]` | 23 | 6 | 0 |
+| `tests/test_store.py::test_missing_source_is_a_key_error[sqlite]` | 23 | 2 | 0 |
+| `tests/test_cached_steps.py::test_default_pydantic_roundtrip_and_identity_field_selection` | 21 | 16 | 0 |
+| `tests/test_recall.py::test_resolve_evidence_maps_keys_and_keeps_kinds` | 20 | 4 | 0 |
 
 ## Load-bearing (most unique dominators)
 
 | Test | Unique | Covered |
 | --- | ---: | ---: |
-| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[at-limit]` | 1 | 9 |
-| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[no-input]` | 1 | 10 |
-| `tests/test_dataset_cli.py::test_download_verify_list_remove_round_trip` | 1 | 14 |
-| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[answer-no]` | 1 | 11 |
-| `tests/test_dataset_cli.py::test_verify_fails_on_a_corrupt_file_and_download_refuses_to_replace_it` | 1 | 11 |
-| `tests/test_dataset_cli.py::test_verify_reports_every_problem_and_repairs_nothing` | 1 | 5 |
-| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[answer-yes]` | 1 | 11 |
-| `tests/test_cache_metadata.py::test_cli_name_selection_details_and_ambiguity` | 1 | 27 |
-| `tests/test_dataset_cli.py::test_licence_json_and_tls_failures_explain_themselves` | 1 | 6 |
-| `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args4-take no dataset name]` | 1 | 4 |
-| `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args3-apply only to cache commands]` | 1 | 4 |
-| `tests/test_recall.py::test_bm25_recall_example_on_the_hotpotqa_fixture` | 1 | 50 |
-| `tests/test_store.py::test_an_external_id_is_unique_within_its_collection[memory]` | 1 | 7 |
-| `tests/test_store.py::test_an_unreadable_source_looks_missing[sqlite]` | 1 | 21 |
-| `tests/test_store.py::test_an_external_id_is_unique_within_its_collection[sqlite]` | 1 | 8 |
-| `tests/test_store.py::test_in_memory_sql_store_is_shared_across_threads` | 1 | 7 |
-| `tests/test_collection.py::test_collection_sql_round_trip` | 1 | 0 |
-| `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[adjacent]` | 1 | 7 |
-| `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[overlapping]` | 1 | 7 |
-| `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[best-set-by-characters]` | 1 | 5 |
-
-## Tests killing no dominator by assertion (342)
-
-- `tests/test_benchmark_inputs.py::test_all_fixture_gold_decodes_to_spans_inside_documents` (covers 9)
-- `tests/test_benchmark_inputs.py::test_empty_evidence_set_is_rejected` (covers 0)
-- `tests/test_benchmark_inputs.py::test_evidence_union_keeps_valid_spans_and_documents` (covers 2)
-- `tests/test_benchmark_inputs.py::test_fingerprints_follow_content_and_collection` (covers 9)
-- `tests/test_benchmark_inputs.py::test_gold_names_the_stored_ordinal_not_the_list_position` (covers 7)
-- `tests/test_benchmark_inputs.py::test_hotpotqa_question_maps_to_one_set_of_two_paragraphs` (covers 9)
-- `tests/test_benchmark_inputs.py::test_inconsistent_fixtures_raise[documents0-questions0-unresolved gold]` (covers 2)
-- `tests/test_benchmark_inputs.py::test_inconsistent_fixtures_raise[documents2-questions2-ends past document]` (covers 3)
-- `tests/test_benchmark_inputs.py::test_inconsistent_fixtures_raise[documents3-questions3-duplicate segment id]` (covers 5)
-- `tests/test_benchmark_inputs.py::test_invalid_span_is_rejected_not_read_as_document_evidence[span2]` (covers 0)
-- `tests/test_cache.py::test_content_key_changes_with_kind_and_payload` (covers 2)
-- `tests/test_cache_admin.py::test_clear_preserves_unrecognized_table` (covers 1)
-- `tests/test_cache_admin.py::test_existing_writer_recreates_cleared_table` (covers 13)
-- `tests/test_cache_admin.py::test_unknown_computation_is_not_an_error_or_creation` (covers 13)
-- `tests/test_cache_arguments.py::test_direct_fingerprints_normalize_hex_in_named_and_variadic_values` (covers 20)
-- `tests/test_cache_arguments.py::test_miss_preserves_caller_spelling_for_wrapped_function[static]` (covers 42)
-- `tests/test_cache_arguments.py::test_miss_preserves_caller_spelling_for_wrapped_function[traced]` (covers 39)
-- `tests/test_cache_arguments.py::test_named_defaults_and_mutation_reopen[False]` (covers 20)
-- `tests/test_cache_arguments.py::test_named_defaults_and_mutation_reopen[True]` (covers 20)
-- `tests/test_cache_arguments.py::test_primitive_arguments_swaps_types_and_containers` (covers 20)
-- `tests/test_cache_arguments.py::test_public_signature_types_and_keyword_only_defaults` (covers 41)
-- `tests/test_cache_arguments.py::test_static_binding_refreshes_defaults_without_changing_computation_identity` (covers 19)
-- `tests/test_cache_arguments.py::test_type_checking_only_parameter_annotation_does_not_block_binding[static]` (covers 43)
-- `tests/test_cache_arguments.py::test_type_checking_only_parameter_annotation_does_not_block_binding[traced]` (covers 39)
-- `tests/test_cache_arguments.py::test_zeroargs_and_variadic_order` (covers 20)
-- `tests/test_cache_cli.py::test_help_lists_commands` (covers 15)
-- `tests/test_cache_cli.py::test_inexact_destructive_command_reports_its_resolution` (covers 4)
-- `tests/test_cache_cli.py::test_installed_command` (covers 18)
-- `tests/test_cache_cli.py::test_invalid_computation_is_not_fuzzily_matched` (covers 19)
-- `tests/test_cache_cli.py::test_main_reports_usage_errors[args1]` (covers 1)
-- `tests/test_cache_cli.py::test_missing_cache_stats_do_not_create_files[command0]` (covers 18)
-- `tests/test_cache_cli.py::test_missing_cache_stats_do_not_create_files[command1]` (covers 18)
-- `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args0]` (covers 15)
-- `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args1]` (covers 16)
-- `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args2]` (covers 15)
-- `tests/test_cache_cli.py::test_missing_unknown_or_ambiguous_commands_offer_choices[args3]` (covers 17)
-- `tests/test_cache_cli.py::test_name_on_empty_cache_reports_no_recorded_names` (covers 3)
-- `tests/test_cache_cli.py::test_stats_text_and_metadata_only_json` (covers 11)
-- `tests/test_cache_cli.py::test_storage_errors_are_diagnostics` (covers 19)
-- `tests/test_cache_context.py::test_cached_step_refreshes_helper_globals_with_unchanged_configuration` (covers 43)
-- `tests/test_cache_context.py::test_changed_unsupported_global_errors_before_reusing_entry[missing]` (covers 40)
-- `tests/test_cache_context.py::test_changed_unsupported_global_errors_before_reusing_entry[unsupported]` (covers 42)
-- `tests/test_cache_context.py::test_custom_step_fingerprint_keeps_full_control_over_changed_context` (covers 17)
-- `tests/test_cache_context.py::test_description_refreshes_same_decorator_and_reuses_a_after_reopen[False]` (covers 43)
-- `tests/test_cache_context.py::test_fixed_process_identity_keeps_full_control_over_changed_context` (covers 20)
-- `tests/test_cache_context.py::test_fresh_identity_excludes_counter_and_log_growth_and_reuses_immutable_code[    a = 1\n    b = a\n]` (covers 25)
-- `tests/test_cache_context.py::test_fresh_identity_excludes_counter_and_log_growth_and_reuses_immutable_code[    a = 1\n]` (covers 25)
-- `tests/test_cache_context.py::test_fresh_identity_excludes_counter_and_log_growth_and_reuses_immutable_code[]` (covers 25)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-closure]` (covers 24)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-defaults]` (covers 17)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-helper-binding]` (covers 23)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-kwdefaults]` (covers 17)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-module-attribute]` (covers 25)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[definition-module-helper-binding]` (covers 24)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-closure]` (covers 26)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-defaults]` (covers 25)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-helper-binding]` (covers 25)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-kwdefaults]` (covers 23)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-module-attribute]` (covers 25)
-- `tests/test_cache_context.py::test_loaded_definition_refreshes_without_replacing_computation[mixin-module-helper-binding]` (covers 26)
-- `tests/test_cache_context.py::test_static_step_identity_preparation_is_hidden_from_enclosing_trace` (covers 41)
-- `tests/test_cache_defaults.py::test_editing_source_before_first_call_does_not_poison_new_implementation` (covers 40)
-- `tests/test_cache_defaults.py::test_mixin_defaults_infer_compute_output` (covers 17)
-- `tests/test_cache_defaults.py::test_specialized_global_decorator_needs_only_overrides` (covers 17)
-- `tests/test_cache_metadata.py::test_cached_step_records_its_compute_method` (covers 44)
-- `tests/test_cache_metadata.py::test_legacy_cache_without_metadata_remains_readable` (covers 4)
-- `tests/test_cache_metadata.py::test_metadata_does_not_change_keys_and_first_location_is_retained` (covers 13)
-- `tests/test_cache_metadata.py::test_names_locations_and_clear_across_all_fingerprints` (covers 23)
-- `tests/test_cached_pipeline_example.py::test_pipeline_demo_reuses_values_across_upstream_processes_and_reopen` (covers 55)
-- `tests/test_cached_steps.py::test_a_list_output_annotation_is_refused_with_guidance` (covers 27)
-- `tests/test_cached_steps.py::test_custom_codec_for_fingerprintable_non_pydantic_value` (covers 16)
-- `tests/test_cached_steps.py::test_default_pydantic_roundtrip_and_identity_field_selection` (covers 4)
-- `tests/test_cached_steps.py::test_different_computation_kinds_do_not_share` (covers 17)
-- `tests/test_cached_steps.py::test_disabled_cache_bypasses_fingerprint_and_serialization` (covers 1)
-- `tests/test_cached_steps.py::test_invalid_process_id_rejected_at_binding[ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ]` (covers 7)
-- `tests/test_cached_steps.py::test_invalid_process_id_rejected_at_binding[label]` (covers 7)
-- `tests/test_cached_steps.py::test_invalid_process_id_rejected_at_binding[zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz]` (covers 7)
-- `tests/test_cached_steps.py::test_pydantic_codec_rejects_lossy_serialization_before_storage` (covers 2)
-- `tests/test_cached_steps.py::test_shared_cache_reuses_equivalent_instances_and_a_b_a` (covers 15)
-- `tests/test_cached_steps.py::test_snapshot_isolated_from_mutating_result` (covers 15)
-- `tests/test_collection.py::test_collection_sql_round_trip` (covers 0)
-- `tests/test_computation_cache.py::test_close_drains_and_rejects_further_use` (covers 7)
-- `tests/test_computation_cache.py::test_close_reports_both_failures_and_allows_cleanup_retry` (covers 8)
-- `tests/test_computation_cache.py::test_close_waits_for_active_backend_read` (covers 7)
-- `tests/test_computation_cache.py::test_committed_payload_is_released_while_writer_is_idle` (covers 7)
-- `tests/test_computation_cache.py::test_old_commit_does_not_hide_new_pending_value` (covers 7)
-- `tests/test_computation_cache.py::test_oversize_never_waits_for_impossible_admission` (covers 8)
-- `tests/test_computation_cache.py::test_two_cache_owners_can_write_same_database` (covers 9)
-- `tests/test_computation_identity.py::test_annotation_only_change_changes_definition_identity` (covers 20)
-- `tests/test_computation_identity.py::test_automatic_cached_step_reuses_config_without_runtime_resources` (covers 40)
-- `tests/test_computation_identity.py::test_automatic_helper_definition_changes_identity_without_revision_counter` (covers 25)
-- `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[0.0--0.0]` (covers 17)
-- `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[1-1.0]` (covers 17)
-- `tests/test_computation_identity.py::test_cached_code_projection_preserves_typed_constants[True-1]` (covers 17)
-- `tests/test_computation_identity.py::test_cached_helpers_compose_without_hashing_cache_resources` (covers 39)
-- `tests/test_computation_identity.py::test_captured_module_helpers_contribute_their_definition` (covers 24)
-- `tests/test_computation_identity.py::test_captured_recursive_helper_has_stable_identity` (covers 24)
-- `tests/test_computation_identity.py::test_class_constants_and_returned_literals_are_semantic[    PROMPT = {value!r}\n    def __call__(self):\n        return self.PROMPT\n]` (covers 21)
-- `tests/test_computation_identity.py::test_class_constants_and_returned_literals_are_semantic[    def __call__(self):\n        return {value!r}\n]` (covers 20)
-- `tests/test_computation_identity.py::test_class_discovery_does_not_execute_custom_hash_or_fingerprint[def __hash__(cls): raise AssertionError('class hash executed')]` (covers 26)
-- `tests/test_computation_identity.py::test_class_fallback_does_not_hide_a_shared_helper` (covers 27)
-- `tests/test_computation_identity.py::test_concrete_protocol_implementation_code_is_not_excluded` (covers 22)
-- `tests/test_computation_identity.py::test_config_rejects_values_without_a_stable_projection[unsupported0]` (covers 18)
-- `tests/test_computation_identity.py::test_config_rejects_values_without_a_stable_projection[unsupported2]` (covers 18)
-- `tests/test_computation_identity.py::test_config_requires_explicit_projection_and_honors_nested_value_identity` (covers 20)
-- `tests/test_computation_identity.py::test_decorated_function_reuses_only_matching_helper_definition` (covers 40)
-- `tests/test_computation_identity.py::test_decorator_resolves_helpers_declared_after_it` (covers 40)
-- `tests/test_computation_identity.py::test_definition_closure_configuration_is_not_lost` (covers 26)
-- `tests/test_computation_identity.py::test_dependency_inspection_does_not_read_object_dict_property` (covers 24)
-- `tests/test_computation_identity.py::test_dependency_values_follow_their_semantics_and_reject_opaque_resources` (covers 20)
-- `tests/test_computation_identity.py::test_editing_file_before_first_object_fingerprint_keeps_loaded_identity` (covers 18)
-- `tests/test_computation_identity.py::test_exception_table_changes_loaded_behavior_and_identity` (covers 26)
-- `tests/test_computation_identity.py::test_explicit_output_type_is_part_of_default_cached_step_identity` (covers 28)
-- `tests/test_computation_identity.py::test_external_function_body_is_a_boundary` (covers 24)
-- `tests/test_computation_identity.py::test_function_local_application_imports_are_rejected[from .local_helpers import fold-True]` (covers 11)
-- `tests/test_computation_identity.py::test_function_local_application_imports_are_rejected[from json import dumps as fold-False]` (covers 18)
-- `tests/test_computation_identity.py::test_generic_protocol_type_parameters_enter_definition_identity` (covers 25)
-- `tests/test_computation_identity.py::test_global_helpers_recurse_through_module_attributes_and_cycles` (covers 24)
-- `tests/test_computation_identity.py::test_module_defaults_and_dynamic_module_passing_are_rejected` (covers 27)
-- `tests/test_computation_identity.py::test_module_dependency_lookup_never_calls_dynamic_getattr` (covers 19)
-- `tests/test_computation_identity.py::test_nested_code_helpers_and_read_only_global_settings_are_tracked` (covers 25)
-- `tests/test_computation_identity.py::test_opaque_class_configuration_can_be_projected_explicitly` (covers 27)
-- `tests/test_computation_identity.py::test_parent_cache_includes_child_explicit_process_identity` (covers 38)
-- `tests/test_computation_identity.py::test_postponed_annotation_change_changes_definition_identity` (covers 20)
-- `tests/test_computation_identity.py::test_python_wrapper_behavior_is_not_discarded` (covers 26)
-- `tests/test_computation_identity.py::test_recursive_function_capture_has_finite_identity` (covers 23)
-- `tests/test_computation_identity.py::test_static_class_and_property_definitions_are_included[    @classmethod\n    def transform(cls):\n        return {value!r}\n]` (covers 20)
-- `tests/test_computation_identity.py::test_static_class_and_property_definitions_are_included[    @property\n    def transform(self):\n        return {value!r}\n]` (covers 21)
-- `tests/test_computation_identity.py::test_static_class_and_property_definitions_are_included[    @staticmethod\n    def transform():\n        return {value!r}\n]` (covers 20)
-- `tests/test_computation_identity.py::test_unsupported_dependency_errors_name_the_function_and_reference` (covers 25)
-- `tests/test_computation_identity.py::test_unsupported_method_descriptor_requires_explicit_identity` (covers 21)
-- `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[class Helper(Exception): pass\n]` (covers 25)
-- `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[from dataclasses import dataclass\n@dataclass\nclass Helper:\n    text: str\n]` (covers 27)
-- `tests/test_computation_identity.py::test_unsupported_referenced_classes_keep_name_only_identity[from functools import cached_property\nclass Helper:\n    @cached_property\n    def text(self): return 'hello'\n]` (covers 24)
-- `tests/test_computation_identity.py::test_wrapped_method_body_changes_identity` (covers 26)
-- `tests/test_data_fingerprint.py::test_bare_cached_data_model_requires_no_manual_identity` (covers 43)
-- `tests/test_data_fingerprint.py::test_bookkeeping_stays_serialized` (covers 6)
-- `tests/test_data_fingerprint.py::test_default_values_aliases_and_computed_fields` (covers 6)
-- `tests/test_data_fingerprint.py::test_exclusion_setting_must_not_treat_a_string_as_field_names` (covers 2)
-- `tests/test_data_fingerprint.py::test_fingerprint_fields_cannot_shadow_identity_configuration` (covers 2)
-- `tests/test_data_fingerprint.py::test_model_kind_and_field_projection_are_independent_of_schema_metadata` (covers 6)
-- `tests/test_data_fingerprint.py::test_plain_mixin_requires_custom_projection` (covers 5)
-- `tests/test_data_fingerprint.py::test_projection_supports_custom_semantic_values` (covers 8)
-- `tests/test_data_fingerprint.py::test_values_follow_mutation_not_construction_history` (covers 4)
-- `tests/test_data_loading.py::test_dataset_identity_is_required` (covers 0)
-- `tests/test_data_loading.py::test_empty_source_and_source_errors_are_preserved` (covers 3)
-- `tests/test_data_loading.py::test_falsy_callable_is_still_used_for_collation[False]` (covers 3)
-- `tests/test_data_loading.py::test_frame_dataset_owns_identity_independent_of_batch_size` (covers 3)
-- `tests/test_data_loading.py::test_frame_fingerprint_handles_nested_dictionaries[dtype1-values1-changed1]` (covers 3)
-- `tests/test_data_loading.py::test_frame_fingerprint_includes_dictionary_values[dtype1]` (covers 3)
-- `tests/test_data_loading.py::test_frame_fingerprint_preserves_binary_temporal_nested_and_nanosecond_values` (covers 3)
-- `tests/test_data_loading.py::test_infinite_stream_needs_neither_length_nor_indexing` (covers 3)
-- `tests/test_data_loading.py::test_invalid_batch_size_is_rejected[-1]` (covers 2)
-- `tests/test_data_loading.py::test_native_batches_pass_through_without_copying` (covers 3)
-- `tests/test_data_loading.py::test_one_shot_generator_is_consumed_only_when_requested_without_lookahead` (covers 3)
-- `tests/test_data_loading.py::test_record_dataset_identity_is_ordered_content_recomputed_on_demand` (covers 6)
-- `tests/test_data_loading.py::test_take_over_a_one_shot_source_adds_no_replay` (covers 1)
-- `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args0-choices: list, download, verify, remove, licence]` (covers 3)
-- `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args1-needs a dataset name; choices: demo]` (covers 5)
-- `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args2-takes no dataset name]` (covers 5)
-- `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args5-unknown dataset 'nosuch'; choices: demo]` (covers 5)
-- `tests/test_dataset_cli.py::test_names_match_forgivingly_and_report_the_match` (covers 5)
-- `tests/test_dataset_cli.py::test_remove_deletes_declared_files_only` (covers 3)
-- `tests/test_dataset_cli.py::test_remove_needs_no_read_permission` (covers 3)
-- `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[no-terminal]` (covers 10)
-- `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[yes]` (covers 9)
-- `tests/test_dataset_cli.py::test_status_and_remove_reject_a_directory_in_place_of_a_file` (covers 2)
-- `tests/test_dataset_cli.py::test_unreadable_paths_are_errors_not_present_or_missing[file]` (covers 3)
-- `tests/test_dataset_cli.py::test_unreadable_paths_are_errors_not_present_or_missing[folder]` (covers 3)
-- `tests/test_dataset_files.py::test_an_existing_corrupt_file_raises_and_is_kept` (covers 1)
-- `tests/test_dataset_files.py::test_concurrent_fetches_do_not_share_a_partial_file` (covers 2)
-- `tests/test_dataset_files.py::test_datasets_live_beside_the_computation_cache` (covers 1)
-- `tests/test_dataset_files.py::test_fetch_downloads_once_then_keeps_the_verified_file` (covers 3)
-- `tests/test_dataset_files.py::test_hotpotqa_corpus_is_title_newline_text_keyed_by_title` (covers 16)
-- `tests/test_dataset_files.py::test_hotpotqa_unresolvable_supporting_facts_raise[sentence-index]` (covers 6)
-- `tests/test_dataset_files.py::test_hotpotqa_unresolvable_supporting_facts_raise[unknown-title]` (covers 6)
-- `tests/test_dataset_files.py::test_licence_terms_must_be_recorded_explicitly[commercial_reuse]` (covers 2)
-- `tests/test_dataset_files.py::test_licence_terms_must_be_recorded_explicitly[licence]` (covers 2)
-- `tests/test_dataset_files.py::test_multihoprag_downloads_into_root_on_first_use` (covers 9)
-- `tests/test_fingerprint.py::test_chunk_fingerprint_follows_the_id_inputs` (covers 7)
-- `tests/test_fingerprint.py::test_functions_with_literal_slices_are_cached[static]` (covers 45)
-- `tests/test_fingerprint.py::test_functions_with_literal_slices_are_cached[traced]` (covers 41)
-- `tests/test_fingerprint.py::test_literal_slices_fingerprint_by_every_component` (covers 18)
-- `tests/test_fingerprint.py::test_nested_fingerprints_and_unsupported_state` (covers 29)
-- `tests/test_fingerprint.py::test_nested_records_use_their_fingerprints` (covers 11)
-- `tests/test_fingerprint.py::test_object_fingerprint_covers_class_and_state` (covers 30)
-- `tests/test_fingerprint.py::test_source_fingerprint_follows_the_id_inputs_and_external_id` (covers 4)
-- `tests/test_fingerprint.py::test_source_hash_without_source_is_refused` (covers 1)
-- `tests/test_ids.py::test_chunk_ids_are_reproducible_and_scoped_to_their_source` (covers 6)
-- `tests/test_ids.py::test_chunk_ids_keep_collections_apart_when_their_tags_collide` (covers 6)
-- `tests/test_ids.py::test_chunk_ids_of_one_source_share_its_prefix` (covers 6)
-- `tests/test_ids.py::test_chunk_ordinal_out_of_range_is_rejected[65536]` (covers 2)
-- `tests/test_ids.py::test_ids_share_a_collection_prefix` (covers 3)
-- `tests/test_ids.py::test_largest_ordinal_is_accepted` (covers 6)
-- `tests/test_ids.py::test_source_id_distinguishes_origin_collection_and_framing` (covers 3)
-- `tests/test_ids.py::test_source_id_follows_text_versions` (covers 3)
-- `tests/test_markdown_folder.py::test_fingerprint_covers_collection` (covers 3)
-- `tests/test_markdown_folder.py::test_fingerprint_covers_location` (covers 3)
-- `tests/test_markdown_folder.py::test_fingerprint_follows_content` (covers 3)
-- `tests/test_markdown_folder.py::test_top_level_markdown_files_in_name_order` (covers 5)
-- `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[gap]` (covers 7)
-- `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[other-source]` (covers 7)
-- `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[short]` (covers 7)
-- `tests/test_recall.py::test_an_invalid_span_is_rejected_not_read_as_a_document[negative]` (covers 0)
-- `tests/test_recall.py::test_bm25_recall_example_on_the_hotpotqa_fixture` (covers 50)
-- `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[gold-overlap]` (covers 5)
-- `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[hit-overlap]` (covers 5)
-- `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[other-source]` (covers 5)
-- `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[partial]` (covers 5)
-- `tests/test_recall.py::test_character_recall_needs_spans_in_every_set` (covers 13)
-- `tests/test_recall.py::test_document_evidence_needs_any_chunk_of_its_source` (covers 10)
-- `tests/test_recall.py::test_k_below_one_raises[ks1]` (covers 1)
-- `tests/test_recall.py::test_only_the_first_k_hits_count` (covers 14)
-- `tests/test_recall.py::test_overlapping_hits_count_their_characters_once` (covers 10)
-- `tests/test_recall.py::test_questions_without_gold_have_no_recall_but_characters` (covers 10)
-- `tests/test_recall.py::test_resolve_evidence_maps_keys_and_keeps_kinds` (covers 4)
-- `tests/test_recall.py::test_summaries_of_nothing_have_no_means` (covers 1)
-- `tests/test_record_cache.py::test_record_inputs_reuse_detached_results_after_reopen[Chunk]` (covers 25)
-- `tests/test_record_cache.py::test_record_inputs_reuse_detached_results_after_reopen[Source]` (covers 22)
-- `tests/test_record_cache.py::test_traced_record_inputs_admit_and_reuse_detached_results[Chunk]` (covers 46)
-- `tests/test_record_cache.py::test_traced_record_inputs_admit_and_reuse_detached_results[Source]` (covers 45)
-- `tests/test_records.py::test_chunk_id_is_derived_and_reproducible` (covers 7)
-- `tests/test_records.py::test_chunk_ordinal_is_bounded[65536]` (covers 0)
-- `tests/test_records.py::test_chunk_serialization_and_default_codec` (covers 9)
-- `tests/test_records.py::test_records_are_frozen` (covers 7)
-- `tests/test_records.py::test_source_id_is_derived_and_reproducible` (covers 4)
-- `tests/test_records.py::test_source_serialization_and_default_codec` (covers 6)
-- `tests/test_records.py::test_unknown_fields_are_rejected[RetrievalHit-fields2-scroe]` (covers 7)
-- `tests/test_retrieval.py::test_an_empty_or_tokenless_corpus_returns_nothing[memory]` (covers 18)
-- `tests/test_retrieval.py::test_an_empty_or_tokenless_corpus_returns_nothing[sqlite]` (covers 22)
-- `tests/test_retrieval.py::test_an_index_covers_one_collection_with_its_own_statistics[memory]` (covers 19)
-- `tests/test_retrieval.py::test_chunks_of_one_source_tie_in_ordinal_order[memory]` (covers 20)
-- `tests/test_retrieval.py::test_chunks_of_one_source_tie_in_ordinal_order[sqlite]` (covers 24)
-- `tests/test_retrieval.py::test_equal_scores_are_ordered_by_source_id[memory-False]` (covers 19)
-- `tests/test_retrieval.py::test_equal_scores_are_ordered_by_source_id[memory-True]` (covers 19)
-- `tests/test_retrieval.py::test_fingerprint_follows_settings[memory]` (covers 32)
-- `tests/test_retrieval.py::test_fingerprint_follows_settings[sqlite]` (covers 32)
-- `tests/test_retrieval.py::test_k_below_one_raises[memory--1]` (covers 18)
-- `tests/test_retrieval.py::test_k_below_one_raises[sqlite--1]` (covers 22)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-empty]` (covers 18)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-lowercased]` (covers 19)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-punctuation]` (covers 18)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[memory-unknown]` (covers 18)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-empty]` (covers 22)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-lowercased]` (covers 23)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-punctuation]` (covers 22)
-- `tests/test_retrieval.py::test_only_queries_sharing_a_token_match[sqlite-unknown]` (covers 22)
-- `tests/test_retrieval.py::test_only_the_corpus_viewers_sources_are_indexed[sqlite]` (covers 23)
-- `tests/test_retrieval.py::test_scores_follow_lucene_bm25_with_the_preset_parameters[memory]` (covers 19)
-- `tests/test_retrieval.py::test_scores_follow_lucene_bm25_with_the_preset_parameters[sqlite]` (covers 23)
-- `tests/test_retrieval.py::test_scoring_parameters_that_could_hide_matches_are_rejected[-0.1-0.75]` (covers 0)
-- `tests/test_retrieval.py::test_scoring_parameters_that_could_hide_matches_are_rejected[1.2--0.1]` (covers 0)
-- `tests/test_retrieval.py::test_scoring_parameters_that_could_hide_matches_are_rejected[1.2-1.1]` (covers 0)
-- `tests/test_retrieval.py::test_the_index_is_a_snapshot[memory]` (covers 20)
-- `tests/test_retrieval.py::test_the_index_is_a_snapshot[sqlite]` (covers 24)
-- `tests/test_retrieval.py::test_whole_text_is_one_chunk_and_empty_text_none` (covers 34)
-- `tests/test_sqlite_cache.py::test_one_table_per_computation_with_only_input_as_row_key` (covers 3)
-- `tests/test_sqlite_cache.py::test_other_connection_sees_committed_writes` (covers 3)
-- `tests/test_sqlite_cache.py::test_persistence_and_full_key_isolation` (covers 3)
-- `tests/test_steps.py::test_fixed_size_must_be_positive[-1]` (covers 1)
-- `tests/test_steps.py::test_fixed_size_must_be_positive[True]` (covers 1)
-- `tests/test_steps.py::test_fixed_size_slices_by_character` (covers 8)
-- `tests/test_steps.py::test_original_text` (covers 7)
-- `tests/test_steps.py::test_utf8_file_fingerprint_covers_the_collection` (covers 30)
-- `tests/test_steps.py::test_utf8_file_keeps_newlines` (covers 4)
-- `tests/test_store.py::test_a_bare_string_is_not_a_set_of_principals[memory]` (covers 4)
-- `tests/test_store.py::test_a_bare_string_is_not_a_set_of_principals[sqlite]` (covers 6)
-- `tests/test_store.py::test_a_chunk_under_another_sources_stored_id_is_rejected[sqlite]` (covers 21)
-- `tests/test_store.py::test_a_different_source_under_a_known_id_is_rejected[memory]` (covers 7)
-- `tests/test_store.py::test_a_different_source_under_a_known_id_is_rejected[sqlite]` (covers 7)
-- `tests/test_store.py::test_a_failing_chunk_iterable_keeps_the_previous_chunks[memory]` (covers 17)
-- `tests/test_store.py::test_a_failing_chunk_iterable_keeps_the_previous_chunks[sqlite]` (covers 21)
-- `tests/test_store.py::test_a_failing_source_iterable_stores_nothing[memory]` (covers 5)
-- `tests/test_store.py::test_a_failing_source_iterable_stores_nothing[sqlite]` (covers 7)
-- `tests/test_store.py::test_a_source_nobody_may_read[sqlite]` (covers 7)
-- `tests/test_store.py::test_an_external_id_is_unique_within_its_collection[sqlite]` (covers 8)
-- `tests/test_store.py::test_changing_the_chunker_replaces_a_sources_chunks[memory]` (covers 18)
-- `tests/test_store.py::test_chunks_are_returned_in_ordinal_order[memory]` (covers 16)
-- `tests/test_store.py::test_chunks_are_returned_in_ordinal_order[sqlite]` (covers 20)
-- `tests/test_store.py::test_in_memory_sql_store_is_shared_across_threads` (covers 7)
-- `tests/test_store.py::test_invalid_chunks_raise_and_keep_the_previous_chunks[memory-<lambda>-slice0]` (covers 17)
-- `tests/test_store.py::test_invalid_chunks_raise_and_keep_the_previous_chunks[sqlite-<lambda>-slice0]` (covers 21)
-- `tests/test_store.py::test_missing_source_is_a_key_error[memory]` (covers 2)
-- `tests/test_store.py::test_missing_source_is_a_key_error[sqlite]` (covers 2)
-- `tests/test_store.py::test_re_adding_equal_records_keeps_one_copy[memory]` (covers 17)
-- `tests/test_store.py::test_re_adding_equal_records_keeps_one_copy[sqlite]` (covers 21)
-- `tests/test_store.py::test_reads_without_a_viewer_do_not_filter_by_access[memory]` (covers 18)
-- `tests/test_store.py::test_replacing_chunks_needs_a_stored_source[sqlite]` (covers 1)
-- `tests/test_store.py::test_sources_and_chunks_round_trip[memory]` (covers 18)
-- `tests/test_store.py::test_sources_and_chunks_round_trip[sqlite]` (covers 21)
-- `tests/test_store.py::test_sql_access_is_checked_before_a_row_is_read` (covers 8)
-- `tests/test_store.py::test_sql_store_persists_across_instances` (covers 22)
-- `tests/test_store.py::test_sql_store_persists_explicit_record_fingerprints` (covers 19)
-- `tests/test_store.py::test_sql_writes_respect_foreign_keys` (covers 21)
-- `tests/test_store.py::test_the_same_source_with_another_external_id_is_rejected[memory]` (covers 6)
-- `tests/test_store.py::test_the_same_source_with_another_external_id_is_rejected[sqlite]` (covers 6)
-- `tests/test_traced_cache.py::test_both_argument_methods_refresh_independently_and_reuse_old_results` (covers 44)
-- `tests/test_traced_cache.py::test_busy_monitoring_tool_computes_without_admission` (covers 44)
-- `tests/test_traced_cache.py::test_cross_class_method_alias_is_not_admitted` (covers 44)
-- `tests/test_traced_cache.py::test_delegated_traced_child_does_not_hide_dependencies_from_parent` (covers 46)
-- `tests/test_traced_cache.py::test_empty_unused_closure_cell_does_not_break_monitoring` (covers 3)
-- `tests/test_traced_cache.py::test_equal_code_objects_with_distinct_globals_are_both_tracked[False]` (covers 46)
-- `tests/test_traced_cache.py::test_equal_code_objects_with_distinct_globals_are_both_tracked[True]` (covers 44)
-- `tests/test_traced_cache.py::test_multiargument_fingerprint_helpers_are_suspended` (covers 42)
-- `tests/test_traced_cache.py::test_nested_configured_step_declines_parent_traced_admission` (covers 44)
-- `tests/test_traced_cache.py::test_nonlocal_mutation_cannot_publish_post_execution_identity` (covers 40)
-- `tests/test_traced_cache.py::test_overlapping_traces_keep_results_isolated_and_release_monitoring` (covers 47)
-- `tests/test_traced_cache.py::test_receiver_classvar_change_invalidates_method_result` (covers 46)
-- `tests/test_traced_cache.py::test_root_direct_receiver_class_setting_is_refreshed` (covers 43)
-- `tests/test_traced_cache.py::test_shared_code_with_distinct_closures_cannot_hide_receiver_alias[False]` (covers 39)
-- `tests/test_traced_cache.py::test_shared_code_with_distinct_closures_cannot_hide_receiver_alias[True]` (covers 41)
-- `tests/test_traced_cache.py::test_traced_cache_reuses_across_fresh_interpreters` (covers 53)
-- `tests/test_traced_cache.py::test_traced_method_changes_reuse_a_b_a_across_reopened_sqlite` (covers 46)
-- `tests/test_traced_cache.py::test_traced_names_clear_index_and_result_tables` (covers 48)
-- `tests/test_traced_cache.py::test_traced_new_dispatch_branch_refreshes_without_redecoration` (covers 45)
-- `tests/test_traced_cache.py::test_traced_selector_state_is_refreshed_before_lookup[False]` (covers 44)
-- `tests/test_traced_cache.py::test_traced_selector_state_is_refreshed_before_lookup[True]` (covers 45)
-- `tests/test_traced_cache.py::test_traced_step_invalid_configuration_is_a_user_error` (covers 14)
-- `tests/test_traced_cache.py::test_tracer_releases_tool_after_computation_exception` (covers 46)
-- `tests/test_traced_cache.py::test_tracing_does_not_hide_user_fingerprint_errors` (covers 13)
-- `tests/test_traced_cache.py::test_unresolvable_runtime_local_method_is_not_cached` (covers 36)
-- `tests/test_traced_cache.py::test_unused_mutating_class_method_does_not_disable_traced_reuse` (covers 43)
-- `tests/test_wrapper_identity.py::test_a_helper_edit_misses_a_real_cache_and_a_repeat_hits` (covers 47)
-- `tests/test_wrapper_identity.py::test_a_target_reachable_only_through_wrapped_counts` (covers 19)
-- `tests/test_wrapper_identity.py::test_a_third_party_decorator_does_not_hide_application_helpers` (covers 26)
-- `tests/test_wrapper_identity.py::test_an_application_wrapper_around_an_external_function_counts_its_own_code` (covers 20)
-- `tests/test_wrapper_identity.py::test_an_application_wrapper_counts_its_external_target` (covers 20)
-- `tests/test_wrapper_identity.py::test_an_external_wrapper_reading_the_environment_counts_by_code` (covers 26)
-- `tests/test_wrapper_identity.py::test_an_outer_wrapper_around_a_cached_function_counts` (covers 28)
-- `tests/test_wrapper_identity.py::test_cycles_through_external_wrappers_and_lru_terminate` (covers 25)
-- `tests/test_wrapper_identity.py::test_external_wrapper_arguments_enter_identity[scale]` (covers 26)
-- `tests/test_wrapper_identity.py::test_external_wrapper_arguments_enter_identity[scale_by_default]` (covers 26)
-- `tests/test_wrapper_identity.py::test_functions_without_a_module_name_keep_their_application_helpers` (covers 24)
-- `tests/test_wrapper_identity.py::test_library_functions_decorated_inside_their_library_stay_name_only` (covers 25)
-- `tests/test_wrapper_identity.py::test_local_decorator_edits_change_identity` (covers 24)
-- `tests/test_wrapper_identity.py::test_lru_cache_around_a_triplum_cached_function_unwraps_both` (covers 27)
-- `tests/test_wrapper_identity.py::test_lru_cache_around_an_external_wrapper_still_counts_the_target` (covers 24)
-- `tests/test_wrapper_identity.py::test_renamed_library_functions_keep_distinct_names` (covers 24)
-- `tests/test_wrapper_identity.py::test_traced_caching_accepts_an_external_wrapper_with_named_parameters` (covers 45)
-- `tests/test_wrapper_identity.py::test_unsupported_captures_decline_instead_of_crashing` (covers 24)
-- `tests/test_wrapper_identity.py::test_wrapped_cycles_terminate[pair]` (covers 19)
-- `tests/test_wrapper_identity.py::test_wrapped_cycles_terminate[self]` (covers 19)
+| `tests/test_cache_metadata.py::test_cli_name_selection_details_and_ambiguity` | 1 | 477 |
+| `tests/test_dataset_cli.py::test_download_verify_list_remove_round_trip` | 1 | 278 |
+| `tests/test_dataset_cli.py::test_licence_json_and_tls_failures_explain_themselves` | 1 | 131 |
+| `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args3-apply only to cache commands]` | 1 | 28 |
+| `tests/test_dataset_cli.py::test_misused_commands_explain_themselves[args4-take no dataset name]` | 1 | 29 |
+| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[answer-no]` | 1 | 142 |
+| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[answer-yes]` | 1 | 176 |
+| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[at-limit]` | 1 | 172 |
+| `tests/test_dataset_cli.py::test_removing_more_than_the_threshold_asks_first[no-input]` | 1 | 141 |
+| `tests/test_dataset_cli.py::test_verify_fails_on_a_corrupt_file_and_download_refuses_to_replace_it` | 1 | 173 |
+| `tests/test_recall.py::test_bm25_recall_example_on_the_hotpotqa_fixture` | 1 | 833 |
+| `tests/test_store.py::test_an_unreadable_source_looks_missing[sqlite]` | 1 | 558 |
+| `tests/test_store.py::test_an_external_id_is_unique_within_its_collection[memory]` | 1 | 175 |
+| `tests/test_store.py::test_an_external_id_is_unique_within_its_collection[sqlite]` | 1 | 200 |
+| `tests/test_store.py::test_in_memory_sql_store_is_shared_across_threads` | 1 | 183 |
+| `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[adjacent]` | 1 | 137 |
+| `tests/test_recall.py::test_a_span_counts_only_when_its_source_chunks_cover_all_of_it[overlapping]` | 1 | 137 |
+| `tests/test_recall.py::test_character_recall_is_the_covered_fraction_of_distinct_gold_characters[best-set-by-characters]` | 1 | 114 |
+| `tests/test_recall.py::test_the_best_alternative_set_wins_and_sets_never_pool` | 1 | 456 |
+| `tests/test_recall.py::test_summaries_exclude_or_zero_questions_without_gold` | 1 | 61 |
 
 ## Pseudo-tested functions (4 of 210 body removals survived)
 

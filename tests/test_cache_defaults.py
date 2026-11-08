@@ -207,9 +207,10 @@ def test_exit_handler_cannot_reopen_database_after_default_shutdown(tmp_path: Pa
         "    path.unlink()\n"
         "    try:\n"
         "        default_cache()\n"
+        "        refused = False\n"
         "    except RuntimeError:\n"
-        "        pass\n"
-        "    print(path.exists())\n"
+        "        refused = True\n"
+        "    print(refused, path.exists())\n"
         "atexit.register(late)\n"
         "from triplum.cache import default_cache\n"
         "default_cache()\n"
@@ -221,4 +222,28 @@ def test_exit_handler_cannot_reopen_database_after_default_shutdown(tmp_path: Pa
         text=True,
         check=True,
     )
-    assert result.stdout.strip() == "False"
+    # Swallowing the error alone also passed when no shutdown happened at all.
+    assert result.stdout.strip() == "True False"
+
+
+def test_normal_exit_drains_pending_default_writes(tmp_path: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    from triplum.cache.admin import cache_stats
+
+    script = tmp_path / "exit.py"
+    script.write_text(
+        "from triplum.cache import CacheKey, default_cache\n"
+        "cache = default_cache()\n"
+        "for i in range(2000):\n"
+        "    cache.put(CacheKey(b'p' * 32, i.to_bytes(32)), b'v' * 64)\n"
+    )
+    subprocess.run(
+        [sys.executable, str(script)],
+        env={**os.environ, "XDG_CACHE_HOME": str(tmp_path)},
+        check=True,
+    )
+    [row] = cache_stats(tmp_path / "triplum" / "cache.sqlite", details=True).computations
+    assert row.entries == 2000

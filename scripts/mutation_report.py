@@ -9,9 +9,13 @@ Run with ``uv run python scripts/mutation_report.py OUT`` on a results directory
   assertions.
 - Dominator mutants: killed mutants grouped by their exact set of killing tests; a group is a
   dominator when no other group's set is a strict subset of its own. Each dominator is one test
-  requirement; the other mutants die collaterally and would inflate per-test counts.
-- Per test, over dominators it covers: the share it kills by assertion (low: executes much,
-  checks little), and unique dominators (it is their only killer: load-bearing).
+  requirement (counted per module); a dominator whose only killer is one test makes that test
+  load-bearing.
+- Per test, over the killed mutants whose lines it runs: how many it kills by assertion and how
+  many only by crashing. A test that runs many killable mutants and kills none by assertion
+  is a reading prompt: a narrow-purpose test, a negative-outcome test (expects nothing), or an
+  oracle computed by the code under test. (A share over dominators would mostly measure how
+  specialised a test is: dominators have a median of one killer but many covering tests.)
 - Pseudo-tested functions: the body-removal mutant survives although tests run the body; listed
   with the tests that reached it without noticing.
 
@@ -59,15 +63,14 @@ def indicators(records: list[dict]) -> dict:
     killed = [r for r in mutants if r["status"] == "killed"]
     dominant = dominators(killed)
     per_test: dict[str, Counter[str]] = defaultdict(Counter)
-    for tests, group in dominant.items():
-        covering = {t for r in group for t in r.get("covering", ())}
-        # Assertion credit needs one mutant the test both runs and kills by assertion.
-        asserting = {
-            t for r in group for t in r.get("covering", ()) if r["killers"].get(t) == "assert"
-        }
-        for test in covering:
-            per_test[test]["covered"] += 1
-            per_test[test]["asserted"] += test in asserting
+    for r in killed:
+        for test in r.get("covering", ()):
+            counts = per_test[test]
+            counts["covered"] += 1
+            kind = r["killers"].get(test)
+            counts["asserted"] += kind == "assert"
+            counts["crashed"] += kind == "error"
+    for tests in dominant:
         if len(tests) == 1:
             per_test[next(iter(tests))]["unique"] += 1
     bodies = [r for r in ran if r["operator"] == BODY]
@@ -117,19 +120,20 @@ def render(result: dict) -> str:
         out.append(
             f"| `{module}` | {c['killed']} | {c['survived']} | {c['timeout']} | {c['dominators']} |"
         )
-    weak = sorted(
-        (c["asserted"] / c["covered"], test) for test, c in per_test.items() if c["covered"] >= 10
+    silent = sorted(
+        (t for t, c in per_test.items() if c["covered"] >= 20 and c["asserted"] == 0),
+        key=lambda t: -per_test[t]["covered"],
     )
     out += [
         "",
-        "## Weakest checking (covers ≥ 10 dominators; share killed by assertion)",
+        f"## Run ≥ 20 killed mutants, kill none by assertion ({len(silent)}; read them)",
         "",
-        "| Test | Covered | Asserted | Share | Unique |",
-        "| --- | ---: | ---: | ---: | ---: |",
+        "| Test | Runs | Crash kills | Unique |",
+        "| --- | ---: | ---: | ---: |",
     ]
-    for share, test in weak[:30]:
+    for test in silent:
         c = per_test[test]
-        out.append(f"| `{test}` | {c['covered']} | {c['asserted']} | {share:.2f} | {c['unique']} |")
+        out.append(f"| `{test}` | {c['covered']} | {c['crashed']} | {c['unique']} |")
     out += [
         "",
         "## Load-bearing (most unique dominators)",
@@ -139,9 +143,6 @@ def render(result: dict) -> str:
     ]
     for test in sorted(per_test, key=lambda t: -per_test[t]["unique"])[:20]:
         out.append(f"| `{test}` | {per_test[test]['unique']} | {per_test[test]['covered']} |")
-    silent = sorted(t for t, c in per_test.items() if c["asserted"] == 0)
-    out += ["", f"## Tests killing no dominator by assertion ({len(silent)})", ""]
-    out += [f"- `{t}` (covers {per_test[t]['covered']})" for t in silent]
     pseudo = result["pseudo_tested"]
     out += [
         "",
@@ -168,9 +169,9 @@ def main() -> None:
                 "killed": result["killed"],
                 "dominators": result["dominators"],
                 "provenance": result["provenance"],
-                "tests_covering_a_dominator": len(per_test),
-                "tests_killing_no_dominator_by_assertion": sum(
-                    1 for c in per_test.values() if c["asserted"] == 0
+                "tests_running_a_killed_mutant": len(per_test),
+                "run_20_killed_but_no_assertion_kill": sum(
+                    1 for c in per_test.values() if c["covered"] >= 20 and c["asserted"] == 0
                 ),
                 "body_removals": result["bodies"],
                 "pseudo_tested": len(result["pseudo_tested"]),

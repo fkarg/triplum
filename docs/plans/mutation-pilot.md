@@ -260,7 +260,7 @@ the worker. Dispositions:
   `error`. Documented in the plugin.
 - Nits applied: `isdisjoint`, plain strict-subset test, reused covering list, table literal.
 
-## Full kill-matrix pass (observed, not yet analysed)
+## Full kill-matrix pass (observed)
 
 `--full` on base `0eac71b` (includes P15): 6,407 mutants (6,197 operator, 210 body removals
 run), 2,792 s elapsed on 30 workers, 58,992 child CPU-s (16.4 CPU-hours). Statuses: 3,279
@@ -268,16 +268,33 @@ killed, 616 survived, 55 timeout, 1,441 arid, 1,150 invalid, 79 uncovered. Gener
 [mutation-matrix-tests.md](mutation-matrix-tests.md); the 34 MB `results.jsonl` stays under
 `/tmp/p10/matrix` on jolly.
 
-- Kill provenance of 3,128 non-surviving operator mutants: 1,987 assertion, 865 crash only,
-  155 collection only, 67 only by tests not running the line, 54 timeout. About a third of
-  kills say nothing about assertions.
-- Killed mutants form 169 dominator groups. 342 of 522 tests covering a dominator kill none by
-  assertion; whether that is weak checking or an artefact of large full-suite killer sets needs
-  the analysis below before any conclusion.
-- Body removal: 205 of 210 killed; 4 pseudo-tested: `_shutdown_default_cache`,
-  `CachePolicy.__post_init__`, `SQLiteBackend.close`, `SQLAlchemyStore.close` (each with the
-  tests that reached it in the report).
+- **Kill provenance** of 3,128 non-surviving operator mutants: 1,987 assertion, 865 crash only,
+  155 collection only, 67 only by tests not running the line, 54 timeout. A third of kills say
+  nothing about any test's checks.
+- **Dominators:** 169 groups. Their killer sets have a median size of 1 (max 14), while a median
+  of 18 tests run each; across all killed mutants the median killer set is 6. The first report's
+  per-test "share of dominators killed" therefore measured specialisation, not checking (342 of
+  522 tests at zero), and was replaced. Dominators stay as a per-module count and for
+  load-bearing tests.
+- **Per test, over killed mutants it runs:** assertion kills are a median 5% of them (469 tests
+  running ≥ 20): most tests run shared infrastructure and check only their target, so the ratio
+  itself is not a ranking. The reading prompt is the 54 tests that run ≥ 20 killed mutants and
+  kill none by assertion (10 in `test_retrieval.py`, 9 in `test_computation_identity.py`).
+  Four read by hand fall into three kinds:
+  - narrow purpose: `test_records_are_frozen` runs all record construction but checks only
+    `Source.text` and `Chunk.ordinal`; fine, and it shows no test checks the other records'
+    frozenness (the survivor side's `frozen=` cluster);
+  - negative outcome: `test_only_queries_sharing_a_token_match[unknown|empty|punctuation]`
+    expect `[]`, which a broken retriever also returns; the `lowercased` case does the work;
+  - oracle computed by the code under test: `test_chunk_id_is_derived_and_reproducible`
+    compares `chunk.id` with `chunk_id(...)`, so a mutant in `chunk_id` changes both sides;
+    the independent recomputation in `test_ids.py` covers it.
+- **Pseudo-tested:** 205 of 210 body removals killed; 4 survived with reaching tests. Fixed:
+  `CachePolicy.__post_init__` (new test rejects an unknown `on_full`) and
+  `_shutdown_default_cache` (the shutdown test swallowed the refusal either way; it now
+  asserts reopening is refused, and a new test checks that 2,000 pending writes survive a
+  normal exit). Both mutants now fail tests (verified; the shutdown one 3 of 3 runs). Open,
+  storage topic: `SQLiteBackend.close`, `SQLAlchemyStore.close`.
 
-Next: analyse the matrix (dominator count looks low; check the per-test share against a few
-hand-read tests), review the weakest-checking tests and the four pseudo-tested functions, and
-add tests where worthwhile.
+Next: read more of the 54 (computation-identity and retrieval groups); the record's remaining
+survivor queue; store/record gaps after the storage topic.
