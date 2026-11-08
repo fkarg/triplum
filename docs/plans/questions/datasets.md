@@ -55,3 +55,20 @@ downloads; CLI licence prose diverging from docs/licences.md.
   constructors also refuse network fetches, plus `--root`; Claude adds no environment variables.
   Peer: failures name dataset, file, destination, cause and next step (TLS: mention
   `SSL_CERT_FILE`, never disable verification).
+
+### Round 9 owner answers (2026-11-08)
+
+- DS1 (partial): direction agreed: dedicated dataset modules with their constants and a small
+  catalogue of implemented datasets now; return to the full pre-defined list (the 30-entry
+  manifest) and its loaders, including their slightly different formats, **eventually, not
+  now**. Owner asks how other data-science libraries handle the catalogue (research running).
+  Licence source of truth (render vs test) and deleting `manifest.json` remain open; the owner
+  wants the manifest's list eventually, so it is not deleted.
+- DS2 (answered): commands and semantics as proposed, including the peer's additions. Change:
+  **prompt before removing re-downloadable files larger than 5 GB.** Applied (session): the
+  prompt appears only on a terminal; `--yes` skips it; without a terminal or with `--no-input`
+  and no `--yes`, removal over 5 GB refuses with guidance.
+- DS3 (answered): keep the full sha256 check on every construction.
+- DS4 (answered): **no offline mode now** ("much later, if ever"). Applied: no environment
+  variables; no `--root` either (XDG and the library's `root=` suffice; the owner's simpler-first
+  stance).

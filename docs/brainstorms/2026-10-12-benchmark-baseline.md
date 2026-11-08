@@ -31,7 +31,8 @@ across nested decorated calls.
 - **Provided datasets live in the triplum cache and download on first use** (owner, 2026-11-07;
   scope: built-in datasets, likely model weights per the CLI contract). Applied: `cache_home()`
   shared with the computation cache; `HotpotQA()` and `MultiHopRAGCorpus()` fetch when missing.
-  Dataset CLI management (list, download ahead, verify, remove, licence) still needs its contract.
+  Dataset CLI management (list, download ahead, verify, remove, licence) still needs its contract;
+  round 9 answers in [datasets questions](../plans/questions/datasets.md).
 
 - **Simpler version now, full privacy suite eventually** (owner, round 8 RT7, 2026-11-07; scope:
   access and privacy features): ship the simplest correct access behaviour, document its
