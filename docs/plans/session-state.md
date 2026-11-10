@@ -11,6 +11,21 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
+- **Waiting on the owner (storage topic):** approve P16 ([draft](../specs/text-search.md));
+  the ST3 agreement line (the draft says FTS5 within 0.05 of bm25s on fixture R@2/R@5; the peer
+  probe sits exactly at 0.05 for R@2); where Postgres tests run (local server, container or CI
+  only). Recorded owner directions not started: separate tables per collection for clean
+  benchmarks (FTS5 per collection is the first case); sophisticated example setups showcased for
+  every persona reader type; RRF in Python first, SQL where measured; Viewer concept page when
+  Viewers return.
+- **Mutation-track items that touch this topic** (from [the pilot](mutation-pilot.md)): P13/P14
+  survivors (`RetrievalHit` `frozen`, `==` → `is` on collection ids because tests pass the same
+  UUID object, keyword-only `sources()` parameters, `@abstractmethod` on `sources()`), a
+  parametrized frozen-records test, non-SQLite URL pool settings, `close()` pseudo-tested on
+  `SQLiteBackend` and `SQLAlchemyStore`. Take them with P16's store changes.
+- **Not in this repo:** an uncommitted edit to the owner's global agent instructions
+  (`~/configs/coding-agents/configs/shared/AGENTS.md`, on the machine "margo": do not mention
+  omitting the co-author trailer); the owner commits that repository.
 - **Done (2026-11-08):** persona documentation wave (two rounds,
   [run report](../personae/runs/2026-11-08-persona-wave.md)); P13 strict records and P14
   collection-scoped `sources()`/BM25 implemented ([spec](../specs/retrieval.md)). RT9 answered
