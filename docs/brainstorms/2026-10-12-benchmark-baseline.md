@@ -981,3 +981,18 @@ and the read-BEGIN mutation. No remaining blocking finding. This is a same-famil
 Docs sync was delegated and inspected; the docs worker's untracked example `records.db` was
 confirmed as its artifact and removed. No running implementation task remains.
 Next: deliver this checkpoint on main and follow CI, then present prepared DF1 role question.
+
+### P16 delivery and next round
+
+Implemented and pushed on `main` as `3b2ba83` (Add store-managed BM25 and SQLite text search).
+Observed remote checks: [CI](https://github.com/fkarg/triplum/actions/runs/43051187809)
+passed, including tests, typing, lint/format, Cargo and strict MkDocs;
+[Docs build and deploy](https://github.com/fkarg/triplum/actions/runs/43051187813) passed.
+The temporary PostgreSQL server has been stopped. This records-only checkpoint follows
+the verified implementation; no source change.
+
+Next owner round DF1: configure separate batch callables for query/passage roles (session and
+independent GPT-family fallback recommendation), pass a role per batch, or use paired methods.
+Context/options/falsifications are in the DF question file; owner answer pending.
+This question resolves role placement only; numeric/truncation/batching/compatibility guarantees
+need later decisions before any new adapter or dense storage implementation.

@@ -20,8 +20,10 @@ and the question files; then check `git log` against the state below.
   Review defects fixed: settings/MATCH race, unresolved constructor annotations, custom NUL
   query terms; tokenizer behavior tests strengthened. Claude host peer auth failed (revoked
   OAuth); independent GPT-family fallback used (exact model unavailable). Full dispositions
-  are in the spec. CI delivery status is recorded in the capture.
-- **Next owner round prepared: DF1 query/passage encoding**,
+  are in the spec. Implementation commit `3b2ba83` is pushed;
+  [CI](https://github.com/fkarg/triplum/actions/runs/43051187809) and
+  [Docs build/deploy](https://github.com/fkarg/triplum/actions/runs/43051187813) passed.
+- **Awaiting owner: DF1 query/passage encoding**,
   [question and independent answer](questions/dense-fusion.md). No embedding contract or
   implementation accepted. Run identity (BE6), native Postgres extensions and fusion remain
   open. Recorded direction to showcase richer examples for every persona remains queued;
@@ -60,7 +62,7 @@ and the question files; then check `git log` against the state below.
   ordinals, frozen records ([record types](../specs/record-types.md)); insert-only sources and
   `replace_chunks` with one current chunk list per source; `SQLAlchemyStore.close()`.
 - **Open but deferred** (documented, revisit later): Q13–Q17, Q28–Q33 ingestion items, BE10,
-  BE11, BE13–BE17, DF1–DF3, LQ1–LQ2.
+  BE11, BE13–BE17, DF2–DF3, LQ1–LQ2. DF1 is the current prepared owner round.
 - No background agents or uncommitted work at handoff. Peer-review JSON is saved per machine; the
   review IDs in docs are retrievable with `peer-review --show` only on the machine that ran them, so
   the docs record each review's dispositions in full.
