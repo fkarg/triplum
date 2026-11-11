@@ -1,20 +1,43 @@
 from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from triplum.datatype import Chunk, Source, Viewer
+from triplum.datatype import Chunk, RetrievalHit, Source, Viewer
+from triplum.steps.bm25_settings import HIPPORAG1, BM25Settings
 from triplum.store.checks import checked_chunks, new_sources, principals
-from triplum.store.protocols import RecordStore
+from triplum.store.protocols import RecordStore, TextSearchStore
+
+if TYPE_CHECKING:
+    from triplum.steps.retrieval import BM25
 
 
-class MemoryStore(RecordStore):
+class MemoryStore(RecordStore, TextSearchStore):
     """Records in dictionaries; gone when the process ends. Not safe for concurrent writers."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, text: BM25Settings | None = None) -> None:
+        self._text_settings = HIPPORAG1 if text is None else text
+        self._text_indexes: dict[UUID, BM25] = {}
         self._sources: dict[UUID, Source] = {}
         self._access: dict[UUID, frozenset[str]] = {}
         self._chunks: dict[UUID, list[Chunk]] = {}
         self._chunk_ids: dict[UUID, Chunk] = {}
         self._external_ids: dict[tuple[UUID, str], UUID] = {}
+
+    def index_text(self, collection_id: UUID, /) -> None:
+        """Replace this collection's search snapshot only after a successful build."""
+        from triplum.steps.retrieval import BM25
+
+        self._text_indexes[collection_id] = BM25(
+            self, collection_id=collection_id, settings=self._text_settings
+        )
+
+    def search_text(
+        self, query: str, /, *, collection_id: UUID, viewer: Viewer | None = None, k: int
+    ) -> list[RetrievalHit]:
+        """Search the last built snapshot; see `TextSearchStore` for the contract."""
+        if k < 1:
+            raise ValueError("k must be at least 1")
+        return self._text_indexes[collection_id](query, viewer=viewer, k=k)
 
     def add_sources(self, sources: Iterable[Source], /, *, allow: Iterable[str]) -> None:
         access = principals(allow)

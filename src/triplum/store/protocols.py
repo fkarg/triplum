@@ -1,11 +1,11 @@
-"""Persistence for pipeline records, one Protocol per capability. Only records exist so far."""
+"""Persistence for pipeline records, one Protocol per capability."""
 
 from abc import abstractmethod
 from collections.abc import Iterable, Iterator
 from typing import Protocol
 from uuid import UUID
 
-from triplum.datatype import Chunk, Source, Viewer
+from triplum.datatype import Chunk, RetrievalHit, Source, Viewer
 
 
 class RecordStore(Protocol):
@@ -65,5 +65,26 @@ class RecordStore(Protocol):
         """The current chunks of one source, ordered by `ordinal`; empty if it has none.
 
         `KeyError` if the source is not stored or `viewer` may not read it.
+        """
+        ...
+
+
+class TextSearchStore(Protocol):
+    """Ranks chunk text per collection, independently of the record-store capability."""
+
+    @abstractmethod
+    def index_text(self, collection_id: UUID, /) -> None:
+        """Build a snapshot of current chunks. A failed rebuild keeps the previous index."""
+        ...
+
+    @abstractmethod
+    def search_text(
+        self, query: str, /, *, collection_id: UUID, viewer: Viewer | None = None, k: int
+    ) -> list[RetrievalHit]:
+        """Return at most `k` indexed chunks, best first, filtering visibility before top-k.
+
+        Statistics belong to the collection alone; hits retain indexed chunk contents after
+        later writes. Ties follow `(source_id, ordinal)` and higher scores are better.
+        Raises `KeyError` before a successful build and `ValueError` for `k < 1`.
         """
         ...

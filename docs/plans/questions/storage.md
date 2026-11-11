@@ -16,6 +16,12 @@ hit lists.
 
 ## Open
 
+No unanswered ST decisions at this checkpoint. Native Postgres search remains a later
+candidate; run identity is tracked under BE6. P16 implements the approved text-search slice;
+see [the contract and implementation review](../../specs/text-search.md).
+
+## Answered
+
 ### ST1. Where indexes live
 
 Step-owned (today: `BM25` builds its own index from store reads), store-managed (a store builds,

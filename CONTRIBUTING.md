@@ -8,8 +8,10 @@ interface at a time; surviving code and review prototypes are not automatically 
 Install the pure Python package and development tools:
 
 ```sh
-uv sync
+uv sync --group mutation
 ```
+
+The mutation group is needed because typing checks include the mutation scripts.
 
 The package uses `uv_build`. It has no PyO3 bridge or optional model extras. Rust remains an
 independent Cargo workspace and is checked separately:

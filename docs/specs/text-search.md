@@ -1,6 +1,6 @@
-# Store-managed text search (proposal, under owner review)
+# Store-managed text search
 
-Status: **draft P16**, not approved. Owner answers it builds on (2026-11-08, [storage
+Status: **P16 approved by the owner 2026-11-11; implemented**. Owner answers it builds on (2026-11-08, [storage
 questions](../plans/questions/storage.md)): ST1 both, primarily storage; ST2 SQLAlchemy abstraction
 where reasonable, not more; ST3 "the same technique" ≈ within a few points on reproduction; ST4
 no native index object competing with `Retriever`; ST5 memory, SQLite, Postgres first. Policies:
@@ -38,7 +38,8 @@ class TextSearchStore(Protocol):
 A search is a `Retriever` without any new class: `partial(store.search_text,
 collection_id=c)` has the `Retriever` call shape and can be passed to fusion or evaluation.
 
-Implementations, each configured in its constructor (settings belong to the store's identity):
+Implementations are configured in their constructors. Including settings and indexed content
+in run identity remains deferred below:
 
 - Generic path, `MemoryStore` and `SQLAlchemyStore` (so also Postgres):
   `text=BM25Settings(...)`, default `HIPPORAG1`; each keeps one private `BM25` reference
@@ -85,12 +86,57 @@ privately; query semantics undefined, whole-query quoting scores 0 → OR of quo
 measured fixture numbers; persisted tokenizer can silently differ → stored settings checked;
 metadata columns matching text → `UNINDEXED`, origin from source rows; live refresh contradicted
 the snapshot rule → removed, failed rebuilds keep the old index; missing boundary tests → added;
-`TextSearchStore` inheriting `RecordStore` → independent capability. Not yet settled: the
-agreement tolerance (R@2 sits exactly at 0.05 in the probe).
+`TextSearchStore` inheriting `RecordStore` → independent capability. The owner approved the draft including the fixture tolerance on 2026-11-11. This is a
+fixture check, not a general equivalence claim.
+
+## Implementation and verification
+
+`TextSearchStore` is implemented independently of `RecordStore`. `MemoryStore` and
+`SQLAlchemyStore` build a private `BM25` per collection; these indexes live only in that store
+instance. `SQLiteStore` stores its FTS5 snapshot and `TextIndexRow` settings in the database.
+Its read transaction covers both settings validation and MATCH. `FTS5Settings` is frozen and
+contains `tokenizer: str = "unicode61 remove_diacritics 0 tokenchars '_'"` and
+`token_pattern: str = r"\w+"`. Selected query terms containing NUL raise `ValueError`.
+
+The existing `BM25Settings` and presets now live in the data-only `steps/bm25_settings.py` to
+make store constructor annotations resolvable without circular imports. The established
+`steps.retrieval` imports remain available; scoring and tokenization definitions are unchanged.
+
+Observed fixture values: generic BM25 R@2 0.600/R@5 0.775; SQLite FTS5 0.550/0.750.
+Observed verification: 624 tests passed (65 new text-search cases); ty, Ruff lint/format,
+Cargo check/test and strict MkDocs passed. The new text-search page's examples ran.
+Two SQLite cleanup ResourceWarnings reproduce on base `7b5e9fd` under coverage.
+
+Independent implementation reviews (GPT family, exact serving model unavailable):
+
+- Correctness reviewer found a unique settings/MATCH race. A rebuild between validation and
+  search used incompatible tokenizer settings. Fixed with an explicit read transaction; a
+  deterministic WAL interleaving regression fails without it (independently mutation-checked).
+- Simplicity/test reviewer forced native builds to ignore the configured tokenizer: all initial
+  60 tests still passed. Added observable stemming, accent and underscore assertions; the
+  mutation now fails two tests (**added verification**). The same reviewer found unresolvable
+  public constructor annotations; moving existing settings fixed that **unique defect**, with
+  constructor introspection and both fresh-process import orders verified.
+- Required host `peer-review` selected Claude Opus 5.5 but failed with revoked OAuth. A
+  fresh-context same-family fallback found a **unique defect** with custom regex-selected
+  NUL terms producing a database parse error. Added boundary validation and a regression.
+  Its attacks included NUL, unmatched quotes, apparent OR injection, surrogates, emoji and
+  operator-looking text under default/custom patterns. Final fallback verified 115 text-search
+  and retrieval cases, imports, the NUL fix and the read-BEGIN mutation; no remaining defect.
+- External official-documentation recheck added verification of SQLite DDL atomicity under
+  legacy driver control. Explicit rebuild BEGIN and a post-DDL failure regression retain the
+  old index; removing BEGIN makes that test fail. Removing native visibility SQL also makes
+  the hidden-best-match regression fail. Sources:
+  https://sqlite.org/fts5.html and
+  https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver .
+
+No disagreement remains on these fixes. Native Postgres search and embedding/fusion contracts
+are outside P16 approval.
 
 ## Open
 
-- Postgres in tests: the generic path must actually run against Postgres somewhere (a local
-  server, a container, or CI only); which extension first for a native override.
+- Which extension first for a native Postgres override. The generic path was verified locally
+  against PostgreSQL 18.6 with 18 of the same generic boundary/fixture tests, using isolated
+  per-test UTF-8 databases and an ephemeral psycopg binary install; no package dependency added.
 - Run identity: store class, text settings, collection id and indexed-content digest (BE6).
 - RRF over `search_text` results in Python first; an SQL version later where measured.

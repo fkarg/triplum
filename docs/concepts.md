@@ -30,7 +30,9 @@ explains the shared Protocol and configuration conventions.
    with the answers and gold evidence that only evaluation reads.
 2. [Retrieval](concepts/retrieval.md): the chunks a viewer may read that best answer a query,
    ranked by BM25.
-3. [Retrieval recall](concepts/recall.md): how much of a question's gold evidence the top `k`
+3. [Store-managed text search](concepts/text-search.md): build and search a collection snapshot
+   through the store, using BM25 or native SQLite FTS5.
+4. [Retrieval recall](concepts/recall.md): how much of a question's gold evidence the top `k`
    hits contain.
 
 Answer generation and answer scoring are not implemented yet; see

@@ -82,6 +82,7 @@ nav:
       - Embedding: concepts/embedding.md
       - Benchmark inputs: concepts/benchmark-inputs.md
       - Retrieval: concepts/retrieval.md
+      - Store-managed text search: concepts/text-search.md
       - Retrieval recall: concepts/recall.md
   - Infrastructure:
       - Store: infrastructure/store.md

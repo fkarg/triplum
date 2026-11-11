@@ -4,19 +4,19 @@ A **store** keeps the records a pipeline produces, so you can read them back lat
 process. Today the store holds [sources](../concepts/source.md), who may read each of them, and
 their [chunks](../concepts/chunk.md). Vectors, files and graph data are not stored yet.
 
-There is one contract, [`RecordStore`][triplum.store.protocols.RecordStore], and two
-implementations:
+[`RecordStore`][triplum.store.protocols.RecordStore] describes record storage. Its implementations
+also provide the independent [`TextSearchStore`][triplum.store.protocols.TextSearchStore]
+capability for [building and searching text indexes](../concepts/text-search.md):
 
 - [`MemoryStore`][triplum.store.memory.MemoryStore] keeps records in Python dictionaries.
 - [`SQLAlchemyStore`][triplum.store.sql.generic.SQLAlchemyStore] keeps them in a relational
   database through [SQLModel](https://sqlmodel.tiangolo.com/) (which is built on SQLAlchemy). By
   default it uses SQLite, which ships with Python and needs no server.
+- [`SQLiteStore`][triplum.store.sql.sqlite.SQLiteStore] shares the SQL record implementation and
+  adds native SQLite FTS5 search with persisted indexes.
 
-The contract and both implementations, `RecordStore`, `MemoryStore` and `SQLAlchemyStore`, are
-importable from `triplum.store`. `SQLAlchemyStore` uses SQLAlchemy for database
-access; only SQLite is covered by triplum's tests. Backend-specific stores (for
-SQLite or PostgreSQL) are planned where database-specific SQL is faster; they will share its
-tables, [`SourceRow`][triplum.store.sql.tables.SourceRow],
+The contracts and implementations are importable from `triplum.store`. The SQL implementations
+share [`SourceRow`][triplum.store.sql.tables.SourceRow],
 [`SourceAccessRow`][triplum.store.sql.tables.SourceAccessRow] and
 [`ChunkRow`][triplum.store.sql.tables.ChunkRow] in `triplum.store.sql.tables`.
 
@@ -152,6 +152,7 @@ KeyError, as for a missing source
 | `MemoryStore()` | Python dictionaries. Gone when the process ends. |
 | `SQLAlchemyStore()` | An in-memory SQLite database. Gone when the process ends, and private to this store instance. |
 | `SQLAlchemyStore("sqlite:///records.db")` | The file `records.db`, relative to the current working directory (three slashes). |
+| `SQLiteStore("sqlite:///records.db")` | The same record storage, with persisted native FTS5 search snapshots. |
 | `SQLAlchemyStore("sqlite:////data/triplum/records.db")` | The absolute path `/data/triplum/records.db` (four slashes: three for the URL, one for the path). |
 | `SQLAlchemyStore("postgresql+psycopg://user:password@host/dbname")` | A PostgreSQL database; see below. |
 
@@ -164,6 +165,8 @@ Practical details:
   yet, and for no other table. Existing tables and rows are left alone; there are no migrations,
   so a table created by an older layout is not updated. A database created before source access
   and `external_id` were added is not upgraded; recreate it.
+  `SQLiteStore` also creates its text-index settings table; collection FTS5 tables are created
+  by `index_text`.
 - **The in-memory default is shared across threads.** `SQLAlchemyStore()` keeps its in-memory
   SQLite database on a single connection, so every thread using that store instance sees the same
   records. Another store instance, even another `SQLAlchemyStore()`, gets its own empty database,
@@ -185,9 +188,10 @@ name it in the URL:
 - `uv add psycopg2`, then `postgresql+psycopg2://user:password@host/dbname`. A bare
   `postgresql://` URL also selects psycopg2, SQLAlchemy's default PostgreSQL driver.
 
-The database itself must already exist; `SQLAlchemyStore` creates tables, not databases. Only SQLite is
-covered by triplum's tests. PostgreSQL is expected to work because the tables use only portable
-column types, but this has not been verified.
+The database itself must already exist; `SQLAlchemyStore` creates tables, not databases. The
+default automated suite uses SQLite. The generic text-search contract was also verified locally
+against PostgreSQL 18.6 using 18 of the same boundary and fixture tests. Search still runs through
+bm25s in Python; native PostgreSQL text-search extensions are not implemented.
 
 ## What it guarantees
 
@@ -232,19 +236,23 @@ column types, but this has not been verified.
 ## Capabilities, not one big store
 
 Storage is split by capability: one Protocol for each kind of thing kept. `RecordStore` covers
-records; vectors, blobs (files) and graph data will each get their own Protocol when they are
+records; `TextSearchStore` covers building and searching text snapshots. Vectors, blobs (files)
+and graph data will each get their own Protocol when they are
 built. A single backend may implement several of them, and a pipeline asks only for the
 capabilities it uses. Code that only reads chunks therefore accepts a `RecordStore` and works with
-either implementation above, or with your own class that has the same methods.
+any implementation above, or with your own class that has the same methods.
 
 The store is also separate from the [cache](cache.md). The cache remembers results of
 computations so they need not be repeated; the store holds the records you decided to keep.
 
 ## Reference
 
-- [`RecordStore`][triplum.store.protocols.RecordStore]
+- [`RecordStore`][triplum.store.protocols.RecordStore],
+  [`TextSearchStore`][triplum.store.protocols.TextSearchStore]
 - [`MemoryStore`][triplum.store.memory.MemoryStore]
 - [`SQLAlchemyStore`][triplum.store.sql.generic.SQLAlchemyStore]
+- [`SQLiteStore`][triplum.store.sql.sqlite.SQLiteStore],
+  [`FTS5Settings`][triplum.store.sql.sqlite.FTS5Settings]
 - [`Viewer`][triplum.datatype.viewer.Viewer]
 - [`SourceRow`][triplum.store.sql.tables.SourceRow],
   [`SourceAccessRow`][triplum.store.sql.tables.SourceAccessRow],

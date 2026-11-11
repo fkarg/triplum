@@ -28,6 +28,11 @@ This page follows the intended flow and shows where experiments can replace indi
   `HIPPORAG1` (default) and `BM25S_DEFAULT` presets. It indexes what its corpus viewer may read in
   that collection and returns only that collection's chunks each query's viewer may read; term
   statistics are per collection, and scores still depend on every indexed chunk. `WholeText` keeps each source as one chunk.
+- [Store-managed text search](concepts/text-search.md): `TextSearchStore` adds explicit
+  `index_text`/`search_text` operations for one collection's snapshot. `MemoryStore` and
+  `SQLAlchemyStore` reuse BM25 in Python; `SQLiteStore` persists native FTS5 indexes in separate
+  tables per collection. Failed rebuilds retain the old snapshot. Given a viewer, searches filter
+  before choosing the top `k`; omitted viewers do not filter access.
 - [Retrieval recall](concepts/recall.md): resolving gold evidence to Source ids, span and
   document coverage at several `k`, and means across questions. `examples/bm25_recall.py` scores
   BM25 on a fixture or on HotpotQA. Answer scoring, dense retrieval, fusion and the other
@@ -37,9 +42,9 @@ This page follows the intended flow and shows where experiments can replace indi
   enforcement are not implemented.
 - [Record stores](infrastructure/store.md) support memory and SQL persistence: sources are
   insert-only and each source has one current chunk list, replaced as a whole. Each source is
-  added with the principals allowed to read it, and every read takes a `Viewer` and returns only
-  what it may read; listing sources takes one collection id. Revoking access and access for
-  derived records are not implemented. A source's optional `external_id` is unique within its
+  added with the principals allowed to read it. Reads given a `Viewer` return only what it may
+  read; omitted viewers do not filter access. Listing sources takes one collection id. Revoking
+  access and access for derived records are not implemented. A source's optional `external_id` is unique within its
   collection. Temporal history of changed documents and origin normalization are not settled.
   [Computation caching](infrastructure/cache.md) supports optional intermediate-result reuse,
   normalized positional/keyword call arguments, per-computation SQLite tables and CLI/library

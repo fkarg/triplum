@@ -1,26 +1,33 @@
 """Records in a relational database through SQLModel: SQLite, PostgreSQL, or any SQLAlchemy URL."""
 
 from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, exists, true
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, col, create_engine, delete, select
 
-from triplum.datatype import Chunk, Source, Viewer
+from triplum.datatype import Chunk, RetrievalHit, Source, Viewer
+from triplum.steps.bm25_settings import HIPPORAG1, BM25Settings
 from triplum.store.checks import checked_chunks, new_sources, principals
-from triplum.store.protocols import RecordStore
+from triplum.store.protocols import RecordStore, TextSearchStore
 from triplum.store.sql.tables import ChunkRow, SourceAccessRow, SourceRow
 
+if TYPE_CHECKING:
+    from triplum.steps.retrieval import BM25
 
-class SQLAlchemyStore(RecordStore):
+
+class SQLAlchemyStore(RecordStore, TextSearchStore):
     """Records in the database at `url` (any SQLAlchemy URL); missing tables are created.
 
     The default URL is an in-memory SQLite database, private to this store instance and shared
     by all threads using it. Backend-specific stores may subclass this where specific SQL is faster.
     """
 
-    def __init__(self, url: str = "sqlite://") -> None:
+    def __init__(self, url: str = "sqlite://", *, text: BM25Settings | None = None) -> None:
+        self._text_settings = HIPPORAG1 if text is None else text
+        self._text_indexes: dict[UUID, BM25] = {}
         if url == "sqlite://":
             # One shared connection; otherwise each thread gets its own empty in-memory database.
             self.engine = create_engine(
@@ -31,6 +38,22 @@ class SQLAlchemyStore(RecordStore):
         rows = (SourceRow, SourceAccessRow, ChunkRow)
         tables = [SQLModel.metadata.tables[row.__tablename__] for row in rows]  # pyright: ignore[reportArgumentType]
         SQLModel.metadata.create_all(self.engine, tables=tables)  # not every imported table
+
+    def index_text(self, collection_id: UUID, /) -> None:
+        """Replace this collection's search snapshot only after a successful build."""
+        from triplum.steps.retrieval import BM25
+
+        self._text_indexes[collection_id] = BM25(
+            self, collection_id=collection_id, settings=self._text_settings
+        )
+
+    def search_text(
+        self, query: str, /, *, collection_id: UUID, viewer: Viewer | None = None, k: int
+    ) -> list[RetrievalHit]:
+        """Search the last built snapshot; see `TextSearchStore` for the contract."""
+        if k < 1:
+            raise ValueError("k must be at least 1")
+        return self._text_indexes[collection_id](query, viewer=viewer, k=k)
 
     def add_sources(self, sources: Iterable[Source], /, *, allow: Iterable[str]) -> None:
         access = principals(allow)

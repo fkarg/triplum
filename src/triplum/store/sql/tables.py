@@ -46,3 +46,12 @@ class ChunkRow(SQLModel, table=True):
     start: int
     text: str
     fingerprint: str = Field(index=True)
+
+
+class TextIndexRow(SQLModel, table=True):
+    """Effective settings for each successfully built native SQLite search snapshot."""
+
+    __tablename__ = "text_index"  # type: ignore[assignment]
+
+    collection_id: UUID = Field(primary_key=True)
+    settings: str

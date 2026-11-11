@@ -11,18 +11,27 @@ Active grill-me workstream (sequential mode, existing checkout on `main`):
 historical. To resume on any machine: pull `main`, read this section, the capture's latest round
 and the question files; then check `git log` against the state below.
 
-- **Waiting on the owner (storage topic):** approve P16 ([draft](../specs/text-search.md));
-  the ST3 agreement line (the draft says FTS5 within 0.05 of bm25s on fixture R@2/R@5; the peer
-  probe sits exactly at 0.05 for R@2); where Postgres tests run (local server, container or CI
-  only). Recorded owner directions not started: separate tables per collection for clean
-  benchmarks (FTS5 per collection is the first case); sophisticated example setups showcased for
-  every persona reader type; RRF in Python first, SQL where measured; Viewer concept page when
-  Viewers return.
+- **P16 implemented (2026-11-11):** [store-managed text search](../specs/text-search.md),
+  approved by the owner (“go ahead P16”). Memory/generic SQLAlchemy reuse BM25 snapshots;
+  SQLite has persistent FTS5 snapshots, explicit atomic rebuild/read transactions and settings
+  checks. 624 tests passed, including 65 text-search cases; ty, Ruff, Cargo and strict MkDocs
+  passed. 18 of the same generic cases passed locally on PostgreSQL 18.6. Fixture
+  FTS5 R@2/R@5 0.550/0.750 versus reference 0.600/0.775 meets the approved tolerance.
+  Review defects fixed: settings/MATCH race, unresolved constructor annotations, custom NUL
+  query terms; tokenizer behavior tests strengthened. Claude host peer auth failed (revoked
+  OAuth); independent GPT-family fallback used (exact model unavailable). Full dispositions
+  are in the spec. CI delivery status is recorded in the capture.
+- **Next owner round prepared: DF1 query/passage encoding**,
+  [question and independent answer](questions/dense-fusion.md). No embedding contract or
+  implementation accepted. Run identity (BE6), native Postgres extensions and fusion remain
+  open. Recorded direction to showcase richer examples for every persona remains queued;
+  Viewer concept page waits until Viewers return.
 - **Mutation-track items that touch this topic** (from [the pilot](mutation-pilot.md)): P13/P14
   survivors (`RetrievalHit` `frozen`, `==` → `is` on collection ids because tests pass the same
   UUID object, keyword-only `sources()` parameters, `@abstractmethod` on `sources()`), a
   parametrized frozen-records test, non-SQLite URL pool settings, `close()` pseudo-tested on
-  `SQLiteBackend` and `SQLAlchemyStore`. Take them with P16's store changes.
+  `SQLiteBackend` and `SQLAlchemyStore`. P16 pins value-equal reconstructed UUID collection scope and verifies non-SQLite behavior
+  against real Postgres; remaining mutation-only coverage stays queued for a scoped test-quality slice.
 - **Not in this repo:** an uncommitted edit to the owner's global agent instructions
   (`~/configs/coding-agents/configs/shared/AGENTS.md`, on the machine "margo": do not mention
   omitting the co-author trailer); the owner commits that repository.
@@ -34,9 +43,8 @@ and the question files; then check `git log` against the state below.
   source of truth; Viewers deferred; explicit building blocks over interfaces for their own sake.
   RT10 folds into this topic (owner leaning: indexes store-managed; Retriever's value open).
   ST1-ST5 answered by the owner ([storage questions](questions/storage.md)). P15 optional Viewer
-  implemented. P16 store-managed text search drafted and peer-revised
-  ([draft](../specs/text-search.md)); awaiting owner approval. Known: `uv run ty check` needs
-  `uv sync --group mutation` since the P10 pilot added `scripts/mutation.py`.
+  implemented. P16 is implemented; the completion checkpoint above is current.
+  `uv sync --group mutation` is required for typing the mutation scripts and now runs in CI.
 - **Done (2026-11-08, jolly):** P10 mutation pilot ([record](mutation-pilot.md)):
   `scripts/mutation.py`, full pass and diff-scoped run, survivor review; tests for top gaps 1–4
   added, each verified against its mutant; full kill-matrix pass analysed ([record](mutation-pilot.md);

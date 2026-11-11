@@ -9,6 +9,10 @@ The library provides one retriever, [`BM25`][triplum.steps.retrieval.BM25]: lexi
 the chunks of one [collection](collection.md) in a [store](../infrastructure/store.md), scored by the
 [bm25s](https://github.com/xhluca/bm25s) library with the Lucene BM25 formula.
 
+Stores also provide [store-managed text search](text-search.md): build a collection's snapshot
+with `index_text`, then call `search_text`. Memory and generic SQL stores reuse BM25; `SQLiteStore`
+uses native FTS5. Both paths return the same ranked hits described below.
+
 ## Example
 
 ```python
@@ -232,4 +236,5 @@ Stopwords, stemming and separate title fields are not supported yet.
 - [`Retriever`][triplum.steps.retrieval.Retriever], [`BM25`][triplum.steps.retrieval.BM25] and
   [`BM25Settings`][triplum.steps.retrieval.BM25Settings]
 
-Next: [Retrieval recall](recall.md), scoring the hits against a benchmark's gold evidence.
+Next: [Store-managed text search](text-search.md), or [retrieval recall](recall.md) to score hits
+against a benchmark's gold evidence.

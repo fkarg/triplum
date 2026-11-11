@@ -12,10 +12,11 @@ not working entry points. The current CLI provides cache inspection and clearing
 listing, downloading, verifying and removing the provided datasets (`triplum datasets`).
 
 The Python foundation includes datasets/loaders, Source and Chunk records, benchmark question
-records with a fixture loader, step Protocols, memory/SQL record stores, BM25 retrieval with
-retrieval-recall scoring, and optional computation caching. Indexing prototypes remain under
-review; there is no answer generation or benchmark runner yet. The pure Python package uses `uv_build`; the independent Rust workspace is not built or
-linked during Python installation.
+records with a fixture loader, step Protocols, memory/SQL record stores, store-managed BM25 and
+native SQLite FTS5 text search, retrieval-recall scoring, and optional computation caching.
+Indexing prototypes remain under review; there is no answer generation or benchmark runner yet.
+The pure Python package uses `uv_build`; the independent Rust workspace is not built or linked
+during Python installation.
 
 ## Try it
 
@@ -66,6 +67,7 @@ configure steps, and inspect or clear stored results.
 - [Indexing and retrieval](docs/flow.md): what exists and how the intended pipeline fits together.
 - [Decision points](docs/concepts/decisions.md): replaceable steps and their contracts.
 - [Store](docs/infrastructure/store.md): retain sources and chunks in memory or SQL.
+- [Text search](docs/concepts/text-search.md): build and search a collection's index in its store.
 - [CONTRIBUTING.md](CONTRIBUTING.md): checks and hook setup; [AGENTS.md](AGENTS.md): contributor
   rules and the interface review gate.
 

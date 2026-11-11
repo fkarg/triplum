@@ -887,3 +887,97 @@ Dispositions:
 
 Contracts: new `docs/specs/benchmark.md` (and retrieval/LLM specs as they arise). Questions:
 `docs/plans/questions/`. Implementation state: `docs/flow.md` and concept guides.
+
+## P16 implementation checkpoint (2026-11-11)
+
+Owner: “continue the session $grill-me style. go ahead P16”. P16's text-search
+contract and implementation kickoff are approved as drafted in `docs/specs/text-search.md`.
+Sequential mode continues in the existing checkout on `main` (repository rebuild policy).
+
+Scope: independent `TextSearchStore` capability; snapshot BM25 on memory and generic
+SQLAlchemy stores; native SQLite FTS5 override and its actual settings; collection isolation,
+atomic rebuild, literal OR queries, optional Viewer before top-k, persisted-setting checks.
+Standalone BM25 remains the reference. No dense search, fusion, native Postgres extension,
+new CLI, or benchmark-run identity design.
+
+Plan: scoped worker owns store implementation and focused boundary/20-question fixture tests;
+main session owns acceptance, review, full verification and delivery; docs sync delegated
+after interfaces land. Reuse existing BM25 rather than duplicating scoring. Verify generic
+Postgres against a real temporary database if local tooling permits; record any limitation.
+The approved five-point fixture tolerance is a check to measure, not general equivalence.
+Required checks: tests with durations/coverage, ty, Ruff, Cargo, strict MkDocs, affected examples,
+independent simplicity/correctness review and host cross-model diff review. Commit and push
+main at the repository stopping point, and report remote CI. New contract tradeoffs return
+to the owner; no neighbouring interface is approved by this kickoff.
+
+External recheck (web-enabled research agent, official FTS5 and SQLAlchemy docs):
+FTS5 settings/statistics/query behavior support the approved design. Unique verification
+addition: SQLite's legacy driver does not begin a physical transaction for DDL; native
+rebuild must explicitly begin before DROP/CREATE and test rollback after DDL failure.
+Sources: https://sqlite.org/fts5.html and
+https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver .
+Remote handoff-only commit `7b5e9fd` incorporated by fast-forward; no branch switch.
+
+Observed base CI failure on `7b5e9fd` (run 42905796005): six unresolved `cosmic_ray`
+imports in `scripts/mutation.py`; CI installs only default groups. Add the existing mutation
+group to CI's locked sync and document it in CONTRIBUTING so all required typing checks
+can actually run. No dependency or lockfile change. Local sync with that group and ty pass.
+
+Observed PostgreSQL verification: PostgreSQL 18.6, UTF-8 databases, psycopg via
+`uv run --with 'psycopg[binary]'`; 18 existing generic P16 contract cases passed
+(including the 20-question fixture, R@2 0.600/R@5 0.775, equal reference hits). A temporary
+pytest plugin replaced only the generic test factory with SQLAlchemyStore against an isolated
+per-test database, then closed connections and dropped it. Local verification fulfills the
+first-backend check; default CI remains SQLite. No native Postgres search is claimed.
+
+Base verification for warning attribution (observed): exported `7b5e9fd` with `git archive`
+to `/tmp`, ran its complete suite with its source on PYTHONPATH and the same coverage options;
+559 passed and the same two unclosed SQLite ResourceWarnings at
+`test_computation_cache.py::test_failed_writer_does_not_retain_payload_in_sticky_error` appeared.
+These warnings reproduce on the base; their underlying allocation cause remains uninvestigated.
+
+### Prepared next round: DF1 query/passage role (not yet presented)
+
+Prerequisite: finish P16 and its reviews; no embedding implementation is authorized.
+External research found role handling can choose model modules as well as prefixes.
+Sources: https://www.sbert.net/examples/sentence_transformer/applications/semantic-search/README.html
+and https://huggingface.co/intfloat/e5-small-v2 . Dense storage still needs numeric, truncation
+and compatibility contracts later; Python RRF is independently designable, but its current
+inputs would be lexical-only.
+
+Session assessment recorded before peer: preserve the existing batch callable shape, binding
+query or passage purpose at configuration/construction, and compose two encoders explicitly
+(the same callable for symmetric models). Alternative: one callable takes a role per batch;
+alternative: paired query/document methods. Recommend configured batch callables for local
+reasoning and the established rule that configuration belongs in construction; paired
+compatibility remains a later requirement, not something inferred from equal dimensions.
+Do not introduce a new wrapper or role Protocol merely to select the operation.
+
+Cross-model design peer unavailable after host Claude OAuth revocation; obtain a separate
+fresh-context same-family independent answer before presentation.
+
+DF1 independent design fallback (fresh-context GPT family; exact model unavailable) agrees
+with configured callables after testing distinct routes, symmetric models, shared resource
+requirements, incompatible pairing and future roles. Disposition: added verification of shared
+resources; retain pairing risk as unresolved. Full options and sources live in the DF question
+file. Present this round only after P16 delivery/verification; no embedding implementation
+is accepted by approving P16.
+
+### P16 verified checkpoint
+
+Observed: 624 full-suite tests passed in 11.75s, including 65 text-search cases. Ty, Ruff
+lint/format, Cargo check/test and strict MkDocs pass; new text-search examples ran in a
+temporary directory with documented outputs. Final Postgres rerun: 18 cases passed in 1.86s.
+The full review dispositions are in the text-search spec. Unique defects fixed: native
+settings/MATCH read race (WAL regression), constructor annotation resolution (data-only BM25
+settings module, original imports reexported), custom regex-selected NUL query terms.
+Tokenizer tests strengthened after an ignored-settings mutation survived the initial suite.
+Removing read BEGIN, rebuild BEGIN or native visibility each makes its regression fail.
+
+Host cross-model diff-review selected Claude Opus 5.5 but failed with revoked OAuth; no
+successful Claude result was claimed. Fresh-context GPT-family fallback (exact model unknown)
+provided the NUL finding and verified final 115 text-search/retrieval tests plus fresh imports
+and the read-BEGIN mutation. No remaining blocking finding. This is a same-family fallback.
+Docs sync was delegated and inspected; the docs worker's untracked example `records.db` was
+confirmed as its artifact and removed. No running implementation task remains.
+Next: deliver this checkpoint on main and follow CI, then present prepared DF1 role question.
