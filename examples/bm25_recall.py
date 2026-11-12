@@ -8,10 +8,8 @@ missing. The example scores passage-level gold, the unit HippoRAG's published re
 """
 
 import sys
-from pathlib import Path
 
 from triplum.datasets import hotpotqa
-from triplum.datasets.fixture import LegacyFixture
 from triplum.datatype import Collection, Viewer
 from triplum.evaluation.recall import resolve_evidence, score_recall, summarize_recall
 from triplum.steps.chunking import WholeText
@@ -19,13 +17,9 @@ from triplum.steps.retrieval import BM25
 from triplum.store import MemoryStore
 
 if __name__ == "__main__":
-    name = sys.argv[1]
-    if name == "hotpotqa":
-        sentence = sys.argv[2:] == ["sentence"]
-        fixture = hotpotqa.HotpotQA(gold="sentence" if sentence else "passage")
-    else:
-        fixture = LegacyFixture(Path(name))
-    collection = Collection(name=Path(name).stem)
+    sentence = sys.argv[2:] == ["sentence"]
+    fixture = hotpotqa.HotpotQA(gold="sentence" if sentence else "passage")
+    collection = Collection(name="hotpotqa")
     corpus = list(fixture.corpus(collection.id))
     store = MemoryStore()
     store.add_sources(corpus, allow=["public"])
